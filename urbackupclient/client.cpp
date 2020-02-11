@@ -3689,7 +3689,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 	}
 	else
 	{
-		scriptname = "remove_device_snapshot";
+		scriptname = "remove_volume_snapshot";
 	}
 
 	std::string scriptlocation = get_snapshot_script_location(scriptname, index_clientsubname);
@@ -3836,7 +3836,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 	}
 	else
 	{
-		scriptname = "remove_device_snapshot";
+		scriptname = "remove_volume_snapshot";
 	}
 
 	std::string scriptlocation = get_snapshot_script_location(scriptname, index_clientsubname);

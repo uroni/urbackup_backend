@@ -39,8 +39,7 @@
 #include "win_network_cost.h"
 #else
 #include "lin_ver.h"
-std::string getSysVolumeCached(std::string &mpath){ return ""; }
-std::string getEspVolumeCached(std::string &mpath){ return ""; }
+#include "lin_sysvol.h"
 #endif
 #include "../client_version.h"
 
@@ -1453,6 +1452,12 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 				return;
 			}
 		}
+#ifndef _WIN32
+		else if (image_inf.image_letter == "C")
+		{
+			image_inf.image_letter = getRootVol();
+		}
+#endif
 
 		int running_jobs = 2;
 		if (params.find("running_jobs") != params.end())
@@ -1553,6 +1558,13 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			
 			image_inf.no_shadowcopy=false;
 			image_inf.clientsubname = params["clientsubname"];
+
+#ifndef _WIN32
+			if (image_inf.image_letter == "C")
+			{
+				image_inf.image_letter = getRootVol();
+			}
+#endif
 
 			str_map::iterator f_cbitmapsize = params.find("cbitmapsize");
 			if (f_cbitmapsize != params.end())
@@ -1679,6 +1691,10 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 		dl=getEspVolumeCached(mpath);
 	}
 #ifndef _WIN32
+	else if (dl == "C")
+	{
+		dl = getRootVol();
+	}
 	else if(params.find("disk_path")!=params.end())
 	{
 		dl=params["disk_path"];
