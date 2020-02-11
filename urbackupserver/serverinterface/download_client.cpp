@@ -20,6 +20,8 @@
 #include <algorithm>
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_settings.h"
+#include "../dao/ServerBackupDao.h"
+#include "../server_channel.h"
 
 extern ICryptoFactory *crypto_fak;
 extern std::string server_token;
@@ -68,6 +70,54 @@ namespace
 		return ret;
 	}
 
+	class RemoveRestoreToken : public IObject
+	{
+		std::string token;
+	public:
+		RemoveRestoreToken(std::string token)
+			: token(token)
+		{}
+
+		~RemoveRestoreToken()
+		{
+			ServerChannelThread::remove_restore_token(token);
+		}
+	};
+
+	std::string constructImageRestoreSettings(Helper& helper, int backupid)
+	{
+		ServerSettings settings(helper.getDatabase());
+		SSettings* settingsptr = settings.getSettings();
+
+		db_results restore_authkey = helper.getDatabase()->Read("SELECT value FROM settings_db.settings WHERE key='restore_authkey' AND clientid=0");
+		
+		if (restore_authkey.size() != 1)
+		{
+			return std::string();
+		}
+
+		std::string token = ServerSettings::generateRandomAuthKey();
+
+		ServerChannelThread::add_restore_token(token, backupid);
+
+		IObject* curr = helper.getSession()->getCustomPtr("rm_restore_token");
+		if (curr != NULL)
+		{
+			curr->Remove();
+		}
+
+		helper.getSession()->mCustom["rm_restore_token"] = new RemoveRestoreToken(token);
+
+		std::string ret = "RESTORE_IMAGE=1\n";
+		ret += "SERVER_NAME=\"" + settingsptr->internet_server + "\"\n";
+		ret += "SERVER_PORT=\"" + convert(settingsptr->internet_server_port) + "\"\n";
+		ret += "SERVER_PROXY=\"" + settingsptr->internet_server_proxy + "\"\n";
+		ret += "RESTORE_AUTHKEY=\"" + restore_authkey[0]["value"] + "\"\n";
+		ret += "RESTORE_TOKEN=\"" + token + "\"\n";
+
+		return ret;
+	}
+
 	bool replaceToken(const std::string end_token, const std::string& repl, std::string& data, size_t& offset)
 	{
 		for(size_t i=offset;i<data.size();++i)
@@ -90,7 +140,7 @@ namespace
 		return false;
 	}
 
-	bool replaceStrings(Helper& helper, const std::string& settings, std::string& data)
+	bool replaceStrings(Helper& helper, const std::string& settings, const std::string& restore_vals, std::string& data)
 	{
 		const std::string settings_start_token="#48692563-17e4-4ccb-a078-f14372fdbe20";
 		const std::string settings_end_token="#6e7f6ba0-8478-4946-b70a-f1c7e83d28cc";
@@ -98,12 +148,22 @@ namespace
 		const std::string ident_start_token="#17460620-769b-4add-85aa-a764efe84ab7";
 		const std::string ident_end_token="#569d42d2-1b40-4745-a426-e86a577c7f1a";
 
+		const std::string restore_vals_start_token = "#e1128bd07afd40a0a2752818730589ef";
+		const std::string restore_vals_end_token = "#902761a5525a4007add0b016a35af985";
+
 		bool replaced_settings=false;
 		bool replaced_ident=false;
+		bool replaced_restore_vals = false;
+
+		if (restore_vals.empty())
+		{
+			replaced_restore_vals = true;
+		}
 
 		for(size_t i=0;i<data.size();++i)
 		{
-			if(next(data, i, settings_start_token))
+			if(!replaced_settings
+				&& next(data, i, settings_start_token))
 			{
 				i+=settings_start_token.size();
 				
@@ -114,7 +174,8 @@ namespace
 				replaced_settings=true;
 			}
 
-			if(next(data, i, ident_start_token))
+			if(!replaced_ident
+				&& next(data, i, ident_start_token))
 			{
 				i+=ident_start_token.size();
 				
@@ -125,7 +186,19 @@ namespace
 				replaced_ident=true;
 			}
 
-			if( replaced_ident && replaced_settings)
+			if (!replaced_restore_vals 
+				&& next(data, i, restore_vals_start_token))
+			{
+				i += restore_vals_start_token.size();
+
+				if (!replaceToken(restore_vals_end_token, "\n" + restore_vals + "\n", data, i))
+				{
+					return false;
+				}
+				replaced_restore_vals = true;
+			}
+
+			if( replaced_ident && replaced_settings && replaced_restore_vals)
 				return true;
 		}
 
@@ -152,6 +225,30 @@ ACTION_IMPL(download_client)
 	if( !authkey.empty()
 		|| (session!=NULL && (all_client_rights || !clientids.empty()) ) )
 	{
+		std::string restore_vals = "RESTORE_IMAGE=0\n";
+		if (GET["restore_image"] == "1")
+		{
+			ServerBackupDao dao(helper.getDatabase());
+
+			int backupid = watoi(GET["backupid"]);
+			ServerBackupDao::CondInt clientid = dao.getClientidByImageid(backupid);
+
+			if (!clientid.exists)
+			{
+				return;
+			}
+			
+			if (all_browse_backups
+				|| std::find(browse_backups_rights.begin(), browse_backups_rights.end(), clientid.value)!=browse_backups_rights.end())
+			{
+				restore_vals = constructImageRestoreSettings(helper, backupid);
+			}
+			else
+			{
+				errstr = "No permission to browse client";
+			}
+		}
+
 		helper.releaseAll();
 		session = NULL;
 
@@ -226,7 +323,7 @@ ACTION_IMPL(download_client)
 				}
 
 				std::string data=getFile("urbackup/"+basename+"."+ exe_extension);
-				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey, access_keys), data) )
+				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey, access_keys), restore_vals, data) )
 				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+")."+exe_extension+"\"");

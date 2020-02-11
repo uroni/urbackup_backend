@@ -649,6 +649,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ClientMain::init_mutex();
 	DataplanDb::init();
 	init_log_report();
+	ServerChannelThread::init_mutex();
 
 	open_settings_database();
 	
@@ -2135,6 +2136,7 @@ bool upgrade60_61()
 		return false;
 	}
 
+	bool b = true;
 	IQuery* q_insert_setting = db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?, ?, ?, ?)");
 
 	db_results res_groups = db->Read("SELECT id FROM settings_db.si_client_groups");
@@ -2150,7 +2152,7 @@ bool upgrade60_61()
 		q_insert_setting->Bind(archiveSettingsParamStr(db, group_id*-1, group_id==0 ? "d" : "g"));
 		q_insert_setting->Bind(group_id*-1);
 		q_insert_setting->Bind(c_use_value);
-		q_insert_setting->Write();
+		b &= q_insert_setting->Write();
 		q_insert_setting->Reset();
 	}
 
@@ -2199,16 +2201,18 @@ bool upgrade60_61()
 		q_insert_setting->Bind(archive_params);
 		q_insert_setting->Bind(clientid);
 		q_insert_setting->Bind(archive_use);
-		q_insert_setting->Write();
+		b &= q_insert_setting->Write();
 		q_insert_setting->Reset();
 
 		q_insert_setting->Bind("archive_update");
 		q_insert_setting->Bind("1");
 		q_insert_setting->Bind(clientid);
 		q_insert_setting->Bind(0);
-		q_insert_setting->Write();
+		b &= q_insert_setting->Write();
 		q_insert_setting->Reset();
 	}
+
+	return b;
 }
 
 bool upgrade61_62()
@@ -2216,6 +2220,7 @@ bool upgrade61_62()
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	bool b= db->Write("ALTER TABLE clients ADD capa INTEGER DEFAULT 0");
 	b &= db->Write("UPDATE clients SET capa=0 WHERE capa IS NULL");
+	return b;
 }
 
 void upgrade(void)

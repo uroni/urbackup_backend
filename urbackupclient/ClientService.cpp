@@ -2715,8 +2715,15 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 				received_bytes = watoi64(params["received_bytes"]);
 			}
 		}
+		
+		std::string token_param;
+		if (params.find("token") != params.end())
+		{
+			token_param = "&token=" + EscapeParamString(params["token"]);
+		}
+
 		sendChannelPacket(channel_pipes[i], "DOWNLOAD IMAGE with_used_bytes=1&img_id=" 
-			+ params["img_id"] + "&time=" + params["time"] + "&mbr=" + params["mbr"] + offset);
+			+ params["img_id"] + "&time=" + params["time"] + "&mbr=" + params["mbr"] + offset + token_param);
 		
 		Server->Log("Downloading from channel "+convert((int)i), LL_DEBUG);
 

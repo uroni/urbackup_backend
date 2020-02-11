@@ -497,6 +497,20 @@ int restoreclient_main(int argc, char* argv[])
 		TCLAP::SwitchArg image_download_progress_arg("q", "image-download-progress",
 			"Return image download progress for piping to dialog");
 
+		TCLAP::SwitchArg image_download_arg("s", "image-download",
+			"Start a image download");
+
+		TCLAP::SwitchArg mbr_download_arg("m", "mbr-download",
+			"Start a image download");
+
+		TCLAP::ValueArg<std::string> download_token_arg("k", "download-token",
+			"Token to use to start image/MBR download",
+			false, "", "token", cmd);
+
+		TCLAP::ValueArg<std::string> mbr_read_arg("u", "mbr-read",
+			"Read MBR/GPT from device",
+			false, "", "path");
+
 		std::vector<TCLAP::Arg*> xorArgs;
 		xorArgs.push_back(&restore_mbr_arg);
 		xorArgs.push_back(&mbr_info_arg);
@@ -505,6 +519,8 @@ int restoreclient_main(int argc, char* argv[])
 		xorArgs.push_back(&restore_client_arg);
 		xorArgs.push_back(&ping_server_arg);
 		xorArgs.push_back(&image_download_progress_arg);
+		xorArgs.push_back(&image_download_arg);
+		xorArgs.push_back(&mbr_read_arg);		
 
 		cmd.xorAdd(xorArgs);
 
@@ -610,6 +626,44 @@ int restoreclient_main(int argc, char* argv[])
 			real_args.push_back("true");
 			real_args.push_back("--restore_cmd");
 			real_args.push_back("download_progress");
+		}
+		else if (image_download_arg.isSet()
+			|| mbr_download_arg.isSet() )
+		{
+			if (!out_device_arg.isSet())
+			{
+				std::cout << "You need to specify a device/file to which to download via --out-device" << std::endl;
+				return 1;
+			}
+
+			if (!download_token_arg.isSet())
+			{
+				std::cout << "You need to specify a token to use via --download-token" << std::endl;
+				return 1;
+			}
+
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			if(mbr_download_arg.isSet())
+				real_args.push_back("download_mbr");
+			else
+				real_args.push_back("download_image");
+			real_args.push_back("--restore_token");
+			real_args.push_back(download_token_arg.getValue());
+			real_args.push_back("--restore_out");
+			real_args.push_back(out_device_arg.getValue());
+		}
+		else if (mbr_read_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			real_args.push_back("read_mbr");
+			real_args.push_back("--device_fn");
+			real_args.push_back(mbr_read_arg.getValue());
 		}
 
 		return run_real_main(real_args);

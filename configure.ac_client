@@ -68,7 +68,7 @@ AC_LANG([C++])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h mntent.h spawn.h linux/fiemap.h sys/random.h])
+AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h mntent.h spawn.h linux/fiemap.h sys/random.h linux/fs.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

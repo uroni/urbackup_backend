@@ -24,6 +24,8 @@ public:
 
 	virtual std::vector<SPartition> readPartitions(IVHDFile *vhd, int64 offset, bool& gpt_style);
 
+	virtual std::vector<SPartition> readPartitions(IFile* dev, bool& gpt_style);
+
 	virtual std::vector<SPartition> readPartitions(const std::string& mbr,
 		const std::string& gpt_header, const std::string& gpt_table, bool& gpt_style);
 

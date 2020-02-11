@@ -43,6 +43,20 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../urbackupcommon/json.h"
+#ifndef _WIN32
+#include "../config.h"
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#ifdef HAVE_LINUX_FS_H
+#include <linux/fs.h>
+#else
+#define BLKRRPART  _IO(0x12,95)
+#endif
+
+#endif
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -60,6 +74,26 @@ extern IFSImageFactory* image_fak;
 
 namespace
 {
+	bool rereadPartitionLayout(const std::string& devfn)
+	{
+		bool ret = true;
+#ifndef _WIN32
+		int fd = open(devfn, O_NONBLOCK | O_RDWR);
+		if (fd == -1)
+			return false;
+
+		int rc = ioctl(fd, BLKRRPART, NULL);
+
+		if (rc == -1)
+		{
+			ret = false;
+			Server->Log("Error re-reading partition layout. " + os_last_error_str(), LL_WARNING);
+		}
+
+		close(fd);
+#endif
+		return ret;
+	}
 
 struct LoginData
 {
@@ -68,6 +102,7 @@ struct LoginData
 	bool has_login_data;
 	std::string username;
 	std::string password;
+	std::string token;
 };
 
 std::string trim2(const std::string &str)
@@ -550,7 +585,18 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 		s_offset="&offset="+convert(dl_status.offset)+"&received_bytes="+convert(dl_status.received);
 	}
 
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+convert(img_id)+"&time="+img_time+"&mbr="+convert(mbr)+s_offset);
+	std::string dl_args;
+	if (img_id != 0 || !img_time.empty())
+	{
+		dl_args = "&img_id = "+convert(img_id)+" & time = "+img_time;
+	}
+	else if (login_data.has_login_data
+		&& !login_data.token.empty())
+	{
+		dl_args = "&token=" + EscapeParamString(login_data.token);
+	}
+
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+ dl_args + "&mbr="+convert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
 	Server->Log("Restoring to "+restore_out);
@@ -775,7 +821,7 @@ int downloadFiles(int backupid, std::string backup_time)
 		return 10;
 	}
 
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD FILES#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
 	int64 starttime = Server->getTimeMS();
 
 	while(Server->getTimeMS()-starttime<60000)
@@ -1128,6 +1174,11 @@ void do_restore(void)
 
 		Server->destroy(dev);
 
+		if (out_device.find("/dev/") == 0)
+		{
+			rereadPartitionLayout(out_device);
+		}
+
 		delete []buf;
 		exit(0);
 	}
@@ -1183,6 +1234,33 @@ void do_restore(void)
 			exit(1);
 		}
 	}
+	else if (cmd == "read_mbr")
+	{
+		std::string dev_fn = Server->getServerParameter("device_fn");
+		std::auto_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+
+		if (dev.get() == NULL)
+		{
+			Server->Log("Error opening device at " + dev_fn+". "+os_last_error_str(), LL_ERROR);
+			exit(5);
+		}
+
+		bool gpt_style;
+		std::vector<IFSImageFactory::SPartition> partitions = image_fak->readPartitions(dev.get(), gpt_style);
+
+		if (partitions.empty())
+		{
+			Server->Log("No partitions found", LL_ERROR);
+			exit(4);
+		}
+
+		for (size_t i = 0; i < partitions.size(); ++i)
+		{
+			std::cout << "partition " << (i+1) << " off " << partitions[i].offset << " size " << partitions[i].length << std::endl;
+		}
+
+		exit(0);
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -1196,6 +1274,7 @@ void do_restore(void)
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
+		Server->Log("read_mbr(device)", LL_INFO);
 		exit(0);
 	}
 	else if(cmd=="ping_server")
@@ -1297,8 +1376,18 @@ void do_restore(void)
 		if(cmd=="download_mbr")
 			mbr=true;
 
+		LoginData login_data;
+		login_data.has_login_data = false;
+
+		std::string restore_token = Server->getServerParameter("restore_token");
+		if (!restore_token.empty())
+		{
+			login_data.has_login_data = true;
+			login_data.token = restore_token;
+		}
+
 		DownloadStatus dl_status;
-		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr, LoginData(), dl_status);
+		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr, login_data, dl_status);
 		exit(ec);
 	}
 	else if(cmd=="download_files")

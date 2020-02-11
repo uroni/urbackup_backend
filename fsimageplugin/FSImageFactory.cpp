@@ -614,15 +614,20 @@ bool FSImageFactory::initializeImageMounting()
 
 std::vector<IFSImageFactory::SPartition> FSImageFactory::readPartitions(IVHDFile * vhd, int64 offset, bool& gpt_style)
 {
+	FileWrapper dev(vhd, offset);
+	return readPartitions(&dev, gpt_style);
+}
+
+std::vector<FSImageFactory::SPartition> FSImageFactory::readPartitions(IFile* dev, bool& gpt_style)
+{
 	gpt_style = false;
 
-	FileWrapper dev(vhd, offset);
-	std::string mbr = dev.Read(0LL, 512, NULL);
-	std::string gpt_header = dev.Read(512LL, 512, NULL);
+	std::string mbr = dev->Read(0LL, 512, NULL);
+	std::string gpt_header = dev->Read(512LL, 512, NULL);
 
 	if (next(gpt_header, 0, "EFI PART"))
 	{
-		return readPartitionsGPT(&dev, gpt_header);
+		return readPartitionsGPT(dev, gpt_header);
 		gpt_style = true;
 	}
 	else if (mbr.size() >= 512

@@ -102,6 +102,37 @@ namespace
 		std::string session;
 	};
 
+	class RestoreTokenKeepaliveThread : public IThread
+	{
+	public:
+		RestoreTokenKeepaliveThread(std::string token)
+			: do_quit(false), token(token)
+		{
+
+		}
+
+		void operator()()
+		{
+			while (!do_quit)
+			{
+				ServerChannelThread::SRestoreToken token_info;
+				ServerChannelThread::get_restore_token(token, token_info);
+
+				Server->wait(10000);
+			}
+
+			delete this;
+		}
+
+		void doQuit() {
+			do_quit = true;
+		}
+
+	private:
+		volatile bool do_quit;
+		std::string token;
+	};
+
 	class FileservClientThread : public IThread
 	{
 	public:
@@ -128,6 +159,9 @@ namespace
 }
 
 int ServerChannelThread::img_id_offset=0;
+IMutex* ServerChannelThread::restore_token_mutex = NULL;
+std::map<std::string, ServerChannelThread::SRestoreToken> ServerChannelThread::restore_tokens;
+std::map<std::string, ServerChannelThread::SRestoreToken> ServerChannelThread::restore_tokens_used;
 
 void ServerChannelThread::initOffset()
 {
@@ -147,10 +181,39 @@ void ServerChannelThread::initOffset()
     }
 }
 
+void ServerChannelThread::init_mutex()
+{
+	restore_token_mutex = Server->createMutex();
+}
+
 bool ServerChannelThread::isOnline()
 {
 	IScopedLock lock(mutex);
 	return input != NULL;
+}
+
+void ServerChannelThread::add_restore_token(const std::string& token, int backupid)
+{
+	assert(restore_token_mutex != NULL);
+
+	IScopedLock lock(restore_token_mutex);
+
+	SRestoreToken token_info;
+	token_info.backupid = backupid;
+	restore_tokens[token] = token_info;
+
+	timeout_restore_tokens_used();
+}
+
+void ServerChannelThread::remove_restore_token(const std::string& token)
+{
+	IScopedLock lock(restore_token_mutex);
+
+	std::map<std::string, SRestoreToken>::iterator it = restore_tokens.find(token);
+	if (it != restore_tokens.end())
+	{
+		restore_tokens.erase(it);
+	}
 }
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
@@ -160,7 +223,7 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::str
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
 	virtual_client(virtual_client), allow_shutdown(true),
-	parent(parent), next_reauth_time(0), reauth_tries(0)
+	parent(parent), next_reauth_time(0), reauth_tries(0), restore_token_keepalive_thread(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -286,6 +349,11 @@ void ServerChannelThread::run()
 	if(keepalive_thread!=NULL)
 	{
 		keepalive_thread->doQuit();
+	}
+
+	if (restore_token_keepalive_thread != NULL)
+	{
+		restore_token_keepalive_thread->doQuit();
 	}
 
 	if (!fileclient_threads.empty())
@@ -427,25 +495,28 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 	}
-	else if(next(msg, 0, "DOWNLOAD IMAGE ") && allow_restore && hasDownloadImageRights())
+	else if(next(msg, 0, "DOWNLOAD IMAGE ") && allow_restore)
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
+		if (hasDownloadImageRights(params))
 		{
-			IScopedLock lock(mutex);
-			allow_shutdown = false;
-		}
+			{
+				IScopedLock lock(mutex);
+				allow_shutdown = false;
+			}
 
-		add_extra_channel();
-		DOWNLOAD_IMAGE(params);
-		remove_extra_channel();
-		Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
+			add_extra_channel();
+			DOWNLOAD_IMAGE(params);
+			remove_extra_channel();
+			Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
 
-		{
-			IScopedLock lock(mutex);
-			allow_shutdown = true;
+			{
+				IScopedLock lock(mutex);
+				allow_shutdown = true;
+			}
 		}
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
@@ -666,7 +737,7 @@ void ServerChannelThread::SALT(str_map& params)
 	}
 }
 
-bool ServerChannelThread::hasDownloadImageRights()
+bool ServerChannelThread::hasDownloadImageRights(const str_map& params)
 {
 	if(!needs_login())
 	{
@@ -674,16 +745,16 @@ bool ServerChannelThread::hasDownloadImageRights()
 		return true;
 	}
 
+	if (params.find("token") != params.end())
+	{
+		SRestoreToken token_info;
+		return get_restore_token(params.at("token"), token_info);
+	}
+
 	str_map GET;
 	str_map PARAMS;
 	GET["ses"]=session;
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
-
-	if(helper.getSession()==NULL)
-	{
-		Server->Log("Channel session timeout", LL_ERROR);
-		return false;
-	}
 
 	if(helper.getSession()==NULL)
 	{
@@ -960,12 +1031,45 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 	ServerBackupDao backup_dao(db);
 
-	int img_id=watoi(params["img_id"])-img_id_offset;
-	
-	IQuery *q=db->Prepare("SELECT path, version, clientid, letter FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
-	q->Bind(img_id);
-	q->Bind(params["time"]);
-	db_results res=q->Read();
+	bool check_client_permissions = true;
+	db_results res;
+	int img_id;
+	if (params.find("token") != params.end())
+	{
+		SRestoreToken token_info;
+		std::string restore_token = params["token"];
+		if (!get_restore_token(restore_token, token_info))
+		{
+			_i64 r = -1;
+			input->Write((char*)&r, sizeof(_i64), img_send_timeout);
+			return;
+		}
+
+		if (restore_token_keepalive_thread != NULL)
+		{
+			restore_token_keepalive_thread->doQuit();
+		}
+		restore_token_keepalive_thread = new RestoreTokenKeepaliveThread(restore_token);
+		Server->getThreadPool()->execute(restore_token_keepalive_thread, "restore token keepalive");
+
+		check_client_permissions = false;
+
+		IQuery* q = db->Prepare("SELECT path, version, clientid, letter FROM backup_images WHERE id=?");
+		q->Bind(token_info.backupid);
+		res = q->Read();
+
+		img_id = token_info.backupid;
+	}
+	else
+	{
+		img_id = watoi(params["img_id"]) - img_id_offset;
+
+		IQuery* q = db->Prepare("SELECT path, version, clientid, letter FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
+		q->Bind(img_id);
+		q->Bind(params["time"]);
+		res = q->Read();
+	}
+
 	if(res.empty())
 	{
 		Server->Log("Image to download not found (img_id=" + convert(img_id) + " time=" + params["time"] + ")", LL_DEBUG);
@@ -978,18 +1082,21 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	}
 	else
 	{
-		std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
-
-		if(clientname.empty()
-			|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
+		if (check_client_permissions)
 		{
-			Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
-			_i64 r=-1;
-			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+			std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
+
+			if (clientname.empty()
+				|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
 			{
-				reset();
+				Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
+				_i64 r = -1;
+				if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+				{
+					reset();
+				}
+				return;
 			}
-			return;
 		}
 
 		int img_version=watoi(res[0]["version"]);
@@ -1601,6 +1708,69 @@ void ServerChannelThread::remove_extra_channel()
 		extra_channel_threads[extra_channel_threads.size() - 1]->doExit();
 		extra_channel_threads.erase(extra_channel_threads.begin() + extra_channel_threads.size() - 1);
 	}
+}
+
+void ServerChannelThread::timeout_restore_tokens_used()
+{
+	int64 ctime = Server->getTimeMS();
+	for (std::map<std::string, SRestoreToken>::iterator it = restore_tokens_used.begin();
+		it != restore_tokens_used.end();)
+	{
+		if (ctime - it->second.lasttime > 10 * 60 * 1000)
+		{
+			std::map<std::string, SRestoreToken>::iterator it_curr = it;
+			++it;
+			restore_tokens_used.erase(it_curr);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+bool ServerChannelThread::get_restore_token(const std::string& token, SRestoreToken& ret)
+{
+	IScopedLock lock(restore_token_mutex);
+
+	std::map<std::string, SRestoreToken>::iterator it = restore_tokens.find(token);
+	if (it == restore_tokens.end())
+	{
+		it = restore_tokens_used.find(token);
+
+		if (it == restore_tokens_used.end())
+		{
+			return false;
+		}
+		else
+		{
+			const int64 ctime = Server->getTimeMS();
+			if (ctime - it->second.lasttime > 10 * 60 * 1000)
+			{
+				restore_tokens_used.erase(it);
+				return false;
+			}
+
+			it->second.lasttime = ctime;
+		}
+	}
+	else
+	{
+		std::map<std::string, SRestoreToken>::iterator it_used = restore_tokens_used.find(token);
+		if (it_used == restore_tokens_used.end())
+		{
+			it->second.lasttime = Server->getTimeMS();
+			restore_tokens_used[token] = it->second;
+		}
+		else
+		{
+			it_used->second.lasttime = Server->getTimeMS();
+		}
+	}
+
+	ret = it->second;
+
+	return true;
 }
 
 
