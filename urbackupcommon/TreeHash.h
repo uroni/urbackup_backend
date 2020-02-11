@@ -4,7 +4,7 @@
 #include "../md5.h"
 #include "../Interface/Types.h"
 
-class IHashFunc
+class IHashFunc : public IObject
 {
 public:
 	virtual void hash(const char* buf, _u32 bsize) = 0;

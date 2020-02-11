@@ -192,7 +192,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 
 	if(destroy_server)
 	{
-		delete Server;
+		delete static_cast<CServer*>(Server);
 	}
 }
 #endif
