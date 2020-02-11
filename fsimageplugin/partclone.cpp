@@ -185,7 +185,7 @@ void Partclone::init()
 	}
 
 #ifdef __ANDROID__
-	AutoCloseAnd close_in(in);
+	AutoCloseAnd close_in(pin);
 #else
 	AutoClose close_in(in);
 #endif
