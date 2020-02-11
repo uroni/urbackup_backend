@@ -10,6 +10,11 @@
 #define _pclose pclose
 #endif
 
+#if defined(__ANDROID__)
+#define fsblkcnt64_t fsblkcnt_t
+#include "../urbackupcommon/android_popen.h"
+#endif
+
 Partclone::Partclone(const std::string& pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
 	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
 {
@@ -109,6 +114,21 @@ namespace
 			_pclose(in);
 		}
 	};
+
+#ifdef __ANDROID__
+	class AutoCloseAnd
+	{
+		POFILE* in;
+	public:
+		AutoClose(POFILE* in)
+			: in(in)
+		{}
+
+		~AutoClose() {
+			and_pclose(in);
+		}
+	};
+#endif
 }
 
 void Partclone::init()
@@ -137,8 +157,15 @@ void Partclone::init()
 	}
 
 	cmd = "partclone."+fstype+" -o - -c -s \"" + dev->getFilename() + "\"";
-	FILE* in;
-#ifdef __linux__
+	FILE* in = NULL;
+#ifdef __ANDROID__
+	POFILE* pin = NULL;
+#endif
+
+#ifdef __ANDROID__
+	pin = and_popen(cmd.c_str(), "r");
+	if (pin != NULL) in = pin->fp;
+#elif __linux__
 	in = _popen(cmd.c_str(), "re");
 	if (!in) in = _popen(cmd.c_str(), "r");
 #else
@@ -151,7 +178,11 @@ void Partclone::init()
 		return;
 	}
 
+#ifdef __ANDROID__
+	AutoCloseAnd close_in(in);
+#else
 	AutoClose close_in(in);
+#endif
 
 	partclone_header header;
 	if (!read_in(in, reinterpret_cast<char*>(&header), sizeof(header)))
