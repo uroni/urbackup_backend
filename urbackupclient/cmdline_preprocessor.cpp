@@ -500,7 +500,7 @@ int restoreclient_main(int argc, char* argv[])
 		TCLAP::SwitchArg image_download_arg("s", "image-download",
 			"Start a image download");
 
-		TCLAP::SwitchArg mbr_download_arg("m", "mbr-download",
+		TCLAP::SwitchArg mbr_download_arg("b", "mbr-download",
 			"Start a image download");
 
 		TCLAP::ValueArg<std::string> download_token_arg("k", "download-token",
