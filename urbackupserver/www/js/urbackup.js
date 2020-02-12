@@ -6217,7 +6217,7 @@ function linux_image_restore1(data)
 		site_url+="/";
 	}
 
-	data.linux_restore_url = site_url+getURL("download_client", "restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token));
+	data.linux_restore_url = site_url+"x?a=download_client&restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token);
 	
 	var ndata=dustRender("restore_linux_img", data);
 	if(g.data_f!=ndata)
