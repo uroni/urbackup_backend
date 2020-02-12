@@ -3102,10 +3102,7 @@ function renderSettingSwitchAll()
 {
 	for(var i=0;i<g.settings_list.length;++i)
 	{
-		if(I(g.settings_list[i]+"_sw"))
-		{
-			renderSettingSwitch(g.settings_list[i]);
-		}
+		renderSettingSwitch(g.settings_list[i]);
 	}
 
 	if(I("backup_window_sw"))
