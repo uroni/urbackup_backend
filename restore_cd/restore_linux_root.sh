@@ -131,7 +131,7 @@ echo "Replacing root file system... (DO NOT INTERRUPT FROM NOW ON)"
 systemctl start urbackuprestoreimage.service
 
 echo "Please wait. Image restore percent complete (DO NOT INTERRUPT): "
-$PREFIX/sbin/urbackuprestoreclient --image-download-progress
+(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
 
 echo "Replacing critical data... afterwards rebooting machine..."
 cat /pre > /dev/null

@@ -222,21 +222,24 @@ done
 
 echo "Restoring to $SELDISK_PATH ..."
 
+CWD=$(pwd)
+cd "$PREFIX/var"
+
 echo "Loading MBR..."
 
 MBRFILE=$(mktemp)
 
-$PREFIX/sbin/urbackuprestoreclient --mbr-download --download-token "$RESTORE_TOKEN" --out-device "$MBRFILE"
+(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --mbr-download --download-token "$RESTORE_TOKEN" --out-device "$MBRFILE")
 
 echo "MBR info:"
 
-$PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE"
+(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE")
 
-PARTNUMBER=$($PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE" | grep "partition_number=" | sed 's@partition_number=\(.*\)@\1@g')
+PARTNUMBER=$(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE" | grep "partition_number=" | sed 's@partition_number=\(.*\)@\1@g')
 
 if [ "x$PARTNUMBER" != "x0" ]
 then
-    echo "Restoring partition $PARTNUMBER at $SELDISK_PATH$PARTNUMBER..."
+    echo "Restoring partition $PARTNUMBER at $SELDISK_PATH$PARTNUMBER of disk $SELDISK_PATH..."
     RESTORE_TARGET="$SELDISK_PATH$PARTNUMBER"
 else
     echo "Restoring whole disk $SELDISK_PATH..."
@@ -285,9 +288,10 @@ then
     echo "Overwrite partition layout (MBR/GPT) of $SELDISK_PATH? y/N"
 
     read yn
-    if [ "x$yn" = xY ]
+    if [ "x$yn" = xY ] || [ "x$yn" = xy ]
     then
         $PREFIX/sbin/urbackuprestoreclient --restore-mbr "$MBRFILE" --out-device "$SELDISK_PATH"
+        sync
 
         echo "Partitions:"
         $PREFIX/sbin/urbackuprestoreclient --mbr-read "$SELDISK_PATH"
@@ -319,7 +323,7 @@ fi
 
 if [ "$MOUNTPOINT" = "/" ]
 then
-    cp restore_linux_root.sh $PREFIX/sbin/restore_linux_root.sh
+    cp "$CWD/restore_linux_root.sh" $PREFIX/sbin/restore_linux_root.sh
     cat << EOF > $SYSTEMD_DIR/urbackuprestoreroot.service
 [Unit]
 Description=UrBackup Restore Image
@@ -382,5 +386,5 @@ systemctl daemon-reload
 systemctl start urbackuprestoreimage.service
 
 echo "Please wait. Image restore percent complete: "
-$PREFIX/sbin/urbackuprestoreclient --image-download-progress
+(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
 
