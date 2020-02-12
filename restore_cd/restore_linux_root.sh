@@ -6,6 +6,7 @@ RESTORE_TARGET="$1"
 PARTITION_SIZE="$2"
 PREFIX="$3"
 RESTORE_TOKEN="$4"
+SYSTEMD_DIR="$5"
 
 echo "Setting up in-memory base system..."
 
@@ -54,13 +55,20 @@ for p in account empty lib local lock nis opt preserve run spool tmp yp
 do
 	cp -ax "/var/$p" /tmproot/var/ > /dev/null 2>&1 || true
 done
+mkdir /tmproot/usr/local
+for p in sbin var
+do
+	cp -ax "/usr/local/$p" /tmproot/usr/local/ > /dev/null 2>&1 || true
+done
 echo 20971520 > /proc/sys/vm/dirty_bytes
 echo 5242880 > /proc/sys/vm/dirty_background_bytes
-truncate -s "${PRE_SIZE_KB}KB" /tmproot/pre
+truncate -s $((PRE_SIZE_SZ*512)) /tmproot/pre
 LODEV=$(losetup -f)
-losetup $LODEV /tmproot/pre
+losetup "$LODEV" /tmproot/pre
+LODEV2=$(losetup -f)
+losetup "$LODEV2" "$RESTORE_TARGET"
 echo "0 $PRE_SIZE_SZ linear $LODEV 0
-$PRE_SIZE_SZ $PARTITION_SIZE linear $RESTORE_TARGET $PRE_SIZE_SZ" | dmsetup create live-restore-e046c59e0f0f49d1ad93d55642db5319
+$PRE_SIZE_SZ $((PARTITION_SIZE-PRE_SIZE_SZ)) linear $LODEV2 $PRE_SIZE_SZ" | dmsetup create live-restore-e046c59e0f0f49d1ad93d55642db5319
 mount --make-rprivate /
 pivot_root /tmproot /tmproot/oldroot
 for i in dev proc sys run; do mount --move /oldroot/$i /$i; done
@@ -86,6 +94,7 @@ systemctl restart systemd-logind > /dev/null 2>&1 || true
 systemctl restart cron > /dev/null 2>&1 || true
 systemctl restart systemd-journald > /dev/null 2>&1 || true
 systemctl restart ntp > /dev/null 2>&1 || true
+systemctl restart urbackuprestoreclient > /dev/null 2>&1 || true
 mount -o remount,ro /oldroot
 sync
 ! [ -e /oldroot/usr/sbin/sshd ] || cat /oldroot/usr/sbin/sshd > /dev/null
@@ -130,8 +139,20 @@ EOF
 echo "Replacing root file system... (DO NOT INTERRUPT FROM NOW ON)"
 systemctl start urbackuprestoreimage.service
 
-echo "Please wait. Image restore percent complete (DO NOT INTERRUPT): "
-(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+echo "Please wait for restore to start... "
+
+while [ "x$(stat --format="%b" /pre)" = x0 ]
+do
+	sleep 1
+done
+
+echo "Image restore percent complete (DO NOT INTERRUPT):"
+sleep 1
+while systemctl status urbackuprestoreimage > /dev/null 2>&1
+do
+	(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+	sleep 1
+done
 
 echo "Replacing critical data... afterwards rebooting machine..."
 cat /pre > /dev/null

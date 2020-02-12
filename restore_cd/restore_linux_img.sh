@@ -305,7 +305,10 @@ then
 
         echo "partition $PARTNUMBER offset $PARTITION_OFF length $PARTITION_SIZE"
 
-        echo "$PARTITION_OFF $PARTITION_SIZE linear $RESTORE_TARGET 0" | dmsetup create restore-part-e8174e484b77496894efeccef5a8502f
+        #idk why it needs a loop device in-between..., sometimes it doesn't work otherwise
+        LODEV=$(losetup -f)
+        losetup "$LODEV" "$SELDISK_PATH"
+        echo "0 $PARTITION_SIZE linear $LODEV $PARTITION_OFF" | dmsetup create restore-part-e8174e484b77496894efeccef5a8502f
         DMSETUP_REMOVE="restore-part-e8174e484b77496894efeccef5a8502f"
         RESTORE_TARGET="/dev/mapper/$DMSETUP_REMOVE"
     fi
@@ -330,7 +333,7 @@ Description=UrBackup Restore Image
 After=network.target
 
 [Service]
-ExecStart=/bin/sh $PREFIX/sbin/restore_linux_root.sh "$RESTORE_TARGET" "$PARTITION_SIZE" "$PREFIX" "$RESTORE_TOKEN"
+ExecStart=/bin/sh $PREFIX/sbin/restore_linux_root.sh "$RESTORE_TARGET" "$PARTITION_SIZE" "$PREFIX" "$RESTORE_TOKEN" "$SYSTEMD_DIR"
 WorkingDirectory=$PREFIX/var
 User=root
 TasksMax=infinity
@@ -386,5 +389,11 @@ systemctl daemon-reload
 systemctl start urbackuprestoreimage.service
 
 echo "Please wait. Image restore percent complete: "
-(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+sleep 1
+while systemctl status urbackuprestoreimage > /dev/null 2>&1
+do
+    (cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+    sleep 1
+done
+echo "Restore complete."
 
