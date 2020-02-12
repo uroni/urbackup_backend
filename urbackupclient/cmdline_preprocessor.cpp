@@ -519,6 +519,7 @@ int restoreclient_main(int argc, char* argv[])
 		xorArgs.push_back(&restore_client_arg);
 		xorArgs.push_back(&ping_server_arg);
 		xorArgs.push_back(&image_download_progress_arg);
+		xorArgs.push_back(&mbr_download_arg);
 		xorArgs.push_back(&image_download_arg);
 		xorArgs.push_back(&mbr_read_arg);		
 

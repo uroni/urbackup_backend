@@ -17,13 +17,13 @@ restore_image_cleanup()
 		systemctl start urbackupclientbackend
 	fi
 
-	if [ $MOVE_URBACKUP_VAR = 1 ]
+	if [ $MOVE_URBACKUP_VAR = 1 ] && [ -e $PREFIX/var/urbackup_orig ]
 	then
-		echo "Moving /usr/local/var/urbackup_orig to /usr/local/var/urbackup ..."
-		mv /usr/local/var/urbackup_orig /usr/local/var/urbackup
+		echo "Moving $PREFIX/var/urbackup_orig to $PREFIX/var/urbackup ..."
+		mv $PREFIX/var/urbackup_orig $PREFIX/var/urbackup
 	else
-		echo "Removing /usr/local/var/urbackup ..."
-		rm -Rf /usr/local/var/urbackup
+		echo "Removing $PREFIX/var/urbackup ..."
+		rm -Rf $PREFIX/var/urbackup
 	fi
 
 	if [ "x$SYSTEMD_DIR" != "x" ]
@@ -43,7 +43,7 @@ SYSTEMD_DIR=""
 START_URBACKUPCLIENTBACKEND=0
 MOVE_URBACKUP_VAR=0
 
-trap restore_image_cleanup EXIT
+trap restore_image_cleanup EXIT INT TERM
 
 if systemctl status urbackupclientbackend > /dev/null 2>&1
 then
@@ -52,11 +52,11 @@ then
     systemctl stop urbackupclientbackend
 fi
 
-if [ -e /usr/local/var/urbackup ]
+if [ -e $PREFIX/var/urbackup ]
 then
     MOVE_URBACKUP_VAR=1
-    echo "Moving /usr/local/var/urbackup to /usr/local/var/urbackup_orig ..."
-    mv /usr/local/var/urbackup /usr/local/var/urbackup_orig
+    echo "Moving $PREFIX/var/urbackup to $PREFIX/var/urbackup_orig ..."
+    mv $PREFIX/var/urbackup $PREFIX/var/urbackup_orig
 fi
 
 arch=`uname -m`
@@ -123,7 +123,7 @@ Description=UrBackup Restore Client
 After=network.target
 
 [Service]
-ExecStart=$PREFIX/sbin/urbackuprestoreclient --restore-client --logfile /var/log/urbackuprestore.txt --loglevel debug -t
+ExecStart=$PREFIX/sbin/urbackuprestoreclient --restore-client --logfile /var/log/urbackuprestore.txt --loglevel debug -t --internet-only
 WorkingDirectory=$PREFIX
 User=root
 TasksMax=infinity
@@ -132,8 +132,8 @@ TasksMax=infinity
 WantedBy=multi-user.target
 EOF
 
-mkdir -p /usr/local/var/urbackup/data
-cat << EOF > /usr/local/var/urbackup/data/settings.cfg
+mkdir -p $PREFIX/var/urbackup/data
+cat << EOF > $PREFIX/var/urbackup/data/settings.cfg
 internet_mode_enabled=true
 internet_server=$SERVER_NAME
 internet_server_port=$SERVER_PORT
@@ -142,6 +142,7 @@ internet_authkey=$RESTORE_AUTHKEY
 EOF
 
 echo "Starting urbackuprestoreclient service..."
+systemctl daemon-reload
 systemctl start urbackuprestoreclient.service
 
 WTIME=0
@@ -150,7 +151,8 @@ echo "Waiting for client to connect..."
 SERVER_CONNECTED=0
 while [ $WTIME -lt 60 ]
 do
-    if $PREFIX/sbin/urbackuprestoreclientctl status | grep '"internet_connected": true' > /dev/null && ! $PREFIX/sbin/urbackuprestoreclientctl status | grep '"servers": []'
+    sleep 1
+    if $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"internet_connected": true' > /dev/null && ! $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"servers": []'
     then
         echo "Successfully connected to Internet server. Logging in..."
         SERVER_CONNECTED=1
@@ -169,18 +171,18 @@ fi
 DISKS=$(lsblk -p -P | grep 'TYPE="disk"')
 
 echo "Please select the disk to restore to:"
-NUM=1
 SELDISK_PATH=""
 while true
 do
     echo "0) Exit without restoring"
+    NUM=1
     OLDIFS="$IFS"
     IFS='
 '
     for disk in $DISKS
     do
-        DEVNAME=$(echo "$disk" | sed 's@NAME="\([^"]*\)".*@\1@g')
-        DEVSIZE=$(echo "$disk" | sed 's@SIZE="\([^"]*\)".*@\1@g')
+        DEVNAME=$(echo "$disk" | sed 's@.*NAME="\([^"]*\)".*@\1@g')
+        DEVSIZE=$(echo "$disk" | sed 's@.*SIZE="\([^"]*\)".*@\1@g')
         echo "$NUM) Restore to $DEVNAME size $DEVSIZE"
         NUM=$((NUM + 1))
     done
@@ -194,6 +196,7 @@ do
         exit 11
     fi
 
+    NUM=1
     OLDIFS="$IFS"
     IFS='
 '
@@ -223,13 +226,13 @@ echo "Loading MBR..."
 
 MBRFILE=$(mktemp)
 
-$PREFIX/sbin/urbackuprestoreclientbackend --mbr-download --download-token "$RESTORE_TOKEN" --out-device "$MBRFILE"
+$PREFIX/sbin/urbackuprestoreclient --mbr-download --download-token "$RESTORE_TOKEN" --out-device "$MBRFILE"
 
 echo "MBR info:"
 
-$PREFIX/sbin/urbackuprestoreclientbackend --mbr-info "$MBRFILE"
+$PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE"
 
-PARTNUMBER=$($PREFIX/sbin/urbackuprestoreclientbackend --mbr-info "$MBRFILE" | grep "partition_number=" | sed 's@partition_number=\(.*\)@\1@g')
+PARTNUMBER=$($PREFIX/sbin/urbackuprestoreclient --mbr-info "$MBRFILE" | grep "partition_number=" | sed 's@partition_number=\(.*\)@\1@g')
 
 if [ "x$PARTNUMBER" != "x0" ]
 then
@@ -240,7 +243,7 @@ else
     RESTORE_TARGET="$SELDISK_PATH"
 fi
 
-MOUNTPOINT=$(lsblk -p -P "$RESTORE_TARGET" | grep "NAME=\"$RESTORE_TARGET\"" | sed 's@MOUNTPOINT="\([^"]*\)".*@\1@g')
+MOUNTPOINT=$(lsblk -p -P "$RESTORE_TARGET" | grep "NAME=\"$RESTORE_TARGET\"" | sed 's@.*MOUNTPOINT="\([^"]*\)".*@\1@g')
 
 if [ "x$MOUNTPOINT" != x ]
 then
@@ -284,12 +287,12 @@ then
     read yn
     if [ "x$yn" = xY ]
     then
-        $PREFIX/sbin/urbackuprestoreclientbackend --restore-mbr "$MBRFILE" --out-device "$SELDISK_PATH"
+        $PREFIX/sbin/urbackuprestoreclient --restore-mbr "$MBRFILE" --out-device "$SELDISK_PATH"
 
         echo "Partitions:"
-        $PREFIX/sbin/urbackuprestoreclientbackend --mbr-read "$SELDISK_PATH"
+        $PREFIX/sbin/urbackuprestoreclient --mbr-read "$SELDISK_PATH"
 
-        PARTITION_PARAMS=$($PREFIX/sbin/urbackuprestoreclientbackend --mbr-read "$SELDISK_PATH" | grep "partition $PARTNUMBER ")
+        PARTITION_PARAMS=$($PREFIX/sbin/urbackuprestoreclient --mbr-read "$SELDISK_PATH" | grep "partition $PARTNUMBER ")
 
         PARTITION_OFF=$(echo "$PARTITION_PARAMS" | cut -d ' ' -f4)
         PARTITION_SIZE=$(echo "$PARTITION_PARAMS" | cut -d ' ' -f6)
@@ -332,6 +335,7 @@ TasksMax=infinity
 WantedBy=multi-user.target
 EOF
     echo "Replacing root file system..."
+    systemctl daemon-reload
     systemctl start urbackuprestoreroot.service
     journalctl -u urbackuprestoreroot.service -f
     exit 0
@@ -365,7 +369,7 @@ Description=UrBackup Restore Image
 After=network.target
 
 [Service]
-ExecStart=/bin/sh -c "$PREFIX/sbin/urbackuprestoreclientbackend --image-download --download-token "$RESTORE_TOKEN" --out-device "$RESTORE_TARGET"; rm $SYSTEMD_DIR/urbackuprestoreimage.service"
+ExecStart=/bin/sh -c "$PREFIX/sbin/urbackuprestoreclient --image-download --download-token "$RESTORE_TOKEN" --out-device "$RESTORE_TARGET"; rm $SYSTEMD_DIR/urbackuprestoreimage.service"
 WorkingDirectory=$PREFIX/var
 User=root
 TasksMax=infinity
@@ -374,8 +378,9 @@ TasksMax=infinity
 WantedBy=multi-user.target
 EOF
 
+systemctl daemon-reload
 systemctl start urbackuprestoreimage.service
 
 echo "Please wait. Image restore percent complete: "
-$PREFIX/sbin/urbackuprestoreclientbackend --image-download-progress
+$PREFIX/sbin/urbackuprestoreclient --image-download-progress
 

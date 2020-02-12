@@ -118,7 +118,7 @@ Description=UrBackup Restore Image
 After=network.target
 
 [Service]
-ExecStart=$PREFIX/sbin/urbackuprestoreclientbackend --image-download --download-token "$RESTORE_TOKEN" --out-device "$LIVE_RESTORE_TARGET"
+ExecStart=$PREFIX/sbin/urbackuprestoreclient --image-download --download-token "$RESTORE_TOKEN" --out-device "$LIVE_RESTORE_TARGET"
 WorkingDirectory=$PREFIX/var
 User=root
 TasksMax=infinity
@@ -131,7 +131,7 @@ echo "Replacing root file system... (DO NOT INTERRUPT FROM NOW ON)"
 systemctl start urbackuprestoreimage.service
 
 echo "Please wait. Image restore percent complete (DO NOT INTERRUPT): "
-$PREFIX/sbin/urbackuprestoreclientbackend --image-download-progress
+$PREFIX/sbin/urbackuprestoreclient --image-download-progress
 
 echo "Replacing critical data... afterwards rebooting machine..."
 cat /pre > /dev/null

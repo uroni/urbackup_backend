@@ -40,7 +40,7 @@ ACTION_IMPL(restore_image)
 
 	ServerBackupDao dao(helper.getDatabase());
 
-	int backupid = watoi(GET["backupid"]);
+	int backupid = watoi(POST["backupid"]);
 	ServerBackupDao::CondInt clientid = dao.getClientidByImageid(backupid);
 
 	if (!clientid.exists)
