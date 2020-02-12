@@ -164,6 +164,11 @@ bool LookupInit()
 
 std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int timeoutms, int stop_timeoutms)
 {
+	if (pServer == "localhost")
+	{
+		pServer = "127.0.0.1";
+	}
+
 	unsigned int addr = inet_addr(pServer.c_str());
 	if (addr != INADDR_NONE)
 	{
