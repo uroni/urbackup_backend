@@ -1453,7 +1453,8 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 		}
 #ifndef _WIN32
-		else if (image_inf.image_letter == "C")
+		else if (image_inf.image_letter == "C"
+			|| image_inf.image_letter == "C:")
 		{
 			image_inf.image_letter = getRootVol();
 		}
@@ -1560,7 +1561,8 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.clientsubname = params["clientsubname"];
 
 #ifndef _WIN32
-			if (image_inf.image_letter == "C")
+			if (image_inf.image_letter == "C"
+				|| image_inf.image_letter == "C:")
 			{
 				image_inf.image_letter = getRootVol();
 			}
@@ -1691,7 +1693,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 		dl=getEspVolumeCached(mpath);
 	}
 #ifndef _WIN32
-	else if (dl == "C")
+	else if (dl == "C" || dl == "C:")
 	{
 		dl = getRootVol();
 	}
