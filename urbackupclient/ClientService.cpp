@@ -2058,7 +2058,7 @@ bool ClientConnector::waitForThread(void)
 
 namespace
 {
-	bool parseDevicePartNumber(const std::string& volfn, int& DeviceNumber, int& PartNumber)
+	bool parseDevicePartNumber(const std::string& volfn, std::string& dev, int& DeviceNumber, int& PartNumber)
 	{
 		std::string dl_devnum;
 		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
@@ -2068,6 +2068,7 @@ namespace
 			if (next(volfn, 0, std::string("/dev/") + *devname))
 			{
 				dl_devnum = getafter(std::string("/dev/") + *devname, volfn);
+				dev = std::string("/dev/") + *devname;
 				break;
 			}
 		}
@@ -2085,7 +2086,7 @@ namespace
 		int devnum = -1;
 		std::string data;
 		std::vector<int> nums;
-		for (size_t i = 0; i <= volfn.size(); ++i)
+		for (size_t i = 0; i <= dl_devnum.size(); ++i)
 		{
 			char ch = 0;
 			if (i < dl_devnum.size())
@@ -2097,12 +2098,16 @@ namespace
 				{
 					state = 1;
 					data += ch;
+					dev += ch;
 				}
 				else
 				{
 					state = 2;
-					if(ch!=0)
+					if (ch != 0)
+					{
+						dev += ch;
 						devnum = tolower(ch) - 'a';
+					}
 				}
 			}
 			else if (state == 1)
@@ -2116,6 +2121,10 @@ namespace
 					if (ch != 'n')
 					{
 						nums.push_back(watoi(data));
+					}
+					else
+					{
+						dev += ch;
 					}
 					data.clear();
 
@@ -2138,6 +2147,7 @@ namespace
 				}
 				else if (ch != 0)
 				{
+					dev += ch;
 					devnum = (devnum+1) * ('z' - 'a') + tolower(ch) - 'a';
 				}
 			}
@@ -2184,39 +2194,51 @@ namespace
 void parse_devnum_test()
 {
 	int deviceNumber, partNumber;
-	assert(parseDevicePartNumber("/dev/sda1", deviceNumber, partNumber));
+	std::string dev;
+	assert(parseDevicePartNumber("/dev/sda1", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 0);
 	assert(partNumber == 1);
-	assert(parseDevicePartNumber("/dev/xvda1", deviceNumber, partNumber));
+	assert(dev == "/dev/sda");
+	assert(parseDevicePartNumber("/dev/xvda1", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 0);
 	assert(partNumber == 1);
-	assert(parseDevicePartNumber("/dev/xvdc1", deviceNumber, partNumber));
+	assert(dev == "/dev/xvda");
+	assert(parseDevicePartNumber("/dev/xvdc1", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 2);
 	assert(partNumber == 1);
-	assert(parseDevicePartNumber("/dev/xvdc3", deviceNumber, partNumber));
+	assert(dev == "/dev/xvdc");
+	assert(parseDevicePartNumber("/dev/xvdc3", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 2);
 	assert(partNumber == 3);
-	assert(parseDevicePartNumber("/dev/nvme0n1p1", deviceNumber, partNumber));
+	assert(dev == "/dev/xvdc");
+	assert(parseDevicePartNumber("/dev/nvme0n1p1", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 1);
 	assert(partNumber == 1);
-	assert(parseDevicePartNumber("/dev/nvme0n5p8", deviceNumber, partNumber));
+	assert(dev == "/dev/nvme0n1");
+	assert(parseDevicePartNumber("/dev/nvme0n5p8", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 5);
 	assert(partNumber == 8);
-	assert(parseDevicePartNumber("/dev/loop0", deviceNumber, partNumber));
+	assert(dev == "/dev/nvme0n5");
+	assert(parseDevicePartNumber("/dev/loop0", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 0);
 	assert(partNumber == -1);
-	assert(parseDevicePartNumber("/dev/sda", deviceNumber, partNumber));
+	assert(dev == "/dev/loop0");
+	assert(parseDevicePartNumber("/dev/sda", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 0);
 	assert(partNumber == -1);
-	assert(parseDevicePartNumber("/dev/sdc", deviceNumber, partNumber));
+	assert(dev == "/dev/sda");
+	assert(parseDevicePartNumber("/dev/sdc", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 2);
 	assert(partNumber == -1);
-	assert(parseDevicePartNumber("/dev/sdaa", deviceNumber, partNumber));
+	assert(dev == "/dev/sdc");
+	assert(parseDevicePartNumber("/dev/sdaa", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 25);
 	assert(partNumber == -1);
-	assert(parseDevicePartNumber("/dev/loop2p3", deviceNumber, partNumber));
+	assert(dev == "/dev/sdaa");
+	assert(parseDevicePartNumber("/dev/loop2p3", dev, deviceNumber, partNumber));
 	assert(deviceNumber == 2);
 	assert(partNumber == 3);
+	assert(dev == "/dev/loop2");
 }
 
 bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
@@ -2435,10 +2457,19 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	std::string volume_name = Server->ConvertFromWchar(voln);
 	std::string fi_name = Server->ConvertFromWchar(fsn);
 #else //_WIN32
-	IFile* dev = Server->openFile(dl, MODE_READ_DEVICE);
+	struct
+	{
+		int DeviceNumber;
+		int PartitionNumber;
+	} dev_num;
+
+	std::string dev_fn;
+	parseDevicePartNumber(dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
+
+	IFile* dev = Server->openFile(dev_fn, MODE_READ_DEVICE);
 	if (dev == NULL)
 	{
-		errmsg = "Error opening Device " + dl + ". " + os_last_error_str();
+		errmsg = "Error opening Device " + dev_fn + ". " + os_last_error_str();
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
@@ -2450,14 +2481,6 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log("gpt_style=true", LL_DEBUG);
 		gpt_style = true;
 	}
-
-	struct
-	{
-		int DeviceNumber;
-		int PartitionNumber;
-	} dev_num;
-
-	parseDevicePartNumber(dl, dev_num.DeviceNumber, dev_num.PartitionNumber);
 
 	std::string blkid;
 	os_popen("blkid \"" + dl + "\" -o export", blkid);
