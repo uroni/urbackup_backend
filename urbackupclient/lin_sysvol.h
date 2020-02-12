@@ -34,11 +34,7 @@ namespace
     std::string getSysVolumeCached(std::string& mpath)
     {
         mpath = getMountDevice("/boot");
-
-        if(!mpath.empty())
-        {
-            return mpath;
-        }
+        return mpath;
     }
 
     std::string getEspVolumeCached(std::string& mpath)

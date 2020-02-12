@@ -151,6 +151,12 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	}
 
 	ServerSettings settings_group(db, group_id);
+	std::auto_ptr<ServerSettings> settings_def;
+
+	if (t_clientid == 0)
+	{
+		settings_def.reset(new ServerSettings(db, t_clientid));
+	}
 
 	IQuery* q_get_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE key=? AND  clientid=" + convert(t_clientid));
 
@@ -172,6 +178,8 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 		} \
 	} else if(t_clientid!=0) { \
 		j_obj.set("use", c_use_group); \
+	} else if(t_clientid==0) { \
+		j_obj.set("value", func2(settings_def->getSettings()->x) ); \
 	} \
 	if(t_clientid!=0) { \
 		j_obj.set("value_group", func2(settings_group.getSettings()->x)); \
