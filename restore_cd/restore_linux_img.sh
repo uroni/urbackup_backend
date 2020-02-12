@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e -o pipefail
+set -e
 
 SERVER_NAME="$1"
 SERVER_PORT="$2"
@@ -156,7 +156,7 @@ do
         SERVER_CONNECTED=1
         break
     fi
-    WTIME=$(expr $WTIME + 1)
+    WTIME=$((WTIME + 1))
 done
 
 if [ $SERVER_CONNECTED = 0 ]
@@ -174,22 +174,30 @@ SELDISK_PATH=""
 while true
 do
     echo "0) Exit without restoring"
-    echo "$DISKS" | while read disk
+    OLDIFS="$IFS"
+    IFS='
+'
+    for disk in $DISKS
     do
         DEVNAME=$(echo "$disk" | sed 's@NAME="\([^"]*\)".*@\1@g')
         DEVSIZE=$(echo "$disk" | sed 's@SIZE="\([^"]*\)".*@\1@g')
         echo "$NUM) Restore to $DEVNAME size $DEVSIZE"
-        NUM=$(expr $NUM + 1)
+        NUM=$((NUM + 1))
     done
+    IFS="$OLDIFS"
 
     read seldisk
+    
 
     if [ "x$seldisk" = "x0" ]
     then   
         exit 11
     fi
 
-    echo "$DISKS" | while read disk
+    OLDIFS="$IFS"
+    IFS='
+'
+    for disk in $DISKS
     do
         DEVNAME=$(echo "$disk" | sed 's@NAME="\([^"]*\)".*@\1@g')
 
@@ -199,8 +207,9 @@ do
             break
         fi
 
-        NUM=$(expr $NUM + 1)
+        NUM=$((NUM + 1))
     done
+    IFS="$OLDIFS"
 
     if [ "x$SELDISK_PATH" != "x" ]
     then
@@ -222,7 +231,7 @@ $PREFIX/sbin/urbackuprestoreclientbackend --mbr-info "$MBRFILE"
 
 PARTNUMBER=$($PREFIX/sbin/urbackuprestoreclientbackend --mbr-info "$MBRFILE" | grep "partition_number=" | sed 's@partition_number=\(.*\)@\1@g')
 
-if [ "x$PARTNUMBER" != "x0"]
+if [ "x$PARTNUMBER" != "x0" ]
 then
     echo "Restoring partition $PARTNUMBER at $SELDISK_PATH$PARTNUMBER..."
     RESTORE_TARGET="$SELDISK_PATH$PARTNUMBER"
@@ -231,16 +240,16 @@ else
     RESTORE_TARGET="$SELDISK_PATH"
 fi
 
-MOUNTPOINT=$(lsblk -p -P $RESTORE_TARGET | grep "NAME=\"$RESTORE_TARGET\"" | sed 's@MOUNTPOINT="\([^"]*\)".*@\1@g')
+MOUNTPOINT=$(lsblk -p -P "$RESTORE_TARGET" | grep "NAME=\"$RESTORE_TARGET\"" | sed 's@MOUNTPOINT="\([^"]*\)".*@\1@g')
 
 if [ "x$MOUNTPOINT" != x ]
 then
-    if [ $MOUNTPOINT = "/" ]
+    if [ "$MOUNTPOINT" = "/" ]
     then
-        AVAIL_MEM=$(cat /proc/meminfo | grep "MemAvailable:" | tr -s ' ' | cut -d ' ' -f 2)
-        AVAIL_MEM=$(expr $AVAIL_MEM - 200000)
+        AVAIL_MEM=$(grep "MemAvailable:" /proc/meminfo | tr -s ' ' | cut -d ' ' -f 2)
+        AVAIL_MEM=$((AVAIL_MEM - 200000))
 
-        if [ $AVAIL_MEM -lt 1500000]
+        if [ $AVAIL_MEM -lt 1500000 ]
         then
             echo "Not enough available memory to replace root file system ($AVAIL_MEM kB)"
             exit 12
@@ -268,7 +277,7 @@ else
 fi
 
 PARTITION_SIZE=""
-if [ "x$PARTNUMBER" != "x0"]
+if [ "x$PARTNUMBER" != "x0" ]
 then
     echo "Overwrite partition layout (MBR/GPT) of $SELDISK_PATH? y/N"
 
@@ -284,8 +293,8 @@ then
 
         PARTITION_OFF=$(echo "$PARTITION_PARAMS" | cut -d ' ' -f4)
         PARTITION_SIZE=$(echo "$PARTITION_PARAMS" | cut -d ' ' -f6)
-        PARTITION_OFF=$(expr \( $PARTITION_OFF + 511 \) / 512 \))
-        PARTITION_SIZE=$(expr \( $PARTITION_SIZE + 511 \) / 512 \))
+        PARTITION_OFF=$(( (PARTITION_OFF + 511) / 512 ))
+        PARTITION_SIZE=$(( (PARTITION_SIZE + 511) / 512 ))
 
         echo "partition $PARTNUMBER offset $PARTITION_OFF length $PARTITION_SIZE"
 
@@ -330,11 +339,11 @@ elif [ "x$MOUNTPOINT" != x ]
 then
     if ! umount "$MOUNTPOINT"
     then
-        lsof +f -- "$MOUNTPOINT" | tr -s ' ' | cut -d ' ' -f2 | while read pid
+        lsof +f -- "$MOUNTPOINT" | tr -s ' ' | cut -d ' ' -f2 | while read -r PID
         do
             if [ "$PID" != "PID" ]
             then
-                kill -9 $PID > /dev/null 2>&1 || true
+                kill -9 "$PID" > /dev/null 2>&1 || true
             fi
         done
 

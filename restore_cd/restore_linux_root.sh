@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e -o pipefail
+set -e
 
 RESTORE_TARGET="$1"
 PARTITION_SIZE="$2"
@@ -9,8 +9,8 @@ RESTORE_TOKEN="$4"
 
 echo "Setting up in-memory base system..."
 
-AVAIL_MEM=$(cat /proc/meminfo | grep "MemAvailable:" | tr -s ' ' | cut -d ' ' -f 2)
-AVAIL_MEM=$(expr $AVAIL_MEM - 200000)
+AVAIL_MEM=$(grep "MemAvailable:" /proc/meminfo | tr -s ' ' | cut -d ' ' -f 2)
+AVAIL_MEM=$((AVAIL_MEM - 200000))
 
 if [ $AVAIL_MEM -lt 1500000 ]
 then
@@ -21,9 +21,9 @@ fi
 modprobe loop > /dev/null 2>&1 || true
 swapoff -a || true
 mkdir -p /tmproot
-AVAIL_MEM_B=$(expr $AVAIL_MEM * 1000)
-PRE_SIZE_KB=$(expr $AVAIL_MEM - 1000000)
-PRE_SIZE_SZ=$(expr \( $PRE_SIZE_KB * 1000 \) / 512)
+AVAIL_MEM_B=$((AVAIL_MEM * 1000))
+PRE_SIZE_KB=$((AVAIL_MEM - 1000000))
+PRE_SIZE_SZ=$(( (PRE_SIZE_KB * 1000 ) / 512 ))
 if ! command -v zramctl > /dev/null 2>&1 || ! modprobe zram > /dev/null 2>&1 || ! command -v mkfs.ext4 > /dev/null 2>&1
 then
 	echo "Using tmpfs..."
@@ -36,12 +36,24 @@ else
 	mkfs.ext4 $ZRAMDEV > /dev/null
 	mount $ZRAMDEV /tmproot
 fi
-mkdir /tmproot/{proc,sys,dev,run,usr,var,tmp,oldroot}
+for p in proc sys dev run usr var tmp oldroot
+do
+	mkdir "/tmproot/$p"
+done
 mkdir /tmproot/usr/share/
-cp -ax /{bin,etc,mnt,sbin,lib,lib64} /tmproot/ > /dev/null 2>&1 || true
-cp -ax /usr/{bin,sbin,lib,lib64} /tmproot/usr/ > /dev/null 2>&1 || true
+for p in bin etc mnt sbin lib lib64
+do
+	cp -ax "/$p" /tmproot/ > /dev/null 2>&1 || true
+done
+for p in bin sbin lib lib64
+do
+	cp -ax "/usr/$p" /tmproot/usr/ > /dev/null 2>&1 || true
+done
 cp -ax /usr/share/ca-certificates /tmproot/usr/share/  > /dev/null 2>&1 || true
-cp -ax /var/{account,empty,lib,local,lock,nis,opt,preserve,run,spool,tmp,yp} /tmproot/var/ > /dev/null 2>&1 || true
+for p in account empty lib local lock nis opt preserve run spool tmp yp
+do
+	cp -ax "/var/$p" /tmproot/var/ > /dev/null 2>&1 || true
+done
 echo 20971520 > /proc/sys/vm/dirty_bytes
 echo 5242880 > /proc/sys/vm/dirty_background_bytes
 truncate -s "${PRE_SIZE_KB}KB" /tmproot/pre
@@ -123,7 +135,7 @@ $PREFIX/sbin/urbackuprestoreclientbackend --image-download-progress
 
 echo "Replacing critical data... afterwards rebooting machine..."
 cat /pre > /dev/null
-dd if=/pre of=$RESTORE_TARGET conv=notrunc,fsync bs=32M 2> /dev/null
+dd if=/pre of="$RESTORE_TARGET" conv=notrunc,fsync bs=32M 2> /dev/null
 echo "Done replacing critical data. Rebooting machine."
 sleep 1
 if [ -e /proc/sysrq-trigger ]

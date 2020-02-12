@@ -2,8 +2,7 @@
 
 set -e
 
-restore_image()
-{
+restore_image () {
 	if ! [ -t 1 ]
 	then
 		echo "Error: Stdout is not a TTY. Not running non-interactively"
@@ -27,7 +26,7 @@ restore_image()
 	echo "Uncompressing data..."
 	tar xzf install-data.tar.gz
 
-	sh restore_linux_img.sh "$SERVER_NAME" "$SERVER_PORT" "$SERVER_PROXY" "$RESTORE_AUTHKEY" $RESTORE_TOKEN" "$PREFIX"
+	sh restore_linux_img.sh "$SERVER_NAME" "$SERVER_PORT" "$SERVER_PROXY" "$RESTORE_AUTHKEY" "$RESTORE_TOKEN" "$PREFIX"
 	exit $?
 }
 
@@ -90,11 +89,11 @@ DEBIAN=no
 if [ -e /etc/debian_version ]
 then
 	DEBIAN=yes
-	echo "Detected Debian (derivative) system"
+	echo "Detected Debian \(derivative\) system"
 	mv urbackupclientbackend-debian.service urbackupclientbackend.service
 	mv init.d_client init.d
 else
-	echo "Assuming RedHat (derivative) system"
+	echo "Assuming RedHat \(derivative\) system"
 	if [ -e /etc/sysconfig ]
 	then
 		mv urbackupclientbackend-redhat.service urbackupclientbackend.service
@@ -159,12 +158,12 @@ if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "(Glibc not installed or too old. Falling back to Android NDK build...)"
+		echo "\(Glibc not installed or too old. Falling back to Android NDK build...\)"
 		TARGET=x86_64-linux-android
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "(Glibc not installed or too old (2). Falling back to Android NDK build...)"
+			echo "\(Glibc not installed or too old \(2\). Falling back to Android NDK build...\)"
 			TARGET=x86_64-linux-android
 		fi
 	fi
@@ -174,12 +173,12 @@ if [ $TARGET = arm-linux-androideabi ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "(Android NDK build not working. Falling back to ELLCC build...)"
+		echo "\(Android NDK build not working. Falling back to ELLCC build...\)"
 		TARGET=armv6-linux-engeabihf
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "(Android NDK build not working. Falling back to ELLCC build...)"
+			echo "\(Android NDK build not working. Falling back to ELLCC build...\)"
 			TARGET=armv6-linux-engeabihf
 		fi
 	fi
@@ -193,7 +192,7 @@ fi
 
 if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 then
-	echo "Error running executable on this system ($arch). Stopping installation."
+	echo "Error running executable on this system \($arch\). Stopping installation."
 	exit 2
 fi
 
@@ -352,7 +351,7 @@ then
 			exit 1
 		fi
 	else
-		echo "Systemd failed (see previous messages). Starting urbackupclientbackend manually this time..."
+		echo "Systemd failed \(see previous messages\). Starting urbackupclientbackend manually this time..."
 		urbackupclientbackend -d -c $CONFIG_FILE
 	fi
 	
@@ -362,7 +361,7 @@ else
 	INSTALL_SYSV=yes
 	if [ $DEBIAN = yes ] && ! [ -e /lib/lsb/init-functions ]
 	then
-		echo "/lib/lsb/init-functions not found. lsb-base (>= 3.0-6) not installed? Not installing System V init script."
+		echo "/lib/lsb/init-functions not found. lsb-base \(>= 3.0-6\) not installed? Not installing System V init script."
 		INSTALL_SYSV=no
 	elif [ $DEBIAN = no ] && ! [ -e /etc/rc.d/init.d/functions ]
 	then
@@ -396,7 +395,7 @@ else
 		then
 			echo "Successfully started client service. Installation complete."
 		else
-			echo "Starting client service failed (see previous messages). Starting urbackupclientbackend manually this time..."
+			echo "Starting client service failed \(see previous messages\). Starting urbackupclientbackend manually this time..."
 			urbackupclientbackend -d -c $CONFIG_FILE
 		fi
 	else
@@ -491,7 +490,7 @@ then
 	if command -v lvs >/dev/null 2>&1
 	then
 		LVM_VOLS=`lvs 2> /dev/null | wc -l`
-		if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS > 1 ]
+		if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS -gt 1 ]
 		then
 			echo "+Detected LVM volumes"
 			LVM=yes
