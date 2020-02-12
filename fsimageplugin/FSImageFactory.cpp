@@ -627,8 +627,8 @@ std::vector<FSImageFactory::SPartition> FSImageFactory::readPartitions(IFile* de
 
 	if (next(gpt_header, 0, "EFI PART"))
 	{
-		return readPartitionsGPT(dev, gpt_header);
 		gpt_style = true;
+		return readPartitionsGPT(dev, gpt_header);
 	}
 	else if (mbr.size() >= 512
 		&& static_cast<unsigned char>(mbr[510]) == 0x55
