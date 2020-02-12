@@ -522,7 +522,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		{
 			Server->Log("Image restore token timeout", LL_DEBUG);
 			_i64 r = -1;
-			input->Write((char*)&r, sizeof(_i64), img_send_timeout);
+			input->Write((char*)&r, sizeof(_i64), 30000);
 			return;
 		}
 	}
