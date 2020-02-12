@@ -2925,6 +2925,8 @@ function renderSettingSwitch(key)
 
 	if(typeof val.use=="undefined")
 	{
+		$("#"+key).change(settingChange);
+		$("#"+key).keyup(settingChange);
 		return;
 	}
 
@@ -3806,7 +3808,7 @@ function show_settings2(data)
 		changePW();
 	}
 
-	if(data.sa && data.sa=="clientsettings")
+	if(data.sa && (data.sa=="clientsettings" ||  data.sa=="general" ) )
 	{
 		renderSettingSwitchAll();
 	}
