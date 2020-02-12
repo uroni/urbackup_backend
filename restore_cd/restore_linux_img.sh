@@ -124,7 +124,7 @@ After=network.target
 
 [Service]
 ExecStart=$PREFIX/sbin/urbackuprestoreclient --restore-client --logfile /var/log/urbackuprestore.txt --loglevel debug -t --internet-only
-WorkingDirectory=$PREFIX
+WorkingDirectory=$PREFIX/var
 User=root
 TasksMax=infinity
 
