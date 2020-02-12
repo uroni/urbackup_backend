@@ -35,7 +35,7 @@ cp linux_snapshot/* install-data/
 cp uninstall_urbackupclient install-data/
 cp restore_cd/restore_linux_img.sh install-data/
 cp restore_cd/restore_linux_root.sh install-data/
-chmod +x install_data/*.sh
+chmod +x install-data/*.sh
 chmod +x install-data/uninstall_urbackupclient
 chmod +x install-data/*_filesystem_snapshot
 
