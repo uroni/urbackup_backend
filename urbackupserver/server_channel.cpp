@@ -523,7 +523,6 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			Server->Log("Image restore token timeout", LL_DEBUG);
 			_i64 r = -1;
 			input->Write((char*)&r, sizeof(_i64), 30000);
-			return;
 		}
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
