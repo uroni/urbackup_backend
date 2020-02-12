@@ -52,7 +52,9 @@
 
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
-#else
+#endif
+
+#ifndef BLKRRPART
 #define BLKRRPART  _IO(0x12,95)
 #endif
 
@@ -78,7 +80,7 @@ namespace
 	{
 		bool ret = true;
 #ifndef _WIN32
-		int fd = open(devfn, O_NONBLOCK | O_RDWR);
+		int fd = open(devfn.c_str(), O_NONBLOCK | O_RDWR);
 		if (fd == -1)
 			return false;
 
