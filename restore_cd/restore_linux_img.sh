@@ -392,7 +392,7 @@ echo "Please wait. Image restore percent complete: "
 sleep 1
 while systemctl status urbackuprestoreimage > /dev/null 2>&1
 do
-    (cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+    (cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress --image-download-progress-decorate)
     sleep 1
 done
 echo "Restore complete."

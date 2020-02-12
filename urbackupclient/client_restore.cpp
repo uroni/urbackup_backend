@@ -1399,6 +1399,8 @@ void do_restore(void)
 	}
 	else if(cmd=="download_progress")
 	{
+		std::string decorate = Server->getServerParameter("decorate");
+
 		tcpstack.Send(c, "GET DOWNLOADPROGRESS#pw="+pw);
 		int lpc=0;
 		while(true)
@@ -1413,7 +1415,10 @@ void do_restore(void)
 					int npc=atoi(trim2(l).c_str());
 					if(npc!=lpc)
 					{
-					    std::cout << npc << std::endl;
+						if(decorate.empty())
+							std::cout << npc << std::endl;
+						else
+							std::cout << "Image restore complete: "<< npc << "%" << std::endl;
 					    lpc=npc;
 					}
 				}
@@ -1423,7 +1428,10 @@ void do_restore(void)
 		}
 		if(lpc!=100)
 		{
-		    std::cout << "100" << std::endl;
+			if (decorate.empty())
+			    std::cout << "100" << std::endl;
+			else
+				std::cout << "Image restore complete: 100%" << std::endl;
 		}
 
 		exit(0);

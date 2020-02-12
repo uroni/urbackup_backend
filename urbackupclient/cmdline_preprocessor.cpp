@@ -497,6 +497,10 @@ int restoreclient_main(int argc, char* argv[])
 		TCLAP::SwitchArg image_download_progress_arg("q", "image-download-progress",
 			"Return image download progress for piping to dialog");
 
+		TCLAP::SwitchArg image_download_progress_decorate_arg("z", "image-download-progress-decorate",
+			"More verbose printing of image download progress",
+			cmd, false);
+
 		TCLAP::SwitchArg image_download_arg("s", "image-download",
 			"Start a image download");
 
@@ -627,6 +631,11 @@ int restoreclient_main(int argc, char* argv[])
 			real_args.push_back("true");
 			real_args.push_back("--restore_cmd");
 			real_args.push_back("download_progress");
+			if (image_download_progress_decorate_arg.getValue())
+			{
+				real_args.push_back("--decorate");
+				real_args.push_back("1");
+			}
 		}
 		else if (image_download_arg.isSet()
 			|| mbr_download_arg.isSet() )

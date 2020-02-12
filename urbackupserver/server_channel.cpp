@@ -518,6 +518,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 				allow_shutdown = true;
 			}
 		}
+		else if (params.find("token") != params.end())
+		{
+			Server->Log("Image restore token timeout", LL_DEBUG);
+			_i64 r = -1;
+			input->Write((char*)&r, sizeof(_i64), img_send_timeout);
+			return;
+		}
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
 	{

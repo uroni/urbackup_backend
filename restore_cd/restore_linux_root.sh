@@ -95,7 +95,12 @@ systemctl restart cron > /dev/null 2>&1 || true
 systemctl restart systemd-journald > /dev/null 2>&1 || true
 systemctl restart ntp > /dev/null 2>&1 || true
 systemctl restart urbackuprestoreclient > /dev/null 2>&1 || true
-mount -o remount,ro /oldroot
+if ! mount -o remount,ro /oldroot
+then
+	echo "Remounting /oldroot read-only failed. There is probably some service still active with files opened for writing on /oldroot... PLEASE REBOOT to reset your system now."
+	lsof | grep "/oldroot"
+	exit 5
+fi
 sync
 ! [ -e /oldroot/usr/sbin/sshd ] || cat /oldroot/usr/sbin/sshd > /dev/null
 ! [ -e /oldroot/lib/systemd/systemd-logind ] || cat /oldroot/lib/systemd/systemd-logind > /dev/null
@@ -150,7 +155,7 @@ echo "Image restore percent complete (DO NOT INTERRUPT):"
 sleep 1
 while systemctl status urbackuprestoreimage > /dev/null 2>&1
 do
-	(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress)
+	(cd "$PREFIX/var" && $PREFIX/sbin/urbackuprestoreclient --image-download-progress --image-download-progress-decorate)
 	sleep 1
 done
 
