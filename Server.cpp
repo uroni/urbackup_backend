@@ -95,7 +95,13 @@
 #endif
 
 #ifdef HAVE_SYS_RANDOM_H
+#if defined(__FreeBSD__)
+extern "C" {
 #include <sys/random.h>
+}
+#else
+#include <sys/random.h>
+#endif //__FreeBSD__
 #endif
 
 
