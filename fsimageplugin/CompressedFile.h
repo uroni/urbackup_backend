@@ -3,16 +3,35 @@
 #include <string>
 #include <memory>
 
-#include "../Interface/Server.h"
 #include "../Interface/File.h"
-#include "LRUMemCache.h"
+#include "../Interface/Mutex.h"
 
+class LRUMemCache;
+
+struct SCacheItem
+{
+	SCacheItem()
+		: buffer(NULL), offset(0)
+	{
+	}
+
+	char* buffer;
+	__int64 offset;
+};
+
+class ICacheEvictionCallback
+{
+private:
+	virtual void evictFromLruCache(const SCacheItem& item) = 0;
+
+	friend class LRUMemCache;
+};
 
 class CompressedFile : public IFile, public ICacheEvictionCallback
 {
 public:
-	CompressedFile(std::string pFilename, int pMode);
-	CompressedFile(IFile* file, bool openExisting, bool readOnly);
+	CompressedFile(std::string pFilename, int pMode, size_t n_threads);
+	CompressedFile(IFile* file, bool openExisting, bool readOnly, size_t n_threads);
 	~CompressedFile();
 
 	virtual std::string Read(_u32 tr, bool *has_error=NULL);
@@ -45,9 +64,13 @@ private:
 	virtual void evictFromLruCache(const SCacheItem& item);
 	void writeHeader();
 	void writeIndex();
+	void initCompressedBuffers(size_t n_init);
+	char* getCompressedBuffer(size_t& compressed_buffer_idx);
+	void returnCompressedBuffer(char* buf, size_t compressed_buffer_idx);
 
-	_u32 readFromFile(char* buffer, _u32 bsize, bool *has_error);
-	_u32 writeToFile(const char* buffer, _u32 bsize);
+
+	_u32 readFromFile(int64 offset, char* buffer, _u32 bsize, bool *has_error);
+	_u32 writeToFile(int64 offset, const char* buffer, _u32 bsize);
 	
 
 	__int64 filesize;
@@ -56,13 +79,19 @@ private:
 
 	__int64 currentPosition;
 
-	std::vector<__int64> blockOffsets;
+	std::vector<int64> blockOffsets;
+	size_t numBlockOffsets;
 
 	IFile* uncompressedFile;
+	int64 uncompressedFileSize;
 	
 	std::auto_ptr<LRUMemCache> hotCache;
 
+	//for reading
 	std::vector<char> compressedBuffer;
+	//for writing
+	std::vector<char*> compressedBuffers;
+	size_t compressedBufferSize;
 
 	bool error;
 
@@ -71,4 +100,8 @@ private:
 	bool readOnly;
 
 	bool noMagic;
+
+	std::auto_ptr<IMutex> mutex;
+
+	size_t n_threads;
 };

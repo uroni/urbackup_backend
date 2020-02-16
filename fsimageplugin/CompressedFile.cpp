@@ -22,21 +22,30 @@
 #include <memory>
 #include <algorithm>
 #include <memory.h>
+#ifndef NO_ZSTD_COMPRESSION
+#include <zstd.h>
+#endif
+#include "LRUMemCache.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
 
 const size_t c_cacheBuffersize = 2*1024*1024;
 const size_t c_ncacheItems = 5;
-const char headerMagic[] = "URBACKUP COMPRESSED FILE#1.0";
+const size_t c_blockbufHeadersize = 2 * sizeof(_u32);
+const char headerMagic[] = "URBACKUP COMPRESSED FILE#";
+const char headerVersionV1_0[] = "1.0";
+const char headerVersionV1_1[] = "1.1";
 const _u32 mode_none = 0;
 const _u32 mode_zlib = 1;
-const size_t c_header_size = sizeof(headerMagic) + sizeof(__int64) + sizeof(__int64) + sizeof(_u32);
+const _u32 mode_zstd = 2;
+const size_t c_header_size = sizeof(headerMagic) + sizeof(headerVersionV1_0) + sizeof(__int64) + sizeof(__int64) + sizeof(_u32);
 
 
-CompressedFile::CompressedFile( std::string pFilename, int pMode )
+CompressedFile::CompressedFile( std::string pFilename, int pMode, size_t n_threads)
 	: hotCache(NULL), error(false), currentPosition(0),
-	  finished(false), filesize(0), noMagic(false)
+	  finished(false), filesize(0), noMagic(false),
+	mutex(Server->createMutex()), n_threads(n_threads), numBlockOffsets(0)
 {
 	uncompressedFile = Server->openFile(pFilename, pMode);
 
@@ -58,20 +67,22 @@ CompressedFile::CompressedFile( std::string pFilename, int pMode )
 		readOnly=false;
 		blocksize = c_cacheBuffersize;
 		writeHeader();
-		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
-		compressedBuffer.resize(mz_compressBound(static_cast<mz_ulong>(blocksize)));
+		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
+		initCompressedBuffers(n_threads+1);
 	}
 
 	if(hotCache.get())
 	{
 		hotCache->setCacheEvictionCallback(this);
 	}
+
+	uncompressedFileSize = uncompressedFile->Size();
 }
 
-CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
+CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly, size_t n_threads)
 	: hotCache(NULL), error(false), currentPosition(0),
 	finished(false), uncompressedFile(file), filesize(0), readOnly(readOnly),
-	noMagic(false)
+	noMagic(false), n_threads(n_threads)
 {
 	if(openExisting)
 	{
@@ -81,23 +92,34 @@ CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
 	{
 		blocksize = c_cacheBuffersize;
 		writeHeader();
-		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
-		compressedBuffer.resize(mz_compressBound(static_cast<mz_ulong>(blocksize)));
+		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
+		initCompressedBuffers(n_threads+1);
 	}
 	if(hotCache.get()!=NULL)
 	{
 		hotCache->setCacheEvictionCallback(this);
 	}
+
+	uncompressedFileSize = uncompressedFile->Size();
 }
 
 CompressedFile::~CompressedFile()
 {
+	hotCache.reset();
+
 	if(!finished)
 	{
 		finish();
 	}
 
 	delete uncompressedFile;
+
+	IScopedLock lock(mutex.get());
+	for (size_t i = 0; i < compressedBuffers.size(); ++i)
+	{
+		assert(compressedBuffers[i] != NULL);
+		delete[] compressedBuffers[i];
+	}
 }
 
 bool CompressedFile::hasError()
@@ -107,15 +129,9 @@ bool CompressedFile::hasError()
 
 void CompressedFile::readHeader(bool *has_error)
 {	
-	if(!uncompressedFile->Seek(0))
-	{
-		Server->Log("Error while seeking to header", LL_ERROR);
-		error=true;
-		return;
-	}
 	std::string header;
 	header.resize(c_header_size);
-	if(readFromFile(&header[0], c_header_size, has_error)!=c_header_size)
+	if(readFromFile(0, &header[0], c_header_size, has_error)!=c_header_size)
 	{
 		Server->Log("Error while reading compressed file header", LL_ERROR);
 		error=true;
@@ -129,6 +145,16 @@ void CompressedFile::readHeader(bool *has_error)
 		noMagic=true;
 		return;
 	}
+	
+	std::string headerVersion = header.substr(sizeof(headerMagic), sizeof(headerVersionV1_0));
+
+	if (headerVersion != headerVersionV1_0
+		&& headerVersion != headerVersionV1_1)
+	{
+		Server->Log("Unknown compressed file version: " + headerVersion, LL_ERROR);
+		error = true;
+		return;
+	}
 
 	memcpy(&index_offset, header.data()+sizeof(headerMagic), sizeof(index_offset));
 	memcpy(&filesize, header.data()+sizeof(headerMagic)+sizeof(index_offset), sizeof(filesize));
@@ -138,20 +164,13 @@ void CompressedFile::readHeader(bool *has_error)
 	filesize = little_endian(filesize);
 	blocksize = little_endian(blocksize);
 
-	hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
+	hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
 
 	readIndex(has_error);
 }
 
 void CompressedFile::readIndex(bool *has_error)
 {
-	if(!uncompressedFile->Seek(index_offset))
-	{
-		Server->Log("Error while seeking to compressed file block index", LL_ERROR);
-		error=true;
-		return;
-	}
-
 	size_t nOffsetItems = static_cast<size_t>(filesize/blocksize + ((filesize%blocksize!=0)?1:0));
 
 	if(nOffsetItems==0)
@@ -162,8 +181,9 @@ void CompressedFile::readIndex(bool *has_error)
 	}
 
 	blockOffsets.resize(nOffsetItems);
+	numBlockOffsets = nOffsetItems;
 
-	if(readFromFile(reinterpret_cast<char*>(&blockOffsets[0]), static_cast<_u32>(sizeof(__int64)*nOffsetItems), has_error)
+	if(readFromFile(index_offset, reinterpret_cast<char*>(&blockOffsets[0]), static_cast<_u32>(sizeof(__int64)*nOffsetItems), has_error)
 		!=sizeof(__int64)*nOffsetItems)
 	{
 		Server->Log("Error while reading block offsets", LL_ERROR);
@@ -223,7 +243,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize, bool *has_error)
 	size_t canRead = bsize;
 	if(cacheSize<canRead)
 		canRead = cacheSize;
-	if(currentPosition+canRead>filesize)
+	if(currentPosition+static_cast<int64>(canRead)>filesize)
 		canRead = filesize-currentPosition;
 
 	if(canRead==0)
@@ -300,15 +320,8 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 
 	const __int64 blockDataOffset = blockOffsets[block];	
 
-	if(!uncompressedFile->Seek(blockDataOffset))
-	{
-		Server->Log("Error while seeking to offset "+convert(blockDataOffset)+" to read compressed data", LL_ERROR);
-		if(has_error) *has_error=true;
-		return false;
-	}
-
 	char blockheaderBuf[2*sizeof(_u32)];
-	if(readFromFile(blockheaderBuf, sizeof(blockheaderBuf), has_error)!=sizeof(blockheaderBuf))
+	if(readFromFile(blockDataOffset, blockheaderBuf, sizeof(blockheaderBuf), has_error)!=sizeof(blockheaderBuf))
 	{
 		Server->Log("Error while reading block header", LL_ERROR);
 		return false;
@@ -328,7 +341,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 			return false;
 		}
 
-		if(readFromFile(buf, compressedSize, has_error)!=compressedSize)
+		if(readFromFile(blockDataOffset + c_blockbufHeadersize, buf, compressedSize, has_error)!=compressedSize)
 		{
 			Server->Log("Error while reading uncompressed data from "+convert(blockDataOffset)+" ("+convert(compressedSize)+" bytes)", LL_ERROR);
 			return false;
@@ -343,7 +356,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 			compressedBuffer.resize(compressedSize);
 		}	
 
-		if(readFromFile(&compressedBuffer[0], compressedSize, has_error)!=compressedSize)
+		if(readFromFile(blockDataOffset + c_blockbufHeadersize, &compressedBuffer[0], compressedSize, has_error)!=compressedSize)
 		{
 			Server->Log("Error while reading compressed data from "+convert(blockDataOffset)+" ("+convert(compressedSize)+" bytes)", LL_ERROR);
 			return false;
@@ -359,9 +372,28 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 
 		if(rc != MZ_OK)
 		{
-			Server->Log("Error while decompressing file. Error code "+convert(rc), LL_ERROR);
+			Server->Log("Error while decompressing file (miniz). Error code "+convert(rc), LL_ERROR);
 			return false;
 		}
+	}
+#ifndef NO_ZSTD_COMPRESSION
+	else if (mode == mode_zstd)
+	{
+		rdecomp = blocksize;
+		const size_t rc = ZSTD_decompress(buf, blocksize,
+			compressedBuffer.data(), compressedSize);
+
+		if (ZSTD_isError(rc))
+		{
+			Server->Log(std::string("Error while decompressing file (zstd). Error code ") + ZSTD_getErrorName(rc), LL_ERROR);
+			return false;
+		}
+	}
+#endif
+	else
+	{
+		Server->Log("Unknown compression method " + convert(mode)+" in CompressedFile", LL_ERROR);
+		return false;
 	}
 	
 
@@ -447,16 +479,18 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 	if(readOnly)
 		return;
 
-	__int64 blockOffset = uncompressedFile->Size();
-	if(!uncompressedFile->Seek(blockOffset))
+	char* compBuffer;
+	size_t compBufferIdx;
+
 	{
-		error=true;
-		Server->Log("Error while seeking to end of file while before writing compressed data", LL_ERROR);
-		return;
+		IScopedLock lock(mutex.get());
+		compBuffer = getCompressedBuffer(compBufferIdx);
 	}
 
-	mz_ulong compBytes = static_cast<mz_ulong>(compressedBuffer.size());
-	int rc = mz_compress(reinterpret_cast<unsigned char*>(compressedBuffer.data()), &compBytes,
+#ifdef NO_ZSTD_COMPRESSION
+	const _u32 mode = mode_zlib;
+	mz_ulong compBytes = static_cast<mz_ulong>(compressedBufferSize - c_blockbufHeadersize);
+	const int rc = mz_compress(reinterpret_cast<unsigned char*>(compBuffer)+ c_blockbufHeadersize, &compBytes,
 		reinterpret_cast<const unsigned char*>(item.buffer), blocksize);
 
 	if(rc!=MZ_OK)
@@ -465,23 +499,32 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 		Server->Log("Error while compressing data. Error code: "+convert(rc), LL_ERROR);
 		return;
 	}
-
-	char blockheaderBuf[2*sizeof(_u32)];
-	_u32 compBytesEndian = little_endian(static_cast<_u32>(compBytes));
-	_u32 mode = mode_zlib;
-	_u32 modeEndian = little_endian(mode);
-
-	memcpy(blockheaderBuf, &compBytesEndian, sizeof(compBytesEndian));
-	memcpy(blockheaderBuf+sizeof(compBytesEndian), &modeEndian, sizeof(modeEndian));
-
-	if(writeToFile(blockheaderBuf, sizeof(blockheaderBuf))!=sizeof(blockheaderBuf))
+#else
+	const _u32 mode = mode_zstd;
+	const size_t compBytes = ZSTD_compress(compBuffer+ c_blockbufHeadersize, compressedBufferSize - c_blockbufHeadersize, item.buffer, blocksize,
+		7);
+	if (ZSTD_isError(compBytes))
 	{
-		error=true;
-		Server->Log("Error while writing blockheader to compressed file", LL_ERROR);
+		error = true;
+		Server->Log(std::string("Error while compressing data (ZSTD). Error code: ") + ZSTD_getErrorName(compBytes), LL_ERROR);
 		return;
 	}
+#endif
 
-	if(writeToFile(compressedBuffer.data(), static_cast<_u32>(compBytes))!=static_cast<_u32>(compBytes))
+	int64 blockOffset;
+	{
+		IScopedLock lock(mutex.get());
+		blockOffset = uncompressedFileSize;
+		uncompressedFileSize += c_blockbufHeadersize + compBytes;
+	}
+
+	const _u32 compBytesEndian = little_endian(static_cast<_u32>(compBytes));
+	const _u32 modeEndian = little_endian(mode);
+
+	memcpy(compBuffer, &compBytesEndian, sizeof(compBytesEndian));
+	memcpy(compBuffer + sizeof(compBytesEndian), &modeEndian, sizeof(modeEndian));
+
+	if(writeToFile(blockOffset, compBuffer, static_cast<_u32>(c_blockbufHeadersize + compBytes))!=static_cast<_u32>(c_blockbufHeadersize + compBytes))
 	{
 		error=true;
 		Server->Log("Error while writing compressed data to file", LL_ERROR);
@@ -490,17 +533,20 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 
 	size_t blockIdx = static_cast<size_t>(item.offset/blocksize);
 
-	const size_t numBlockOffsets = blockOffsets.size();
+	IScopedLock lock(mutex.get());
+	returnCompressedBuffer(compBuffer, compBufferIdx);
+	const size_t currNumBlockOffsets = blockOffsets.size();
 	if(blockOffsets.size()<=blockIdx)
 	{
-		blockOffsets.resize(blockIdx+1);
-
-		if(blockIdx-numBlockOffsets>0)
+		size_t new_size = (blockIdx + 1) * 2;
+		blockOffsets.resize(new_size);
+		for (size_t i = currNumBlockOffsets; i < new_size; ++i)
 		{
-			std::fill(blockOffsets.begin()+numBlockOffsets+1, blockOffsets.begin()+blockIdx, -1);
+			blockOffsets[i] = -1;
 		}
 	}
 
+	numBlockOffsets = (std::max)(numBlockOffsets, blockIdx + 1);
 	blockOffsets[blockIdx] = blockOffset;
 }
 
@@ -519,9 +565,7 @@ void CompressedFile::writeHeader()
 	_u32 blocksizeEndian = little_endian(blocksize);
 	memcpy(cptr, &blocksize, sizeof(blocksizeEndian));
 
-	uncompressedFile->Seek(0);
-
-	if(writeToFile(header, c_header_size)!=c_header_size)
+	if(writeToFile(0 ,header, c_header_size)!=c_header_size)
 	{
 		Server->Log("Error writing header to compressed file");
 		error=true;
@@ -531,25 +575,59 @@ void CompressedFile::writeHeader()
 void CompressedFile::writeIndex()
 {
 	index_offset = uncompressedFile->Size();
-	if(!uncompressedFile->Seek(index_offset))
-	{
-		error=true;
-		Server->Log("Error while seeking to end of file while before writing index", LL_ERROR);
-		return;
-	}
 
 	if (blockOffsets.empty())
 	{
 		return;
 	}
 
-	_u32 nOffsetBytes = static_cast<_u32>(sizeof(__int64)*blockOffsets.size());
-	if(writeToFile(reinterpret_cast<char*>(&blockOffsets[0]), nOffsetBytes)!=nOffsetBytes)
+	assert(numBlockOffsets <= blockOffsets.size());
+	_u32 nOffsetBytes = static_cast<_u32>(sizeof(__int64)*numBlockOffsets);
+	if(writeToFile(index_offset, reinterpret_cast<char*>(&blockOffsets[0]), nOffsetBytes)!=nOffsetBytes)
 	{
 		error=true;
 		Server->Log("Error while writing compressed file index", LL_ERROR);
 		return;
 	}
+}
+
+void CompressedFile::initCompressedBuffers(size_t n_init)
+{
+	compressedBufferSize = mz_compressBound(static_cast<mz_ulong>(blocksize))+ c_blockbufHeadersize;
+#ifndef NO_ZSTD_COMPRESSION
+	const size_t csize = ZSTD_compressBound(blocksize)*2;
+	if (csize + c_blockbufHeadersize > compressedBufferSize)
+	{
+		compressedBufferSize = csize + c_blockbufHeadersize;
+	}
+#endif
+
+	for (size_t i = 0; i < n_init; ++i)
+	{
+		compressedBuffers.push_back(new char[compressedBufferSize]);
+	}
+}
+
+char* CompressedFile::getCompressedBuffer(size_t& compressed_buffer_idx)
+{
+	for (size_t i = 0; i < compressedBuffers.size(); ++i)
+	{
+		if (compressedBuffers[i] != NULL)
+		{
+			compressed_buffer_idx = i;
+			char* ret = compressedBuffers[i];
+			compressedBuffers[i] = NULL;
+			return ret;
+		}
+	}
+	assert(false);
+	return NULL;
+}
+
+void CompressedFile::returnCompressedBuffer(char* buf, size_t compressed_buffer_idx)
+{
+	assert(compressedBuffers[compressed_buffer_idx] == NULL);
+	compressedBuffers[compressed_buffer_idx] = buf;
 }
 
 bool CompressedFile::finish()
@@ -601,33 +679,35 @@ std::string CompressedFile::getFilename( void )
 	return uncompressedFile->getFilename();
 }
 
-_u32 CompressedFile::readFromFile(char* buffer, _u32 bsize, bool *has_error)
+_u32 CompressedFile::readFromFile(int64 offset, char* buffer, _u32 bsize, bool *has_error)
 {
 	_u32 read = 0;
 	do 
 	{
-		_u32 rc = uncompressedFile->Read(buffer+read, bsize-read, has_error);
+		_u32 rc = uncompressedFile->Read(offset, buffer+read, bsize-read, has_error);
 		if(rc<=0)
 		{
 			return read;
 		}
 		read+=rc;
+		offset += rc;
 	} while (read<bsize);
 
 	return read;
 }
 
-_u32 CompressedFile::writeToFile(const char* buffer, _u32 bsize)
+_u32 CompressedFile::writeToFile(int64 offset, const char* buffer, _u32 bsize)
 {
 	_u32 written = 0;
 	do
 	{
-		_u32 w = uncompressedFile->Write(buffer + written, bsize-written);
+		_u32 w = uncompressedFile->Write(offset, buffer + written, bsize-written);
 		if(w<=0)
 		{
 			return written;
 		}
 		written += w;
+		offset += w;
 	} while (written<bsize);
 
 	return written;
