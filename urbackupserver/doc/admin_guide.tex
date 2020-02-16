@@ -14,7 +14,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 2.4.x}
+\title{Administration Manual for\\UrBackup Server 2.5.x}
 
 \maketitle
 
@@ -189,7 +189,14 @@ First, if you want to deviate from the default backup path selection, configure 
 
 \noindent \textbf{For internet clients:}\\
 
-\noindent Adapt the script at \url{https://urbackup.atlassian.net/wiki/display/US/Download+custom+client+installer+via+Python} to your server URL and create a python executable from the modified script via cx\_Freeze (\url{http://cx-freeze.sourceforge.net/}). Executing the python executable on the client automatically creates a new internet client on the server, downloads a custom client and runs the installer. You could also add the silent install switch (``/S'') when starting the downloaded installer such that it needs no user intervention.
+\noindent You can use \url{https://installercreator.urbackup.org} to create a custom installer for your server that creates a client on the server,
+then downloads the client installer from the server and finally installs it. There are multiple options to allow e.g. silent installation, installation without tray
+icon, etc.
+
+Alternatively adapt the script at \url{https://urbackup.atlassian.net/wiki/display/US/Download+custom+client+installer+via+Python} to your server URL and settings
+and create a python executable from the modified script via e.g. cx\_Freeze (\url{http://cx-freeze.sourceforge.net/}) or py2exe. Executing the python
+executable on the client automatically creates a new internet client on the server, downloads a custom client and runs the installer.
+You could also e.g. add the silent install switch (``/S'') when starting the downloaded installer such that it needs no user intervention.
 
 \subsubsection{Client installation on Linux}
 
@@ -205,9 +212,14 @@ First, if you want to deviate from the default backup path selection, configure 
 \noindent If the client is only reachable via Internet/through NAT:
 
 \begin{itemize}
-  \item Add a new Internet client on the status page.
-  \item Download the client installer for the Internet client and send it to the new client. Alternatively, create a user for the new client (in the settings) and send the user the username/password. The user can then download the client installer from the server on the status page and install it.
-  \item Select the backup paths you want to backup on the client via command line (``urbackupclientctl add-backupdir --path /'' or configure appropriate default directories to backup on the server (see section \ref{subsub_default_dirs}).
+  \item Add a new Internet client on the status page (selecting the client behind NAT option).
+  \item Follow the instructs for Linux on the page after the client was added. Alternatively download the
+  	client installer for the Internet client and send it to the new client. Another alternative is to create
+  	a user for the new client (in the settings) and send the user the username/password. The user can then
+  	download the client installer from the server on the status page and install it.
+  \item Select the backup paths you want to backup on the client via command line
+  (``urbackupclientctl add-backupdir --path /'' or configure appropriate default directories
+  to backup on the server (see section \ref{subsub_default_dirs}).
   \item The server will automatically start backups once the client is connected.
 \end{itemize}
 
