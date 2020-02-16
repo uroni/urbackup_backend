@@ -130,7 +130,7 @@ namespace
 		}
 
 		{
-			CompressedFile compFile(fn, MODE_READ);
+			CompressedFile compFile(fn, MODE_READ, 0);
 
 			if(compFile.hasError())
 			{
@@ -575,8 +575,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		{
+			std::string strCompThreads = Server->getServerParameter("compress_threads");
+			size_t compThreads = 4;
+			if (!strCompThreads.empty())
+			{
+				compThreads = watoi(strCompThreads);
+			}
+
 			Server->deleteFile(compress_file+".urz");
-			CompressedFile compFile(compress_file+".urz", MODE_RW_CREATE);
+			CompressedFile compFile(compress_file+".urz", MODE_RW_CREATE, compThreads);
 
 			if(compFile.hasError())
 			{

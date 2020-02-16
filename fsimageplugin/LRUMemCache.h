@@ -1,35 +1,18 @@
 #pragma once
 
 #include "../Interface/Types.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
+#include "../Interface/Thread.h"
+#include "CompressedFile.h"
 
 #include <vector>
+#include <memory>
 
-
-struct SCacheItem
-{
-	SCacheItem()
-		: buffer(NULL), offset(0)
-	{
-	}
-
-	char* buffer;
-	__int64 offset;
-};
-
-class LRUMemCache;
-
-class ICacheEvictionCallback
-{
-private:
-	virtual void evictFromLruCache(const SCacheItem& item) = 0;
-
-	friend class LRUMemCache;
-};
-
-class LRUMemCache
+class LRUMemCache : public IThread
 {
 public:
-	LRUMemCache(size_t buffersize, size_t nbuffers);
+	LRUMemCache(size_t buffersize, size_t nbuffers, size_t n_threads);
 	~LRUMemCache();
 
 	char* get(__int64 offset, size_t& bsize);
@@ -42,18 +25,34 @@ public:
 
 	void clear();
 
+	void operator()();
+
 private:
+	void finishThreads();
+	void waitThreadWork();
 
 	SCacheItem createInt(__int64 offset);
 
 	void putBack(size_t idx);
 
-	void evict(SCacheItem& item, bool deleteBuffer);
+	char* evict(SCacheItem& item, bool deleteBuffer);
+
+	char* getLruItemBuffer(IScopedLock& lock);
 
 	std::vector<SCacheItem> lruItems;
+	std::vector<SCacheItem> evictedItems;
+	std::vector<char*> lruItemBuffers;
+
+	std::auto_ptr<IMutex> mutex;
+	std::auto_ptr<ICondition> cond;
+	std::auto_ptr<ICondition> cond_wait;
 
 	size_t buffersize;
 	size_t nbuffers;
+	size_t n_threads;
+	size_t n_threads_working;
+	bool wait_work;
+	bool do_quit;
 
 	ICacheEvictionCallback* callback;
 };

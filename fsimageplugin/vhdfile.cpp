@@ -31,6 +31,7 @@
 #include <windows.h>
 #else
 #include <errno.h>
+#include <unistd.h>
 #endif
 #include "fs/ntfs.h"
 
@@ -41,6 +42,30 @@ const uint64 def_bat_offset_parent=2*1024;
 const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
+
+namespace
+{
+	size_t getNumCompThreads(bool read_only)
+	{
+		if (read_only)
+			return 0;
+
+		const size_t maxCpus = 5;
+#ifdef _WIN32
+		SYSTEM_INFO system_info;
+		GetSystemInfo(&system_info);
+		DWORD numCpus = system_info.dwNumberOfProcessors;
+		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
+#else
+		long numCpus = sysconf(_SC_NPROCESSORS_ONLN);
+		if (numCpus < 0)
+		{
+			numCpus = 2;
+		}
+		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
+#endif
+	}
+}
 
 VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
 	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false),
@@ -73,7 +98,7 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 
 	if(check_if_compressed() || compress)
 	{
-		compressed_file = new CompressedFile(backing_file, openedExisting, read_only);
+		compressed_file = new CompressedFile(backing_file, openedExisting, read_only, getNumCompThreads(pRead_only));
 		file = compressed_file;
 
 		if(compressed_file->hasError())
@@ -166,7 +191,7 @@ VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 	if(check_if_compressed() || compress)
 	{
-		file = new CompressedFile(backing_file, openedExisting, read_only);
+		file = new CompressedFile(backing_file, openedExisting, read_only, getNumCompThreads(pRead_only));
 	}
 	else
 	{
