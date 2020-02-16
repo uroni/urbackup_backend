@@ -11,13 +11,13 @@ PREFIX="$6"
 
 restore_image_cleanup()
 {
-	if [ $START_URBACKUPCLIENTBACKEND = 1 ]
+    if [ "x$SYSTEMD_DIR" != "x" ]
 	then
-		echo "Starting urbackupclientbackend service..."
-		systemctl start urbackupclientbackend
+		systemctl stop urbackuprestoreclient.service > /dev/null 2>&1 || true
+		! [ -e "$SYSTEMD_DIR/urbackuprestoreclient.service" ] || rm "$SYSTEMD_DIR/urbackuprestoreclient.service"
 	fi
-
-	if [ $MOVE_URBACKUP_VAR = 1 ] && [ -e $PREFIX/var/urbackup_orig ]
+    
+    if [ $MOVE_URBACKUP_VAR = 1 ] && [ -e $PREFIX/var/urbackup_orig ]
 	then
 		echo "Moving $PREFIX/var/urbackup_orig to $PREFIX/var/urbackup ..."
 		mv $PREFIX/var/urbackup_orig $PREFIX/var/urbackup
@@ -26,10 +26,10 @@ restore_image_cleanup()
 		rm -Rf $PREFIX/var/urbackup
 	fi
 
-	if [ "x$SYSTEMD_DIR" != "x" ]
+	if [ $START_URBACKUPCLIENTBACKEND = 1 ]
 	then
-		systemctl stop urbackuprestoreclient.service > /dev/null 2>&1 || true
-		! [ -e "$SYSTEMD_DIR/urbackuprestoreclient.service" ] || rm "$SYSTEMD_DIR/urbackuprestoreclient.service"
+		echo "Starting urbackupclientbackend service..."
+		systemctl start urbackupclientbackend
 	fi
 
     if [ "x$DMSETUP_REMOVE" != x ]
