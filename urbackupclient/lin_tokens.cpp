@@ -407,7 +407,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(pw==NULL)
 		{
-			Server->Log("Error getting passwd structure for user with name \""+ users[i] + "\"", LL_ERROR);
+			Server->Log("Error getting passwd structure for user with name \""+ users[i] + "\"", LL_DEBUG);
 			continue;
 		}
 
@@ -415,7 +415,6 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(!token_id.exists)
 		{
-			Server->Log("Token id for user \""+users[i]+"\" not found", LL_ERROR);
 			continue;
 		}
 
@@ -430,7 +429,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(gr==NULL)
 		{
-			Server->Log("Error getting group structure for group with name \""+ groups[i] + "\"", LL_ERROR);
+			Server->Log("Error getting group structure for group with name \""+ groups[i] + "\"", LL_DEBUG);
 			continue;
 		}
 
@@ -438,7 +437,6 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(!token_id.exists)
 		{
-			Server->Log("Token id for group \""+groups[i]+"\" not found", LL_ERROR);
 			continue;
 		}
 
