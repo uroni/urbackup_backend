@@ -1,6 +1,6 @@
 ## UrBackup
 
-Please see the website at https://www.urbackup.org for more informations, wiki, forums and the issue tracker.
+Please see the website at https://www.urbackup.org for more information, wiki, forums and the issue tracker.
 
 ### Building on Linux/MacOS
 
