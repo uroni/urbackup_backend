@@ -304,7 +304,7 @@ void PipeFileTar::hashReadData(int64 spos, const char * buffer, _u32 bsize)
 	_u32 off = 0;
 	if (spos < hash_pos)
 	{
-		_u32 off = hash_pos - spos;
+		off = hash_pos - spos;
 		if (off >= bsize)
 		{
 			return;
