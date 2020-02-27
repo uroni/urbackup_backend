@@ -1167,7 +1167,7 @@ void do_restore(void)
 
 		if (mbrdata.extra_data_pos != -1)
 		{
-			Server->Log("Writing extra data...");
+			Server->Log("Writing extra data at position "+convert(mbrdata.extra_data_pos)+" size "+convert(mbrdata.extra_data.size())+" ...");
 			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
 			{
 				Server->Log("Writing extra data failed. " + os_last_error_str(), LL_ERROR);

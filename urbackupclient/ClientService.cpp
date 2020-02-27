@@ -29,6 +29,7 @@
 #include "database.h"
 #include "../common/data.h"
 #include "../fsimageplugin/IFilesystem.h"
+#include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include "ServerIdentityMgr.h"
@@ -61,6 +62,7 @@
 #endif
 
 extern ICryptoFactory *crypto_fak;
+extern IFSImageFactory* image_fak;
 extern std::string time_format_str;
 
 ICustomClient* ClientService::createClient()
@@ -2189,6 +2191,25 @@ namespace
 
 		return true;
 	}
+
+	bool check_partition_used(IFile* dev, int64 offset, int64 length)
+	{
+		bool gpt_style2;
+		std::vector<IFSImageFactory::SPartition> parts = image_fak->readPartitions(dev, gpt_style2);
+
+		for (size_t i = 0; i < parts.size(); ++i)
+		{
+			if ((offset >= parts[i].offset
+				&& offset < parts[i].offset + parts[i].length)
+				|| (offset + length >= parts[i].offset
+					&& offset + length < parts[i].offset + parts[i].length))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
 
 void parse_devnum_test()
@@ -2646,11 +2667,25 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	mbr.addString(errmsg);
 
 	if (!gpt_style
-		&& mbr_bytes.find("VeraCrypt Boot Loader") != std::string::npos)
+		&& mbr_bytes.find("VeraCrypt Boot Loader") != std::string::npos
+		&& !check_partition_used(dev, 512, 63*512) )
 	{
 		std::string veracrypt_data = dev->Read(512LL, 63 * 512);
 		mbr.addVarInt(512);
 		mbr.addString2(veracrypt_data);
+	}
+	else if (!gpt_style
+		&& mbr_bytes.find("GRUB") != std::string::npos
+		&& !check_partition_used(dev, 512, 63 * 512) )
+	{
+		std::string grub_stage_1_5 = dev->Read(512LL, 63 * 512);
+		if (grub_stage_1_5.find("Geom") != std::string::npos
+			&& grub_stage_1_5.find("Read") != std::string::npos
+			&& grub_stage_1_5.find("Error") != std::string::npos)
+		{
+			mbr.addVarInt(512);
+			mbr.addString2(grub_stage_1_5);
+		}
 	}
 
 	tcpstack.Send(pipe, mbr);
