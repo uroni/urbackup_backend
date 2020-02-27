@@ -171,7 +171,7 @@ else
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
 end
 
-if string.len(params.os_simple)==0 or params.os_simple=="windows"
+if params.image_support
 then
 	--Time in seconds till image backup status is not ok
 	local image_backup_nok = image_interval*params.alert_image_mult - params.passed_time_lastbackup_image
