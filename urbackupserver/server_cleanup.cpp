@@ -879,9 +879,11 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 {
 	ServerSettings settings(db, clientid);
 
+	std::string val_info = "max_image_full";
 	int max_image_full=settings.getSettings()->max_image_full;
 	if(minspace!=-1)
 	{
+		val_info = "min_image_full";
 		max_image_full=settings.getSettings()->min_image_full;
 	}
 
@@ -889,7 +891,7 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 
 	int backupid;
 	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups max="+convert(max_image_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups "+ val_info +"="+convert(max_image_full), LL_DEBUG);
 	while(full_image_num>max_image_full
 		&& full_image_num>0)
 	{
@@ -938,12 +940,16 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 
 	notit.clear();
 
+	val_info = "max_image_incr";
 	int max_image_incr=settings.getSettings()->max_image_incr;
-	if(minspace!=-1)
-		max_image_incr=settings.getSettings()->min_image_incr;
+	if (minspace != -1)
+	{
+		val_info = "min_image_incr";
+		max_image_incr = settings.getSettings()->min_image_incr;
+	}
 
 	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups max="+convert(max_image_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups "+val_info +"="+convert(max_image_incr), LL_DEBUG);
 	while(incr_image_num>max_image_incr
 		&& incr_image_num>0)
 	{
@@ -1283,15 +1289,19 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 
 	int max_file_full=settings.getSettings()->max_file_full;
 	int max_file_incr=settings.getSettings()->max_file_incr;
+	std::string full_val_info = "max_file_full";
+	std::string incr_val_info = "max_file_incr";
 	if(minspace!=-1)
 	{
 		max_file_full=settings.getSettings()->min_file_full;
 		max_file_incr=settings.getSettings()->min_file_incr;
+		full_val_info = "min_file_full";
+		incr_val_info = "min_file_incr";
 	}
 
 	int backupid;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups max="+convert(max_file_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups "+ full_val_info +"="+convert(max_file_full), LL_DEBUG);
 	while(full_file_num>max_file_full
 		&& full_file_num>0
 		&& !(full_file_num==1
@@ -1319,7 +1329,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	}
 
 	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups max="+convert(max_file_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups "+ incr_val_info +"="+convert(max_file_incr), LL_DEBUG);
 	while(incr_file_num>max_file_incr
 		&& incr_file_num>0)
 	{
