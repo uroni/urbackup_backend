@@ -853,6 +853,15 @@ void ClientMain::operator ()(void)
 				if(backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET)
 				{
 					can_start=true;
+					break;
+				}
+			}
+
+			if (can_start)
+			{
+				if (!checkClientName(can_start))
+				{
+					break;
 				}
 			}
 
@@ -3422,6 +3431,38 @@ void ClientMain::updateVirtualClients()
 	}
 
 	BackupServer::setVirtualClients(clientname, virtual_clients);
+}
+
+bool ClientMain::checkClientName(bool& continue_start_backups)
+{
+	if (internet_connection
+		|| !clientsubname.empty())
+		return true;
+
+	std::string msg = sendClientMessageRetry("GET CLIENTNAME", "Error getting name of client", 10000, 10, false);
+
+	if (msg == "ERR")
+	{
+		return true;
+	}
+	else if (msg.empty())
+	{
+		continue_start_backups = false;
+		return true;
+	}
+
+	str_map msg_params;
+	ParseParamStrHttp(msg, &msg_params);
+
+	if (msg_params["name"] == clientname)
+	{
+		return true;
+	}
+	else
+	{
+		Server->Log("Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
+		return false;
+	}
 }
 
 bool ClientMain::renameClient(const std::string & clientuid)

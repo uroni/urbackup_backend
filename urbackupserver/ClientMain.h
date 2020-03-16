@@ -313,6 +313,8 @@ private:
 	bool renameClient(const std::string& clientuid);
 	void updateVirtualClients();
 
+	bool checkClientName(bool& continue_start_backups);
+
 
 	struct SPathComponents
 	{

@@ -1098,6 +1098,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_ADD_IDENTITY(cmd.substr(13)); continue;
 			}
+			else if (cmd=="GET CLIENTNAME")
+			{
+				CMD_GET_CLIENTNAME(cmd); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
