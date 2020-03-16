@@ -529,7 +529,7 @@ bool LMDBFileIndex::create_env()
 
 		os_create_dir("urbackup/fileindex");
 
-		unsigned int flags = MDB_NOSUBDIR|MDB_NOMETASYNC;
+		unsigned int flags = MDB_NOSUBDIR|MDB_WRITEMAP;
 		if(no_sync)
 		{
 			flags|=MDB_NOSYNC;
