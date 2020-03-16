@@ -2989,4 +2989,10 @@ void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
 
 	tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
 }
+
+void ClientConnector::CMD_GET_CLIENTNAME(const std::string& cmd)
+{
+	std::string name = IndexThread::getFileSrv()->getServerName();
+	tcpstack.Send(pipe, "name="+EscapeParamString(name));
+}
 	

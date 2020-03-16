@@ -342,6 +342,7 @@ private:
 	void CMD_RESTORE_OK(str_map &params);
 	void CMD_CLIENT_ACCESS_KEY(const std::string& cmd);
 	void CMD_WRITE_TOKENS(const std::string& cmd);
+	void CMD_GET_CLIENTNAME(const std::string& cmd);
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
