@@ -966,6 +966,8 @@ void ClientMain::operator ()(void)
 			rdata.getChar(&ignore_other_fs);
 			int64 restore_flags = 0;
 			rdata.getInt64(&restore_flags);
+			char restore_client_access_encryption = 1;
+			rdata.getChar(&restore_client_access_encryption);
 
 			std::string restore_path = ServerStatus::getProcess(clientname, status_id).details;
 
@@ -986,17 +988,26 @@ void ClientMain::operator ()(void)
 				ServerLogger::Log(log_id, "Starting restore of path \"" + restore_path + "\". But client may be offline...", LL_INFO);
 			}
 
-			if (crypto_fak == NULL)
+			std::string client_token_key;
+			if (restore_client_access_encryption)
 			{
-				ServerLogger::Log(log_id, "Cannot restore without crypto plugin", LL_ERROR);
-				restore_identity.clear();
+				client_token_key = "client_token";
+				if (crypto_fak == NULL)
+				{
+					ServerLogger::Log(log_id, "Cannot restore without crypto plugin", LL_ERROR);
+					restore_identity.clear();
+				}
+				else
+				{
+					restore_identity = base64_encode_dash(crypto_fak->encryptAuthenticatedAES(restore_identity, server_settings->getSettings()->client_access_key, 1));
+				}
 			}
 			else
 			{
-				restore_identity = base64_encode_dash(crypto_fak->encryptAuthenticatedAES(restore_identity, server_settings->getSettings()->client_access_key, 1));
+				client_token_key = "client_token_d";
 			}
 
-			std::string ret = sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
+			std::string ret = sendClientMessageRetry("FILE RESTORE "+ client_token_key +"="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
 				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token)+
 				"&restore_path="+EscapeParamString(restore_path)+
@@ -1681,6 +1692,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			{
 				ServerStatus::setRestore(clientname, ERestore_disabled);
 			}			
+		}
+		it = params.find("RESTORE_VER");
+		if (it != params.end())
+		{
+			protocol_versions.restore_version = watoi(it->second);
 		}
 		it = params.find("clientuid");
 		if (it != params.end())
