@@ -229,14 +229,15 @@ namespace
 			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
 			bool clean_other, bool ignore_other_fs, const std::string& share_path,
-			bool follow_symlinks, int64 restore_flags, const std::vector<std::string>& tokens, backupaccess::STokens access_tokens)
+			bool follow_symlinks, int64 restore_flags, const std::vector<std::string>& tokens, backupaccess::STokens access_tokens,
+			bool encrypt_identity)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f),
 			skip_special_root(skip_special_root),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
 			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks), restore_flags(restore_flags),
-			tokens(tokens), access_tokens(access_tokens)
+			tokens(tokens), access_tokens(access_tokens), encrypt_identity(encrypt_identity)
 		{
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = foldername;
@@ -323,6 +324,7 @@ namespace
 			data.addChar(clean_other ? 1 : 0);
 			data.addChar(ignore_other_fs ? 1 : 0);
 			data.addInt64(restore_flags);
+			data.addChar(encrypt_identity ? 1 : 0);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(curr_clientname, msg);
@@ -624,6 +626,7 @@ namespace
 		int64 restore_flags;
 		std::vector<std::string> tokens;
 		backupaccess::STokens access_tokens;
+		bool encrypt_identity;
 	};
 }
 
@@ -631,7 +634,8 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path,
-	bool follow_symlinks, int64 restore_flags, THREADPOOL_TICKET& ticket, const std::vector<std::string>& tokens, const backupaccess::STokens& access_tokens)
+	bool follow_symlinks, int64 restore_flags, THREADPOOL_TICKET& ticket, const std::vector<std::string>& tokens, const backupaccess::STokens& access_tokens,
+	bool encrypt_identity)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -676,7 +680,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	ticket = Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid,
 		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
 		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, 
-		restore_flags, tokens, access_tokens), "frestore preparation");
+		restore_flags, tokens, access_tokens, encrypt_identity), "frestore preparation");
 
 	return true;
 }
@@ -685,7 +689,7 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths,
 	bool clean_other, bool ignore_other_fs, bool follow_symlinks, int64 restore_flags,
-	const std::vector<std::string>& tokens)
+	const std::vector<std::string>& tokens, bool encrypt_identity)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -724,6 +728,6 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(),
 		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, restore_flags,
-		ticket, tokens, access_tokens);
+		ticket, tokens, access_tokens, encrypt_identity);
 }
 

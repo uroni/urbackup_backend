@@ -2578,7 +2578,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
 		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
@@ -2600,7 +2600,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }
@@ -2787,7 +2787,14 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		return;
 	}
 
+	bool client_token_encrypted = true;
 	std::string client_token = (params["client_token"]);
+	if (client_token.empty()
+		&& params.find("client_token_d") != params.end())
+	{
+		client_token = params["client_token_d"];
+		client_token_encrypted = false;
+	}
 	std::string server_token=params["server_token"];
 	int64 restore_id=watoi64(params["id"]);
 	int64 status_id=watoi64(params["status_id"]);
@@ -2811,7 +2818,8 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		restore_process_id = ++curr_backup_running_id;
 	}
 
-	if (crypto_fak != NULL)
+	if (crypto_fak != NULL
+		&& client_token_encrypted)
 	{
 		std::auto_ptr<ISettingsReader> access_keys(
 			Server->createFileSettingsReader("urbackup/access_keys.properties"));
@@ -2844,7 +2852,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 			Server->Log("Error opening urbackup/access_keys.properties", LL_ERROR);
 		}
 	}
-	else
+	else if(client_token_encrypted)
 	{
 		Server->Log("Error decrypting server access token. Crypto_fak not loaded.", LL_ERROR);
 	}

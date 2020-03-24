@@ -1794,7 +1794,7 @@ ACTION_IMPL(backups)
 							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, CURRP["filter"],
 								path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string(),
 								std::vector< std::pair<std::string, std::string> >(), true, true, greplace(os_file_sep(), "/", path_info.rel_path), true,
-								restore_flags, ticket, tokens, path_info.backup_tokens))
+								restore_flags, ticket, tokens, path_info.backup_tokens, false))
 							{
 								ret.set("err", "internal_error");
                                 helper.Write(ret.stringify(false));
