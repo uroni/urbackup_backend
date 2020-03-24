@@ -543,7 +543,7 @@ bool LMDBFileIndex::create_env()
 		}
 
 		MDB_txn* l_txn;
-		rc = mdb_txn_begin(env, NULL, flags, &l_txn);
+		rc = mdb_txn_begin(env, NULL, 0, &l_txn);
 
 		if (rc)
 		{
