@@ -95,6 +95,18 @@ systemctl restart cron > /dev/null 2>&1 || true
 systemctl restart systemd-journald > /dev/null 2>&1 || true
 systemctl restart ntp > /dev/null 2>&1 || true
 systemctl restart urbackuprestoreclient > /dev/null 2>&1 || true
+KPROCS="x"
+while [ "x$KPROCS" != x ]
+do
+	KPROCS=$(find /proc -maxdepth 1 -type d -name '[0-9]*' -exec find {}/fd -type l -ilname '/oldroot/*' \; | sed -r 's@/proc/([0-9]*)/fd/([0-9]*)@/proc/\1/fdinfo/\2@' | xargs -I@ /bin/sh -c "if [ -e @ ] && grep -E '^flags:\s+[0-9]*[1-9]$' < @ > /dev/null 2>&1; then echo '@'; fi" | sed -r 's@/proc/([0-9]*)/fdinfo/[0-9]*@\1@' | uniq)
+	if [ "x$KPROCS" != x ]
+	then
+		echo "Killing processes writing to root..."
+		kill -9 $KPROCS > /dev/null 2>&1 || true
+		sleep 1
+	fi
+done
+for p in 
 if ! mount -o remount,ro /oldroot
 then
 	echo "Remounting /oldroot read-only failed. There is probably some service still active with files opened for writing on /oldroot... PLEASE REBOOT to reset your system now."
