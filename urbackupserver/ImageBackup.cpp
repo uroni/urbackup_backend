@@ -763,6 +763,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
 						ServerLogger::Log(logid, "Server admin stopped backup. (2)", LL_ERROR);
+						ServerStatus::setROnline(clientname, true);
 						goto do_image_cleanup;
 					}
 					ServerStatus::setROnline(clientname, false);
@@ -820,6 +821,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				if(!reconnected)
 				{
 					ServerLogger::Log(logid, "Timeout while trying to reconnect", LL_ERROR);
+					ServerStatus::setROnline(clientname, true);
 					goto do_image_cleanup;
 				}
 
