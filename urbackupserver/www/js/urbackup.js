@@ -2885,6 +2885,11 @@ function settingChangeKey(key)
 	if(typeof use=="undefined"
 		|| use==2)
 	{
+		if(typeof use=="undefined")
+		{
+			g.curr_settings[key] = {use: 2, value: g.curr_settings[key]};
+		}
+
 		if(key=="alert_params")
 		{
 			g.curr_settings[key].value = g.alert_params;
@@ -4259,7 +4264,10 @@ function getSettingSave(key)
 	}
 	else
 	{
-		return g.curr_settings[key];
+		if(typeof g.curr_settings[key].value!="undefined")
+			return g.curr_settings[key];
+		else
+			return {use: 2, value: g.curr_settings[key]};
 	}		
 }
 function saveGeneralSettings()
