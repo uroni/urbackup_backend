@@ -2930,33 +2930,38 @@ function renderSettingSwitch(key)
 		return;
 	}
 
-	if(val.use==1)
+	if(I(key+"_sw"))
 	{
-		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting from group" id="'+key+"_btn"+'">'+
-					'<span class="glyphicon glyphicon-lock" aria-hidden="true"></span>&nbsp;'+
-					'</button>';
-	}
-	else if(val.use==2)
-	{
-		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured here" id="'+key+"_btn"+'">'+
-					'<span class="glyphicon glyphicon-home" aria-hidden="true"></span>&nbsp;'+
-					'</button>';
-	}
-	else if(val.use==4)
-	{
-		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured on client" id="'+key+"_btn"+'">'+
-					'<span class="glyphicon glyphicon-road" aria-hidden="true"></span>&nbsp;'+
-					'</button>';
-	}
-	else
-	{
-		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using combination of setting sources" id="'+key+"_btn"+'">'+
-					'<span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span>&nbsp;'+
-					'</button>';
-		renderMergeSetting(key);
+		if(val.use==1)
+		{
+			I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting from group" id="'+key+"_btn"+'">'+
+						'<span class="glyphicon glyphicon-lock" aria-hidden="true"></span>&nbsp;'+
+						'</button>';
+		}
+		else if(val.use==2)
+		{
+			I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured here" id="'+key+"_btn"+'">'+
+						'<span class="glyphicon glyphicon-home" aria-hidden="true"></span>&nbsp;'+
+						'</button>';
+		}
+		else if(val.use==4)
+		{
+			I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured on client" id="'+key+"_btn"+'">'+
+						'<span class="glyphicon glyphicon-road" aria-hidden="true"></span>&nbsp;'+
+						'</button>';
+		}
+		else
+		{
+			I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using combination of setting sources" id="'+key+"_btn"+'">'+
+						'<span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span>&nbsp;'+
+						'</button>';
+			renderMergeSetting(key);
+		}
 	}
 
-	$("#"+key+"_btn").click(settingSwitch);
+	if(I(key+"_btn"))
+		$("#"+key+"_btn").click(settingSwitch);
+	
 	$("#"+key).change(settingChange);
 	$("#"+key).keyup(settingChange);
 }
@@ -3102,10 +3107,7 @@ function renderSettingSwitchAll()
 {
 	for(var i=0;i<g.settings_list.length;++i)
 	{
-		if(I(g.settings_list[i]+"_sw"))
-		{
-			renderSettingSwitch(g.settings_list[i]);
-		}
+		renderSettingSwitch(g.settings_list[i]);
 	}
 
 	if(I("backup_window_sw"))
