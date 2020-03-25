@@ -122,6 +122,9 @@ void LRUMemCache::operator()()
 			cond->wait(&lock);
 		}
 
+		if (evictedItems.empty())
+			break;
+
 		SCacheItem item = evictedItems.back();
 		evictedItems.pop_back();
 		++n_threads_working;
@@ -130,6 +133,7 @@ void LRUMemCache::operator()()
 		callback->evictFromLruCache(item);
 
 		lock.relock(mutex.get());
+		lruItemBuffers.push_back(item.buffer);
 		--n_threads_working;
 		if(wait_work)
 			cond_wait->notify_all();
@@ -198,6 +202,7 @@ LRUMemCache::~LRUMemCache()
 	{
 		delete[] lruItemBuffers[i];
 	}
+
 	lruItemBuffers.clear();
 }
 
@@ -232,6 +237,10 @@ SCacheItem LRUMemCache::createInt( __int64 offset )
 		SCacheItem& toremove = lruItems[0];
 		buffer = evict(toremove, false);
 		lruItems.erase(lruItems.begin());
+	}
+	else
+	{
+		buffer = new char[buffersize];
 	}
 
 	SCacheItem newItem;
