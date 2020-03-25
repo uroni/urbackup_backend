@@ -3810,6 +3810,7 @@ function show_settings2(data)
 
 	if(data.sa && (data.sa=="clientsettings" ||  data.sa=="general" ) )
 	{
+		unescapeCurrentSettings(g.curr_settings);
 		renderSettingSwitchAll();
 	}
 	
@@ -3820,7 +3821,6 @@ function show_settings2(data)
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
 	{
-		unescapeCurrentSettings(g.curr_settings);
 		g.archive_item_id=0;
 		g.curr_archive_items = [];
 		renderArchiveSettings(data.sa=="general" || is_group);
