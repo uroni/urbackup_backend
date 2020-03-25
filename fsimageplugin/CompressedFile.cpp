@@ -156,9 +156,9 @@ void CompressedFile::readHeader(bool *has_error)
 		return;
 	}
 
-	memcpy(&index_offset, header.data()+sizeof(headerMagic), sizeof(index_offset));
-	memcpy(&filesize, header.data()+sizeof(headerMagic)+sizeof(index_offset), sizeof(filesize));
-	memcpy(&blocksize, header.data()+sizeof(headerMagic)+sizeof(index_offset)+sizeof(filesize), sizeof(blocksize));
+	memcpy(&index_offset, header.data()+sizeof(headerMagic)+ sizeof(headerVersionV1_0), sizeof(index_offset));
+	memcpy(&filesize, header.data()+sizeof(headerMagic)+ sizeof(headerVersionV1_0) +sizeof(index_offset), sizeof(filesize));
+	memcpy(&blocksize, header.data()+sizeof(headerMagic)+ sizeof(headerVersionV1_0) +sizeof(index_offset)+sizeof(filesize), sizeof(blocksize));
 
 	index_offset = little_endian(index_offset);
 	filesize = little_endian(filesize);
@@ -556,6 +556,8 @@ void CompressedFile::writeHeader()
 	char* cptr = header;
 	memcpy(cptr, headerMagic, sizeof(headerMagic));
 	cptr+=sizeof(headerMagic);
+	memcpy(cptr, headerVersionV1_1, sizeof(headerVersionV1_1));
+	cptr += sizeof(headerVersionV1_1);
 	__int64 indexOffsetEndian = little_endian(index_offset);
 	memcpy(cptr, &indexOffsetEndian, sizeof(indexOffsetEndian));
 	cptr+=sizeof(indexOffsetEndian);
