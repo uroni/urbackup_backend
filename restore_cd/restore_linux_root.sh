@@ -95,24 +95,38 @@ systemctl restart cron > /dev/null 2>&1 || true
 systemctl restart systemd-journald > /dev/null 2>&1 || true
 systemctl restart ntp > /dev/null 2>&1 || true
 systemctl restart urbackuprestoreclient > /dev/null 2>&1 || true
-KPROCS="x"
-while [ "x$KPROCS" != x ]
+
+REMOUNT_TRIES=5
+while true
 do
-	KPROCS=$(find /proc -maxdepth 1 -type d -name '[0-9]*' -exec find {}/fd -type l -ilname '/oldroot/*' \; | sed -r 's@/proc/([0-9]*)/fd/([0-9]*)@/proc/\1/fdinfo/\2@' | xargs -I@ /bin/sh -c "if [ -e @ ] && grep -E '^flags:\s+[0-9]*[1-9]$' < @ > /dev/null 2>&1; then echo '@'; fi" | sed -r 's@/proc/([0-9]*)/fdinfo/[0-9]*@\1@' | uniq)
-	if [ "x$KPROCS" != x ]
+	KPROCS="x"
+	while [ "x$KPROCS" != x ]
+	do
+		KPROCS=$(find /proc -maxdepth 1 -type d -name '[0-9]*' -exec find {}/fd -type l -ilname '/oldroot/*' \; | sed -r 's@/proc/([0-9]*)/fd/([0-9]*)@/proc/\1/fdinfo/\2@' | xargs -I@ /bin/sh -c "if [ -e @ ] && grep -E '^flags:\s+[0-9]*[1-9]$' < @ > /dev/null 2>&1; then echo '@'; fi" | sed -r 's@/proc/([0-9]*)/fdinfo/[0-9]*@\1@' | uniq)
+		if [ "x$KPROCS" != x ]
+		then
+			echo "Killing processes writing to root..."
+			kill -9 $KPROCS > /dev/null 2>&1 || true
+			sleep 1
+		fi
+	done
+	if ! mount -o remount,ro /oldroot
 	then
-		echo "Killing processes writing to root..."
-		kill -9 $KPROCS > /dev/null 2>&1 || true
-		sleep 1
+		if [ $REMOUNT_TRIES -lt 1 ]
+		then
+			echo "Remounting /oldroot read-only failed. There is probably some service still active with files opened for writing on /oldroot... PLEASE REBOOT to reset your system now."
+			lsof | grep "/oldroot"
+			exit 5
+		else
+			echo "Remounting /oldroot read-only failed. Retrying..."
+			sleep 1
+		fi
+	else
+		break
 	fi
+	REMOUNT_TRIES=$((REMOUNT_TRIES-1))
 done
-for p in 
-if ! mount -o remount,ro /oldroot
-then
-	echo "Remounting /oldroot read-only failed. There is probably some service still active with files opened for writing on /oldroot... PLEASE REBOOT to reset your system now."
-	lsof | grep "/oldroot"
-	exit 5
-fi
+
 sync
 ! [ -e /oldroot/usr/sbin/sshd ] || cat /oldroot/usr/sbin/sshd > /dev/null
 ! [ -e /oldroot/lib/systemd/systemd-logind ] || cat /oldroot/lib/systemd/systemd-logind > /dev/null
