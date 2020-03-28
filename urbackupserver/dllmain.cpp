@@ -2269,8 +2269,15 @@ void upgrade(void)
 		&& ver>15)
 	{
 		cache_res=db->Read("PRAGMA cache_size");
-		ServerSettings server_settings(db);
-		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
+		ServerBackupDao backup_dao(db);
+		size_t update_stats_cachesize = 200 * 1024;
+		ServerBackupDao::CondString setting = backup_dao.getClientSetting("update_stats_cachesize", 0);
+		if (setting.exists
+			&& !setting.value.empty())
+		{
+			update_stats_cachesize = watoi64(setting.value);
+		}
+		db->Write("PRAGMA cache_size = -"+convert(update_stats_cachesize));
 	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
