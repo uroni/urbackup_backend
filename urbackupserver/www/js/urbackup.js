@@ -2928,6 +2928,9 @@ function renderSettingSwitch(key)
 		val = g.curr_settings[key];
 	}
 
+	if(typeof val=="undefined")
+		return;
+		
 	if(typeof val.use=="undefined")
 	{
 		$("#"+key).change(settingChange);
