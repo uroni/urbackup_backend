@@ -830,7 +830,7 @@ bool IncrFileBackup::doFileBackup()
 											break;
 										}
 
-										metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+										metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(osspecific_name));
 									}
 									else
 									{
@@ -850,7 +850,7 @@ bool IncrFileBackup::doFileBackup()
 								}
 								else
 								{
-									metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+									metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(osspecific_name));
 								}
 
 								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, orig_sep, true))
@@ -860,7 +860,7 @@ bool IncrFileBackup::doFileBackup()
 									break;
 								}					
 
-								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
+								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(osspecific_name));
 								
 								symlinked_file=true;
 							}
