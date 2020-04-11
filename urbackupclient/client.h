@@ -182,6 +182,7 @@ struct SBackupScript
 	std::string outputname;
 	int64 size;
 	std::string orig_path;
+	int64 lastmod;
 
 	bool operator<(const SBackupScript &other) const
 	{

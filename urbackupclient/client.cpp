@@ -2980,6 +2980,16 @@ bool IndexThread::readBackupScripts(bool full_backup)
 						new_script.orig_path = it->second;
 					}
 
+					it = params.find("lastmod");
+					if (it != params.end())
+					{
+						new_script.lastmod = watoi64(it->second);
+					}
+					else
+					{
+						new_script.lastmod = -1;
+					}
+
 					scripts.push_back(new_script);
 
 					if (filesrv != NULL)
@@ -5593,7 +5603,12 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 		for(size_t i=0;i<scripts.size();++i)
 		{
-			int64 rndnum=Server->getRandomNumber()<<30 | Server->getRandomNumber();
+			int64 rndnum;
+			if (scripts[i].lastmod != -1)
+				rndnum = scripts[i].lastmod;
+			else
+				rndnum = Server->getRandomNumber() << 30 | Server->getRandomNumber();
+
 			outfile << "f\"" << escapeListName(scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum;
 			++file_id;
 
