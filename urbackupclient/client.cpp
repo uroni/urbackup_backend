@@ -2867,7 +2867,7 @@ bool IndexThread::readBackupScripts(bool full_backup)
 {
 	scripts.clear();
 
-	if(!with_scripts || index_group!=c_group_default)
+	if(!with_scripts)
 	{
 		return false;
 	}
@@ -2901,10 +2901,15 @@ bool IndexThread::readBackupScripts(bool full_backup)
 			first_script_path = curr_script_path;
 		}
 
-#ifdef _WIN32
-		script_cmd = curr_script_path + os_file_sep() + "list.bat";
-#else
 		script_cmd = curr_script_path + os_file_sep() + "list";
+
+		if (index_group != c_group_default)
+		{
+			script_cmd += "_" + conv_filename(index_clientsubname);
+		}
+
+#ifdef _WIN32
+		script_cmd += ".bat";
 #endif
 
 		if (!FileExists(script_cmd))
