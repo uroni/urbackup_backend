@@ -212,6 +212,7 @@ void BackupServerPrepareHash::operator()(void)
 						{
 							h = hashsha.finalize();
 						}
+						hashf = NULL;
 					}
 					else
 					{
@@ -223,6 +224,7 @@ void BackupServerPrepareHash::operator()(void)
 						{
 							h = treehash.finalize();
 						}
+						hashf = NULL;
 						hashoutput_f = NULL;
 					}
 				}
