@@ -25,22 +25,29 @@ set -e
 
 . SYSCONFDIR/mariadbxtrabackup.conf
 
+alias errcho='>&2 echo'
+
+TIME=`date`
+errcho "Starting incremental binary backup of MariaDB at $TIME..."
+
 if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
 then
-	echo "Mariadb incremental temp dir is empty"
+	errcho "Mariadb incremental temp dir is empty"
 	exit 1
 fi
 
-[ ! -e "$MARIADB_TEMP_INCRDIR/last" ] || rm -R "$MARIADB_TEMP_INCRDIR/last"
-mv $MARIADB_TEMP_INCRDIR/last.new $MARIADB_TEMP_INCRDIR/last
+[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
+mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
 
-# Argument one null means main client
-if [ $1 = 0 ]
+COMPACT=""
+if [ "x$MARIADB_BACKUP_INDEXES" = x0 ]
 then
-	! [ -e $MARIADB_TEMP_INCRDIR/last_names ] || rm $MARIADB_TEMP_INCRDIR/last_names
-	mv $MARIADB_TEMP_INCRDIR/blockalign.data.new $MARIADB_TEMP_INCRDIR/blockalign.data
-else
-	CURR_BACKUP=$(cat "$MARIADB_TEMP_INCRDIR/curr_name")
-	echo "$CURR_BACKUP" >> "$MARIADB_TEMP_INCRDIR/last_names"
-	rm "$MARIADB_TEMP_INCRDIR/curr_name"
+	COMPACT="--compact"
 fi
+
+$XTRABACKUP_CMD --backup --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --incremental-basedir="$MARIADB_TEMP_INCRDIR/last" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD" $COMPACT --stream=xbstream
+
+TIME=`date`
+errcho "Backup of MariaDB finished at $TIME."
+
+exit 0

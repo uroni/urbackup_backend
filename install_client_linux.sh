@@ -211,6 +211,7 @@ do
 done
 
 install -c "backup_scripts/list" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/list_incr" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbdump" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresqldump" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresbase" "$PREFIX/share/urbackup/scripts"
@@ -218,6 +219,7 @@ install -c "backup_scripts/postgresqlprebackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresqlpostbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/setup-postgresbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbxtrabackup" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/mariadbxtrabackup_incr" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/restore-mariadbbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbprebackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbpostbackup" "$PREFIX/share/urbackup/scripts"

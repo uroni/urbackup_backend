@@ -55,8 +55,4 @@ echo "Configuring virtual client 'incr'..."
 
 urbackupclientctl set-settings -k virtual_clients -v incr
 
-echo "Adding path to backup..."
-
-urbackupclientctl add-backupdir --keep -d $MARIADB_TEMP_INCRDIR -v incr
-
 echo "Configured MariaDB backup successfully."
