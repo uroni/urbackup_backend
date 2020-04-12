@@ -1,6 +1,6 @@
 ﻿<tr>
 <td><input type="text" class="form-control" value="{domain}" id="domain{n}" /></td>
-<td><input type="text" class="form-control" value="{right}" id="right{n}" onchange="transRights()" onkeyup="transRights()"/></td>
+<td><select id="right{n}" class="form-control" multiple onchange="transRights()" onkeyup="transRights()"></select></td>
 <td><input type="text" class="form-control" value="" id="right_trans{n}" disabled="distabled" /></td>
 <td><input type="button" class="btn btn-xs btn-danger" value="{tDelete domain}" onclick="deleteDomain({userid}, '{username}', {n})" /></td>
 </tr>

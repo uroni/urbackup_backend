@@ -63,7 +63,26 @@ function I(a)
 		return $(a);
 	else
 		return document.getElementById(a);
-}		
+}
+
+function getSelectValues(selector) {
+	let select = document.getElementById(selector);
+
+	if (select === null) {
+		return 'none'
+	}
+
+	let options = Array.from(select.options);
+	let selectedOptions = options
+		.filter((x) => x.selected)
+		.map((x) => x.value);
+	if (options.length === selectedOptions.length) {
+		return 'all'
+	} else if (selectedOptions.length === 0) {
+		return 'none'
+	}
+	return selectedOptions
+}
 	
 function bodyOnLoad() {
 	for ( var i = 0 ; i < onloads.length ; i++ )
@@ -971,6 +990,23 @@ function getCookies() {
 }
 function getCookie(name) {
     return getCookies()[name];
+}
+
+function addClientsToSelect(data, selector, rights, iterator)  {
+	let extra;
+	for (var client in data) {
+		if (data.hasOwnProperty(client)) {
+			extra = '';
+			client = data[client]
+			let right_list = rights[iterator]['right'].split(',');
+
+			if (right_list[0] === 'all' || right_list.includes(String(client['id']))) {
+				extra = 'selected';
+			}
+
+			$(selector).append(`<option ${extra} value="${client['id']}">${client['name']}</option>`);
+		}
+	}
 }
 
 /*
