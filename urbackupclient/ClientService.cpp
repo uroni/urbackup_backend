@@ -1284,11 +1284,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0");
+		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
 	}
 	else
 	{
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
 	}
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert(server_default?1:0)+", ?, ?)");
 	/**

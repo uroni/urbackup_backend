@@ -2144,11 +2144,18 @@ void IndexThread::updateBackupDirsWithAll()
 #ifdef _WIN32
 			if (!normalizeVolume(cvol))
 				continue;
-			else
-				cvol = os_get_final_path(cvol);
-#else
-			cvol = os_get_final_path(cvol);
 #endif
+
+			if (cvol[cvol.size() - 1] == '\\' || cvol[cvol.size() - 1] == '/')
+			{
+				cvol.erase(cvol.size() - 1, 1);
+#ifndef _WIN32
+				if (cvol.empty())
+				{
+					cvol = "/";
+				}
+#endif
+			}
 
 			volumes_norm.push_back(cvol);
 
