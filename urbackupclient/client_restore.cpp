@@ -1152,16 +1152,22 @@ void do_restore(void)
 				Server->Log("Writing GPT table failed. " + os_last_error_str(), LL_ERROR);
 			}
 
-			Server->Log("Writing GPT backup header...");
-			if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
+			if (mbrdata.backup_gpt_header_pos != -1)
 			{
-				Server->Log("Writing GPT backup header failed. " + os_last_error_str(), LL_ERROR);
+				Server->Log("Writing GPT backup header...");
+				if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
+				{
+					Server->Log("Writing GPT backup header failed. " + os_last_error_str(), LL_ERROR);
+				}
 			}
 
-			Server->Log("Writing GPT backup table...");
-			if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
+			if (mbrdata.backup_gpt_table_pos != -1)
 			{
-				Server->Log("Writing backup GPT table failed. " + os_last_error_str(), LL_ERROR);
+				Server->Log("Writing GPT backup table...");
+				if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
+				{
+					Server->Log("Writing backup GPT table failed. " + os_last_error_str(), LL_ERROR);
+				}
 			}
 		}
 
