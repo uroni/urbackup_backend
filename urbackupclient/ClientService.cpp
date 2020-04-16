@@ -366,7 +366,6 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 			if(msg=="exit" || !has_result)
 			{
-				assert(false);
 				if(waitForThread())
 				{
 					do_quit=true;
