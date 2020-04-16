@@ -2552,23 +2552,23 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 			return false;
 		}
 
-		std::string gpt_header = dev->Read(logical_sector_size);
+		std::string primary_gpt_header = dev->Read(logical_sector_size);
 
-		if(gpt_header.size()!=logical_sector_size)
+		if(primary_gpt_header.size()!=logical_sector_size)
 		{
 			errmsg="Error reading GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		if(gpt_header.size()<sizeof(EfiHeader))
+		if(primary_gpt_header.size()<sizeof(EfiHeader))
 		{
 			errmsg="GPT header too small "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		const EfiHeader* gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+		const EfiHeader* gpt_header_s = reinterpret_cast<const EfiHeader*>(primary_gpt_header.data());
 
 		if(gpt_header_s->signature!=gpt_magic)
 		{
@@ -2578,10 +2578,10 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		}
 
 		mbr.addInt64(logical_sector_size);
-		mbr.addString(gpt_header);
+		mbr.addString(primary_gpt_header);
 
-		int64 paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
-		if(!dev->Seek(paritition_table_pos))
+		int64 primary_paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
+		if(!dev->Seek(primary_paritition_table_pos))
 		{
 			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_ERROR);
@@ -2589,83 +2589,93 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		}
 
 		_u32 toread = gpt_header_s->num_parition_entries*gpt_header_s->partition_entry_size;
-		std::string gpt_table = dev->Read(toread);
+		std::string primary_gpt_table = dev->Read(toread);
 
 		Server->Log("GUID partition table size is "+PrettyPrintBytes(toread), LL_DEBUG);
 
-		if(gpt_table.size()!=toread)
+		if(primary_gpt_table.size()!=toread)
 		{
 			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		mbr.addInt64(paritition_table_pos);
-		mbr.addString(gpt_table);
+		mbr.addInt64(primary_paritition_table_pos);
+		mbr.addString(primary_gpt_table);
 
 		// BACKUP HEADER
 		int64 backup_gpt_location = gpt_header_s->backup_lba*logical_sector_size;
+		std::string backup_gpt_header;
 		if(!dev->Seek(backup_gpt_location))
 		{
 			errmsg="Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber)+" at "+convert(backup_gpt_location)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_WARNING);
+
 			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
 		}
 		else
 		{
-			std::string backup_gpt_header = dev->Read(logical_sector_size);
+			backup_gpt_header = dev->Read(logical_sector_size);
 
 			if (backup_gpt_header.size() != logical_sector_size)
 			{
 				errmsg = "Error reading backup GPT header " + convert((int)dev_num.DeviceNumber) + " at " + convert(backup_gpt_location);
 				Server->Log(errmsg, LL_WARNING);
+
 				backup_gpt_location = logical_sector_size;
-			}
-			else
-			{
-				gpt_header = backup_gpt_header;
+				backup_gpt_header = primary_gpt_header;
 			}
 		}
 
-		if(gpt_header.size()<sizeof(EfiHeader))
+		if(backup_gpt_header.size()<sizeof(EfiHeader))
 		{
 			errmsg="Backup GPT header too small "+convert((int)dev_num.DeviceNumber);
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+
+			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
 		}
 
-		const EfiHeader* backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+		const EfiHeader* backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(backup_gpt_header.data());
 
 		if(backup_gpt_header_s->signature!=gpt_magic)
 		{
 			errmsg="Backup GPT magic wrong "+convert((int)dev_num.DeviceNumber);
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+
+			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
+			backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(backup_gpt_header.data());
 		}
 
 		mbr.addInt64(backup_gpt_location);
-		mbr.addString(gpt_header);
+		mbr.addString(backup_gpt_header);
 
-		paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
-		if(!dev->Seek(paritition_table_pos))
+		int64 backup_paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
+		if(!dev->Seek(backup_paritition_table_pos))
 		{
 			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+			
+			backup_paritition_table_pos = primary_paritition_table_pos;
+			dev->Seek(backup_paritition_table_pos);
 		}
 
 		toread = backup_gpt_header_s->num_parition_entries*backup_gpt_header_s->partition_entry_size;
-		gpt_table = dev->Read(toread);
+		std::string backup_gpt_table = dev->Read(toread);
 
-		if(gpt_table.size()!=toread)
+		if(backup_gpt_table.size()!=toread)
 		{
 			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+			
+			backup_paritition_table_pos = primary_paritition_table_pos;
+			backup_gpt_table = primary_gpt_table;
 		}
 
-		mbr.addInt64(paritition_table_pos);
-		mbr.addString(gpt_table);
+		mbr.addInt64(backup_paritition_table_pos);
+		mbr.addString(backup_gpt_table);
 	}
 	
 	mbr.addString(errmsg);
