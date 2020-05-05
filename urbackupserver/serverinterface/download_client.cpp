@@ -222,6 +222,10 @@ ACTION_IMPL(download_client)
 				exe_extension = "sh";
 				basename = "UrBackupUpdateLinux";
 			}
+			else
+			{
+				restore_vals.clear();
+			}
 
 			Server->Log("Verifying "+ basename +"."+exe_extension+" signature...", LL_INFO);
 			if(verify_signature(exe_extension, basename))
