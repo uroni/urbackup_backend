@@ -223,7 +223,8 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::str
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
 	virtual_client(virtual_client), allow_shutdown(true),
-	parent(parent), next_reauth_time(0), reauth_tries(0), restore_token_keepalive_thread(NULL)
+	parent(parent), next_reauth_time(0), reauth_tries(0), restore_token_keepalive_thread(NULL),
+	startup_timestamp(0)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -275,7 +276,7 @@ void ServerChannelThread::run()
 				curr_ident = client_main->getIdentity();
 				tcpstack.reset();
 				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&virtual_client="+EscapeParamString(virtual_client));
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client));
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -586,6 +587,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 				ServerLogger::Log(log_id, msg.substr(second_sep+1), loglevel);
 			}
 		}
+	}
+	else if (next(msg, 0, "STARTUP "))
+	{
+		std::string s_params = msg.substr(8);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+		STARTUP(params);
 	}
 	else
 	{
@@ -1640,6 +1648,21 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
 	}
 	
+}
+
+void ServerChannelThread::STARTUP(str_map& params)
+{
+	int64 curr_timestamp = watoi64(params["timestamp"]);
+
+	if (curr_timestamp != startup_timestamp)
+	{
+		if (startup_timestamp != 0)
+		{
+			client_main->updateCapa();
+			client_main->sendToPipe("WAKEUP");
+		}
+		startup_timestamp = curr_timestamp;
+	}
 }
 
 void ServerChannelThread::reset()

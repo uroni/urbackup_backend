@@ -445,6 +445,8 @@ private:
 
 	int64 idle_timeout;
 
+	static int64 startup_timestamp;
+
 	std::string async_file_list_id;
 };
 

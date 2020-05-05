@@ -1228,15 +1228,20 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		}
 #endif
 
-		g_lock->relock(backup_mutex);
-
 		std::string token;
 
-		std::string s_params=cmd.substr(9);
+		std::string s_params = cmd.substr(9);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
-		int capa=watoi(params["capa"]);
-		token=params["token"];
+		int capa = watoi(params["capa"]);
+		token = params["token"];
+
+		if (params["startup"] == "1")
+		{
+			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));
+		}
+
+		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
 			&make_fileserv, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));

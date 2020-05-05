@@ -102,6 +102,7 @@ SRestoreToken ClientConnector::restore_token;
 std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
 std::deque<std::pair<std::string, std::string> > ClientConnector::finished_async_file_index;
 bool ClientConnector::last_metered = false;
+int64 ClientConnector::startup_timestamp = 0;
 
 
 #ifdef _WIN32
@@ -232,6 +233,8 @@ void ClientConnector::init_mutex(void)
 	}
 
 	service_starttime = Server->getTimeMS();
+
+	startup_timestamp = Server->getTimeSeconds();
 }
 
 void ClientConnector::destroy_mutex(void)
