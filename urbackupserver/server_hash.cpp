@@ -18,6 +18,7 @@
 #include "server_hash.h"
 #include "server_prepare_hash.h"
 #include "server_settings.h"
+#include "server.h"
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
@@ -641,7 +642,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		}
 		if (!b)
 		{
-			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks, &copy);
+			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots || (use_reflink && !BackupServer::canHardlink()), &too_many_hardlinks, &copy);
 		}
 		if(!b)
 		{
