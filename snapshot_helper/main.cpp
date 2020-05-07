@@ -299,7 +299,7 @@ std::string find_zfs_cmd()
 								   "/sbin/zfs", 
 								   "/bin/zfs", 
 								   "/usr/sbin/zfs",
-								   "/usr/bin/zfs" }
+								   "/usr/bin/zfs" };
 								   
 	for(size_t i=0;i<sizeof(zfs_locations)/sizeof(zfs_locations[0]);++i)
 	{
