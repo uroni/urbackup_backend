@@ -2045,8 +2045,8 @@ mdb_page_spill(MDB_cursor *m0, MDB_val *key, MDB_val *data)
 	 * of the dirty pages. Testing revealed this to be a good tradeoff,
 	 * better than 1/2, 1/4, or 1/10.
 	 */
-	if (need < MDB_IDL_UM_MAX / 8)
-		need = MDB_IDL_UM_MAX / 8;
+	if (need < MDB_IDL_DIRTY_MAX / 8)
+		need = MDB_IDL_DIRTY_MAX / 8;
 
 	/* Save the page IDs of all the pages we're flushing */
 	/* flush from the tail forward, this saves a lot of shifting later on. */
@@ -2769,7 +2769,7 @@ mdb_txn_renew0(MDB_txn *txn)
 		txn->mt_child = NULL;
 		txn->mt_loose_pgs = NULL;
 		txn->mt_loose_count = 0;
-		txn->mt_dirty_room = MDB_IDL_UM_MAX;
+		txn->mt_dirty_room = MDB_IDL_DIRTY_MAX;
 		txn->mt_u.dirty_list = env->me_dirty_list;
 		txn->mt_u.dirty_list[0].mid = 0;
 		txn->mt_free_pgs = env->me_free_pgs;
@@ -3569,7 +3569,7 @@ mdb_txn_commit(MDB_txn *txn)
 				}
 			}
 		} else { /* Simplify the above for single-ancestor case */
-			len = MDB_IDL_UM_MAX - txn->mt_dirty_room;
+			len = MDB_IDL_DIRTY_MAX - txn->mt_dirty_room;
 		}
 		/* Merge our dirty list with parent's */
 		y = src[0].mid;
