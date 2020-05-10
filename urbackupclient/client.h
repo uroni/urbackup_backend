@@ -310,6 +310,11 @@ struct SQueueRef
 	}
 };
 
+#ifdef _WIN32
+struct _URBCT_BITMAP_DATA;
+typedef struct _URBCT_BITMAP_DATA* PURBCT_BITMAP_DATA;
+#endif
+
 class IndexThread : public IThread, public IFileServ::IReadErrorCallback, public IDeregisterFileSrvScriptFn
 {
 public:
@@ -461,6 +466,7 @@ private:
 	void removeUnconfirmedVssDirs();
 	std::string expandPath(BSTR pathStr);
 	void removeBackupcomReferences(IVssBackupComponents *backupcom);
+	bool addFileToCbt(const std::string& fpath, const DWORD& blocksize, const PURBCT_BITMAP_DATA& bitmap_data);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
 	std::string get_snapshot_script_location(const std::string& name);
