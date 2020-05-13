@@ -6177,7 +6177,6 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	return true;
 }
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 inline int64 roundDown(int64 numToRound, int64 multiple)
 {
 	return ((numToRound / multiple) * multiple);
@@ -6227,6 +6226,7 @@ bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize
 	}
 }
 
+bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 {
 #ifdef _WIN32
 	ScopedUnlockCbtMutex unlock_cbt_mutex;
