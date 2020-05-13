@@ -814,7 +814,8 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 {
 	std::string image_extension = findextension(path);
 
-	if (image_extension != "raw")
+	if (image_extension != "raw"
+		|| !BackupServer::isImageSnapshotsEnabled())
 	{
 		bool b = true;
 		if (!deleteAndTruncateFile(logid, path))
