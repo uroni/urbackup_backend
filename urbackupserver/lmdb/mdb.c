@@ -2415,6 +2415,13 @@ mdb_page_touch(MDB_cursor *mc)
 	pgno_t	pgno;
 	int rc;
 
+	if (F_ISSET(mp->mp_flags, P_DIRTY)
+		&& !(txn->mt_env->me_flags & MDB_WRITEMAP)
+		&& (char*)mp > txn->mt_env->me_map
+		&& (char*)mp < txn->mt_env->me_map + txn->mt_env->me_mapsize) {
+		return MDB_CORRUPTED;
+	}
+
 	if (!F_ISSET(mp->mp_flags, P_DIRTY)) {
 		if (txn->mt_flags & MDB_TXN_SPILLS) {
 			np = NULL;
