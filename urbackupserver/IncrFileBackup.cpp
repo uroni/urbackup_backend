@@ -324,14 +324,15 @@ bool IncrFileBackup::doFileBackup()
 
 		ServerLogger::Log(logid, clientname+": Creating snapshot...", LL_INFO);
 		std::string errmsg;
-		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single, errmsg)
-			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
+		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single+ ".startup-del", errmsg)
+			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single+ ".startup-del") )
 		{
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
 				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
 
-			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single))
+			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single+".startup-del")
+				|| SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
 			{
 				if (zfs_file)
 				{
@@ -367,16 +368,16 @@ bool IncrFileBackup::doFileBackup()
 					return false;
 				}
 
-				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				if (!os_link_symbolic(mountpoint, backuppath + ".startup-del"))
 				{
 					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 
-				if (!os_rename_file(backuppath + "_new", backuppath))
+				if (!os_rename_file(backuppath + ".startup-del", backuppath))
 				{
-					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + ".startup-del to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
@@ -403,29 +404,50 @@ bool IncrFileBackup::doFileBackup()
 					return false;
 				}
 
-				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				if (!os_link_symbolic(mountpoint, backuppath + ".startup-del"))
 				{
 					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 
-				if (!os_rename_file(backuppath + "_new", backuppath))
+				Server->deleteFile(os_file_prefix(backuppath + ".startup-del" + os_file_sep() + ".hashes" + os_file_sep() + sync_fn));
+				os_sync(backuppath + ".startup-del" + os_file_sep() + ".hashes");
+
+				if (!os_rename_file(backuppath + ".startup-del", backuppath))
 				{
-					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + ".startup-del to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (FileExists(backuppath_hashes + os_file_sep() + sync_fn))
+				{
+					ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 			}
-
-			Server->deleteFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn));
-			os_sync(backuppath_hashes);
-
-			if (FileExists(backuppath_hashes + os_file_sep() + sync_fn))
+			else
 			{
-				ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
-				has_early_error = true;
-				return false;
+				Server->deleteFile(os_file_prefix(backuppath + ".startup-del" + os_file_sep() + ".hashes" + os_file_sep() + sync_fn));
+				os_sync(backuppath + ".startup-del" + os_file_sep() + ".hashes");
+
+				if (FileExists(backuppath_hashes + ".startup-del" + os_file_sep() + sync_fn))
+				{
+					ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_rename_file(backuppath + ".startup-del",
+					backuppath))
+				{
+					ServerLogger::Log(logid, "Error renaming new backup subvolume from " + backuppath + ".startup-del to " + backuppath + ". "
+						+ os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
 			}
 		}
 	}
