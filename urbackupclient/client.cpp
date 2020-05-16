@@ -4105,7 +4105,7 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 			}
 			++j;
 		}
-		else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='[' ) ) )
+		else if(ch=='\\')
 		{
 			if(os_file_sep()=="\\")
 				nep+="\\\\";
