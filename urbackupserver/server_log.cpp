@@ -24,13 +24,14 @@
 #include "../stringtools.h"
 #include <limits.h>
 
-std::map<logid_t, std::vector<SLogEntry> > ServerLogger::logdata;
+std::map<logid_t, SLogData> ServerLogger::logdata;
 IMutex *ServerLogger::mutex=NULL;
 std::map<int, SCircularData> ServerLogger::circular_logdata;
 logid_t ServerLogger::logid_gen;
 std::map<logid_t, int> ServerLogger::logid_client;
 
 const size_t circular_logdata_buffersize=20;
+const size_t max_memory_logdata_size = 2 * 1024 * 1024;
 
 void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 {
@@ -74,16 +75,51 @@ void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr
 	le.loglevel=LogLevel;
 	le.time=times;
 
-	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
+	std::map<logid_t, SLogData>::iterator iter=logdata.find(logid);
+	size_t old_memory_used = 0;
+	size_t new_memory_used;
 	if( iter==logdata.end() )
 	{
-		std::vector<SLogEntry> n;
-		n.push_back(le);
-		logdata.insert(std::pair<logid_t, std::vector<SLogEntry> >(logid, n) );
+		SLogData log_data;
+		log_data.data.push_back(le);
+		log_data.memory_used = logEntrySize(le);
+		new_memory_used = log_data.memory_used;
+		logdata.insert(std::pair<logid_t, SLogData>(logid, log_data) );		
 	}
 	else
 	{
-		iter->second.push_back(le);
+		if (iter->second.memory_used >= max_memory_logdata_size)
+		{
+			return;
+		}
+
+		old_memory_used = iter->second.memory_used;
+		iter->second.memory_used += logEntrySize(le);
+		new_memory_used = iter->second.memory_used;
+		iter->second.data.push_back(le);		
+	}
+
+	if (old_memory_used < max_memory_logdata_size
+		&& new_memory_used >= max_memory_logdata_size)
+	{
+		SLogEntry le;
+		le.data = "Max log size reached (" + PrettyPrintBytes(max_memory_logdata_size) + "). Not logging more.";
+		le.loglevel = LL_WARNING;
+		le.time = Server->getTimeSeconds();
+		logdata[logid].data.push_back(le);
+	}
+}
+
+size_t ServerLogger::logEntrySize(const SLogEntry& entry)
+{
+	//short string optimization on 64bit
+	if (entry.data.size() > 22)
+	{
+		return sizeof(void*) + sizeof(SLogEntry) + entry.data.capacity();
+	}
+	else
+	{
+		return sizeof(void*) + sizeof(SLogEntry);
 	}
 }
 
@@ -149,12 +185,12 @@ std::string ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings, 
 
 	std::string ret;
 
-	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
+	std::map<logid_t, SLogData >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
-		for(size_t i=0;i<iter->second.size();++i)
+		for(size_t i=0;i<iter->second.data.size();++i)
 		{
-			SLogEntry &le=iter->second[i];
+			SLogEntry &le=iter->second.data[i];
 			
 			if(le.loglevel==LL_ERROR)
 				++errors;
@@ -184,12 +220,12 @@ std::string ServerLogger::getWarningLevelTextLogdata(logid_t logid)
 	IScopedLock lock(mutex);
 
 	std::string ret;
-	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
+	std::map<logid_t, SLogData >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
-		for(size_t i=0;i<iter->second.size();++i)
+		for(size_t i=0;i<iter->second.data.size();++i)
 		{
-			SLogEntry &le=iter->second[i];
+			SLogEntry &le=iter->second.data[i];
 			
 			if(le.loglevel>=LL_WARNING)
 			{
@@ -215,10 +251,11 @@ void ServerLogger::reset(logid_t id)
 {
 	IScopedLock lock(mutex);
 
-	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(id);
+	std::map<logid_t, SLogData >::iterator iter=logdata.find(id);
 	if( iter!=logdata.end() )
 	{
-		iter->second.clear();
+		std::vector<SLogEntry>().swap(iter->second.data);
+		iter->second.memory_used = 0;
 	}
 }
 
