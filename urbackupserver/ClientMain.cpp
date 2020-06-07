@@ -1798,6 +1798,7 @@ void ClientMain::sendSettings(void)
 			if (settings_global_ptr->getValue(key, &value))
 			{
 				s_settings += key + "=" + value + "\n";
+				s_settings += key + "_def=" + value + "\n";
 			}
 		}
 		else
