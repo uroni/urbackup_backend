@@ -136,7 +136,7 @@ Go to the webinterface (\url{http://localhost:55414}) and configure the backup s
 \begin{itemize}
   \item It should be easily extendable, which can be done by using a hardware raid, the volume manager LVM or the next generation file systems btrfs and ZFS.
   \item You should compress the file backups. This can be done by using ZFS (\url{http://zfsonlinux.org/}) or btrfs.
-  \item Prefer btrfs, because UrBackup can put each file backup into a separate sub-volume and is able to do a cheap block based deduplication in incremental file backups. See section \ref{subsec_btrfs_setup} on how to setup a btrfs backup storage. You should set a generously low soft file system quota (see section \ref{global_soft_fs_quota})  if using btrfs, because btrfs currently still has issues in out-of-space situations and may require manual intervention.
+  \item Prefer btrfs, because UrBackup can put each file backup into a separate sub-volume and is able to do a cheap block based deduplication in incremental file backups. See section \ref{subsec_btrfs_setup} on how to setup a btrfs backup storage.
 \end{itemize}
 
 \subsubsection{Operating system independent server installation steps}
