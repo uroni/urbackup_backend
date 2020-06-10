@@ -3095,20 +3095,20 @@ function renderMergeSettingSwitch(key)
 
 	if(use&2)
 	{
-		I(key+"_check_group").checked=true;
+		I(key+"_check_home").checked=true;
 	}
 	else
 	{
-		I(key+"_check_group").checked=false;
+		I(key+"_check_home").checked=false;
 	}
 
 	if(use&4)
 	{
-		I(key+"_check_group").checked=true;
+		I(key+"_check_client").checked=true;
 	}
 	else
 	{
-		I(key+"_check_group").checked=false;
+		I(key+"_check_client").checked=false;
 	}
 }
 function renderSettingSwitchAll()
