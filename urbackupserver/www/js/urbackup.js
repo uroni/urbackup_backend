@@ -2804,7 +2804,7 @@ function settingSwitch()
 
 	renderSettingSwitch(key);
 
-	if(!I(key+"_home"))
+	if(!I(key+"_group"))
 	{
 		var val = getVal(g.curr_settings[key]);
 
@@ -2837,7 +2837,7 @@ function settingSwitch()
 	}
 	else
 	{
-		I(key+"_home").value = g.curr_settings[key].value;
+		I(key).value = g.curr_settings[key].value;
 		I(key+"_client").value = g.curr_settings[key].value_client;
 		I(key+"_group").value = g.curr_settings[key].value_group;
 	}
@@ -3039,7 +3039,7 @@ function renderMergeSetting(key)
 	c+='</div>';
 
 	c+='<div class="input-group">';
-	c+='<input type="text" class="form-control" id="'+key+'_home" value="'+escapeHTMLDoubleQuote(val.value)+'"/>';
+	c+='<input type="text" class="form-control" id="'+key+'" value="'+escapeHTMLDoubleQuote(val.value)+'"/>';
 	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-home move_left\'></span> Here" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Here"></input></div>';
 	c+='</div>';
 
