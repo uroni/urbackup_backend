@@ -86,6 +86,7 @@ SStartupStatus startup_status;
 #include "DataplanDb.h"
 #include "Alerts.h"
 #include "Mailer.h"
+#include "../urbackupcommon/settingslist.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -2092,6 +2093,53 @@ bool upgrade59_60()
 	b &= db->Write("ALTER TABLE settings_db.settings ADD use INTEGER");
 	b &= db->Write("UPDATE settings_db.settings SET use="+c_use_value);
 
+	IQuery* q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
+	IQuery* q_update_use = db->Prepare("UPDATE settings_db.settings SET use=? WHERE clientid=?");
+	IQuery* q_update_use_key = db->Prepare("UPDATE settings_db.settings SET use=? WHERE clientid=? AND key=?");
+
+	db_results res_clients = db->Read("SELECT id FROM clients");
+	for (size_t i = 0; i < res_clients.size(); ++i)
+	{
+		int clientid = watoi(res_clients[i]["id"]);
+		
+		q_get->Bind(clientid);
+		q_get->Bind("overwrite");
+		db_results res = q_get->Read();
+		q_get->Reset();
+		if (res.empty() || res[0]["value"] != "true")
+		{
+			q_update_use->Bind(c_use_group);
+			q_update_use->Bind(clientid);
+			q_update_use->Write();
+			q_update_use->Reset();
+		}
+
+		q_get->Bind(clientid);
+		q_get->Bind("client_set_settings");
+		res = q_get->Read();
+		q_get->Reset();
+		if (!res.empty() && res[0]["value"] == "true")
+		{
+			std::vector<std::string> settings = getClientConfigurableSettingsList();
+			for (size_t j = 0; j < settings.size(); ++j)
+			{
+				q_update_use_key->Bind(c_use_value_client);
+				q_update_use_key->Bind(clientid);
+				q_update_use_key->Bind(settings[j]);
+				q_update_use_key->Write();
+				q_update_use_key->Reset();
+			}
+		}
+	}
+
+	IQuery* q_update_use_key_only = db->Prepare("UPDATE settings_db.settings SET use=? WHERE key=?");
+	std::vector<std::string> settings = getLocalizedSettingsList();
+	for (size_t i = 0; i < settings.size(); ++i)
+	{
+		q_update_use_key_only->Bind(c_use_value);
+		q_update_use_key_only->Bind(settings[i]);
+	}
+
 	return b;
 }
 
@@ -2157,13 +2205,13 @@ bool upgrade60_61()
 		q_insert_setting->Reset();
 	}
 
+	IQuery* q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
 	db_results res_clients = db->Read("SELECT id FROM clients");
 	for (size_t i = 0; i < res_clients.size(); ++i)
 	{
 		int clientid = watoi(res_clients[i]["id"]);
 		int r_clientid = clientid;
 		int group_id = 0;
-		IQuery *q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
 		q_get->Bind(clientid);
 		q_get->Bind("group_id");
 		db_results res = q_get->Read();
