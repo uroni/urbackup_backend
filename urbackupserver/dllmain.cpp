@@ -2090,7 +2090,7 @@ bool upgrade59_60()
 
 	b &= db->Write("ALTER TABLE settings_db.settings ADD value_client TEXT");
 	b &= db->Write("ALTER TABLE settings_db.settings ADD use INTEGER");
-	b &= db->Write("UPDATE settings_db.settings SET use=0");
+	b &= db->Write("UPDATE settings_db.settings SET use="+c_use_value);
 
 	return b;
 }
