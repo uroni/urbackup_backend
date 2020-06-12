@@ -198,14 +198,6 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	return true;
 }
 
-#define CHECK_SETOPT(x) { \
-	CURLcode rc = x; \
-	if (rc != CURLE_OK) { \
-		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
-		curl_easy_cleanup(curl); \
-		return false; \
-	} }
-
 std::string UrlFactory::downloadString( const std::string& url, const std::string& http_proxy, std::string *errmsg/*=NULL*/ )
 {
 	if(errmsg!=NULL)
@@ -214,6 +206,14 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 	}
 
 	CURL *curl=curl_easy_init();
+
+#define CHECK_SETOPT(x) { \
+	CURLcode rc = x; \
+	if (rc != CURLE_OK) { \
+		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
+		curl_easy_cleanup(curl); \
+		return std::string(); \
+	} }
 
 	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
 	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1));
@@ -247,8 +247,17 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 	}
 
 	curl_easy_cleanup(curl);
+#undef CHECK_SETOPT
 	return output;
 }
+
+#define CHECK_SETOPT(x) { \
+	CURLcode rc = x; \
+	if (rc != CURLE_OK) { \
+		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
+		curl_easy_cleanup(curl); \
+		return false; \
+	} }
 
 bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::string& http_proxy, std::string *errmsg)
 {
