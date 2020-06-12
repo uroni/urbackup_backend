@@ -91,8 +91,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurld_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Crypt32.lib;zlibd_x86.lib;libcurld_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -107,8 +107,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurld_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Crypt32.lib;zlibd_x86_64.lib;libcurld_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -129,8 +129,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <Version>
       </Version>
-      <AdditionalDependencies>libcurl_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Crypt32.lib;zlib_x86.lib;libcurl_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,8 +149,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurl_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Crypt32.lib;zlib_x86_64.lib;libcurl_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
