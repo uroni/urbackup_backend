@@ -835,6 +835,7 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 		}
 		deleteAndTruncateFile(logid, path + ".cbitmap");
 		deleteAndTruncateFile(logid, path + ".sync");
+		deleteAndTruncateFile(logid, path + ".bitmap");
 
 		if (b && ExtractFileName(ExtractFilePath(path)) != clientname)
 		{
