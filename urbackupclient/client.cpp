@@ -6820,6 +6820,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		}
 
 		char zero_sha[SHA256_DIGEST_SIZE] = {};
+		char zero_sha_read[sizeof(zero_sha)];
 
 		VSSLog("Zeroing image hash data of volume " + volume + "...", LL_DEBUG);
 
@@ -6842,12 +6843,20 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 				{
 					if ((ch & (1 << bit)) > 0)
 					{
-						if (hdat_img->Write(sizeof(shadow_id) + (curr_byte * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+						int64 zero_pos = sizeof(shadow_id) + (curr_byte * 8 + bit) * SHA256_DIGEST_SIZE;
+						if (!hdat_img->PunchHole(zero_pos, sizeof(zero_sha)) )
 						{
-							std::string errmsg;
-							int64 err = os_last_error(errmsg);
-							VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-							return false;
+							bool data_differs = (hdat_img->Read(zero_pos, zero_sha_read, sizeof(zero_sha_read)) != sizeof(zero_sha_read)
+								|| memcmp(zero_sha_read, zero_sha, sizeof(zero_sha_read)) != 0);
+
+								if (data_differs &&
+									hdat_img->Write(zero_pos, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+								{
+									std::string errmsg;
+										int64 err = os_last_error(errmsg);
+										VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+										return false;
+								}
 						}
 
 						changed_bytes += URBT_BLOCKSIZE;
@@ -6896,6 +6905,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
 
 		char zero_chunk[sizeof(_u16) + chunkhash_single_size] = {};
+		char zero_chunk_read[sizeof(zero_chunk)];
 
 		DWORD curr_byte = 0;
 		bool last_bit_set = false;
@@ -6910,12 +6920,20 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 				{
 					if (last_bit_set)
 					{
-						if (hdat_file->Write(((int64)curr_byte * 8) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+						int64 zero_pos = ((int64)curr_byte * 8) * sizeof(zero_chunk);
+						if (!hdat_file->PunchHole(zero_pos, sizeof(zero_chunk)))
 						{
-							std::string errmsg;
-							int64 err = os_last_error(errmsg);
-							VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
-							return false;
+							bool data_differs = (hdat_file->Read(zero_pos, zero_chunk_read, sizeof(zero_chunk_read)) != sizeof(zero_chunk_read)
+								|| memcmp(zero_chunk_read, zero_chunk, sizeof(zero_chunk_read)) != 0);
+
+							if (data_differs &&
+								hdat_file->Write(zero_pos, zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+							{
+								std::string errmsg;
+								int64 err = os_last_error(errmsg);
+								VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
+								return false;
+							}
 						}
 					}
 
@@ -6939,22 +6957,38 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 							if (last_pos > 0)
 							{
 								--last_pos;
-								if (hdat_file->Write(last_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+
+								int64 zero_pos = last_pos * sizeof(zero_chunk);
+								if (!hdat_file->PunchHole(zero_pos, sizeof(zero_chunk)))
 								{
-									std::string errmsg;
-									int64 err = os_last_error(errmsg);
-									VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
-									return false;
+									bool data_differs = (hdat_file->Read(zero_pos, zero_chunk_read, sizeof(zero_chunk_read)) != sizeof(zero_chunk_read)
+										|| memcmp(zero_chunk_read, zero_chunk, sizeof(zero_chunk_read)) != 0);
+
+									if (hdat_file->Write(zero_pos, zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+									{
+										std::string errmsg;
+										int64 err = os_last_error(errmsg);
+										VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
+										return false;
+									}
 								}
 							}
 						}
 
-						if (hdat_file->Write(((int64)curr_byte * 8 + bit) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+						int64 zero_pos = ((int64)curr_byte * 8 + bit) * sizeof(zero_chunk);
+						if (!hdat_file->PunchHole(zero_pos, sizeof(zero_chunk)))
 						{
-							std::string errmsg;
-							int64 err = os_last_error(errmsg);
-							VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-							return false;
+							bool data_differs = (hdat_file->Read(zero_pos, zero_chunk_read, sizeof(zero_chunk_read)) != sizeof(zero_chunk_read)
+								|| memcmp(zero_chunk_read, zero_chunk, sizeof(zero_chunk_read)) != 0);
+
+							if (data_differs &&
+								hdat_file->Write(zero_pos, zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+							{
+								std::string errmsg;
+								int64 err = os_last_error(errmsg);
+								VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+								return false;
+							}
 						}
 						last_zeroed = true;
 					}
