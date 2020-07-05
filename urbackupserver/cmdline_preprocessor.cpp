@@ -230,6 +230,32 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("HTTP_LOCALHOST_ONLY", &val))
+		{
+			val = unquote_value(val);
+
+			if (!val.empty()
+				&& ( val=="1" || 
+					strlower(val)=="true" || 
+					strlower(val)=="yes") )
+			{
+				real_args.push_back("--http_localhost_only");
+				real_args.push_back("1");
+			}
+		}
+		if (settings->getValue("FASTCGI_LOCALHOST_ONLY", &val))
+		{
+			val = unquote_value(val);
+
+			if (!val.empty()
+				&& (val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--fastcgi_localhost_only");
+				real_args.push_back("1");
+			}
+		}
 		if (settings->getValue("LOG_ROTATE_FILESIZE", &val))
 		{
 			val = trim(unquote_value(val));

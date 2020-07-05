@@ -39,4 +39,6 @@ public:
 	virtual std::string encryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations=20000)=0;
 	virtual std::string decryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations=20000)=0;
 	virtual IECDHKeyExchange* createECDHKeyExchange()=0;
+
+	virtual std::string sha1Binary(const std::string& data) = 0;
 };

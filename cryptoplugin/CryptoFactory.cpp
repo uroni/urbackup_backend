@@ -397,3 +397,10 @@ IECDHKeyExchange* CryptoFactory::createECDHKeyExchange()
 {
 	return new ECDHKeyExchange();
 }
+
+std::string CryptoFactory::sha1Binary(const std::string& data)
+{
+	byte sha1_digest[CryptoPP::SHA1::DIGESTSIZE];
+	CryptoPP::SHA1().CalculateDigest(sha1_digest, reinterpret_cast<const byte*>(data.data()), data.size());
+	return std::string(reinterpret_cast<char*>(sha1_digest), sizeof(sha1_digest));
+}

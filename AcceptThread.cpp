@@ -299,6 +299,11 @@ bool CAcceptThread::init_socket_v4(unsigned short port)
 	addr.sin_port = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
+	if (Server->getServerParameter("fastcgi_localhost_only") == "1")
+	{
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	}
+
 	int rc = bind(s, (sockaddr*)&addr, sizeof(addr));
 	if (rc == SOCKET_ERROR)
 	{
@@ -340,6 +345,11 @@ bool CAcceptThread::init_socket_v6(unsigned short port)
 	addr.sin6_family = AF_INET6;
 	addr.sin6_port = htons(port);
 	addr.sin6_addr = in6addr_any;
+
+	if (Server->getServerParameter("fastcgi_localhost_only") == "1")
+	{
+		addr.sin6_addr = in6addr_loopback;
+	}
 
 	int rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
 	if (rc == SOCKET_ERROR)

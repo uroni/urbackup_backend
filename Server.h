@@ -87,6 +87,9 @@ public:
 	virtual void setActionContext(std::string context);
 	virtual void resetActionContext(void);
 
+	virtual void addWebSocket(IWebSocket* websocket);
+	virtual THREAD_ID ExecuteWebSocket(const std::string& name, str_map& GET, str_map& PARAMS, IPipe* pipe, const std::string& endpoint_name);
+
 	virtual int64 getTimeSeconds(void);
 	virtual int64 getTimeMS(void);
 
@@ -233,6 +236,7 @@ private:
 
 	IMutex* log_mutex;
 	IMutex* action_mutex;
+	IMutex* web_socket_mutex;
 	IMutex* requests_mutex;
 	IMutex* outputs_mutex;
 	IMutex* db_mutex;
@@ -248,6 +252,8 @@ private:
 	bool startup_complete;
 
 	std::map< std::string, std::map<std::string, IAction*> > actions;
+
+	std::map<std::string, IWebSocket*> web_sockets;
 
 	std::map<std::string, UNLOADACTIONS> unload_functs;
 	std::vector<HMODULE> unload_handles;

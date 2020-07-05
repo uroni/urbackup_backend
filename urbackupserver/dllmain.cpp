@@ -99,6 +99,7 @@ SStartupStatus startup_status;
 #include "FileMetadataDownloadThread.h"
 #include "../urbackupcommon/chunk_hasher.h"
 #include "LogReport.h"
+#include "WebSocketConnector.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -382,6 +383,8 @@ void detach_other_dbs(IDatabase* db)
 	db->Write("DETACH DATABASE links_db");
 }
 
+#include "../urbackupcommon/WebSocketPipe.h"
+
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -413,6 +416,98 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		exit(0);
 	}
+
+	IPipe* pipe = Server->ConnectStream("192.168.239.142", 8080, 10000);
+
+	pipe->Write("GET / HTTP/1.1\r\n"
+		"Host: localhost\r\n"
+		"Upgrade: websocket\r\n"
+		"Connection: upgrade\r\n"
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+		"Origin: http://localhost\r\n"
+		"Sec-WebSocket-Protocol: urbackup\r\n"
+		"Sec-WebSocket-Version: 13\r\n\r\n");
+
+	char buf[512];
+
+	int64 resp_timeout = 30000;
+
+	int64 starttime = Server->getTimeMS();
+	int state = 0;
+	std::string header;
+	std::string pipe_add;
+	bool has_header = false;
+	do
+	{
+		_u32 read = pipe->Read(buf, sizeof(buf), 10000);
+
+		if (read > 0)
+		{
+			for (_u32 i = 0; i < read; ++i)
+			{
+				char ch = buf[i];
+				if (state == 0)
+				{
+					if (ch == '\r')
+						state = 1;
+					else if (ch == '\n')
+						state = 2;
+					else
+						state = 0;
+				}
+				else if (state == 1)
+				{
+					if (ch == '\n')
+						state = 2;
+					else
+						state = 0;
+				}
+				else if (state == 2)
+				{
+					if (ch == '\r')
+						state = 3;
+					else if (ch == '\n')
+						state = 4;
+					else
+						state = 0;
+				}
+				else if (state == 3)
+				{
+					if (ch == '\n')
+						state = 4;
+					else
+						state = 0;
+				}
+				else if (state == 4)
+				{
+					pipe_add.assign(buf + i, read - i);
+					has_header = true;
+					break;
+				}
+
+				header += ch;
+			}
+		}
+	} while (!has_header &&
+		Server->getTimeMS() - starttime < resp_timeout);
+
+
+	WebSocketPipe ws_pipe(pipe, true, false, pipe_add);
+
+	while (true)
+	{
+		std::string ret;
+		ws_pipe.Read(&ret);
+
+		Server->Log("Read " + ret);
+
+		if (ret == "something")
+		{
+			ws_pipe.Write("other");
+		}
+	}
+
+	exit(0);
 
 	std::string download_file=Server->getServerParameter("download_file");
 	if(!download_file.empty())
@@ -871,7 +966,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				port=settings.getSettings()->internet_server_port;
 			}
-			Server->StartCustomStreamService(new InternetService(backup_server), "InternetService", port);
+			InternetService* internet_service = new InternetService(backup_server);
+			Server->StartCustomStreamService(internet_service, "InternetService", port);
+
+			Server->addWebSocket(new WebSocketConnector(internet_service, "socket"));
+			Server->addWebSocket(new WebSocketConnector(internet_service, ""));
 		}
 	}
 

@@ -29,6 +29,7 @@
 #include "HTTPFile.h"
 #include "HTTPAction.h"
 #include "HTTPProxy.h"
+#include "HTTPSocket.h"
 
 extern CHTTPService* http_service;
 
@@ -118,7 +119,7 @@ bool CHTTPClient::Run(IRunOtherCallback* run_other)
 {
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
 	{
-		if( Server->getThreadPool()->isRunning(request_ticket)==false )
+		if( !Server->getThreadPool()->isRunning(request_ticket) )
 		{
 			//Server->Log("Connection: "+http_params["CONNECTION"], LL_DEBUG);
 			/*if( strlower(http_params["CONNECTION"])=="close" )
@@ -507,7 +508,18 @@ bool CHTTPClient::processRequest(void)
 		std::string name;
 		std::string context;
 		size_t pstart;
-		if( pl->size()>1 && (*pl)[0]=='x' && (*pl)[1]=='?' )
+		str_map::iterator upgrade_param = http_params.find("UPGRADE");
+		if (upgrade_param != http_params.end()
+			&& upgrade_param->second == "websocket")
+		{
+			std::string name = getuntil("?", *pl);
+			std::string gparams = getafter("?", *pl);
+			CHTTPSocket* socket_handler = new CHTTPSocket(name, gparams, http_params, pipe, endpoint);
+			request_ticket = Server->getThreadPool()->execute(socket_handler, "http websocket");
+			request_handler = socket_handler;
+			return true;
+		}
+		else if( pl->size()>1 && (*pl)[0]=='x' && (*pl)[1]=='?' )
 		{
 			parseAction(*pl, name, context);
 		}
@@ -538,7 +550,7 @@ bool CHTTPClient::processRequest(void)
 			rp = greplace("\\", "_", rp);
 #endif
 			CHTTPFile *file_handler=new CHTTPFile(http_service->getRoot()+rp, pipe);
-			request_ticket=Server->getThreadPool()->execute(file_handler);
+			request_ticket=Server->getThreadPool()->execute(file_handler, "http file request");
 			request_handler=file_handler;
 			return true;
 		}
@@ -573,9 +585,7 @@ void CHTTPClient::WaitForRemove(void)
 {
 	if(request_ticket!=ILLEGAL_THREADPOOL_TICKET)
 	{
-		std::vector<THREADPOOL_TICKET> tmp;
-		tmp.push_back(request_ticket);
-		Server->getThreadPool()->waitFor(tmp);
+		Server->getThreadPool()->waitFor(request_ticket);
 	}
 }
 

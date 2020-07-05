@@ -343,6 +343,7 @@
     <ClInclude Include="Interface\DatabaseInt.h" />
     <ClInclude Include="Interface\PipeThrottler.h" />
     <ClInclude Include="Interface\SharedMutex.h" />
+    <ClInclude Include="Interface\WebSocket.h" />
     <ClInclude Include="libs.h" />
     <ClInclude Include="LoadbalancerClient.h" />
     <ClInclude Include="LookupService.h" />

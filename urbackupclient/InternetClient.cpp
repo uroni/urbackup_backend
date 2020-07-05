@@ -34,6 +34,7 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
+#include "../urbackupcommon/WebSocketPipe.h"
 
 #include "../stringtools.h"
 
@@ -1006,7 +1007,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			std::string password = getafter(":", udata);
 			std::string adata = username + ":" + password;
 
-			authorization = "Proxy-Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
+			authorization = "Proxy-Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), static_cast<unsigned int>(adata.size()))+"\r\n";
 		}
 
 		unsigned short port = ssl ? 443 : 80;
@@ -1144,6 +1145,204 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 
 		Server->destroy(cs);
 		return NULL;
+	}
+	else if(next(selected_server_settings.hostname, 0, "ws://") ||
+		next(selected_server_settings.hostname, 0, "wss://") )
+	{
+		std::string hostname;
+		bool ssl;
+		if (next(selected_server_settings.hostname, 0, "ws://"))
+		{
+			ssl = false;
+			hostname = selected_server_settings.hostname.substr(5);
+		}
+		else
+		{
+			ssl = true;
+			hostname = selected_server_settings.hostname.substr(6);
+		}
+
+		std::string authorization;
+		if (hostname.find("@") != std::string::npos)
+		{
+			std::string udata = getuntil("@", hostname);
+			hostname = getafter("@", hostname);
+
+			std::string username = getuntil(":", udata);
+			std::string password = getafter(":", udata);
+			std::string adata = username + ":" + password;
+
+			authorization = "Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), static_cast<unsigned int>(adata.size())) + "\r\n";
+		}
+
+		unsigned short port = ssl ? 443 : 80;
+		std::string loc;
+		if (hostname.find(":") != std::string::npos)
+		{
+			std::string port_str = getafter(":", hostname);
+			if(port_str.find("/")!=std::string::npos)
+			{
+				port = static_cast<unsigned short>(watoi(getuntil("/", port_str)));
+				loc = getafter("/", port_str);
+			}
+			else
+			{
+				port = static_cast<unsigned short>(watoi(port_str));
+			}
+			
+			hostname = getuntil(":", hostname);
+		}
+
+		if (loc.empty() || 
+			loc[0] != '/')
+			loc = "/" + loc;
+
+		IPipe* cs;
+		if (ssl)
+			cs = Server->ConnectSslStream(hostname, port, 10000);
+		else
+			cs = Server->ConnectStream(hostname, port, 10000);
+
+		if (cs == NULL)
+			return cs;
+
+		unsigned char websocket_key[16];
+		Server->secureRandomFill(reinterpret_cast<char*>(websocket_key), sizeof(websocket_key));
+
+		std::string websocket_key_str = base64_encode(websocket_key, sizeof(websocket_key));
+
+		cs->Write(std::string("GET ")+loc+" HTTP/1.1\r\n"
+			"Host: "+hostname+"\r\n"
+			"Upgrade: websocket\r\n"
+			"Connection: upgrade\r\n"
+			"Sec-WebSocket-Key: "+ websocket_key_str+"\r\n"
+			"Sec-WebSocket-Protocol: urbackup\r\n"
+			"Sec-WebSocket-Version: 13\r\n\r\n");
+
+		char buf[512];
+
+		int64 resp_timeout = 30000;
+
+		int64 starttime = Server->getTimeMS();
+		int state = 0;
+		std::string header;
+		std::string pipe_add;
+		bool has_header = false;
+		do
+		{
+			size_t read = cs->Read(buf, sizeof(buf), 10000);
+
+			if (read > 0)
+			{
+				for (size_t i = 0; i < read; ++i)
+				{
+					char ch = buf[i];
+					if (state == 0)
+					{
+						if (ch == '\r')
+							state = 1;
+						else if (ch == '\n')
+							state = 2;
+						else
+							state = 0;
+					}
+					else if (state == 1)
+					{
+						if (ch == '\n')
+							state = 2;
+						else
+							state = 0;
+					}
+					else if (state == 2)
+					{
+						if (ch == '\r')
+							state = 3;
+						else if (ch == '\n')
+							state = 4;
+						else
+							state = 0;
+					}
+					else if (state == 3)
+					{
+						if (ch == '\n')
+							state = 4;
+						else
+							state = 0;
+					}
+					else if (state == 4)
+					{
+						pipe_add.assign(buf + i, read - i);
+						has_header = true;
+						break;
+					}
+
+					header += ch;
+				}
+			}
+		} while (!has_header &&
+			Server->getTimeMS() - starttime < resp_timeout);
+
+
+		if (!has_header)
+		{
+			Server->Log("Timeout connecting via web socket");
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		if (!next(header, 0, "HTTP/1.1 101"))
+		{
+			Server->Log("Error connecting via web socket. Response: " + header, LL_ERROR);
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		std::vector<std::string> headers;
+		Tokenize(getafter("\n", header), headers, "\n");
+		str_map header_map;
+		for (size_t i = 0; i < headers.size(); ++i)
+		{
+			std::string key = strlower(getuntil(":", headers[i]));
+			header_map[key] = trim(getafter(":", headers[i]));
+		}
+
+		if (header_map["sec-websocket-protocol"] != "urbackup")
+		{
+			Server->Log("Unknown web socket protocol \"" + header_map["sec-websocket-protocol"] + "\"", LL_ERROR);
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		if (header_map["upgrade"] != "websocket")
+		{
+			Server->Log("Unknown web socket upgrade value \"" + header_map["upgrade"] + "\"", LL_ERROR);
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		if (header_map["connection"] != "upgrade")
+		{
+			Server->Log("Unknown web socket connection value \"" + header_map["connection"] + "\"", LL_ERROR);
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		std::string accept_key = header_map["sec-websocket-accept"];
+
+		std::string expected_accept_key = websocket_key_str + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+		std::string sha_bin = crypto_fak->sha1Binary(expected_accept_key);
+
+		expected_accept_key = base64_encode(reinterpret_cast<const unsigned char*>(sha_bin.data()), static_cast<unsigned int>(sha_bin.size()));
+
+		if (accept_key != expected_accept_key)
+		{
+			Server->Log("Web socket accept key wrong. Expected " + expected_accept_key + " got "+accept_key, LL_ERROR);
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		return new WebSocketPipe(cs, true, false, pipe_add, true);
 	}
 #endif
 	
