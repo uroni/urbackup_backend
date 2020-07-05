@@ -116,6 +116,7 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 	upath+=os_file_sep();
 
     errno=0;
+	std::string last_err_fn;
     while ((dirp = readdir64(dp)) != NULL)
 	{
 		SFile f;
@@ -179,8 +180,18 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			{
 				*has_error=true;
 			}
-			errno=0;
-			continue;
+			if(!last_err_fn.empty() &&
+				last_err_fn==dirp->d_name)
+			{
+				Log("Returned again after error \""+upath+dirp->d_name+"\". Stopping directory iteration.", LL_ERROR);
+				break;
+			}
+			else
+			{
+				errno=0;
+				last_err_fn = dirp->d_name;
+				continue;
+			}
 		}
 		tmp.push_back(f);
 		errno=0;
