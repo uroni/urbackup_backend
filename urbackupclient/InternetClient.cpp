@@ -1192,6 +1192,11 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			
 			hostname = getuntil(":", hostname);
 		}
+		else if (hostname.find("/") != std::string::npos)
+		{
+			loc = getafter("/", hostname);
+			hostname = getuntil("/", hostname);
+		}
 
 		if (loc.empty() || 
 			loc[0] != '/')
@@ -1214,7 +1219,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 		cs->Write(std::string("GET ")+loc+" HTTP/1.1\r\n"
 			"Host: "+hostname+"\r\n"
 			"Upgrade: websocket\r\n"
-			"Connection: upgrade\r\n"
+			"Connection: Upgrade\r\n"
 			"Sec-WebSocket-Key: "+ websocket_key_str+"\r\n"
 			"Sec-WebSocket-Protocol: urbackup\r\n"
 			"Sec-WebSocket-Version: 13\r\n\r\n");
@@ -1278,6 +1283,11 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 
 					header += ch;
 				}
+
+				if (state == 4)
+				{
+					has_header = true;
+				}
 			}
 		} while (!has_header &&
 			Server->getTimeMS() - starttime < resp_timeout);
@@ -1320,7 +1330,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			return NULL;
 		}
 
-		if (header_map["connection"] != "upgrade")
+		if (strlower(header_map["connection"]) != "upgrade")
 		{
 			Server->Log("Unknown web socket connection value \"" + header_map["connection"] + "\"", LL_ERROR);
 			Server->destroy(cs);

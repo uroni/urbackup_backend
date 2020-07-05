@@ -40,6 +40,7 @@ const int HTTP_STATE_CONTENT=3;
 const int HTTP_STATE_WAIT_FOR_THREAD=4;
 const int HTTP_STATE_KEEPALIVE=5;
 const int HTTP_STATE_DONE=6;
+const int HTTP_STATE_WEBSOCKET = 7;
 
 const int HTTP_MAX_KEEPALIVE=15000;
 
@@ -67,6 +68,16 @@ void CHTTPClient::init_mutex(void)
 void CHTTPClient::destroy_mutex(void)
 {
 	Server->destroy(share_mutex);
+}
+
+bool CHTTPClient::wantReceive(void)
+{
+	return http_g_state != HTTP_STATE_WEBSOCKET;
+}
+
+bool CHTTPClient::closeSocket(void)
+{
+	return http_g_state != HTTP_STATE_WEBSOCKET;
 }
 
 void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
@@ -99,7 +110,9 @@ void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
 			{
 				if(	processRequest() )
 				{
-					http_g_state=HTTP_STATE_WAIT_FOR_THREAD;
+					if (http_g_state != HTTP_STATE_WEBSOCKET)
+						http_g_state = HTTP_STATE_WAIT_FOR_THREAD;
+					
 				}
 				else
 					do_quit=true;
@@ -117,6 +130,11 @@ void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
 
 bool CHTTPClient::Run(IRunOtherCallback* run_other)
 {
+	if (http_g_state == HTTP_STATE_WEBSOCKET)
+	{
+		return false;
+	}
+
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
 	{
 		if( !Server->getThreadPool()->isRunning(request_ticket) )
@@ -517,6 +535,7 @@ bool CHTTPClient::processRequest(void)
 			CHTTPSocket* socket_handler = new CHTTPSocket(name, gparams, http_params, pipe, endpoint);
 			request_ticket = Server->getThreadPool()->execute(socket_handler, "http websocket");
 			request_handler = socket_handler;
+			http_g_state = HTTP_STATE_WEBSOCKET;
 			return true;
 		}
 		else if( pl->size()>1 && (*pl)[0]=='x' && (*pl)[1]=='?' )

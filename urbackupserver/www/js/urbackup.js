@@ -4326,7 +4326,7 @@ function getInternetSettings()
 	if(!I('internet_server_port')) return "";
 	if(I('internet_server_port').value.indexOf(";")==-1 
 		&& !validate_text_int(["internet_server_port"]) ) return null;
-	if(!validate_text_regex([{ id: "internet_server", regexp: /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)/i }])) return null;
+	if(!validate_text_regex([{ id: "internet_server", regexp: /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i }])) return null;
 	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)

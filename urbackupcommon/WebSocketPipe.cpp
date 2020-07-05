@@ -1,23 +1,26 @@
 #include "WebSocketPipe.h"
-#include "WebSocketPipe.h"
 #include "../Interface/Server.h"
 #include <algorithm>
 #include <assert.h>
+#include "../stringtools.h"
 
-inline WebSocketPipe::WebSocketPipe(IPipe* pipe, bool mask_writes, bool expect_read_mask, std::string pipe_add, bool destroy_pipe)
+WebSocketPipe::WebSocketPipe(IPipe* pipe, const bool mask_writes, const bool expect_read_mask, std::string pipe_add, bool destroy_pipe)
 	: pipe(pipe), mask_writes(mask_writes), expect_read_mask(expect_read_mask), has_error(false),
-	pipe_add(pipe_add), read_state(EReadState_Header1), masking_key(0), destroy_pipe(destroy_pipe),
+	pipe_add(pipe_add), read_state(EReadState_Header1), destroy_pipe(destroy_pipe),
 	read_mutex(Server->createMutex()), write_mutex(Server->createMutex())
 {
+	memset(masking_key, 0, sizeof(masking_key));
+
 	if (mask_writes)
 	{
+		char zero_mask[4] = {};
 		/*
 		* Just use a fixed non-random masking key. We are not a browser, so the security implications
 		* are a bit different
 		*/
-		while (masking_key == 0)
+		while (memcmp(zero_mask, masking_key, sizeof(masking_key)) == 0)
 		{
-			masking_key = Server->getRandomNumber();
+			Server->randomFill(masking_key, sizeof(masking_key));
 		}
 	}
 }
@@ -149,11 +152,11 @@ bool WebSocketPipe::Write(const char* buffer, size_t bsize, int timeoutms, bool 
 
 		memcpy(new_buf.data(), header, header_pos);
 
-		char* mask_ptr = reinterpret_cast<char*>(&masking_key);
+		Server->Log("Masking key: " + convert(*((unsigned int*)masking_key)));
 		for (size_t i = 0; i < bsize; ++i)
 		{
 			size_t j = i % 4;
-			new_buf[header_pos + i] = buffer[i] ^ mask_ptr[j];
+			new_buf[header_pos + i] = buffer[i] ^ masking_key[j];
 		}
 
 		return pipe->Write(new_buf.data(), header_pos + bsize, timeoutms, flush);
@@ -227,6 +230,18 @@ size_t WebSocketPipe::Read(std::string* ret, int timeoutms)
 	return 0;
 }
 
+bool WebSocketPipe::isReadable(int timeoutms)
+{
+	{
+		IScopedLock lock(read_mutex.get());
+
+		if (!pipe_add.empty())
+			return true;
+	}
+
+	return pipe->isReadable(timeoutms);
+}
+
 size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, size_t* consumed_out)
 {
 	size_t consumed = 0;
@@ -284,10 +299,11 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 					read_state = EReadState_HeaderMask;
 					remaining_size_bytes = 4;
 					consumed_size_bytes = 0;
+					curr_has_read_mask = true;
 				}
 				else
 				{
-					read_mask = 0;
+					curr_has_read_mask = false;
 					read_state = EReadState_Body;
 				}
 			}
@@ -295,12 +311,14 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 			{
 				remaining_size_bytes = 2;
 				consumed_size_bytes = 0;
+				payload_size = 0;
 				read_state = EReadState_HeaderSize2;
 			}
 			else if (tmp_payload_size == 127)
 			{
 				remaining_size_bytes = 8;
 				consumed_size_bytes = 0;
+				payload_size = 0;
 				read_state = EReadState_HeaderSize2;
 			}
 			else
@@ -324,12 +342,13 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 				if (has_read_mask())
 				{
 					read_state = EReadState_HeaderMask;
+					curr_has_read_mask = true;
 					remaining_size_bytes = 4;
 					consumed_size_bytes = 0;
 				}
 				else
 				{
-					read_mask = 0;
+					curr_has_read_mask = false;
 					read_state = EReadState_Body;
 				}
 			}
@@ -340,7 +359,7 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 			++consumed;
 			--remaining_size_bytes;
 
-			read_mask |= mask_byte << (consumed_size_bytes * 8);
+			read_mask[consumed_size_bytes] = mask_byte;
 			++consumed_size_bytes;
 
 			if (remaining_size_bytes == 0)
@@ -363,11 +382,11 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 			}
 			else if (out_off == consumed)
 			{
-				if (read_mask != 0)
+				if (curr_has_read_mask)
 				{
 					for (size_t i = 0; i < toread; ++i)
 					{
-						buffer[out_off] = buffer[out_off] ^ reinterpret_cast<char*>(&read_mask)[read_mask_idx % 4];
+						buffer[out_off] = buffer[out_off] ^ read_mask[read_mask_idx % 4];
 						++read_mask_idx;
 						++out_off;
 					}
@@ -382,13 +401,14 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 			else
 			{
 				assert(out_off < consumed);
-				if (read_mask != 0)
+				if (curr_has_read_mask)
 				{
 					for (size_t i = 0; i < toread; ++i)
 					{
-						buffer[out_off] = buffer[consumed] ^ reinterpret_cast<char*>(&read_mask)[read_mask_idx % 4];
+						buffer[out_off] = buffer[consumed] ^ read_mask[read_mask_idx % 4];
 						++read_mask_idx;
 						++out_off;
+						++consumed;
 					}
 				}
 				else
@@ -420,7 +440,7 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 					char msg[2];
 					unsigned char opcode = 10; //pong
 					msg[0] = opcode | (1 << 7);
-					msg[1] = (1<<7);
+					msg[1] = static_cast<char>(1<<7);
 					if (!pipe->Write(msg, 2, write_timeoutms, true))
 					{
 						has_error = true;

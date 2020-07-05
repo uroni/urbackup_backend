@@ -16,7 +16,7 @@ class WebSocketPipe : public IPipe
 	};
 
 public:
-	WebSocketPipe(IPipe* pipe, bool mask_writes, bool expect_read_mask, std::string pipe_add, bool destroy_pipe);
+	WebSocketPipe(IPipe* pipe, const bool mask_writes, const bool expect_read_mask, std::string pipe_add, bool destroy_pipe);
 	~WebSocketPipe();
 
 	virtual size_t Read(char* buffer, size_t bsize, int timeoutms = -1);
@@ -35,12 +35,9 @@ public:
 	}
 	virtual bool isWritable(int timeoutms = 0)
 	{
-		return pipe->isWritable();
+		return pipe->isWritable(timeoutms);
 	}
-	virtual bool isReadable(int timeoutms = 0)
-	{
-		return pipe->isReadable();
-	}
+	virtual bool isReadable(int timeoutms = 0);
 	virtual bool hasError(void)
 	{
 		return has_error || pipe->hasError();
@@ -88,22 +85,22 @@ private:
 
 	size_t consume(char* buffer, size_t bsize, int write_timeoutms, size_t* consumed_out);
 
-	bool mask_writes;
-	bool expect_read_mask;
+	const bool mask_writes;
+	const bool expect_read_mask;
 	IPipe* pipe;
 
 	EReadState read_state;
-	std::vector<char> read_buffer;
 	unsigned char header_bits1;
 	unsigned char header_bits2;
 	uint64 payload_size;
 	size_t remaining_size_bytes;
 	size_t consumed_size_bytes;
-	unsigned int read_mask;
+	char read_mask[4];
+	bool curr_has_read_mask;
 	unsigned int read_mask_idx;
 	bool has_error;
 	std::string pipe_add;
-	unsigned int masking_key;
+	char masking_key[4];
 	bool destroy_pipe;
 
 	std::auto_ptr<IMutex> read_mutex;

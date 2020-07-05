@@ -14,19 +14,14 @@ void CHTTPSocket::operator()()
 	ParseParamStrHttp(gparams, &GET, true);
 
 	THREAD_ID tid = 0;
-	try
-	{
-		tid = Server->ExecuteWebSocket(name, GET, RawPARAMS, output, endpoint_name);
-	}
-	catch (...)
-	{
-		return;
-	}
+	tid = Server->ExecuteWebSocket(name, GET, RawPARAMS, output, endpoint_name);
+	
 
 	if (tid == ILLEGAL_THREAD_ID)
 	{
 		std::string error = "Error: Unknown web socket [" + EscapeHTML(name) + "]";
 		Server->Log(error, LL_WARNING);
 		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n" + error);
+		delete output;
 	}
 }

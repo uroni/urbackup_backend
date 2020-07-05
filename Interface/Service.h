@@ -1,3 +1,5 @@
+#pragma once
+
 #include "CustomClient.h"
 #include "Object.h"
 
