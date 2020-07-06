@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "../stringtools.h"
-#include <memory>
+#include <memory.h>
 
 WebSocketPipe::WebSocketPipe(IPipe* pipe, const bool mask_writes, const bool expect_read_mask, std::string pipe_add, bool destroy_pipe)
 	: pipe(pipe), mask_writes(mask_writes), expect_read_mask(expect_read_mask), has_error(false),
