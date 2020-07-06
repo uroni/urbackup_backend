@@ -177,7 +177,7 @@ AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
 
 if test "x$with_openssl" != "xtrue"
 then
-        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (https proxy support)])
+        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (web socket/https proxy support)])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
