@@ -9,7 +9,7 @@ DOWNLOAD_CRYPTOPP=1
 cd cryptoplugin/src
 if [ -e $CRYPTOPP_NAME ]
 then
-	SHASUM=`sha256sum $CRYPTOPP_NAME | cut -d" " -f1`
+	SHASUM=`shasum -a 256 $CRYPTOPP_NAME | cut -d" " -f1`
 	if [ $SHASUM = $EXPECTED_SHA256 ]
 	then
 		DOWNLOAD_CRYPTOPP=0
@@ -19,7 +19,7 @@ fi
 if [ $DOWNLOAD_CRYPTOPP = 1 ]
 then
 	wget http://buildserver.urbackup.org/$CRYPTOPP_NAME -O $CRYPTOPP_NAME
-	SHASUM=`sha256sum $CRYPTOPP_NAME | cut -d" " -f1`
+	SHASUM=`shasum -a 256 $CRYPTOPP_NAME | cut -d" " -f1`
 	if [ $SHASUM != $EXPECTED_SHA256 ]
 	then
 		echo "SHASUM of $CRYPTOPP_NAME is wrong: got $SHASUM expected $EXPECTED_SHA256"
