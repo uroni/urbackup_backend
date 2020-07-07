@@ -8,3 +8,23 @@ if /bin/launchctl list "org.urbackup.client.backend" &> /dev/null; then
 fi
 
 killall urbackupclientgui || true
+
+# Move var and etc folders to new location for macOS
+
+if test -e "$2/Contents/MacOS/var"
+then
+	if test -e "/Library/Application Support/UrBackup Client/var"
+	then
+		mv "/Library/Application Support/UrBackup Client/var" "/Library/Application Support/UrBackup Client/var_$(date "+%Y-%m-%d_%H%M%S")"
+	fi
+	mv "$2/Contents/MacOS/var" "/Library/Application Support/UrBackup Client/"
+fi
+
+if test -e "$2/Contents/MacOS/etc"
+then
+	if test -e "/Library/Application Support/UrBackup Client/etc"
+	then
+		mv "/Library/Application Support/UrBackup Client/etc" "/Library/Application Support/UrBackup Client/etc_$(date "+%Y-%m-%d_%H%M%S")"
+	fi
+	mv "$2/Contents/MacOS/etc" "/Library/Application Support/UrBackup Client/"
+fi
