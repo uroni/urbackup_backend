@@ -2,7 +2,7 @@
 
 Please see the website at https://www.urbackup.org for more information, wiki, forums and the issue tracker.
 
-### Building on Linux/MacOS
+### Building on Linux
 
 Use
 
@@ -27,6 +27,12 @@ autoreconf --install
 ./configure
 make -j8
 ```
+
+
+### Building on macOS
+
+See the separate `readme-macos.md` for building instructions for macOS.
+
 
 ### Building on Windows
 
