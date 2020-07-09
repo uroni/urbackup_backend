@@ -23,6 +23,10 @@
 #define DLLEXPORT extern "C"
 #endif
 
+#ifdef __linux__
+#include <linux/fs.h>
+#endif
+
 #include <vector>
 
 #ifndef STATIC_PLUGIN
@@ -149,6 +153,22 @@ namespace
 			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
 			exit(1);
 		}
+
+#ifdef FS_IOC_FSSETXATTR
+		fsxattr attr = {};
+#ifdef FS_XFLAG_IMMUTABLE
+		attr.fsx_xflags |= FS_XFLAG_IMMUTABLE;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#ifdef FS_XFLAG_NODUMP
+		attr.fsx_xflags |= FS_XFLAG_NODUMP;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#ifdef FS_XFLAG_NODEFRAG
+		attr.fsx_xflags |= FS_XFLAG_NODEFRAG;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#endif
 
 		std::string file_dm_block_dev = Server->getServerParameter("file-dm-block-dev");
 
