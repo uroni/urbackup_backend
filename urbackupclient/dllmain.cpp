@@ -129,6 +129,63 @@ const std::string new_file="urbackup/new.txt";
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
 
+namespace
+{
+	int64 roundUp(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound + multiple - 1) / multiple) * multiple;
+	}
+
+	int64 roundDown(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound / multiple) * multiple);
+	}
+
+	void do_print_dm_file_extents(const std::string& fn)
+	{
+		std::auto_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
+		if (f.get() == nullptr)
+		{
+			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
+			exit(1);
+		}
+
+		std::string file_dm_block_dev = Server->getServerParameter("file-dm-block-dev");
+
+
+		int64 lin_off = 0;
+		int64 pos = 0;
+		bool more_data = true;
+		int64 dm_block_size = 1 * 1024 * 1024;
+		while (more_data)
+		{
+			std::vector<IFsFile::SFileExtent> exts = f->getFileExtents(pos, 0, more_data);
+			for (size_t i = 0; i < exts.size(); ++i)
+			{
+				int64 start = roundUp(exts[i].volume_offset, dm_block_size);
+				int64 end = roundDown(exts[i].volume_offset + exts[i].size, dm_block_size);
+
+				if (end - start >= dm_block_size)
+				{
+					int64 bcount = (end - start) / 512;
+					std::cout << lin_off << " " << bcount << " linear " << file_dm_block_dev << " " << (start / 512) << std::endl;
+					lin_off += bcount;
+				}
+
+				pos = (std::max)(exts[i].offset + exts[i].size, pos);
+			}
+		}
+
+		if ((lin_off * 512) < (f->Size() * 3) / 4)
+		{
+			std::cerr << "ERROR: Only " << PrettyPrintBytes(lin_off * 512) << " of " << PrettyPrintBytes(f->Size()) << " was usable" << std::endl;
+			exit(2);
+		}
+
+		exit(0);
+	}
+}
+
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -157,6 +214,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("SSL_OUT: " + ret);
 		}
+		return;
+	}
+
+	std::string print_dm_file_extents = Server->getServerParameter("print-dm-file-extents");
+	if (!print_dm_file_extents.empty())
+	{
+		do_print_dm_file_extents(print_dm_file_extents);
 		return;
 	}
 
