@@ -12,6 +12,7 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 	if (PARAMS["CONNECTION"] != "Upgrade")
 	{
 		pipe->Write("HTTP/1.1 500 Expecting Connection: Upgrade\r\nConnection: Close\r\n\r\n");
+		delete pipe;
 		return;
 	}
 
@@ -25,12 +26,14 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 	if (std::find(protocols.begin(), protocols.end(), "urbackup") == protocols.end())
 	{
 		pipe->Write("HTTP/1.1 500 urbackup protocol not supported\r\nConnection: Close\r\n\r\n");
+		delete pipe;
 		return;
 	}
 
 	if (PARAMS["SEC-WEBSOCKET-VERSION"] != "13")
 	{
 		pipe->Write("HTTP/1.1 500 websocket protocol version not supported\r\nConnection: Close\r\n\r\n");
+		delete pipe;
 		return;
 	}
 
@@ -49,7 +52,7 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 
 	str_map::iterator it_forwarded_for = PARAMS.find("X-FORWARDED-FOR");
 
-	WebSocketPipe* ws_pipe = new WebSocketPipe(pipe, false, true, std::string(), false);
+	WebSocketPipe* ws_pipe = new WebSocketPipe(pipe, false, true, std::string(), true);
 
 	client->Init(tid, ws_pipe, it_forwarded_for != PARAMS.end() ? it_forwarded_for->second : endpoint_name);
 
@@ -86,7 +89,6 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 	if (want_destory_pipe)
 	{
 		delete ws_pipe;
-		delete pipe;
 	}
 }
 
