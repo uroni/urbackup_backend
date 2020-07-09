@@ -274,9 +274,11 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(full_path), MODE_READ_SEQUENTIAL_BACKUP));
 
 	SFileAndHash fandhash;
+	std::string ph_action;
 	if (f.get() != NULL && f->Size() < link_file_min_size)
 	{
 		f.reset();
+		ph_action = " (Not hashing. File too small)";
 	}
 	else if (sha_version == 256)
 	{
@@ -291,6 +293,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		{
 			fandhash.hash = hash_256.finalize();
 		}
+		ph_action = " (Calculated sha256 hash)";
 	}
 	else if (sha_version == 528)
 	{
@@ -317,6 +320,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 				+ "\". Real hash: "+ base64_encode_dash(other_hash), LL_ERROR);
 		}
 #endif
+		ph_action = " (Calculated tree hash v1)";
 	}
 	else
 	{
@@ -331,6 +335,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		{
 			fandhash.hash = hash_512.finalize();
 		}
+		ph_action = " (Calculated sha512 hash)";
 	}
 
 	CWData wdata;
@@ -342,7 +347,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	*reinterpret_cast<_u16*>(wdata.getDataPtr()) = little_endian(static_cast<_u16>(wdata.getDataSize() - sizeof(_u16)));
 	curr_files.push_back(fandhash);
 
-	Server->Log("Parallel hash \"" + full_path + "\" id=" + convert(file_id) + " hash=" + base64_encode_dash(fandhash.hash), LL_DEBUG);
+	Server->Log("Parallel hash \"" + full_path + "\" id=" + convert(file_id) + " hash=" + base64_encode_dash(fandhash.hash)+ ph_action, LL_DEBUG);
 
 	return addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());
 }
