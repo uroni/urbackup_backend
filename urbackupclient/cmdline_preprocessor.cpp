@@ -227,6 +227,19 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	if (argc > 0 &&
+		std::string(argv[1]) == "--internal")
+	{
+		std::vector<std::string> real_args;
+
+		for (size_t i = 2; i < argc; ++i)
+		{
+			real_args.push_back(argv[i]);
+		}
+
+		return run_real_main(real_args);
+	}
+
 	try
 	{
 		TCLAP::CmdLine cmd("Run UrBackup Client Backend", ' ', cmdline_version);
