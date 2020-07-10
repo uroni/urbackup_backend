@@ -96,10 +96,6 @@ public:
 		std::string value_client;
 		int use;
 	};
-	struct int
-	{
-		bool exists;
-	};
 
 
 	void addToOldBackupfolders(const std::string& backupfolder);
@@ -187,7 +183,7 @@ public:
 	void setCapa(int capa, int clientid);
 	CondInt getCapa(int clientid);
 	CondInt getClientWithHashes(int clientid);
-	int updateClientWithHashes(int with_hashes, int clientid);
+	void updateClientWithHashes(int with_hashes, int clientid);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);

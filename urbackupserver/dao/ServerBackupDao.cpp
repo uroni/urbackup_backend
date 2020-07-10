@@ -1978,11 +1978,11 @@ ServerBackupDao::CondInt ServerBackupDao::getClientWithHashes(int clientid)
 
 /**
 * @-SQLGenAccess
-* @func int ServerBackupDao::updateClientWithHashes
+* @func void ServerBackupDao::updateClientWithHashes
 * @sql
 *		UPDATE clients SET with_hashes=:with_hashes(int) WHERE id=:clientid(int)
 */
-int ServerBackupDao::updateClientWithHashes(int with_hashes, int clientid)
+void ServerBackupDao::updateClientWithHashes(int with_hashes, int clientid)
 {
 	if(q_updateClientWithHashes==NULL)
 	{
