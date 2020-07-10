@@ -781,7 +781,7 @@ bool FileBackup::doBackup()
 		return false;
 	}
 
-	if( server_settings->getSettings()->internet_mode_enabled )
+	if( client_main->isOnInternetConnection() )
 	{
 		if( server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash")
 		{
@@ -792,6 +792,17 @@ bool FileBackup::doBackup()
 	if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
 	{
 		with_hashes=true;
+	}
+
+	ServerBackupDao::CondInt c_with_hashes = backup_dao->getClientWithHashes(clientid);
+	if (c_with_hashes.exists
+		&& c_with_hashes.value != 0)
+	{
+		with_hashes = true;
+	}
+	else if (with_hashes)
+	{
+		backup_dao->updateClientWithHashes(1, clientid);
 	}
 
 	if(!fileindex.get())

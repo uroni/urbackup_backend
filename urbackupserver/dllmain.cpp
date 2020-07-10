@@ -862,23 +862,34 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	{
 		ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
-		if(settings.getSettings()->internet_mode_enabled)
+		if(Server->getServerParameter("internet_mode_disabled")!="1")
 		{
 			std::string tmp=Server->getServerParameter("internet_port", "");
 			unsigned int port;
 			if(!tmp.empty())
 			{
-				port=atoi(tmp.c_str());
+				port = atoi(tmp.c_str());
 			}
 			else
 			{
-				port=settings.getSettings()->internet_server_port;
+				port = 55415;
 			}
-			InternetService* internet_service = new InternetService(backup_server);
-			Server->StartCustomStreamService(internet_service, "InternetService", port);
 
-			Server->addWebSocket(new WebSocketConnector(internet_service, "socket"));
-			Server->addWebSocket(new WebSocketConnector(internet_service, ""));
+			IServer::BindTarget internet_bind_target = IServer::BindTarget_All;
+
+			if (Server->getServerParameter("internet_localhost_only") == "1")
+			{
+				internet_bind_target = IServer::BindTarget_Localhost;
+			}
+
+			InternetService* internet_service = new InternetService(backup_server);
+			Server->StartCustomStreamService(internet_service, "InternetService", port, internet_bind_target);
+
+			if (Server->getServerParameter("internet_disable_websocket") != "1")
+			{
+				Server->addWebSocket(new WebSocketConnector(internet_service, "socket"));
+				Server->addWebSocket(new WebSocketConnector(internet_service, ""));
+			}
 		}
 	}
 
@@ -2279,6 +2290,14 @@ bool upgrade61_62()
 	return b;
 }
 
+bool upgrade62_63()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	bool b = db->Write("ALTER TABLE clients ADD with_hashes INTEGER DEFAULT 0");
+	b &= db->Write("UPDATE clients SET with_hashes=0 WHERE with_hashes IS NULL");
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2300,7 +2319,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=62;
+	int max_v=63;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2677,7 +2696,14 @@ void upgrade(void)
 					has_error = true;
 				}
 				++ver;
-				break;				
+				break;
+			case 62:
+				if (!upgrade62_63())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
 			default:
 				break;
 		}

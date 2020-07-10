@@ -96,6 +96,10 @@ public:
 		std::string value_client;
 		int use;
 	};
+	struct int
+	{
+		bool exists;
+	};
 
 
 	void addToOldBackupfolders(const std::string& backupfolder);
@@ -182,6 +186,8 @@ public:
 	std::vector<SMountedImage> getOldMountedImages(int64 times);
 	void setCapa(int capa, int clientid);
 	CondInt getCapa(int clientid);
+	CondInt getClientWithHashes(int clientid);
+	int updateClientWithHashes(int with_hashes, int clientid);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
@@ -278,6 +284,8 @@ private:
 	IQuery* q_getOldMountedImages;
 	IQuery* q_setCapa;
 	IQuery* q_getCapa;
+	IQuery* q_getClientWithHashes;
+	IQuery* q_updateClientWithHashes;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;
