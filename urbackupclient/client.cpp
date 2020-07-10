@@ -6182,6 +6182,7 @@ inline int64 roundDown(int64 numToRound, int64 multiple)
 	return ((numToRound / multiple) * multiple);
 }
 
+#ifdef _WIN32
 bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize, const PURBCT_BITMAP_DATA& bitmap_data)
 {
 	std::auto_ptr<IFsFile> hive_file(Server->openFile(fpath, MODE_READ));
@@ -6225,6 +6226,7 @@ bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize
 		return false;
 	}
 }
+#endif
 
 bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 {
