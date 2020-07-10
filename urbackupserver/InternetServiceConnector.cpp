@@ -707,6 +707,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 
 				CompressedPipe *comp_pipe;
 				CompressedPipe2 *comp_pipe2;
+#ifndef NO_ZSTD_COMPRESSION
 				CompressedPipeZstd* comp_zstd;
 				if ((comp_zstd = dynamic_cast<CompressedPipeZstd*>(ret)) != NULL)
 				{
@@ -717,7 +718,9 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					}
 					comp_zstd->destroyBackendPipeOnDelete(true);
 				}
-				else if((comp_pipe2 = dynamic_cast<CompressedPipe2*>(ret))!=NULL)
+				else
+#endif
+					if((comp_pipe2 = dynamic_cast<CompressedPipe2*>(ret))!=NULL)
 				{
 					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
 					if(isc_pipe2!=NULL)
