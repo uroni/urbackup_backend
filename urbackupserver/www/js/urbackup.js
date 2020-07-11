@@ -3394,6 +3394,20 @@ function show_settings2(data)
 			g.curr_settings = data.settings;
 			data.settings = getCurrentSettings(data.settings);
 			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
+			var internet_server = data.settings.internet_server;
+			if(internet_server.indexOf("ws://")!=0 &&
+				internet_server.indexOf("wss://")!=0 &&
+				internet_server.indexOf("urbackup://")!=0 )
+			{
+				if(data.settings.internet_server_port==55415)
+				{
+					data.settings.internet_server = "urbackup://" + internet_server;
+				}
+				else
+				{
+					data.settings.internet_server = "urbackup://" + internet_server + ":" + data.settings.internet_server_port;
+				}
+			}
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -4175,7 +4189,6 @@ g.mail_settings_list=[
 ];
 g.internet_settings_list=[
 "internet_server",
-"internet_server_port",
 "internet_server_proxy"
 ];
 g.ldap_settings_list=[
@@ -4323,15 +4336,59 @@ function saveLdapSettings()
 }
 function getInternetSettings()
 {	
-	if(!I('internet_server_port')) return "";
-	if(I('internet_server_port').value.indexOf(";")==-1 
-		&& !validate_text_int(["internet_server_port"]) ) return null;
-	if(!validate_text_regex([{ id: "internet_server", regexp: /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i }])) return null;
-	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	if(!I('internet_server')) return "";
+
+	var internet_servers = [I("internet_server").value];
+
+	if(internet_servers[0].indexOf(";")!=-1)
+	{
+		internet_servers = internet_servers.split(";");
+	}
+	
+	var internet_server_par = "";
+	var internet_server_port = 55415;
+	for(var i=0;i<internet_servers.length;++i)
+	{
+		var internet_server = internet_servers[i];
+
+		var server_regex = /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^(urbackup):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i;
+
+		if(!server_regex.test(internet_server))
+		{
+			alert(trans("validate_err_notregexp_internet_server"));
+			return null;
+		}
+
+		if(internet_server.indexOf("urbackup://")==0)
+		{
+			var internet_hostname = internet_server.substr(internet_server.indexOf("://")+3);
+			if(internet_hostname.indexOf(":")!=-1)		
+			{
+				internet_port = internet_hostname.substr(internet_hostname.indexOf(":")+1);
+				internet_hostname = internet_hostname.substr(0, internet_hostname.indexOf(":"));
+				if(internet_port.indexOf("/")!=-1)
+				{
+					internet_port = internet_port.substr(0, internet_port.indexOf("/"));
+				}
+				internet_server_port = parseInt(internet_port);
+			}
+			internet_server = internet_hostname;
+		}
+		internet_server_par+=internet_server;
+		if(i+1<internet_servers.length)
+			internet_server_par+=";";
+	}	
+
 	var pars="";
+	pars+="&internet_server="+encodeURIComponent(internet_server_par);
+	pars+="&internet_server_port="+encodeURIComponent(internet_server_port);
+
+	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
-		pars+=getPar(g.internet_settings_list[i]);
+		if(g.internet_settings_list[i]!="internet_server")
+			pars+=getPar(g.internet_settings_list[i]);
 	}
 	return pars;
 }

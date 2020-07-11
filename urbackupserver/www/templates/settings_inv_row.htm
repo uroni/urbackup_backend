@@ -344,7 +344,7 @@
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="computername">{tComputer name}</label>
+				<label class="col-sm-4 control-label" for="computername">{tClient name}</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="computername" value="{computername}"/>
 				</div>
@@ -381,7 +381,7 @@
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="virtual_clients">{tVirtual sub client names}</label>
+				<label class="col-sm-4 control-label" for="virtual_clients">{tAdditional virtual sub client names}</label>
 				<div class="col-sm-6" id="virtual_clients_div">
 					<input type="text" class="form-control" id="virtual_clients" value="{virtual_clients}"/>
 				</div>
@@ -485,21 +485,15 @@
 		<form class="form-horizontal" role="form">
 			{?global_settings}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode (requires server restart)}:</label>
+				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tClients try to connect via Internet}:</label>
 				<div class="col-sm-6">
-					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+					<label><input type="checkbox" id="internet_mode_enabled" value="true" {internet_mode_enabled}/></label>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_server">{tInternet server name/IP}:</label>
+				<label class="col-sm-4 control-label" for="internet_server">{tServer URL clients connect to}:</label>
 				<div class="col-sm-6">
-					<input type="text" class="form-control" id="internet_server" value="{internet_server|s}"/>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_server_port">{tInternet server port}:</label>
-				<div class="col-sm-6">
-					<input type="text" class="form-control" id="internet_server_port" value="{internet_server_port}"/>
+					<input type="text" class="form-control" id="internet_server" value="{internet_server|s}" placeholder="ws://example.com:55414/socket"/>
 				</div>
 			</div>
 			<div class="form-group">
@@ -512,9 +506,9 @@
 			{?main_client}
 			{^global_settings}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tTry to to connect via Internet}:</label>
 				<div class="col-sm-6">
-					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+					<label><input type="checkbox" id="internet_mode_enabled" value="true" {internet_mode_enabled}/></label>
 				</div>
 				<div id="internet_mode_enabled_sw" style="display: inline"></div>
 			</div>
