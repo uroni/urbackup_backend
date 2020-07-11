@@ -21,7 +21,7 @@ Install Homebrew (see https://brew.sh ):
 
 Use Homebrew to install supporting tools:
 ```bash
-brew install wget autoconf automake libtool python3
+brew install wget autoconf automake libtool python3 gnu-sed
 ```
 
 Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads/
@@ -66,7 +66,7 @@ git checkout master
 Switch to building the client:
 ```bash
 cd ~/UrBackup/urbackup_backend
-./switch_build.sh client
+./switch_build_mac.sh client
 autoreconf -fvi
 ```
 
