@@ -709,9 +709,19 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				IPipe *ret=isc->getISPipe();
 				isc->freeConnection(); //deletes ics
 
-				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-				CompressedPipe2 *comp_pipe2=dynamic_cast<CompressedPipe2*>(ret);
-				if(comp_pipe2!=NULL)
+				CompressedPipe *comp_pipe;
+				CompressedPipe2 *comp_pipe2;
+				CompressedPipeZstd* comp_zstd;
+				if ((comp_zstd = dynamic_cast<CompressedPipeZstd*>(ret)) != NULL)
+				{
+					InternetServicePipe2 *isc_pipe2 = dynamic_cast<InternetServicePipe2*>(comp_zstd->getRealPipe());
+					if (isc_pipe2 != NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
+					comp_zstd->destroyBackendPipeOnDelete(true);
+				}
+				else if((comp_pipe2 = dynamic_cast<CompressedPipe2*>(ret))!=NULL)
 				{
 					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
 					if(isc_pipe2!=NULL)
@@ -720,7 +730,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					}
 					comp_pipe2->destroyBackendPipeOnDelete(true);
 				}
-				else if(comp_pipe!=NULL)
+				else if((comp_pipe = dynamic_cast<CompressedPipe*>(ret) )!=NULL)
 				{
 					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
 					if(isc_pipe!=NULL)

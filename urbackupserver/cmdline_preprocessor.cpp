@@ -348,6 +348,55 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("INTERNET_MODE_DISABLED", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				 (val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--internet_mode_disabled");
+				real_args.push_back("1");
+			}
+		}
+		if (settings->getValue("INTERNET_PORT", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--internet_port");
+				real_args.push_back(val);
+			}
+		}
+		if (settings->getValue("INTERNET_LOCALHOST_ONLY", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				(val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--internet_localhost_only");
+				real_args.push_back("1");
+			}
+		}
+		if (settings->getValue("INTERNET_DISABLE_WEBSOCKET", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				(val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--internet_disable_websocket");
+				real_args.push_back("1");
+			}
+		}
 	}	
 
 	if(destroy_server)

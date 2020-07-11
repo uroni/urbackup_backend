@@ -1951,6 +1951,49 @@ ServerBackupDao::CondInt ServerBackupDao::getCapa(int clientid)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::getClientWithHashes
+* @return int with_hashes
+* @sql
+*       SELECT with_hashes FROM clients WHERE id=:clientid(int)
+*/
+ServerBackupDao::CondInt ServerBackupDao::getClientWithHashes(int clientid)
+{
+	if(q_getClientWithHashes==NULL)
+	{
+		q_getClientWithHashes=db->Prepare("SELECT with_hashes FROM clients WHERE id=?", false);
+	}
+	q_getClientWithHashes->Bind(clientid);
+	db_results res=q_getClientWithHashes->Read();
+	q_getClientWithHashes->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["with_hashes"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateClientWithHashes
+* @sql
+*		UPDATE clients SET with_hashes=:with_hashes(int) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientWithHashes(int with_hashes, int clientid)
+{
+	if(q_updateClientWithHashes==NULL)
+	{
+		q_updateClientWithHashes=db->Prepare("UPDATE clients SET with_hashes=? WHERE id=?", false);
+	}
+	q_updateClientWithHashes->Bind(with_hashes);
+	q_updateClientWithHashes->Bind(clientid);
+	q_updateClientWithHashes->Write();
+	q_updateClientWithHashes->Reset();
+}
+
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -2039,6 +2082,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_getOldMountedImages=NULL;
 	q_setCapa=NULL;
 	q_getCapa=NULL;
+	q_getClientWithHashes=NULL;
+	q_updateClientWithHashes=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2128,6 +2173,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getOldMountedImages);
 	db->destroyQuery(q_setCapa);
 	db->destroyQuery(q_getCapa);
+	db->destroyQuery(q_getClientWithHashes);
+	db->destroyQuery(q_updateClientWithHashes);
 }
 
 

@@ -25,6 +25,7 @@
 
 #ifdef __linux__
 #include <linux/fs.h>
+#include <sys/ioctl.h>
 #endif
 
 #include <vector>
@@ -145,10 +146,25 @@ namespace
 		return ((numToRound / multiple) * multiple);
 	}
 
+	const int64 dm_block_size = 1 * 1024 * 1024;
+
+	void print_ext(const IFsFile::SFileExtent& ext, const std::string& file_dm_block_dev, int64& lin_off)
+	{
+		int64 start = roundUp(ext.volume_offset, dm_block_size);
+		int64 end = roundDown(ext.volume_offset + ext.size, dm_block_size);
+
+		if (end - start >= dm_block_size)
+		{
+			int64 bcount = (end - start) / 512;
+			std::cout << lin_off << " " << bcount << " linear " << file_dm_block_dev << " " << (start / 512) << std::endl;
+			lin_off += bcount;
+		}
+	}
+
 	void do_print_dm_file_extents(const std::string& fn)
 	{
 		std::auto_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
-		if (f.get() == nullptr)
+		if (f.get() == NULL)
 		{
 			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
 			exit(1);
@@ -176,24 +192,36 @@ namespace
 		int64 lin_off = 0;
 		int64 pos = 0;
 		bool more_data = true;
-		int64 dm_block_size = 1 * 1024 * 1024;
+		
+		IFsFile::SFileExtent last_ext;
 		while (more_data)
 		{
 			std::vector<IFsFile::SFileExtent> exts = f->getFileExtents(pos, 0, more_data);
+
 			for (size_t i = 0; i < exts.size(); ++i)
 			{
-				int64 start = roundUp(exts[i].volume_offset, dm_block_size);
-				int64 end = roundDown(exts[i].volume_offset + exts[i].size, dm_block_size);
-
-				if (end - start >= dm_block_size)
+				if (last_ext.offset == -1)
 				{
-					int64 bcount = (end - start) / 512;
-					std::cout << lin_off << " " << bcount << " linear " << file_dm_block_dev << " " << (start / 512) << std::endl;
-					lin_off += bcount;
+					last_ext = exts[i];
+				}
+				else if (last_ext.offset + last_ext.size != exts[i].offset
+					|| last_ext.volume_offset + last_ext.size != exts[i].volume_offset)
+				{
+					print_ext(last_ext, file_dm_block_dev, lin_off);
+					last_ext = exts[i];
+				}
+				else
+				{
+					last_ext.size += exts[i].size;
 				}
 
 				pos = (std::max)(exts[i].offset + exts[i].size, pos);
 			}
+		}
+
+		if (last_ext.offset != -1)
+		{
+			print_ext(last_ext, file_dm_block_dev, lin_off);
 		}
 
 		if ((lin_off * 512) < (f->Size() * 3) / 4)

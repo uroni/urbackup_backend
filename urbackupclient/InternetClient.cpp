@@ -76,6 +76,21 @@ const int ic_sleep_after_auth_errs=2;
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
 
+namespace
+{
+	std::string formatServerForLog(const SServerConnectionSettings& ss)
+	{
+		if (next(ss.hostname, 0, "ws://") ||
+			next(ss.hostname, 0, "wss://"))
+		{
+			return ss.hostname;
+		}
+
+		return ss.hostname
+			+ (ss.proxy.empty() ? "" : (" via HTTP proxy " + ss.proxy));
+	}
+}
+
 void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
@@ -401,8 +416,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		SServerConnectionSettings selected_server_settings = server_settings.servers[i];
 
 		lock->relock(NULL);
-		Server->Log("Trying to connect to internet server \""+ selected_server_settings .hostname+"\" at port "+convert(selected_server_settings.port)
-			+ (selected_server_settings.proxy.empty() ? "" : (" via HTTP proxy "+ selected_server_settings.proxy)), LL_DEBUG);
+		Server->Log("Trying to connect to internet server "+ formatServerForLog(selected_server_settings), LL_DEBUG);
 		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack(true));
 		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
@@ -556,15 +570,13 @@ void InternetClientThread::operator()(void)
 			InternetClient::setStatusMsg("connecting_failed");
 			if(cs==NULL && tries>0)
 			{
-				Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].hostname
-					+(server_settings.servers[server_settings.selected_server].proxy.empty() ? "" : (" via HTTP proxy " + server_settings.servers[server_settings.selected_server].proxy)) + " failed. Retrying in 30s...", LL_INFO);
+				Server->Log("Connecting to server "+ formatServerForLog(server_settings.servers[server_settings.selected_server]) + " failed. Retrying in 30s...", LL_INFO);
 				Server->wait(30000);
 			}
 		}
 		if(cs==NULL)
 		{
-			Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].hostname
-				+(server_settings.servers[server_settings.selected_server].proxy.empty() ? "" : (" via HTTP proxy " + server_settings.servers[server_settings.selected_server].proxy))
+			Server->Log("Connecting to server "+ formatServerForLog(server_settings.servers[server_settings.selected_server])
 				+ " failed", LL_INFO);
 			InternetClient::rmConnection();
 			InternetClient::setHasConnection(false);

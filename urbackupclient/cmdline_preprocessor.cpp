@@ -232,6 +232,8 @@ int main(int argc, char* argv[])
 	{
 		std::vector<std::string> real_args;
 
+		real_args.push_back(argv[0]);
+
 		for (size_t i = 2; i < argc; ++i)
 		{
 			real_args.push_back(argv[i]);
