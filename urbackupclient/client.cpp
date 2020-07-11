@@ -3278,6 +3278,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 				++index_c_db_update;
 				modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
+				++target_generation;
 			}
 		}
 		else
@@ -3311,6 +3312,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 				{
 					++index_c_db_update;
 					modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
+					++target_generation;
 				}
 			}
 
@@ -4722,7 +4724,8 @@ void IndexThread::commitAddFilesBuffer()
 	db->BeginWriteTransaction();
 	for(size_t i=0;i<add_file_buffer.size();++i)
 	{
-		cd->addFiles(add_file_buffer[i].path, add_file_buffer[i].tgroup, add_file_buffer[i].files);
+		cd->addFiles(add_file_buffer[i].path, add_file_buffer[i].tgroup, add_file_buffer[i].files,
+			add_file_buffer[i].target_generation);
 	}
 	db->EndTransaction();
 
