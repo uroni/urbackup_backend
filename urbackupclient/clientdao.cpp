@@ -39,7 +39,7 @@ ClientDAO::~ClientDAO()
 void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data, num, generation FROM files WHERE name=? AND tgroup=?", false);
-	q_add_files=db->Prepare("INSERT OR REPLACE INTO files (name, tgroup, num, data) VALUES (?,?,?,?)", false);
+	q_add_files=db->Prepare("INSERT OR REPLACE INTO files (name, tgroup, num, data, generation) VALUES (?,?,?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep FROM backupdirs ORDER BY id ASC", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
@@ -322,7 +322,7 @@ GUID randomGuid()
 	return ret;
 }
 
-void ClientDAO::addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
+void ClientDAO::addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
@@ -330,6 +330,7 @@ void ClientDAO::addFiles(std::string path, int tgroup, const std::vector<SFileAn
 	q_add_files->Bind(tgroup);
 	q_add_files->Bind(ds);
 	q_add_files->Bind(buffer, (_u32)ds);
+	q_add_files->Bind(target_generation);
 	q_add_files->Write();
 	q_add_files->Reset();
 	delete []buffer;
