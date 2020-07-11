@@ -459,7 +459,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->local_speed = "-1";
 	readStringClientSetting(q_get_client_setting, "local_speed", std::string(), &settings->local_speed, false);
 	
-	settings->internet_mode_enabled = false;
+	settings->internet_mode_enabled = true;
 	readBoolClientSetting(q_get_client_setting, "internet_mode_enabled", &settings->internet_mode_enabled, false);
 
 	settings->silent_update = true;
