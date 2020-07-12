@@ -2597,7 +2597,7 @@ function build_alert_params(alert_script)
 	
 	return {"options": script_options, "params": params_html};
 }
-function update_alert_params()
+function update_alert_params(nochange)
 {
 	var p = {};
 	for(var i=0;i<g.alert_params.length;++i)
@@ -2623,7 +2623,8 @@ function update_alert_params()
 		}
 	}
 	g.alert_params = $.param(p);
-	settingChangeKey("alert_params");
+	if(!nochange)
+		settingChangeKey("alert_params");
 }
 function update_alert_unit(name)
 {
@@ -2693,7 +2694,7 @@ function getVal(val)
 	}
 	else if(val.use==4)
 	{
-		return val.value_group;
+		return val.value_client;
 	}
 	else
 	{
@@ -2786,18 +2787,10 @@ function settingSwitch()
 		&& (use==3 || use>4))
 		use=1;
 
-	if(use==2
-		&& (typeof g.curr_settings[key].value == "undefined"
-			|| g.curr_settings[key].value.length==0))
+	if(use==2 &&
+		typeof g.curr_settings[key].value == "undefined")
 	{
 		g.curr_settings[key].value = getVal(g.curr_settings[key])
-	}
-
-	if(use==4
-		&& (typeof g.curr_settings[key].value_client == "undefined"
-			|| g.curr_settings[key].value_client.length==0))
-	{
-		g.curr_settings[key].value_client = getVal(g.curr_settings[key])
 	}
 
 	g.curr_settings[key].use=use;
@@ -4040,7 +4033,7 @@ function removeClientFromGroup()
 function settingsCheckboxHandle(cbid)
 {
 	if(!I(cbid)) return;
-	
+
 	if(I(cbid+'_disable').checked && I(cbid).disabled==false)
 	{
 		I(cbid).disabled=true;
@@ -4277,15 +4270,17 @@ function getSettingSave(key)
 		|| key=="backup_window_full_image" )
 		&& I("backup_window"))
 	{
-		return g.curr_settings["backup_window_incr_file"];
+		key= "backup_window_incr_file";
 	}
+	
+	if(typeof g.curr_settings[key].value!="undefined")
+		return g.curr_settings[key];
 	else
-	{
-		if(typeof g.curr_settings[key].value!="undefined")
-			return g.curr_settings[key];
-		else
-			return {use: 2, value: g.curr_settings[key]};
-	}		
+		return {use: 2, value: g.curr_settings[key]};		
+}
+function getSettingSaveVal(key)
+{
+	return getSettingSave(key).value;
 }
 function saveGeneralSettings()
 {
@@ -6170,10 +6165,9 @@ function saveReportScript()
 function updateAlertScriptParams()
 {
 	var script_id = I("alert_script").value;
-	settingChangeKey("alert_script");
 	var aparams = build_alert_params(script_id);
 	I("alert_script_params_container").innerHTML = aparams.params;
-	update_alert_params();
+	update_alert_params(true);
 }
 function updateArchiveParams()
 {
