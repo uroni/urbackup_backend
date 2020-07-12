@@ -4253,18 +4253,19 @@ function validateCommonSettings()
 	if(!validate_text_regex([{ id: "update_freq_incr", regexp: g.time_span_regex },
 							 { id: "update_freq_full", regexp: g.time_span_regex },
 							 { id: "update_freq_image_incr", regexp: g.time_span_regex },
-							 { id: "update_freq_image_full", regexp: g.time_span_regex } ]) ) return false;
+							 { id: "update_freq_image_full", regexp: g.time_span_regex } ],
+							 getSettingSaveVal) ) return false;
 	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
-							"startup_backup_delay"] ) ) return false;
-	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_speed_regex})) return false;
-	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_speed_regex })) return false;
+							"startup_backup_delay"], getSettingSaveVal) ) return false;
+	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_speed_regex}, getSettingSaveVal)) return false;
+	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_speed_regex }, getSettingSaveVal)) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
 	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
-							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }] ) ) return false;
+							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ], getSettingSaveVal) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }], getSettingSaveVal) ) return false;
 	if(!validate_alert_params()) return;
 	return true;
 }
