@@ -2110,6 +2110,7 @@ bool upgrade59_60()
 	b &= db->Write("ALTER TABLE settings_db.settings ADD value_client TEXT");
 	b &= db->Write("ALTER TABLE settings_db.settings ADD use INTEGER");
 	b &= db->Write("UPDATE settings_db.settings SET use="+convert(c_use_value));
+	b &= db->Write("UPDATE settings_db.settings SET value_client=value");
 
 	IQuery* q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
 	IQuery* q_update_use = db->Prepare("UPDATE settings_db.settings SET use=? WHERE clientid=?");
