@@ -1916,6 +1916,18 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	bool mod=false;
 
 	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
+
+	bool has_use = false;
+
+	for (size_t i = 0; i < setting_names.size(); ++i)
+	{
+		std::string value;
+		if (sr->getValue(setting_names[i] + ".use", &value))
+		{
+			has_use = true;
+			break;
+		}
+	}
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
@@ -1947,6 +1959,18 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 					mod = true;
 			}
 		}
+		else if (!has_use
+			&& sr->getValue(key, &value))
+		{
+			if (internet_connection && key == "computername")
+			{
+				continue;
+			}
+
+			bool b = updateClientSetting(key, value, c_use_undefined);
+			if (b)
+				mod = true;
+		}
 	}
 
 	if(mod)
@@ -1975,8 +1999,12 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		return true;
 	}
 	else if(res[0]["value_client"]!=value
-			|| watoi(res[0]["use"])!=use)
+			|| (use!= c_use_undefined  &&
+				watoi(res[0]["use"])!=use ) )
 	{
+		if (use == c_use_undefined)
+			use = watoi(res[0]["use"]);
+
 		q_update_setting->Bind(value);
 		q_update_setting->Bind(use);
 		q_update_setting->Bind(key);
