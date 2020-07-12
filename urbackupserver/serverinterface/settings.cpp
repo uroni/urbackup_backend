@@ -390,26 +390,56 @@ void getLdapSettings(JSON::Object &obj, IDatabase *db, ServerSettings &settings)
 #undef SET_SETTING
 }
 
-void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int* use=NULL)
+void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int* use=NULL, int64* use_last_modified=NULL)
 {
 	q_get->Bind(key);
 	db_results r_get=q_get->Read();
 	q_get->Reset();
+
+	bool use_mod = false;
+
+	if (!r_get.empty()
+		&& use!=NULL)
+	{
+		int64 old_use_last_mod = watoi64(r_get[0]["use_last_modified"]);
+		int old_use = watoi(r_get[0]["use"]);
+
+		if (use_last_modified!=NULL &&
+			old_use_last_mod > *use_last_modified)
+		{
+			*use_last_modified = old_use_last_mod+1;
+		}
+
+		if (*use != c_use_undefined &&
+			old_use != *use)
+		{
+			use_mod = true;
+		}
+		else if (*use == c_use_undefined)
+		{
+			*use = old_use;
+		}
+	}
+
 	if(r_get.empty())
 	{
 		q_insert->Bind(key);
 		q_insert->Bind(value);
 		if (use != NULL)
 			q_insert->Bind(*use);
+		if (use_last_modified != NULL)
+			q_insert->Bind(*use_last_modified);
 		q_insert->Write();
 		q_insert->Reset();
 	}
 	else if( r_get[0]["value"]!=value 
-		|| ( use!=NULL && *use!=watoi(r_get[0]["use"]) ) )
+		|| use_mod)
 	{
 		q_update->Bind(value);
 		if (use != NULL)
 			q_update->Bind(*use);
+		if (use_last_modified != NULL)
+			q_update->Bind(*use_last_modified);
 		q_update->Bind(key);
 		q_update->Write();
 		q_update->Reset();
@@ -591,10 +621,11 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 {
 	archiveParamsSetUuid(POST);
 
-	IQuery *q_get=db->Prepare("SELECT value, use FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid="+convert(t_clientid));
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,"+convert(t_clientid)+", ?)");
+	IQuery *q_get=db->Prepare("SELECT value, use, use_last_modified FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=?, use=?, use_last_modified=? WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use, use_last_modified) VALUES (?,?,"+convert(t_clientid)+", ?, ?)");
 
+	int64 ctime = Server->getTimeSeconds();
 
 	std::vector<std::string> sset_client_merge = getClientMergableSettingsList();
 	std::sort(sset_client_merge.begin(), sset_client_merge.end());
@@ -607,6 +638,8 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 		str_map::iterator it_used = POST.find(sset[i] + ".use");
 		if(it!=POST.end())
 		{
+			if (sset[i] == "update_freq_incr")
+				int abct = 5;
 			int use = c_use_value;
 			if (it_used != POST.end())
 				use = watoi(it_used->second);
@@ -623,7 +656,12 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 				use = c_use_value;
 			}
 
-			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert, &use);
+			int64 use_last_modified = ctime;
+			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert, &use, &use_last_modified);
+			
+			q_get->Bind(sset[i]);
+			db_results res = q_get->Read();
+			q_get->Reset();
 		}
 	}
 }

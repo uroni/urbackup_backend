@@ -158,27 +158,28 @@ ServerBackupDao::CondInt ServerBackupDao::getClientGroup(int clientid)
 /**
 * @-SQLGenAccess
 * @func SSetting ServerBackupDao::getServerSetting
-* @return string value, string value_client, int use
+* @return string value, string value_client, int use, int64 use_last_modified
 * @sql
-*		SELECT value, value_client, use FROM settings_db.settings WHERE key=:key(string) AND clientid=:clientid(int)
+*		SELECT value, value_client, use, use_last_modified FROM settings_db.settings WHERE key=:key(string) AND clientid=:clientid(int)
 */
 ServerBackupDao::SSetting ServerBackupDao::getServerSetting(const std::string& key, int clientid)
 {
 	if(q_getServerSetting==NULL)
 	{
-		q_getServerSetting=db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE key=? AND clientid=?", false);
+		q_getServerSetting=db->Prepare("SELECT value, value_client, use, use_last_modified FROM settings_db.settings WHERE key=? AND clientid=?", false);
 	}
 	q_getServerSetting->Bind(key);
 	q_getServerSetting->Bind(clientid);
 	db_results res=q_getServerSetting->Read();
 	q_getServerSetting->Reset();
-	SSetting ret = { false, "", "", 0 };
+	SSetting ret = { false, "", "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=res[0]["value"];
 		ret.value_client=res[0]["value_client"];
 		ret.use=watoi(res[0]["use"]);
+		ret.use_last_modified=watoi64(res[0]["use_last_modified"]);
 	}
 	return ret;
 }

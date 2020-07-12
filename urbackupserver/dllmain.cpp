@@ -2299,6 +2299,14 @@ bool upgrade62_63()
 	return b;
 }
 
+bool upgrade63_64()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	bool b = db->Write("ALTER TABLE settings_db.settings ADD use_last_modified INTEGER");
+	b &= db->Write("UPDATE settings_db.settings SET use_last_modified=" + convert(Server->getTimeSeconds()));
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2320,7 +2328,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=63;
+	int max_v=64;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2700,6 +2708,13 @@ void upgrade(void)
 				break;
 			case 62:
 				if (!upgrade62_63())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 63:
+				if (!upgrade63_64())
 				{
 					has_error = true;
 				}

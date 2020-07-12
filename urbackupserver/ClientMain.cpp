@@ -1078,9 +1078,9 @@ void ClientMain::operator ()(void)
 void ClientMain::prepareSQL(void)
 {
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
-	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value_client, clientid, use) VALUES (?,?,?, ?)", false);
-	q_get_setting = db->Prepare("SELECT value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=?, use_last_modified=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value_client, clientid, use, use_last_modified) VALUES (?,?,?, ?)", false);
+	q_get_setting = db->Prepare("SELECT value_client, use, use_last_modified FROM settings_db.settings WHERE clientid=? AND key=?", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -1837,9 +1837,13 @@ void ClientMain::sendSettings(void)
 				}
 				else
 				{
+					if (key == "update_freq_incr")
+						int abct = 5;
+
 					s_settings += key + ".home=" + setting.value + "\n";
 					s_settings += key + ".client=" + setting.value_client + "\n";
 					s_settings += key + ".use=" + convert(setting.use) + "\n";
+					s_settings += key + ".use_lm=" + convert(setting.use_last_modified) + "\n";
 				}
 				
 				if (setting.use == c_use_group)
@@ -1945,6 +1949,10 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		if (sr->getValue(key + ".use", &value))
 		{
 			use = watoi(value);
+			std::string use_lm_str;
+			int64 use_lm = 0;
+			if (sr->getValue(key + ".use_lm", &use_lm_str))
+				use_lm = watoi64(use_lm_str);
 
 			if ( (use & c_use_value_client)>0
 				&& sr->getValue(key + ".client", &value))
@@ -1954,7 +1962,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 					continue;
 				}
 
-				bool b = updateClientSetting(key, value, use);
+				bool b = updateClientSetting(key, value, use, use_lm);
 				if (b)
 					mod = true;
 			}
@@ -1967,7 +1975,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 				continue;
 			}
 
-			bool b = updateClientSetting(key, value, c_use_undefined);
+			bool b = updateClientSetting(key, value, c_use_undefined, 0);
 			if (b)
 				mod = true;
 		}
@@ -1981,12 +1989,40 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	return true;
 }
 
-bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use)
+bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified)
 {
+	if (key == "update_freq_incr")
+		int abct = 45;
+
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
 	db_results res = q_get_setting->Read();
 	q_get_setting->Reset();
+
+	bool use_mod = false;
+
+	if (!res.empty())
+	{
+		int64 old_use_last_mod = watoi64(res[0]["use_last_modified"]);
+		int old_use = watoi(res[0]["use"]);
+
+		if (old_use_last_mod > use_last_modified)
+		{
+			use = old_use;
+			use_last_modified = old_use_last_mod;
+		}
+
+		if (use != c_use_undefined &&
+				old_use != use)
+		{
+			use_mod = true;
+		}
+		else if (use == c_use_undefined)
+		{
+			use = old_use;
+		}
+	}
+
 
 	if(res.empty())
 	{
@@ -1994,19 +2030,17 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		q_insert_setting->Bind(value);
 		q_insert_setting->Bind(clientid);
 		q_insert_setting->Bind(use);
+		q_insert_setting->Bind(use_last_modified);
 		q_insert_setting->Write();
 		q_insert_setting->Reset();
 		return true;
 	}
 	else if(res[0]["value_client"]!=value
-			|| (use!= c_use_undefined  &&
-				watoi(res[0]["use"])!=use ) )
+		|| use_mod )
 	{
-		if (use == c_use_undefined)
-			use = watoi(res[0]["use"]);
-
 		q_update_setting->Bind(value);
 		q_update_setting->Bind(use);
+		q_update_setting->Bind(use_last_modified);
 		q_update_setting->Bind(key);
 		q_update_setting->Bind(clientid);
 		q_update_setting->Write();

@@ -95,6 +95,7 @@ public:
 		std::string value;
 		std::string value_client;
 		int use;
+		int64 use_last_modified;
 	};
 
 
