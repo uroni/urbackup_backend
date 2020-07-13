@@ -152,7 +152,8 @@ void FileClient::bindToNewInterfaces()
 				!(ifap->ifa_flags & IFF_LOOPBACK)
 				&& !(ifap->ifa_flags & IFF_POINTOPOINT))
 			{
-				if (ifap->ifa_addr->sa_family == AF_INET
+				if (ifap->ifa_addr!=NULL
+					&& ifap->ifa_addr->sa_family == AF_INET
 					&& (ifap->ifa_flags & IFF_BROADCAST))
 				{
 					sockaddr_in source_addr;
@@ -222,7 +223,8 @@ void FileClient::bindToNewInterfaces()
 
 					Server->Log("Broadcasting on ipv4 interface "+std::string(ifap->ifa_name) + " addr " + ipToString(new_udpsock));
 				}
-				else if (ifap->ifa_addr->sa_family == AF_INET6
+				else if (ifap->ifa_addr != NULL 
+					&& ifap->ifa_addr->sa_family == AF_INET6
 					&& Server->getServerParameter("disable_ipv6").empty())
 				{
 					sockaddr_in6 source_addr;
