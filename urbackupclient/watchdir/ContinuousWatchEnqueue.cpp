@@ -348,11 +348,11 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 		if(curr_settings->getValue("continuous_exclude_files", &val)
 			|| curr_settings->getValue("continuous_exclude_files_def", &val) )
 		{
-			exclude_dirs = IndexThread::parseExcludePatterns(val);
+			exclude_dirs = IndexThread::buildExcludeList(val);
 		}
 		else
 		{
-			exclude_dirs = IndexThread::parseExcludePatterns(std::string());
+			exclude_dirs = IndexThread::buildExcludeList(std::string());
 		}
 
 		if(curr_settings->getValue("continuous_include_files", &val)
@@ -363,7 +363,7 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 	}
 	else
 	{
-		IndexThread::parseExcludePatterns(std::string());
+		IndexThread::buildExcludeList(std::string());
 	}
 }
 

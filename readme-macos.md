@@ -2,6 +2,20 @@
 
 Please see the website at https://www.urbackup.org for more information, wiki, forums and the issue tracker.
 
+### Note
+
+This version includes an additional script - `buildmacOSexclusions` - which compiles a list
+of the standard items which Time Machine excludes from a backup. This list is saved into
+`/Library/Application Support/UrBackup Client/var/urbackup/macos_exclusions.txt`.
+
+This list can be edited as required to remove or add further exclusions without polluting the
+usual exclusion list inside UrBackup.
+
+To rebuild the list afresh from the Time Machine settings, run:
+```bash
+sudo ./Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions --force
+```
+
 
 ### Building on macOS
 
