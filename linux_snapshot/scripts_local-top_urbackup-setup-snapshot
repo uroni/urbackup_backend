@@ -31,6 +31,6 @@ echo "urbackup-setup-snapshot: root block device $RBD" > /dev/kmsg
 
 RBD_SIZE=$(blockdev --getsz $RBD)
 
-echo "0 $RBD_SIZE linear $RBD 0" | dmsetup create root-dev 2> /dev/kmsg
+echo "0 $RBD_SIZE linear $RBD 0" | dmsetup create root-98d1f8b1f435 2> /dev/kmsg
 
-echo "export ROOT=/dev/mapper/root-dev" > /conf/param.conf
+echo "export ROOT=/dev/mapper/root-98d1f8b1f435" > /conf/param.conf
