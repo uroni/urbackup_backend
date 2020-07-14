@@ -875,6 +875,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				port = 55415;
 			}
 
+			std::auto_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings",
+				"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
+
+			std::string port_str = settings_db->getValue("internet_server_bind_port", std::string());
+			if (!port_str.empty())
+			{
+				port = watoi(port_str);
+			}
+
 			IServer::BindTarget internet_bind_target = IServer::BindTarget_All;
 
 			if (Server->getServerParameter("internet_localhost_only") == "1")
@@ -2307,6 +2316,22 @@ bool upgrade63_64()
 	return b;
 }
 
+bool upgrade64_65()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	db_results res_port = db->Read("SELECT value FROM settings_db.settings WHERE key='internet_server_port' AND clientid=0");
+
+	bool b = true;
+	if (!res_port.empty()
+		&& res_port[0]["value"] != "55415")
+	{
+		b &= db->Write(std::string("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('internet_server_bind_port', '")+convert(watoi(res_port[0]["value"]))+"', 0)");
+	}
+	
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2328,7 +2353,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=64;
+	int max_v=65;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2715,6 +2740,13 @@ void upgrade(void)
 				break;
 			case 63:
 				if (!upgrade63_64())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 64:
+				if (!upgrade64_65())
 				{
 					has_error = true;
 				}

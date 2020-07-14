@@ -4167,7 +4167,8 @@ g.general_settings_list=[
 "use_incremental_symlinks",
 "show_server_updates",
 "server_url",
-"internet_expect_endpoint"
+"internet_expect_endpoint",
+"internet_server_bind_port"
 ];
 g.mail_settings_list=[
 "mail_servername",
