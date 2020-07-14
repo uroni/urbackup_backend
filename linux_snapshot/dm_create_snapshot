@@ -39,7 +39,7 @@ fi
 
 echo "Snapshotting device $DEVICE via dm..."
 
-if ! dmsetup table "$DEVICE"
+if ! dmsetup table "$DEVICE" > /dev/null 2>&1
 then
 	echo "$DEVICE is not a device mapper device. Cannot snapshot via dm."
 	exit 1
