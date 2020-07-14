@@ -82,7 +82,7 @@ then
 	echo "Transitioned /dev/datto$TRANS_NUM to snapshot."
 	CBT_FILE=$(cat $SNAP_COWFILE_PATH)
 	echo "CBT_FILE=$CBT_FILE"
-	echo "CBT=datto=1"
+	echo "CBT=type=datto"
 	NUM=$TRANS_NUM
 else
 	if [ $TRY_TRANS = 1 ]
@@ -93,7 +93,7 @@ else
 
 	echo "Using /dev/datto$NUM..."
 	
-	echo "CBT=datto=1&reset=1"
+	echo "CBT=type=datto&reset=1"
 	dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $NUM
 fi
 

@@ -80,9 +80,18 @@ private:
 	volatile static bool pause;
 };
 
+enum CbtType
+{
+	CbtType_None,
+	CbtType_Datto,
+	CbtType_Era
+};
+
 struct SCRef
 {
-	SCRef(void): ok(false), dontincrement(false), cbt(false), for_imagebackup(false), with_writers(false) {
+	SCRef(void): ok(false), dontincrement(false), cbt(false),
+		for_imagebackup(false), with_writers(false),
+		cbt_type(CbtType_None) {
 #ifdef _WIN32
 		backupcom = NULL;
 #endif
@@ -105,6 +114,7 @@ struct SCRef
 	bool for_imagebackup;
 	bool with_writers;
 	std::string cbt_file;
+	CbtType cbt_type;
 };
 
 struct SCDirs
@@ -579,7 +589,15 @@ private:
 
 	bool prepareCbt(std::string volume);
 
-	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
+	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file, CbtType cbt_type);
+
+#ifndef _WIN32
+	bool finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
+#endif
+
+	bool finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file, int64& hdat_file_era, int64& hdat_img_era);
+
+	bool finishCbtEra2(IFsFile* hdat, int64 hdat_era);
 
 	bool disableCbt(std::string volume);
 
@@ -614,6 +632,8 @@ private:
 	bool commitPhashQueue();
 
 	bool isAllSpecialDir(const SBackupDir& bdir);
+
+	bool punchHoleOrZero(IFile* f, int64 pos, const char* zero_buf, char* zero_read_buf, size_t zero_size);
 
 	SVolumesCache* volumes_cache;
 

@@ -76,6 +76,7 @@ fi
 
 
 rm "${SNAP_MOUNTPOINT}-num"
+rm "${SNAP_MOUNTPOINT}-dev"
 rmdir "${SNAP_MOUNTPOINT}"
 
 echo "Removing devicemapper snapshot..."
