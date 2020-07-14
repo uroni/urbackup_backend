@@ -1,0 +1,36 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+	echo "$PREREQ"
+}
+
+case $1 in
+prereqs)
+	prereqs
+	exit 0
+	;;
+esac
+
+. /scripts/functions
+. /scripts/local
+
+if grep "setup-snapshot=0" /proc/cmdline; then
+	exit 0
+fi
+
+RBD=$(resolve_device "$ROOT")
+
+if [ "x$RBD" = "x" ]; then
+	echo "setup-snapshot: root device not found. Not setting up snapshotting." > /dev/kmsg
+fi
+
+echo "setup-snapshot: root block device $RBD" > /dev/kmsg
+
+RBD_SIZE=$(blockdev --getsz $RBD)
+
+echo "0 $RBD_SIZE linear $RBD 0" | dmsetup create root-dev 2> /dev/kmsg
+
+echo "export ROOT=/dev/mapper/root-dev" > /conf/param.conf
