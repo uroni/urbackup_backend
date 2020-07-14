@@ -636,6 +636,7 @@ then
 				mkdir -p /usr/share/initramfs-tools/scripts/local-top
 				install -c "scripts_local-top_urbackup-setup-snapshot" /usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot
 				update-initramfs -u
+				echo "Info: You need to reboot your system in order to be able to snapshot the root file system/device"
 			else
 				echo "Did not find initramfs-tools. Installation failed."
 			fi
