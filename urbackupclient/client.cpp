@@ -73,6 +73,12 @@
 #include <fcntl.h>
 #endif
 
+#if defined(__ANDROID__)
+#define fsblkcnt64_t fsblkcnt_t
+#include "android_popen.h"
+#endif
+
+
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
@@ -7373,11 +7379,26 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 #define _popen popen
 #define _pclose pclose
 #endif
+#ifdef __ANDROID__
+	POFILE* pin = NULL;
+#endif
+	FILE* in = NULL;
 
 	std::string cmd = "era_dump --logical \"" + cbt_file + "\"";
-	FILE* in = _popen(cmd.c_str(), "re");
+#ifdef __ANDROID__
+	pin = and_popen(cmd.c_str(), "r");
+	if (pin != NULL) in = pin->fp;
+#else
+	in = _popen(cmd.c_str(), "re");
 	if(in==NULL)
 		in = _popen(cmd.c_str(), "r");
+#endif
+
+	if (in == NULL)
+	{
+		VSSLog("Error running command \"era_dump --logical "+cbt_file+"\"", LL_WARNING);
+		return false;
+	}
 
 	char buf[4096];
 	size_t read;
@@ -7588,8 +7609,16 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 	}
 	while (read == sizeof(buf));
 
-	if (_pclose(in) != 0)
+
+	int rc;
+#ifdef __ANDROID__
+	rc = and_pclose(pin);
+#else
+	rc = _pclose(in);
+#endif
+	if (rc != 0)
 	{
+		VSSLog("Error running command \"era_dump --logical " + cbt_file + "\" rc " + convert(rc), LL_WARNING);
 		return false;
 	}
 		
