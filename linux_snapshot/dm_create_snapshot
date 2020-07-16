@@ -156,5 +156,5 @@ then
 fi
 
 echo "$DEVNAME" > ${SNAP_DEST}-name
-echo "/dev/mapper/$DEVNAME-$RUUID-origin" > ${SNAP_DEST}-dev
+echo "/dev/mapper/$DEVNAME-$SNAP_ID" > ${SNAP_DEST}-dev
 echo "SNAPSHOT=$SNAP_DEST"
