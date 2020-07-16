@@ -7085,7 +7085,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			std::string era_err;
 			if (os_popen("dmsetup message \"" + orig_dev + "\" 0 drop_metadata_snap 2>&1", era_err) != 0)
 			{
-				VSSLog("Error dropping dm-era metadata snapshot of volume \"" + dev_file + "\" (2): " + trim(era_err), LL_WARNING);
+				VSSLog("Error dropping dm-era metadata snapshot of volume \"" + orig_dev + "\" (2): " + trim(era_err), LL_WARNING);
 				return false;
 			}
 		}
