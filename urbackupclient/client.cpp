@@ -7373,6 +7373,26 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 		}
 	}
 
+	if (hdat_img != NULL)
+	{
+		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+		{
+			VSSLog("Error writing shadow id", LL_ERROR);
+			return false;
+		}
+
+		{
+			IScopedLock lock(cbt_shadow_id_mutex);
+			cbt_shadow_ids[strlower(volume)] = shadow_id;
+		}
+	}
+
+	if (hdat_file != NULL)
+	{
+		IScopedLock lock(cbt_shadow_id_mutex);
+		++index_hdat_sequence_ids[strlower(volume)];
+	}
+
 	VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
 
 #ifndef _WIN32
