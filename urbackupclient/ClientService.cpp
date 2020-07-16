@@ -2068,10 +2068,68 @@ namespace
 {
 	bool parseDevicePartNumber(const std::string& volfn, std::string& dev, int& DeviceNumber, int& PartNumber)
 	{
+		if (next(volfn, 0, "/dev/mapper/")
+			|| next(volfn, 0, "/dev/dm-") )
+		{
+			std::string dm_table;
+			//TODO: Use ioctl here
+			if (os_popen("dmsetup table \"" + greplace("\"", "_", volfn) + "\"", dm_table)==0)
+			{
+				std::vector<std::string> toks;
+				Tokenize(trim(dm_table), toks, " ");
+				std::string back_dev;
+				if (toks.size() > 2)
+				{
+					if (toks[2] == "linear"
+						&& toks.size()>3)
+					{
+						back_dev = toks[3];
+					}
+					else if (toks[2] == "era"
+						&& toks.size() > 4)
+					{
+						back_dev = toks[4];
+					}
+					else if (toks[2] == "snapshot-origin"
+						&& toks.size()>3)
+					{
+						back_dev = toks[3];
+					}
+					else
+					{
+						Server->Log("Cannot follow device mapping " + toks[2], LL_WARNING);
+					}
+				}
+				else
+				{
+					Server->Log("Cannot parse device mapper table \"" + dm_table + "\"", LL_WARNING);
+				}
+
+				if (!back_dev.empty())
+				{
+					Server->Log("Following device mapping ("+toks[2]+") to device "+back_dev, LL_DEBUG);
+
+					std::string uevent_info = getFile("/sys/dev/block/" + back_dev + "/uevent");
+					std::string dev_name = getbetween("DEVNAME=", "\n", uevent_info);
+
+					if (FileExists("/dev/" + dev_name))
+					{
+						Server->Log("Device name /dev/"+dev_name, LL_DEBUG);
+
+						return parseDevicePartNumber("/dev/" + dev_name, dev, DeviceNumber, PartNumber);
+					}
+					else
+					{
+						Server->Log("Could not find device name of device "+back_dev, LL_WARNING);
+					}
+				}
+			}
+		}
+
 		std::string dl_devnum;
 		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
 
-		for (const char* const * devname = devnames; devname != NULL; ++devname)
+		for (const char* const * devname = devnames; *devname != NULL; ++devname)
 		{
 			if (next(volfn, 0, std::string("/dev/") + *devname))
 			{
