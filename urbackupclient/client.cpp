@@ -74,8 +74,7 @@
 #endif
 
 #if defined(__ANDROID__)
-#define fsblkcnt64_t fsblkcnt_t
-#include "android_popen.h"
+#include "../urbackupcommon/android_popen.h"
 #endif
 
 
