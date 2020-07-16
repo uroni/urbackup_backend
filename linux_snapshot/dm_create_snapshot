@@ -111,7 +111,7 @@ dmsetup suspend "$DEVICE"
 if dmsetup table "$DEVNAME-$RUUID-clone" | grep " era " > /dev/null 2>&1
 then
 	echo "Checkpointing device for CBT..."
-	dmsetup message "$DEVNAME-$RUUID-clone" 0 checkpoint
+	dmsetup message "$DEVNAME-$RUUID-clone" 0 take_metadata_snap
 	if [ $ERA_RESET != 1 ]
 	then
 		echo "CBT=type=era"
