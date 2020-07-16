@@ -74,6 +74,8 @@
 #endif
 
 #if defined(__ANDROID__)
+#include <sys/socket.h>
+#include <sys/types.h>
 #include "../urbackupcommon/android_popen.h"
 #endif
 
