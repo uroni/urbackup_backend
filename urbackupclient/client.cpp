@@ -7365,6 +7365,15 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 
 	dev_file += "-a31725acca86421d-clone";
 
+	{
+		std::string era_err;
+		if (os_popen("dmsetup message \"" + dev_file + "\" 0 take_metadata_snap 2>&1", era_err) != 0)
+		{
+			VSSLog("Error taking dm-era metadata snapshot of volume \"" + dev_file + "\": " + trim(era_err), LL_WARNING);
+			return false;
+		}
+	}
+
 	if (hdat_img != NULL)
 	{
 		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
