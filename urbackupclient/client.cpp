@@ -7560,6 +7560,9 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 					current_era = watoi64(xml_node_attrs["current_era"]);
 					block_size = watoi64(xml_node_attrs["block_size"]);
 
+					// take_metadata_snap increases era by one
+					current_era--;
+
 					if (block_size > c_checkpoint_dist)
 					{
 						VSSLog("Era block size too large (" + PrettyPrintBytes(block_size) + "). Must be smaller or equal to " + PrettyPrintBytes(c_checkpoint_dist), LL_WARNING);
