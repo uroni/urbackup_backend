@@ -14,6 +14,16 @@ remove_overlay() {
 		chattr -i "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
 		rm "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
 	fi
+	
+	if test -e "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap"
+	then
+		LODEV=`losetup -j "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap" | cut -d':' -f1`
+        if [ "x$LODEV" != x ]
+        then
+            losetup -d "$LODEV"
+        fi
+		rm "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap"
+	fi
 }
 
 if ! test -e $SNAP_MOUNTPOINT
@@ -71,6 +81,7 @@ rmdir "${SNAP_MOUNTPOINT}"
 
 echo "Removing dm snapshot..."
 
+dmsetup remove "$DEVNAME-$SNAP_ID-wsnap"
 dmsetup remove "$DEVNAME-$SNAP_ID"
 
 echo "Removing snapshot cow storage..."
