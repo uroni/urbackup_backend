@@ -63,7 +63,10 @@ ORIG_DEVICE="/dev/mapper/$DEVNAME-$RUUID-clone"
 ERA_META_FN=".era-meta_3d41c58e-6724-4d47-8981-11c766a08a24"
 
 ERA_RESET=0
-if modprobe dm_era && ! dmsetup table "$DEVICE" | grep " era " > /dev/null 2>&1 && ! dmsetup table "$DEVICE" | grep " snapshot-origin " > /dev/null 2>&1
+if ! command -v era_dump >/dev/null 2>&1
+then
+	echo "thin-provisioning-tools not installed. CBT not enabled."
+elif modprobe dm_era && ! dmsetup table "$DEVICE" | grep " era " > /dev/null 2>&1 && ! dmsetup table "$DEVICE" | grep " snapshot-origin " > /dev/null 2>&1
 then
 	echo "Layering in dm-era device..."
 	META_SIZE=$(( (((DEV_SIZE*4)/1024)/512)*512 + 1*1024*1024 ))
@@ -85,7 +88,7 @@ then
 	urbackupclientbackend --internal --print-dm-file-extents "$SNAP_MOUNTPOINT/$ERA_META_FN" --file-dm-block-dev "$ORIG_DEVICE" | dmsetup create "$DEVNAME-$RUUID-era-metadata"
 	dmsetup table "$DEVNAME-$RUUID-era-metadata" | dmsetup create "$DEVNAME-$RUUID-era-metadata-access"
 	dd if=/dev/zero of=/dev/mapper/$DEVNAME-$RUUID-era-metadata bs=512 count=$((META_SIZE/512)) > /dev/null 2>&1
-	echo "0 $DEV_SIZE era /dev/mapper/$DEVNAME-$RUUID-era-metadata $ORIG_DEVICE 524288" | dmsetup create "$DEVNAME-$RUUID-clone"
+	echo "0 $DEV_SIZE era /dev/mapper/$DEVNAME-$RUUID-era-metadata $ORIG_DEVICE 1024" | dmsetup create "$DEVNAME-$RUUID-clone"
 	echo "CBT=type=era&reset=1"
 	ERA_RESET=1
 fi

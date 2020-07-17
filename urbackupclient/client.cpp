@@ -7085,6 +7085,26 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		if (hdat_img.get() != NULL)
 		{
+			if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+			{
+				VSSLog("Error writing shadow id (3)", LL_ERROR);
+				return false;
+			}
+
+			{
+				IScopedLock lock(cbt_shadow_id_mutex);
+				cbt_shadow_ids[strlower(volume)] = shadow_id;
+			}
+		}
+
+		if (hdat_file.get() != NULL)
+		{
+			IScopedLock lock(cbt_shadow_id_mutex);
+			++index_hdat_sequence_ids[strlower(volume)];
+		}
+
+		if (hdat_img.get() != NULL)
+		{
 			if (!hdat_img->Sync())
 			{
 				VSSLog("Error syncing hdat_img file -1", LL_ERROR);
@@ -7558,10 +7578,11 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 					&& !xml_node_close)
 				{
 					current_era = watoi64(xml_node_attrs["current_era"]);
-					block_size = watoi64(xml_node_attrs["block_size"]);
+					block_size = watoi64(xml_node_attrs["block_size"])*512;
 
 					// take_metadata_snap increases era by one
-					current_era--;
+					if(current_era>0)
+						current_era--;
 
 					if (block_size > c_checkpoint_dist)
 					{
@@ -7573,6 +7594,11 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 						VSSLog("Era block size not defined", LL_WARNING);
 						return false;
 					}
+					else if (current_era <= 0)
+					{
+						VSSLog("Current era not defined", LL_WARNING);
+						return false;
+					}
 				}
 				else if (xml_node_name == "era_array")
 				{
@@ -7581,6 +7607,12 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 				else if (xml_loc == XmlLoc_EraArray &&
 						xml_node_name == "era")
 				{
+					if (current_era<=0)
+					{
+						VSSLog("Did not get superblock before era block", LL_WARNING);
+						return false;
+					}
+
 					int64 block_nr = watoi64(xml_node_attrs["block"]);
 					int64 block_era = watoi64(xml_node_attrs["era"]);
 
@@ -7597,7 +7629,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 
 					if (hdat_file != NULL)
 					{
-						bool has_bit = (block_era > hdat_file_era);
+						bool has_bit = (block_era >= hdat_file_era);
 						if (has_bit
 							|| last_bit_set)
 						{
