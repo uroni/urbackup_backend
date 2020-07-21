@@ -1030,7 +1030,7 @@ std::string getDefaultDirname(const std::vector<SBackupDir>& dirs, const std::st
 	std::string dirname = removeChars(ExtractFileName(path));
 
 	if (dirname.empty())
-		dirname = "root";
+		dirname = "rootfs";
 
 	if (findPathName(dirs, dirname))
 	{
