@@ -4163,11 +4163,11 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 		std::string val;
 		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+"_def", &val) )
 		{
-			exclude_dirs = parseExcludePatterns(val);
+			exclude_dirs = buildExcludeList(val);
 		}
 		else
 		{
-			exclude_dirs = parseExcludePatterns(std::string());
+			exclude_dirs = buildExcludeList(std::string());
 		}
 
 		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
@@ -4184,7 +4184,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	}
 	else
 	{
-		exclude_dirs = parseExcludePatterns(std::string());
+		exclude_dirs = buildExcludeList(std::string());
 	}
 }
 
@@ -4309,6 +4309,18 @@ void IndexThread::removeResult(unsigned int id)
 	}
 }
 
+std::vector<std::string> IndexThread::buildExcludeList(const std::string& val)
+{
+	std::vector<std::string> exclude_dirs_combined;
+	exclude_dirs_combined = parseExcludePatterns(val);
+	addFileExceptions(exclude_dirs_combined);
+	addHardExcludes(exclude_dirs_combined);
+#ifdef __APPLE__
+	addMacosExcludes(exclude_dirs_combined);
+#endif
+	return exclude_dirs_combined;
+}
+
 std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
 {
 	std::vector<std::string> exclude_dirs;
@@ -4336,11 +4348,7 @@ std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& va
 		{
 			exclude_dirs[i]=sanitizePattern(exclude_dirs[i]);
 		}
-	}	
-
-	addFileExceptions(exclude_dirs);
-	addHardExcludes(exclude_dirs);
-
+	}
 	return exclude_dirs;
 }
 
@@ -4939,6 +4947,24 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\URBCT.DAT"));
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\*{3808876B-C176-4E48-B7AE-04046E6CC752}*"));
 #endif
+}
+
+void IndexThread::addMacosExcludes(std::vector<std::string>& exclude_dirs)
+{
+	std::string macos_exclusion_list = getFile("urbackup/macos_exclusions.txt");
+
+	if(!macos_exclusion_list.empty())
+	{
+		macos_exclusion_list = greplace("\n", ";", macos_exclusion_list);
+
+		std::vector<std::string> macos_exclusions;
+		macos_exclusions = parseExcludePatterns(macos_exclusion_list);
+
+		for(size_t i=0;i<macos_exclusions.size();i++)
+		{
+			exclude_dirs.push_back(macos_exclusions[i]);
+		}
+	}
 }
 
 void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume)
