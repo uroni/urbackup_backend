@@ -266,10 +266,10 @@ protected:
 
 	IPipe *hashpipe;
 	IPipe *hashpipe_prepare;
-	BackupServerHash *bsh;
-	THREADPOOL_TICKET bsh_ticket;
-	BackupServerPrepareHash *bsh_prepare;
-	THREADPOOL_TICKET bsh_prepare_ticket;
+	std::vector<BackupServerHash*> bsh;
+	std::vector<THREADPOOL_TICKET> bsh_ticket;
+	std::vector<BackupServerPrepareHash*> bsh_prepare;
+	std::vector<THREADPOOL_TICKET> bsh_prepare_ticket;
 	std::auto_ptr<BackupServerHash> local_hash;
 	std::auto_ptr<BackupServerHash> local_hash2;
 

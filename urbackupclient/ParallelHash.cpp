@@ -1,10 +1,12 @@
 #include "ParallelHash.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
+#include "../Interface/Condition.h"
 #include "ClientHash.h"
 #include <algorithm>
 #include "database.h"
 #include "../stringtools.h"
+#include <assert.h>
 
 //#define HASH_CBT_CHECK
 
@@ -15,13 +17,16 @@ namespace
 	const int64 link_file_min_size = 2048;
 }
 
-ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version)
+ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version, size_t extra_n_threads)
 	: do_quit(false), phash_queue(phash_queue), phash_queue_pos(0),
 	stdout_buf_size(0), stdout_buf_pos(0), mutex(Server->createMutex()),
-	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false)
+	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false),
+	extra_n_threads(extra_n_threads), extra_thread(false),
+	extra_mutex(Server->createMutex()), extra_cond(Server->createCondition()),
+	modify_file_buffer_mutex(Server->createMutex())
 {
 	stdout_buf.resize(4090);
-	ticket = Server->getThreadPool()->execute(this, "phash");
+	ticket = Server->getThreadPool()->execute(this, extra_n_threads>0 ? "phash master": "phash");
 }
 
 bool ParallelHash::getExitCode(int & exit_code)
@@ -94,6 +99,18 @@ bool ParallelHash::readStderrIntoBuffer(char * buf, size_t buf_avail, size_t & r
 
 void ParallelHash::operator()()
 {
+	if (extra_thread)
+	{
+		runExtraThread();
+		return;
+	}
+
+	extra_thread = true;
+	for (size_t i = 0; i < extra_n_threads; ++i)
+	{
+		extra_tickets.push_back(Server->getThreadPool()->execute(this, "phash e"+convert(i)));
+	}
+
 	ClientDAO clientdao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
 	int mode = MODE_READ_SEQUENTIAL;
@@ -117,10 +134,29 @@ void ParallelHash::operator()()
 					had_msg = true;
 
 					std::string msg = phashf->Read(phash_queue_pos + sizeof(_u32), msg_size);
-					CRData data(msg.data(), msg.size());
+					
+					int64 working_file_id = phash_queue_pos;
 					phash_queue_pos += sizeof(_u32) + msg_size;
 
-					hashFile(data, clientdao);
+					IScopedLock lock(extra_mutex.get());
+					working_file_ids.insert(working_file_id);	
+
+					if (extra_n_threads > 0)
+					{
+						extra_queue.push_back(std::make_pair(working_file_id, msg));
+						extra_cond->notify_one();
+					}
+					else
+					{
+						lock.relock(NULL);
+
+						CRData data(msg.data(), msg.size());
+						hashFile(working_file_id, data, clientdao);
+
+						lock.relock(extra_mutex.get());
+						working_file_ids.erase(working_file_id);
+						addQueuedStdoutMsgs();
+					}
 
 					if (eof)
 					{
@@ -142,6 +178,14 @@ void ParallelHash::operator()()
 
 	commitModifyFileBuffer(clientdao);
 
+	{
+		IScopedLock lock(extra_mutex.get());
+		do_quit = true;
+		extra_cond->notify_all();
+	}
+
+	Server->getThreadPool()->waitFor(extra_tickets);
+
 	if (phash_queue->deref())
 	{
 		delete phash_queue;
@@ -149,7 +193,18 @@ void ParallelHash::operator()()
 	}
 }
 
-bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
+void ParallelHash::addQueuedStdoutMsgs()
+{
+	std::map<int64, CWData>::iterator it_msg;
+	while (!working_file_ids.empty() &&
+		(it_msg = stdout_msg_buf.find(*working_file_ids.begin())) != stdout_msg_buf.end())
+	{
+		addToStdoutBuf(it_msg->second.getDataPtr(), it_msg->second.getDataSize());
+		stdout_msg_buf.erase(it_msg);
+	}
+}
+
+bool ParallelHash::hashFile(int64 working_file_id, CRData & data, ClientDAO& clientdao)
 {
 	char id;
 	if (!data.getChar(&id))
@@ -157,71 +212,50 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	if (id == ID_SET_CURR_DIRS)
 	{
-		curr_files.clear();
-
-		if (!data.getStr2(&curr_dir)
-			|| !data.getInt(&curr_tgroup)
-			|| !data.getStr2(&curr_snapshot_dir))
+		int64 dir_id;
+		SCurrDir dir;
+		if (!data.getVarInt(&dir_id)
+			|| !data.getStr2(&dir.dir)
+			|| !data.getInt(&dir.tgroup)
+			|| !data.getStr2(&dir.snapshot_dir))
 		{
+			assert(false);
 			return false;
 		}
 
+		dir.finish = false;
+		IScopedLock lock(mutex.get());
+		curr_dirs[dir_id] = dir;
 		return true;
 	}
 	else if (id == ID_FINISH_CURR_DIR)
 	{
 		int64 target_generation;
-		if (!data.getVarInt(&target_generation))
+		int64 id;
+		int64 dir_files;
+		if (!data.getVarInt(&id)
+			|| !data.getVarInt(&target_generation)
+			|| !data.getVarInt(&dir_files))
 		{
-			curr_files.clear();
+			assert(false);
 			return false;
 		}
 
-#ifndef _WIN32
-		std::string path_lower = curr_dir + os_file_sep();
-#else
-		std::string path_lower = strlower(curr_dir + os_file_sep());
-#endif
-
-		std::vector<SFileAndHash> files;
-		int64 generation = -1;
-		if (clientdao.getFiles(path_lower, curr_tgroup, files, generation))
+		SCurrDir* dir;
 		{
-			if (generation != target_generation)
+			IScopedLock lock(mutex.get());
+			dir = &curr_dirs[id];
+
+			if (dir->files.size() != dir_files)
 			{
-				curr_files.clear();
+				dir->finish = true;
+				dir->target_generation = target_generation;
+				dir->dir_target_nfiles = dir_files;
 				return true;
 			}
-
-			std::sort(curr_files.begin(), curr_files.end());
-
-			bool added_hash = false;
-			for (size_t i = 0; i < files.size(); ++i)
-			{
-				if (files[i].hash.empty())
-				{
-					std::vector<SFileAndHash>::iterator it =
-						std::lower_bound(curr_files.begin(), curr_files.end(), files[i]);
-					if (it != curr_files.end()
-						&& it->name == files[i].name)
-					{
-						files[i].hash = it->hash;
-						added_hash = true;
-					}
-				}
-			}
-
-			if (added_hash)
-			{
-				addModifyFileBuffer(clientdao, path_lower, curr_tgroup, files, target_generation);
-			}
-
-			curr_files.clear();
-			return true;
 		}
 
-		curr_files.clear();
-		return false;
+		return finishDir(dir, clientdao, target_generation, id);
 	}
 	else if (id == ID_INIT_HASH)
 	{
@@ -254,22 +288,38 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	if (id != ID_HASH_FILE)
 	{
+		assert(false);
 		return false;
 	}
 
 	int64 file_id;
 	if (!data.getVarInt(&file_id))
 	{
+		assert(false);
 		return false;
 	}
 
 	std::string fn;
 	if (!data.getStr2(&fn))
 	{
+		assert(false);
 		return false;
 	}
 
-	std::string full_path = curr_snapshot_dir + os_file_sep() + fn;
+	int64 dir_id;
+	if (!data.getVarInt(&dir_id))
+	{
+		assert(false);
+		return false;
+	}
+
+	SCurrDir* dir;
+	{
+		IScopedLock lock(mutex.get());
+		dir = &curr_dirs[dir_id];
+	}
+
+	std::string full_path = dir->snapshot_dir + os_file_sep() + fn;
 
 	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(full_path), MODE_READ_SEQUENTIAL_BACKUP));
 
@@ -345,11 +395,89 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	wdata.addString2(fandhash.hash);
 	fandhash.name = fn;
 	*reinterpret_cast<_u16*>(wdata.getDataPtr()) = little_endian(static_cast<_u16>(wdata.getDataSize() - sizeof(_u16)));
-	curr_files.push_back(fandhash);
+
+	bool finish_dir = false;
+	{
+		IScopedLock lock(mutex.get());
+		dir->files.push_back(fandhash);
+
+		if (dir->finish &&
+			dir->files.size() == dir->dir_target_nfiles)
+		{
+			finish_dir = true;
+		}
+	}
+
+	if (finish_dir)
+	{
+		finishDir(dir, clientdao, dir->target_generation, dir_id);
+	}
 
 	Server->Log("Parallel hash \"" + full_path + "\" id=" + convert(file_id) + " hash=" + base64_encode_dash(fandhash.hash)+ ph_action, LL_DEBUG);
 
+	{
+		IScopedLock lock(mutex.get());
+		if (!working_file_ids.empty()
+			&& *working_file_ids.begin() != working_file_id)
+		{
+			stdout_msg_buf[working_file_id] = wdata;
+			return true;
+		}
+	}
+
 	return addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());
+}
+
+bool ParallelHash::finishDir(ParallelHash::SCurrDir* dir, ClientDAO& clientdao, const int64& target_generation, int64& id)
+{
+#ifndef _WIN32
+	std::string path_lower = dir->dir + os_file_sep();
+#else
+	std::string path_lower = strlower(dir->dir + os_file_sep());
+#endif
+
+	std::vector<SFileAndHash> files;
+	int64 generation = -1;
+	if (clientdao.getFiles(path_lower, dir->tgroup, files, generation))
+	{
+		if (generation != target_generation)
+		{
+			IScopedLock lock(mutex.get());
+			curr_dirs.erase(id);
+			return true;
+		}
+
+		std::sort(dir->files.begin(), dir->files.end());
+
+		bool added_hash = false;
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			if (files[i].hash.empty())
+			{
+				std::vector<SFileAndHash>::iterator it =
+					std::lower_bound(dir->files.begin(), dir->files.end(), files[i]);
+				if (it != dir->files.end()
+					&& it->name == files[i].name)
+				{
+					files[i].hash = it->hash;
+					added_hash = true;
+				}
+			}
+		}
+
+		if (added_hash)
+		{
+			addModifyFileBuffer(clientdao, path_lower, dir->tgroup, files, target_generation);
+		}
+
+		IScopedLock lock(mutex.get());
+		curr_dirs.erase(id);
+		return true;
+	}
+
+	IScopedLock lock(mutex.get());
+	curr_dirs.erase(id);
+	return false;
 }
 
 bool ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
@@ -392,9 +520,35 @@ size_t ParallelHash::calcBufferSize(const std::string &path, const std::vector<S
 	return add_size;
 }
 
+void ParallelHash::runExtraThread()
+{
+	IScopedLock lock(extra_mutex.get());
+	while (!do_quit)
+	{
+		while (extra_queue.empty() &&
+			do_quit)
+		{
+			extra_cond->wait(&lock);
+		}
+
+		std::pair<int64, std::string> msg = extra_queue.front();
+		extra_queue.pop_front();
+
+		lock.relock(NULL);
+
+
+		lock.relock(extra_mutex.get());
+		working_file_ids.erase(msg.first);
+
+		addQueuedStdoutMsgs();
+	}
+}
+
 void ParallelHash::addModifyFileBuffer(ClientDAO& clientdao, const std::string & path, int tgroup,
 	const std::vector<SFileAndHash>& files, int64 target_generation)
 {
+	IScopedLock lock(modify_file_buffer_mutex.get());
+
 	modify_file_buffer_size += calcBufferSize(path, files);
 
 	modify_file_buffer.push_back(SBufferItem(path, tgroup, files, target_generation));

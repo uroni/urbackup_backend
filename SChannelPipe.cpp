@@ -529,6 +529,10 @@ void SChannelPipe::shutdown(void)
 	bpipe->shutdown();
 }
 
+size_t SChannelPipe::getNumWaiters() {
+	return bpipe->getNumWaiters();
+}
+
 size_t SChannelPipe::getNumElements(void)
 {
 	return bpipe->getNumElements();

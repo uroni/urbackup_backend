@@ -868,6 +868,34 @@
 				</div>
 				<div id="client_settings_tray_access_pw_sw" style="display: inline"></div>
 			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="download_threads">Beta: {tNumber of parallel file download threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="download_threads" value="{download_threads}"/></label>
+				</div>
+				<div id="download_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="hash_threads">Beta: {tNumber of parallel server file hash threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="hash_threads" value="{hash_threads}"/></label>
+				</div>
+				<div id="hash_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="client_hash_threads">Beta: {tNumber of parallel client file hash threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="client_hash_threads" value="{client_hash_threads}"/></label>
+				</div>
+				<div id="client_hash_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="image_compress_threads">Beta: {tNumber of threads to use for VHDZ compression (0: auto)}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="image_compress_threads" value="{image_compress_threads}"/></label>
+				</div>
+				<div id="image_compress_threads_sw" style="display: inline"></div>
+			</div>
 		</form>
 	</div>
 	</div>

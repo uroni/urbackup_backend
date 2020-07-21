@@ -396,6 +396,9 @@
     <ClCompile Include="..\urbackupcommon\WebSocketPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="ServerDownloadThreadGroup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -702,6 +705,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\WebSocketPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerDownloadThreadGroup.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

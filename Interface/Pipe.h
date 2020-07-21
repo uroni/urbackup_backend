@@ -35,6 +35,7 @@ public:
 	* only works with memory pipe
 	**/
 	virtual size_t getNumElements(void)=0;
+	virtual size_t getNumWaiters() = 0;
 
 	virtual void addThrottler(IPipeThrottler *throttler)=0;
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler)=0;

@@ -18,18 +18,22 @@
 
 #include "LRUMemCache.h"
 #include "../Interface/Server.h"
+#include "../stringtools.h"
 #include <string.h>
 #include <assert.h>
 
 
-LRUMemCache::LRUMemCache(size_t buffersize, size_t nbuffers, size_t n_threads)
+LRUMemCache::LRUMemCache(size_t buffersize, size_t nbuffers, size_t p_n_threads)
 	: buffersize(buffersize), nbuffers(nbuffers), callback(NULL),
-	mutex(Server->createMutex()), cond(Server->createCondition()), n_threads(n_threads),
+	mutex(Server->createMutex()), cond(Server->createCondition()), n_threads(p_n_threads),
 	do_quit(false), n_threads_working(0), cond_wait(Server->createCondition()), wait_work(false)
 {
+	if (n_threads > 0)
+		--n_threads;
+
 	for (size_t i = 0; i < n_threads; ++i)
 	{
-		Server->createThread(this, "comp img");
+		Server->createThread(this, "comp img"+convert(i));
 	}
 }
 

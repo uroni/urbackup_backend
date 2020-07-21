@@ -64,7 +64,6 @@ BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, i
 
 BackupServerPrepareHash::~BackupServerPrepareHash(void)
 {
-	Server->destroy(pipe);
 }
 
 void BackupServerPrepareHash::operator()(void)
@@ -77,6 +76,7 @@ void BackupServerPrepareHash::operator()(void)
 		if(data=="exit")
 		{
 			output->Write("exit");
+			pipe->Write("exit");
 			Server->Log("server_prepare_hash Thread finished (exit)");
 			delete this;
 			return;

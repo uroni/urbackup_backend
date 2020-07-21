@@ -2489,6 +2489,8 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 	}
 
 	bool finish_phash_path = false;
+	int64 phash_dir_id = file_id;
+	int64 phash_dir_files = 0;
 	bool has_include = false;
 	
 	for(size_t i=0;i<files.size();++i)
@@ -2544,7 +2546,8 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			}
 			else if (calculate_filehashes_on_client
 				&& phash_queue != NULL
-				&& !files[i].isspecialf)
+				&& !files[i].isspecialf
+				&& files[i].size>=link_file_min_size)
 			{
 				if (!finish_phash_path)
 				{
@@ -2552,16 +2555,19 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 
 					CWData wdata;
 					wdata.addChar(ID_SET_CURR_DIRS);
+					wdata.addVarInt(phash_dir_id);
 					wdata.addString2(orig_dir);
 					wdata.addInt(index_group);
 					wdata.addString2(dir);
 					addToPhashQueue(wdata);
 				}
 
+				++phash_dir_files;
 				CWData wdata;
 				wdata.addChar(ID_HASH_FILE);
 				wdata.addVarInt(file_id);
 				wdata.addString2(files[i].name);
+				wdata.addVarInt(phash_dir_id);
 				addToPhashQueue(wdata);
 			}
 
@@ -2599,7 +2605,9 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 	{
 		CWData wdata;
 		wdata.addChar(ID_FINISH_CURR_DIR);
+		wdata.addVarInt(phash_dir_id);
 		wdata.addVarInt(target_generation);
+		wdata.addVarInt(phash_dir_files);
 		addToPhashQueue(wdata);
 	}
 
@@ -9034,13 +9042,28 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 	{
 		delete phash_queue;
 	}
+
+	std::string settings_fn = "urbackup/data/settings.cfg";
+
+	if (!index_clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	size_t client_hash_threads = 0;
+	if (curr_settings.get() != NULL)
+	{
+		client_hash_threads = curr_settings->getValue("client_hash_threads", 0);
+	}
+
 	std::string fn = "phash_" + bytesToHex(async_ticket);
 	phash_queue = new SQueueRef(Server->openTemporaryFile(), this, fn);
 	phash_queue->ref();
 	phash_queue_write_pos = 0;
 	os_create_dir(Server->getServerWorkingDir() + "urbackup" + os_file_sep() + "phash");
 	filesrv->shareDir("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}", Server->getServerWorkingDir() + "/urbackup/phash", std::string(), true);
-	ParallelHash* phash = new ParallelHash(phash_queue->ref(), sha_version);
+	ParallelHash* phash = new ParallelHash(phash_queue->ref(), sha_version, client_hash_threads);
 	filesrv->registerScriptPipeFile(fn, phash);
 }
 

@@ -26,6 +26,7 @@ public:
 	virtual void shutdown(void);
 
 	virtual size_t getNumElements(void);
+	virtual size_t getNumWaiters();
 
 	virtual void addThrottler(IPipeThrottler *throttler);
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
@@ -43,6 +44,7 @@ private:
 	IMutex *mutex;
 	ICondition *cond;
 
+	size_t waiters;
 	bool has_error;
 };
 

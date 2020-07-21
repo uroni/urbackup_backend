@@ -46,6 +46,10 @@ public:
 	{
 		pipe->shutdown();
 	}
+	virtual size_t getNumWaiters()
+	{
+		return pipe->getNumWaiters();
+	};
 	virtual size_t getNumElements(void)
 	{
 		return pipe->getNumElements();

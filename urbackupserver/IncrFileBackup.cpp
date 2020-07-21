@@ -25,7 +25,7 @@
 #include "server_dir_links.h"
 #include "server_running.h"
 #include "server_cleanup.h"
-#include "ServerDownloadThread.h"
+#include "ServerDownloadThreadGroup.h"
 #include "FileIndex.h"
 #include <stack>
 #include "../urbackupcommon/file_metadata.h"
@@ -523,18 +523,16 @@ bool IncrFileBackup::doFileBackup()
 	bool backup_with_components;
 	_i64 files_size = getIncrementalSize(tmp_filelist, diffs, backup_with_components);
 
-	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
+	std::auto_ptr<ServerDownloadThreadGroup> server_download(new ServerDownloadThreadGroup(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components, filepath_corrections, max_file_id));
+		backup_with_components, server_settings->getSettings()->download_threads, server_settings.get(), 
+		intra_file_diffs, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
-
-	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
 
 	char buffer[4096];
 	_u32 read;
@@ -1370,7 +1368,7 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 
-	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
+	while(!server_download->join(1000))
 	{
 		if(files_size==0)
 		{
@@ -1431,9 +1429,15 @@ bool IncrFileBackup::doFileBackup()
 
 	waitForFileThreads();
 
-	if( bsh->hasError() || bsh_prepare->hasError() )
+	for (size_t i = 0; i < bsh.size(); ++i)
 	{
-		disk_error=true;
+		if (bsh[i]->hasError())
+			disk_error = true;
+	}
+	for (size_t i = 0; i < bsh_prepare.size(); ++i)
+	{
+		if (bsh_prepare[i]->hasError())
+			disk_error = true;
 	}
 
 	if (!r_offline && !c_has_error && !disk_error)

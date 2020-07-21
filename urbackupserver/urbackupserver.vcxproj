@@ -253,6 +253,7 @@
     <ClCompile Include="PhashLoad.cpp" />
     <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
+    <ClCompile Include="ServerDownloadThreadGroup.cpp" />
     <ClCompile Include="serverinterface\add_client.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\create_zip.cpp" />
@@ -375,6 +376,7 @@
     <ClInclude Include="PhashLoad.h" />
     <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
+    <ClInclude Include="ServerDownloadThreadGroup.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
     <ClInclude Include="serverinterface\backups.h" />

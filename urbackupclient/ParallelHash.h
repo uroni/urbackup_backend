@@ -8,6 +8,8 @@
 #include "clientdao.h"
 #include "client.h"
 #include <memory>
+#include <deque>
+#include <set>
 
 namespace
 {
@@ -24,7 +26,7 @@ class ClientHash;
 class ParallelHash : public IPipeFileExt, public IThread
 {
 public:
-	ParallelHash(SQueueRef* phash_queue, int sha_version);
+	ParallelHash(SQueueRef* phash_queue, int sha_version, size_t extra_n_threads);
 
 	virtual bool getExitCode(int & exit_code);
 	virtual void forceExit();
@@ -34,12 +36,30 @@ public:
 
 	void operator()();
 
+	void addQueuedStdoutMsgs();
+
 private:
-	bool hashFile(CRData& data, ClientDAO& clientdao);
+	struct SCurrDir
+	{
+		int tgroup;
+		std::string dir;
+		std::string snapshot_dir;
+		std::vector<SFileAndHash> files;
+		int64 target_generation;
+		int64 dir_target_nfiles;
+		bool finish;
+	};
+
+	bool hashFile(int64 working_file_id, CRData& data, ClientDAO& clientdao);
+	bool finishDir(ParallelHash::SCurrDir* dir, ClientDAO& clientdao, const int64& target_generation, int64& id);
 	bool addToStdoutBuf(const char* ptr, size_t size);
 	void addModifyFileBuffer(ClientDAO& clientdao, const std::string& path, int tgroup, const std::vector<SFileAndHash>& files, int64 target_generation);
 	void commitModifyFileBuffer(ClientDAO& clientdao);
 	size_t calcBufferSize(const std::string &path, const std::vector<SFileAndHash> &data);
+	void runExtraThread();
+
+	std::map<int64, CWData> stdout_msg_buf;
+	std::set<int64> working_file_ids;
 
 	std::vector<char> stdout_buf;
 	size_t stdout_buf_pos;
@@ -48,14 +68,16 @@ private:
 	volatile bool eof;
 	int64 phash_queue_pos;
 	SQueueRef* phash_queue;
-	std::auto_ptr<IMutex> mutex;
-	std::string curr_dir;
-	int curr_tgroup;
-	std::string curr_snapshot_dir;
-	std::vector<SFileAndHash> curr_files;
+	std::auto_ptr<IMutex> mutex;	
+	
+	std::map<int64, SCurrDir> curr_dirs;
+
+	std::deque<std::string> postponed_finish;
+	
 	std::auto_ptr<ClientHash> client_hash;
 	int sha_version;
 	THREADPOOL_TICKET ticket;
+	std::vector<THREADPOOL_TICKET> extra_tickets;
 
 	struct SBufferItem
 	{
@@ -69,7 +91,14 @@ private:
 		int64 target_generation;
 	};
 
+	std::auto_ptr<IMutex> modify_file_buffer_mutex;
 	std::vector< SBufferItem > modify_file_buffer;
 	size_t modify_file_buffer_size;
 	int64 last_file_buffer_commit_time;
+	size_t extra_n_threads;
+	bool extra_thread;
+
+	std::deque<std::pair<int64, std::string> > extra_queue;
+	std::auto_ptr<IMutex> extra_mutex;
+	std::auto_ptr<ICondition> extra_cond;
 };

@@ -45,7 +45,8 @@ namespace
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, const std::string& clientsubname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal,
-	FilePathCorrections& filepath_corrections, MaxFileId& max_file_id)
+	size_t thread_idx,
+	FilePathCorrections& filepath_corrections, MaxFileId& max_file_id, ActiveDlIds& active_dls_ids)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname), clientsubname(clientsubname),
@@ -53,7 +54,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
 	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), last_snap_num_issues(0), has_disk_error(false), sc_failure_fatal(sc_failure_fatal),
-	tmpfile_num(0), filepath_corrections(filepath_corrections), max_file_id(max_file_id)
+	tmpfile_num(0), filepath_corrections(filepath_corrections), max_file_id(max_file_id), thread_idx(thread_idx), active_dls_ids(active_dls_ids)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -202,6 +203,8 @@ void ServerDownloadThread::operator()( void )
 		}
 		else if(curr.action==EQueueAction_StopShadowcopy)
 		{
+			active_dls_ids.waitBefore(curr.id);
+
 			if (!stop_shadowcopy(curr.fn))
 			{
 				IScopedLock lock(mutex);
@@ -235,7 +238,10 @@ void ServerDownloadThread::operator()( void )
 		}
 	}
 
-	if(!is_offline && !skipping && client_main->getProtocolVersions().file_meta>0)
+	active_dls_ids.waitAll();
+
+	if(!is_offline && !skipping && client_main->getProtocolVersions().file_meta>0 &&
+		thread_idx==0)
 	{
 		_u32 rc = fc.InformMetadataStreamEnd(server_token, 3);
 
@@ -1515,16 +1521,20 @@ bool ServerDownloadThread::stop_shadowcopy(std::string path)
 	return fret;
 }
 
-bool ServerDownloadThread::sleepQueue()
+bool ServerDownloadThread::queueFull()
 {
 	IScopedLock lock(mutex);
 	if(queue_size>max_queue_size)
 	{
-		lock.relock(NULL);
-		Server->wait(1000);
 		return true;
 	}
 	return false;
+}
+
+size_t ServerDownloadThread::queueSize()
+{
+	IScopedLock lock(mutex);
+	return queue_size;
 }
 
 size_t ServerDownloadThread::getNumEmbeddedMetadataFiles()

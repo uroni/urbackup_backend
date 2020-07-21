@@ -315,6 +315,11 @@ void CompressedPipe::shutdown(void)
 	cs->shutdown();
 }
 
+size_t CompressedPipe::getNumWaiters()
+{
+	return cs->getNumWaiters();
+}
+
 size_t CompressedPipe::getNumElements(void)
 {
 	return cs->getNumElements();

@@ -1062,12 +1062,13 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+mbr_size,
 							(unsigned int)vhd_blocksize*blocksize, true,
-							image_format);
+							image_format, server_settings->getSettings()->image_compress_threads);
 					}
 					else
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false,
-							true, image_format, drivesize + mbr_size);
+							true, image_format, drivesize + mbr_size,
+							server_settings->getSettings()->image_compress_threads);
 					}
 
 					if(r_vhdfile==NULL || !r_vhdfile->isOpen())

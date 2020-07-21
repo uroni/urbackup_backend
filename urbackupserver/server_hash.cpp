@@ -74,11 +74,6 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapsho
 
 BackupServerHash::~BackupServerHash(void)
 {
-	if(pipe!=NULL)
-	{
-		Server->destroy(pipe);
-	}
-
 	delete fileindex;
 }
 
@@ -121,6 +116,7 @@ void BackupServerHash::operator()(void)
 		working=true;
 		if(data=="exit")
 		{
+			pipe->Write("exit");
 			deinitDatabase();
 			Server->Log("server_hash Thread finished - normal");
 			Server->destroyDatabases(Server->getThreadID());

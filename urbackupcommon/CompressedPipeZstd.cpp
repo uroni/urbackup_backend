@@ -474,6 +474,10 @@ void CompressedPipeZstd::shutdown(void)
 	cs->shutdown();
 }
 
+size_t CompressedPipeZstd::getNumWaiters() {
+	return cs->getNumWaiters();
+}
+
 size_t CompressedPipeZstd::getNumElements(void)
 {
 	return cs->getNumElements();

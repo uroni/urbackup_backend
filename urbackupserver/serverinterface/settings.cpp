@@ -272,6 +272,10 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_STR(client_settings_tray_access_pw);
 	SET_SETTING_BOOL(local_encrypt);
 	SET_SETTING_BOOL(local_compress);
+	SET_SETTING_INT(download_threads);
+	SET_SETTING_INT(hash_threads);
+	SET_SETTING_INT(client_hash_threads);
+	SET_SETTING_INT(image_compress_threads);
 #undef SET_SETTING
 	return ret;
 }

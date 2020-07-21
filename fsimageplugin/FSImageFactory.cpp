@@ -538,7 +538,7 @@ bool FSImageFactory::isNTFS(char *buffer)
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
-	unsigned int pBlocksize, bool fast_mode, ImageFormat format)
+	unsigned int pBlocksize, bool fast_mode, ImageFormat format, size_t n_compress_threads)
 {
 	switch(format)
 	{
@@ -556,7 +556,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, 
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string &parent_fn,
-	bool pRead_only, bool fast_mode, ImageFormat format, uint64 pDstsize)
+	bool pRead_only, bool fast_mode, ImageFormat format, uint64 pDstsize, size_t n_compress_threads)
 {
 	switch(format)
 	{

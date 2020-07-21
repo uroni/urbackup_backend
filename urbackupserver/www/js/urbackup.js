@@ -4167,7 +4167,11 @@ g.settings_list=[
 "archive",
 "client_settings_tray_access_pw",
 "local_encrypt",
-"local_compress"
+"local_compress",
+"download_threads",
+"hash_threads",
+"client_hash_threads",
+"image_compress_threads"
 ];
 g.general_settings_list=[
 "backupfolder",

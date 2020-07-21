@@ -146,6 +146,11 @@ void InternetServicePipe::shutdown(void)
 	cs->shutdown();
 }
 
+size_t InternetServicePipe::getNumWaiters()
+{
+	return cs->getNumWaiters();
+}
+
 size_t InternetServicePipe::getNumElements(void)
 {
 	return cs->getNumElements();

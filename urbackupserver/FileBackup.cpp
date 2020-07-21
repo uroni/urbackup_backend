@@ -581,36 +581,43 @@ std::string FileBackup::clientlistName(int ref_backupid)
 
 void FileBackup::createHashThreads(bool use_reflink, bool ignore_hash_mismatches)
 {
-	assert(bsh==NULL);
-	assert(bsh_prepare==NULL);
+	assert(bsh.empty());
+	assert(bsh_prepare.empty());
 
 	hashpipe=Server->createMemoryPipe();
 	hashpipe_prepare=Server->createMemoryPipe();
 
-	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id);
-	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches);
-	bsh_ticket = Server->getThreadPool()->execute(bsh, "fbackup write");
-	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare, "fbackup hash");
+	size_t h_cnt = server_settings->getSettings()->hash_threads;
+
+	for (size_t i = 0; i < h_cnt; ++i)
+	{
+		BackupServerHash* curr_bsh = new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id);
+		BackupServerPrepareHash* curr_bsh_prepare = new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches);
+		bsh.push_back(curr_bsh);
+		bsh_prepare.push_back(curr_bsh_prepare);
+		bsh_ticket.push_back(Server->getThreadPool()->execute(curr_bsh, "fbackup write" + convert(i)));
+		bsh_prepare_ticket.push_back(Server->getThreadPool()->execute(curr_bsh_prepare, "fbackup hash" + convert(i)));
+	}
 }
 
 
 void FileBackup::destroyHashThreads()
 {
-	if (hashpipe_prepare != NULL)
+	if (!bsh_prepare.empty())
 	{
-		assert(bsh_ticket != ILLEGAL_THREADPOOL_TICKET);
-		assert(bsh_prepare_ticket != ILLEGAL_THREADPOOL_TICKET);
 		hashpipe_prepare->Write("exit");
 		Server->getThreadPool()->waitFor(bsh_ticket);
 		Server->getThreadPool()->waitFor(bsh_prepare_ticket);
+		Server->destroy(hashpipe_prepare);
+		Server->destroy(hashpipe);
 	}
 
-	bsh_ticket=ILLEGAL_THREADPOOL_TICKET;
-	bsh_prepare_ticket=ILLEGAL_THREADPOOL_TICKET;
+	bsh_ticket.clear();
+	bsh_prepare_ticket.clear();
 	hashpipe=NULL;
 	hashpipe_prepare=NULL;
-	bsh=NULL;
-	bsh_prepare=NULL;
+	bsh.clear();
+	bsh_prepare.clear();
 }
 
 _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool& backup_with_components, bool all)
@@ -1219,18 +1226,30 @@ void FileBackup::waitForFileThreads(void)
 	SStatus status=ServerStatus::getStatus(clientname);
 	hashpipe->Write("flush");
 	hashpipe_prepare->Write("flush");
-	_u32 hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-	_u32 prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
-	while(hashqueuesize>0 || prepare_hashqueuesize>0)
+	
+	size_t hashqueuesize=std::string::npos;
+	size_t prepare_hashqueuesize=0;
+	while(hashqueuesize==std::string::npos || hashqueuesize>0 || prepare_hashqueuesize>0)
 	{
-		ServerStatus::setProcessQueuesize(clientname, status_id, prepare_hashqueuesize, hashqueuesize);
-		Server->wait(1000);
-		hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-		prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+		if (hashqueuesize != std::string::npos)
+		{
+			ServerStatus::setProcessQueuesize(clientname, status_id, prepare_hashqueuesize, hashqueuesize);
+			Server->wait(1000);
+		}
+
+		size_t bsh_working = bsh.size() - hashpipe->getNumWaiters();
+		size_t bsh_prepare_working = bsh_prepare.size() - hashpipe_prepare->getNumWaiters();
+		
+		hashqueuesize = hashpipe->getNumElements() + bsh_working;
+		prepare_hashqueuesize = hashpipe_prepare->getNumElements() + bsh_prepare_working;
 	}
 	{
 		Server->wait(10);
-		while(bsh->isWorking()) Server->wait(1000);
+
+		while (hashpipe->getNumWaiters() < bsh.size())
+		{
+			Server->wait(1000);
+		}
 	}	
 
 	ServerStatus::setProcessQueuesize(clientname, status_id, 0, 0);

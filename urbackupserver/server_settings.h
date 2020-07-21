@@ -146,6 +146,10 @@ struct SSettings
 	std::string client_settings_tray_access_pw;
 	bool local_encrypt;
 	bool local_compress;
+	int download_threads;
+	int hash_threads;
+	int client_hash_threads;
+	int image_compress_threads;
 };
 
 struct SLDAPSettings

@@ -137,17 +137,62 @@ namespace
 	};
 }
 
-
-
 class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
 {
 public:
-	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
+	class ActiveDlIds
+	{
+		std::auto_ptr<IMutex> mutex;
+		std::set<size_t> ids;
+	public:
+		ActiveDlIds()
+			: mutex(Server->createMutex())
+		{}
+
+
+		void addActiveId(size_t id)
+		{
+			IScopedLock lock(mutex.get());
+			ids.insert(id);
+		}
+
+		void removeActiveId(size_t id)
+		{
+			IScopedLock lock(mutex.get());
+			ids.erase(id);
+		}
+
+		void waitAll()
+		{
+			IScopedLock lock(mutex.get());
+			while (!ids.empty())
+			{
+				lock.relock(NULL);
+				Server->wait(100);
+				lock.relock(mutex.get());
+			}
+		}
+
+		void waitBefore(size_t id)
+		{
+			IScopedLock lock(mutex.get());
+			while (!ids.empty()
+				&& *ids.begin() < id)
+			{
+				lock.relock(NULL);
+				Server->wait(100);
+				lock.relock(mutex.get());
+			}
+		}
+	};
+
+	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, 
+		const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot,
-		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal, FilePathCorrections& filepath_corrections,
-		MaxFileId& max_file_id);
+		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal, size_t thread_idx, FilePathCorrections& filepath_corrections,
+		MaxFileId& max_file_id, ActiveDlIds& active_dls_ids);
 
 	~ServerDownloadThread();
 
@@ -205,7 +250,9 @@ public:
 
 	bool shouldBackoff();
 
-	bool sleepQueue();
+	bool queueFull();
+
+	size_t queueSize();
 
 	size_t getNumEmbeddedMetadataFiles();
 
@@ -308,4 +355,8 @@ private:
 	size_t tmpfile_num;
 
 	MaxFileId& max_file_id;
+
+	size_t thread_idx;
+
+	ActiveDlIds& active_dls_ids;
 };
