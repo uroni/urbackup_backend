@@ -487,8 +487,12 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 						CWData data;
 						if(!errmsg.empty())
 						{
-							logFailedAuth(clientname, endpoint_name);
-							Server->Log("Authentication failed in InternetServiceConnector::ReceivePackets: "+errmsg, LL_INFO);
+							if (!token_auth)
+							{
+								logFailedAuth(clientname, endpoint_name);
+							}
+							Server->Log("Authentication failed in InternetServiceConnector::ReceivePackets: "+errmsg 
+								+ (token_auth ? " (token authentication)" :""), LL_INFO);
 							data.addChar(ID_ISC_AUTH_FAILED);
 							data.addString(errmsg);
 						}
