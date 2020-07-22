@@ -959,7 +959,7 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 {
 	std::string key;
 	key.resize(32);
-	Server->secureRandomFill((char*)key.data(), 32);
+	Server->secureRandomFill(&key[0], 32);
 	return key;
 }
 
