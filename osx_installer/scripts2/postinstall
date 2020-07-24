@@ -29,4 +29,4 @@ else
 	done
 fi
 
-"$2/Contents/MacOS/buildmacOSexclusions"
+"$2/Contents/MacOS/bin/buildmacOSexclusions"
