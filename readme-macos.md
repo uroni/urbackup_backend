@@ -84,33 +84,16 @@ cd ~/UrBackup/urbackup_backend
 autoreconf -fvi
 ```
 
-For development, there are some changes that need to be manually applied:
-
-In `create_osx_installer.sh`:
-- Comment out lines 6-10, 64-65 and 75;
-- Replace lines 55-56 with this:
-```bash
-VERSION_SHORT_NUM="0.1"
-VERSION_SHORT="0.1"
-```
-In `osx_installer/info.plist`:
-- Replace lines 16, 18, 24 and 26 respectively with these:
-```bash
-<string>0.1</string>
-
-<string>0.1</string>
-
-<integer>0</integer>
-
-<integer>1</integer>
-```
-
-
-
 And then build it!
 ```bash
 cd ~/UrBackup/urbackup_backend
 ./create_osx_installer.sh
+```
+
+For development, use the `-d` or `--development` switches
+```bash
+cd ~/UrBackup/urbackup_backend
+./create_osx_installer.sh -d
 ```
 
 
