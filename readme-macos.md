@@ -69,14 +69,6 @@ cd client
 git checkout dev
 ```
 
-Download cocoasudo:
-```bash
-cd ~/UrBackup
-git clone https://github.com/performantdesign/cocoasudo.git
-cd cocoasudo
-git checkout master
-```
-
 Switch to building the client:
 ```bash
 cd ~/UrBackup/urbackup_backend
