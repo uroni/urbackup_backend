@@ -6575,7 +6575,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		{
 			wchar_t buf[300];
 
-			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf) == ERROR_SUCCESS); ++i)
+			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf)) == ERROR_SUCCESS; ++i)
 			{
 				DWORD rsize = sizeof(buf) * sizeof(wchar_t);
 				if (RegGetValueW(profile_list, std::wstring(buf).c_str(), L"ProfileImagePath",
