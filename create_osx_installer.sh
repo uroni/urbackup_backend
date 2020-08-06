@@ -34,7 +34,6 @@ make clean
 make -j5
 make install DESTDIR=$PWD/osx-pkg2
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
-cp ../cocoasudo/build/Release/cocoasudo "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/UrBackup Client Administration"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
 if !($development); then
@@ -47,7 +46,6 @@ cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
-strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/UrBackup Client Administration"
 
 mkdir -p "$PWD/osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin"
 UNINSTALLER="$PWD/osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackup_uninstall"
