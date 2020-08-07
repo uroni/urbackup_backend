@@ -36,6 +36,8 @@ make install DESTDIR=$PWD/osx-pkg2
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
+mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Frameworks"
+
 if !($development); then
 	cp osx_installer/info.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
 else
@@ -44,6 +46,44 @@ fi
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
+
+# Bundle and link wx libs
+
+dylibs=(
+	"libwx_osx_cocoau_xrc-3.0*.dylib"
+	"libwx_osx_cocoau_webview-3.0*.dylib"
+	"libwx_osx_cocoau_html-3.0*.dylib"
+	"libwx_osx_cocoau_qa-3.0*.dylib"
+	"libwx_osx_cocoau_adv-3.0*.dylib"
+	"libwx_osx_cocoau_core-3.0*.dylib"
+	"libwx_baseu_xml-3.0*.dylib"
+	"libwx_baseu_net-3.0*.dylib"
+	"libwx_baseu-3.0*.dylib"
+	)
+
+for dylib in "${dylibs[@]}"; do
+	cp -R /usr/local/lib/$dylib "osx-pkg2/Applications/UrBackup Client.app/Contents/Frameworks"
+done
+
+cd "osx-pkg2/Applications/UrBackup Client.app/Contents/Frameworks"
+
+for dylib in "${dylibs[@]}"; do
+	for file in `ls $dylib`; do
+		# Patch all library internal cross references
+		for dylibother in "${dylibs[@]}"; do
+			for fileother in `ls $dylibother`; do
+				install_name_tool  -change /usr/local/lib/$file @executable_path/../Frameworks/$file  $fileother
+			done
+		done
+
+		# Patch executable
+		install_name_tool  -change /usr/local/lib/$file @executable_path/../Frameworks/$file ../MacOS/urbackupclientgui
+	done
+done
+
+cd ../../../../..
+
+
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
 
