@@ -209,4 +209,6 @@ private:
 	std::vector<char>* extra_buffer;
 
 	bool backup_semantics;
+
+	bool is_tunneled;
 };

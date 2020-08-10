@@ -77,7 +77,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		IFileServ *fileserv=fileserv_fak->createFileServ(tcpport, udpport);
 		fileserv->shareDir(ExtractFileName(share_dir), share_dir, std::string(), false);
-		fileserv->addIdentity("");
+		fileserv->addIdentity("", false);
 	}
 
 #ifndef STATIC_PLUGIN

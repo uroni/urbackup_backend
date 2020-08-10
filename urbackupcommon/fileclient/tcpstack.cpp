@@ -99,7 +99,8 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms, bool f
 	while(currpos<packet_len)
 	{
 		size_t ts=(std::min)((size_t)MAX_PACKET, packet_len-currpos);
-		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1, flush);
+		bool curr_flush = (currpos + ts) < packet_len ? false : flush;
+		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1, curr_flush);
 		first_packet=false;
 		currpos+=ts;
 		if(!b)

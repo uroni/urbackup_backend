@@ -153,6 +153,7 @@ bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 int md5sum_check();
 int blockalign();
+void init_server_pubkey();
 
 std::string lang="en";
 std::string time_format_str="%Y-%m-%d %H:%M";
@@ -605,6 +606,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		writestring(token, "urbackup/server_token.key");
 		server_token=token;
 	}
+
+	init_server_pubkey();
 
 	Server->deleteFile("urbackup/shutdown_now");
 

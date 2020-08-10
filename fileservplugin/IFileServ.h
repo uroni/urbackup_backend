@@ -46,7 +46,7 @@ public:
 	virtual std::string getServerName(void)=0;
 	virtual void stopServer(void)=0;
 	virtual std::string getShareDir(const std::string &name, const std::string& identity)=0;
-	virtual void addIdentity(const std::string &pIdentity)=0;
+	virtual void addIdentity(const std::string &pIdentity, bool only_tunneled)=0;
 	virtual bool removeIdentity(const std::string &pIdentity)=0;
 	virtual void setPause(bool b)=0;
 	virtual bool getPause(void)=0;

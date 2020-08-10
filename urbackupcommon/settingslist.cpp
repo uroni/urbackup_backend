@@ -105,6 +105,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("alert_params");
 	ret.push_back("archive");
 	ret.push_back("client_settings_tray_access_pw");
+	ret.push_back("local_encrypt");
+	ret.push_back("local_compress");
 	return ret;
 }
 
@@ -139,6 +141,8 @@ std::vector<std::string> getClientConfigurableSettingsList()
 	ret.push_back("internet_encrypt");
 	ret.push_back("internet_connect_always");
 	ret.push_back("vss_select_components");
+	ret.push_back("local_encrypt");
+	ret.push_back("local_compress");
 	return ret;
 }
 

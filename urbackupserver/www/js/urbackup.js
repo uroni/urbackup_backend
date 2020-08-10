@@ -1041,6 +1041,7 @@ g.status_action_add_internetclient=2;
 g.status_action_stop_show=3;
 g.status_action_reset_error=4;
 g.status_action_stop_show_new_version=5;
+g.status_action_reset_client_uid=6;
 function show_status1(hostname, action, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
@@ -1079,6 +1080,10 @@ function show_status1(hostname, action, remove_client, stop_client_remove)
 		else if(action==g.status_action_stop_show_new_version)
 		{
 			pars+="stop_show_version="+hostname;
+		}
+		else if(action==g.status_action_reset_client_uid)
+		{
+			pars+="reset_client_uid="+hostname;
 		}
 	}
 	else if(remove_client && remove_client.length>0)
@@ -1342,7 +1347,15 @@ function show_status2(data)
 			case 11: obj.status=trans("ident_err")+" <a href=\"help.htm#ident_err\" target=\"_blank\">?</a>"; obj.online_add_status=true; break;
 			case 12: obj.status=trans("too_many_clients_err"); obj.online_add_status=true; break;
 			case 13: obj.status=trans("authentication_err"); obj.online_add_status=true; break;
-			default: obj.status="&nbsp;"
+			case 14:
+				obj.status=trans("uid_changed_err"); obj.online_add_status=true;
+				if(obj.uid && obj.uid.length>0)
+					obj.reset_client_uid=true;
+				break;
+			case 15: obj.status=trans("authenticating"); break;
+			case 16: obj.status=trans("exchanging_settings"); break;
+			case 17: obj.status=trans("client_starting_up"); break;
+			default: obj.status="&nbsp;";
 		}
 		
 		if(data.allow_modify_clients)
@@ -1501,6 +1514,7 @@ function show_status2(data)
 	}
 	
 	g.server_identity = data.server_identity;
+	g.server_pubkey = data.server_pubkey;
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
@@ -2293,6 +2307,13 @@ function show_backups2(data)
 		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
+	}
+}
+function allowNewClient(clientid)
+{
+	if(confirm(trans("confirm_allow_new_client")))
+	{
+		show_status1(""+clientid, g.status_action_reset_client_uid);
 	}
 }
 function tabMouseOver(obj)
@@ -4144,7 +4165,9 @@ g.settings_list=[
 "alert_script",
 "alert_params",
 "archive",
-"client_settings_tray_access_pw"
+"client_settings_tray_access_pw",
+"local_encrypt",
+"local_compress"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4236,7 +4259,9 @@ g.client_settings_list=[
 "internet_compress",
 "internet_encrypt",
 "internet_connect_always",
-"vss_select_components"
+"vss_select_components",
+"local_compress",
+"local_encrypt"
 ];
 
 g.time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
@@ -5903,7 +5928,7 @@ function addNewClient1()
 	if(!startLoading()) return;
 	stopLoading();
 	
-	var ndata=dustRender("add_client", {server_identity: g.server_identity});
+	var ndata=dustRender("add_client", {server_identity: g.server_identity, server_pubkey: g.server_pubkey});
 	
 	if(g.data_f!=ndata)
 	{

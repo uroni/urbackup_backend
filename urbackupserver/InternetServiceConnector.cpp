@@ -413,13 +413,19 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 
 								if(id==ID_ISC_AUTH2)
 								{
-									salt+=ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+									std::string shared_key = ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+									if (salt.empty())
+									{
+										errmsg = "Generating ECDH shared key failed";
+									}
+									salt+=shared_key;
 								}
 
 								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(iterations, client_iterations));
 
 								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
-								if(hmac_loc==hmac)
+								if(hmac_loc==hmac
+									&& errmsg.empty())
 								{
 									if(id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
 									{
@@ -440,7 +446,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 									state=ISS_CAPA;	
 									comm_pipe=is_pipe;
 								}
-								else
+								else if(errmsg.empty())
 								{
 									errmsg="Auth failed (Authkey/password wrong)";
 								}

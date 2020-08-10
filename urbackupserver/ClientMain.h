@@ -32,6 +32,8 @@ class Backup;
 class ServerBackupDao;
 class ImageBackup;
 class ServerChannelThread;
+class IECDHKeyExchange;
+class IECIESDecryption;
 
 const int c_group_default = 0;
 const int c_group_continuous = 1;
@@ -49,7 +51,8 @@ struct SProtocolVersions
 				symbit_version(0), phash_version(0),
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
-				async_index_version(0), restore_version(0)
+				async_index_version(0), restore_version(0),
+				filesrvtunnel(0)
 			{
 
 			}
@@ -75,6 +78,7 @@ struct SProtocolVersions
 	int update_capa_interval;
 	std::string os_simple;
 	int restore_version;
+	int filesrvtunnel;
 };
 
 struct SRunningBackup
@@ -151,10 +155,10 @@ public:
 		bool internet_connection;
 	};
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, SConnection* conn=NULL);
-	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
-	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, SConnection* conn=NULL);
-	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, unsigned int timeout_after_first=0);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, SConnection* conn=NULL, bool do_encrypt = true);
+	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, bool do_encrypt = true);
+	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, SConnection* conn=NULL, bool do_encrypt = true);
+	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, unsigned int timeout_after_first=0, bool do_encrypt=true);
 	void sendToPipe(const std::string &msg);
 
 	bool createDirectoryForClient();
@@ -172,7 +176,7 @@ public:
 	static bool tooManyClients(IDatabase *db, const std::string &clientname, ServerSettings *server_settings);
 	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey=NULL, int* client_group=NULL);
 
-	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL);
+	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL, bool do_encrypt=true);
 
 	virtual IPipe * new_fileclient_connection(void);
 
@@ -210,6 +214,10 @@ public:
 	}
 
 	std::string getIdentity();
+
+	std::string getSecretSessionKey();
+
+	std::string getSessionCompression(int& level);
 	
 	int getCurrImageVersion()
 	{
@@ -263,6 +271,8 @@ public:
 		return allow_restore_clients;
 	}
 
+	static void wakeupClientUidReset();
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -301,6 +311,7 @@ private:
 	bool pauseRetryBackup();
 
 	bool sendServerIdentity(bool retry_exit);
+	bool authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange);
 	bool authenticatePubKey();
 
 	void timeoutRestores();
@@ -380,6 +391,7 @@ private:
 	bool use_tmpfiles_images;
 
 	CTCPStack tcpstack;
+	CTCPStack tcpstack_checksum;
 
 	IMutex* throttle_mutex;
 	IPipeThrottler *client_throttler;
@@ -397,6 +409,9 @@ private:
 
 	std::string session_identity;
 	int64 session_identity_refreshtime;
+	std::string secret_session_key;
+	std::string session_compressed;
+	int session_compression_level;
 
 	ServerBackupDao* backup_dao;
 
@@ -432,4 +447,12 @@ private:
 	volatile bool do_reauthenticate;
 
 	std::vector<std::string> allow_restore_clients;
+
+	static IMutex* ecdh_key_exchange_mutex;
+	static std::vector<std::pair<IECDHKeyExchange*, int64> > ecdh_key_exchange_buffer;
+
+	static IMutex* client_uid_reset_mutex;
+	static ICondition* client_uid_reset_cond;
+
+	static IECIESDecryption* ecies_decryption;
 };
