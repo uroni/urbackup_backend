@@ -1044,10 +1044,29 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 				str_map params;
 				ParseParamStrHttp(cmd.substr(4), &params);
 
+				std::string resp = "ok=1";
+
+				std::string client_keyadd;
+				std::string server_keyadd;
 				if (!secret_session_key.empty())
 				{
-					Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + params["keyadd"]) + " (client)");
-					InternetServicePipe2* isp = new InternetServicePipe2(pipe, secret_session_key + params["keyadd"]);
+					server_keyadd = base64_decode_dash(params["keyadd"]);
+					if (server_keyadd.empty())
+					{
+						Server->Log("Server keyadd is empty", LL_WARNING);
+						return;
+					}
+					client_keyadd.resize(16);
+					Server->randomFill(&client_keyadd[0], client_keyadd.size());
+					resp += "&keyadd=" + base64_encode_dash(client_keyadd);
+				}
+
+				tcpstack.Send(pipe, resp);
+
+				if (!secret_session_key.empty())
+				{	
+					Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + server_keyadd + client_keyadd) + " (client)");
+					InternetServicePipe2* isp = new InternetServicePipe2(pipe, secret_session_key + server_keyadd + client_keyadd);
 					isp->destroyBackendPipeOnDelete(true);
 					pipe = isp;
 					is_encrypted = true;

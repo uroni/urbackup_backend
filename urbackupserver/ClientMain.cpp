@@ -2680,8 +2680,13 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 		{
 			CTCPStack tcpstack(internet_connection);
 			std::string identity = getIdentity();			
-			std::string keyadd = ServerSettings::generateRandomAuthKey();
-			std::string tosend = identity + "ENC?keyadd="+ keyadd+"&compress="+EscapeParamString(compression)+"&compress_level="+convert(compression_level);
+			std::string server_keyadd;
+			if (!secret_session_key.empty())
+			{
+				server_keyadd.resize(16);
+				Server->randomFill(&server_keyadd[0], server_keyadd.size());
+			}
+			std::string tosend = identity + "ENC?keyadd="+ base64_encode_dash(server_keyadd)+"&compress="+EscapeParamString(compression)+"&compress_level="+convert(compression_level);
 			size_t rc = tcpstack.Send(ret, tosend);
 			if (rc != tosend.size())
 			{
@@ -2689,10 +2694,44 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 				return NULL;
 			}
 
+			std::string msg;
+			int64 starttime = Server->getTimeMS();
+			bool ok = false;
+			bool herr = false;
+			str_map enc_response;
+			while (Server->getTimeMS() - starttime <= timeoutms)
+			{
+				size_t rc = ret->Read(&msg, timeoutms);
+				if (rc == 0)
+				{
+					Server->destroy(ret);
+					return NULL;
+				}
+				tcpstack.AddData(msg.data(), msg.size());
+
+				if (tcpstack.getPacket(msg))
+				{					
+					ParseParamStrHttp(msg, &enc_response);
+					break;
+				}
+			}
+
+			if (enc_response["ok"] != "1")
+			{
+				Server->destroy(ret);
+				return NULL;
+			}
+
 			if (!secret_session_key.empty())
 			{
-				Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + keyadd) + " (server)");
-				InternetServicePipe2* isc = new InternetServicePipe2(ret, secret_session_key + keyadd);
+				std::string client_keyadd = base64_decode_dash(enc_response["keyadd"]);
+				if (client_keyadd.empty())
+				{
+					Server->destroy(ret);
+					return NULL;
+				}
+				Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + server_keyadd + client_keyadd) + " (server)");
+				InternetServicePipe2* isc = new InternetServicePipe2(ret, secret_session_key + server_keyadd + client_keyadd);
 				isc->destroyBackendPipeOnDelete(true);
 				ret = isc;
 			}
