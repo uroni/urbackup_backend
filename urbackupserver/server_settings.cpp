@@ -544,23 +544,23 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 		settings->virtual_clients_add = stmp;
 	}
 
+	stmp = settings_client->getValue("backup_window_incr_file", "");
+	if (!stmp.empty())
+		settings->backup_window_incr_file = stmp;
+	stmp = settings_client->getValue("backup_window_full_file", "");
+	if (!stmp.empty())
+		settings->backup_window_full_file = stmp;
+	stmp = settings_client->getValue("backup_window_incr_image", "");
+	if (!stmp.empty())
+		settings->backup_window_incr_image = stmp;
+	stmp = settings_client->getValue("backup_window_full_image", "");
+	if (!stmp.empty())
+		settings->backup_window_full_image = stmp;
+
 	if(!settings->overwrite)
 		return;
 
 	//Following settings are not configurable by the client
-
-	stmp=settings_client->getValue("backup_window_incr_file", "");
-	if(!stmp.empty())
-		settings->backup_window_incr_file=stmp;
-	stmp=settings_client->getValue("backup_window_full_file", "");
-	if(!stmp.empty())
-		settings->backup_window_full_file=stmp;
-	stmp=settings_client->getValue("backup_window_incr_image", "");
-	if(!stmp.empty())
-		settings->backup_window_incr_image=stmp;
-	stmp=settings_client->getValue("backup_window_full_image", "");
-	if(!stmp.empty())
-		settings->backup_window_full_image=stmp;
 
 	stmp=settings_client->getValue("client_quota", "");
 	if(!stmp.empty())
