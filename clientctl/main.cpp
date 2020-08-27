@@ -1479,6 +1479,18 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+#ifdef _WIN32
+	HMODULE hModule = GetModuleHandleW(NULL);
+	if (hModule != INVALID_HANDLE_VALUE)
+	{
+		WCHAR path[MAX_PATH];
+		if (GetModuleFileNameW(hModule, path, MAX_PATH) != 0)
+		{
+			SetCurrentDirectoryW(path);
+		}
+	}
+#endif
+
 	std::vector<std::string> actions;
 	std::vector<action_fun> action_funs;
 	actions.push_back("start");

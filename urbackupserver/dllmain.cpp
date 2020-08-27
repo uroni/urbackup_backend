@@ -868,7 +868,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				port=settings.getSettings()->internet_server_port;
 			}
-			Server->StartCustomStreamService(new InternetService, "InternetService", port);
+			Server->StartCustomStreamService(new InternetService(backup_server), "InternetService", port);
 		}
 	}
 

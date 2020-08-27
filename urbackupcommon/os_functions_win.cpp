@@ -1814,3 +1814,8 @@ size_t os_get_num_cpus()
 	GetSystemInfo(&system_info);
 	return system_info.dwNumberOfProcessors;
 }
+
+int os_system(const std::string & cmd)
+{
+	return system(cmd.c_str());
+}

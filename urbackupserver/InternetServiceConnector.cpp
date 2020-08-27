@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "InternetServiceConnector.h"
+#include "server.h"
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -58,9 +59,14 @@ std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
 
+InternetService::InternetService(BackupServer * backup_server)
+	:backup_server(backup_server)
+{
+}
+
 ICustomClient* InternetService::createClient()
 {
-	return new InternetServiceConnector;
+	return new InternetServiceConnector(backup_server);
 }
 
 void InternetService::destroyClient( ICustomClient * pClient)
@@ -68,7 +74,8 @@ void InternetService::destroyClient( ICustomClient * pClient)
 	delete ((InternetServiceConnector*)pClient);
 }
 
-InternetServiceConnector::InternetServiceConnector(void)
+InternetServiceConnector::InternetServiceConnector(BackupServer * backup_server)
+	: backup_server(backup_server)
 {
 	local_mutex=Server->createMutex();
 	ecdh_key_exchange=NULL;
@@ -556,15 +563,23 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 
 							size_t spare_connections_num;
 
+							bool wakeup_new_client = false;
 							{
 								IScopedLock lock(mutex);
 								SClientData& curr_client_data = client_data[clientname];
+								if (curr_client_data.last_seen == -1
+									&& backup_server!=NULL)
+								{
+									wakeup_new_client = true;
+								}
 								curr_client_data.spare_connections.push_back(this);
 								curr_client_data.last_seen=Server->getTimeMS();
 								curr_client_data.endpoint_name = endpoint_name;
 
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
+							if (wakeup_new_client)
+								backup_server->wakeupNewClient();
 
 							if (token_auth)
 							{
@@ -690,9 +705,22 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				IPipe *ret=isc->getISPipe();
 				isc->freeConnection(); //deletes ics
 
-				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-				CompressedPipe2 *comp_pipe2=dynamic_cast<CompressedPipe2*>(ret);
-				if(comp_pipe2!=NULL)
+				CompressedPipe *comp_pipe;
+				CompressedPipe2 *comp_pipe2;
+#ifndef NO_ZSTD_COMPRESSION
+				CompressedPipeZstd* comp_zstd;
+				if ((comp_zstd = dynamic_cast<CompressedPipeZstd*>(ret)) != NULL)
+				{
+					InternetServicePipe2 *isc_pipe2 = dynamic_cast<InternetServicePipe2*>(comp_zstd->getRealPipe());
+					if (isc_pipe2 != NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
+					comp_zstd->destroyBackendPipeOnDelete(true);
+				}
+				else
+#endif
+					if((comp_pipe2 = dynamic_cast<CompressedPipe2*>(ret))!=NULL)
 				{
 					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
 					if(isc_pipe2!=NULL)
@@ -701,7 +729,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					}
 					comp_pipe2->destroyBackendPipeOnDelete(true);
 				}
-				else if(comp_pipe!=NULL)
+				else if((comp_pipe = dynamic_cast<CompressedPipe*>(ret) )!=NULL)
 				{
 					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
 					if(isc_pipe!=NULL)
@@ -832,6 +860,10 @@ std::vector<std::pair<std::string, std::string> > InternetServiceConnector::getO
 			if(ct-it->second.last_seen>=establish_timeout)
 			{
 				todel.push_back(it->first);
+			}
+			else if (ct - it->second.last_seen < 10000)
+			{
+				ret.push_back(std::make_pair(it->first, it->second.endpoint_name));
 			}
 		}
 	}

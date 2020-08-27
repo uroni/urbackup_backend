@@ -1156,6 +1156,8 @@ void FileBackup::sendBackupOkay(bool b_okay)
 	}
 	else
 	{
+		notifyClientBackupFailed();
+
 		if(pingthread!=NULL)
 		{
 			pingthread->setStop(true);
@@ -1183,6 +1185,22 @@ void FileBackup::notifyClientBackupSuccessful(void)
 
 		client_main->sendClientMessageRetry("2DID BACKUP "+ params, "OK", "Sending status (2DID BACKUP) to client failed", 10000, 5);
 	}
+}
+
+void FileBackup::notifyClientBackupFailed()
+{
+	if (client_main->getProtocolVersions().cmd_version < 2)
+		return;
+
+	std::string params = "status_id=" + convert(status_id) + "&server_token=" + EscapeParamString(server_token)
+		+ "&group=" + convert(group);
+
+	if (!clientsubname.empty())
+	{
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	client_main->sendClientMessageRetry("BACKUP FAILED " + params, "OK", "Sending status (BACKUP FAILED) to client failed", 10000, 2);
 }
 
 void FileBackup::waitForFileThreads(void)
@@ -2052,6 +2070,20 @@ void FileBackup::saveUsersOnClient()
 		}
 	}
 
+	s_uids = urbackup_tokens->getValue("ids", "");
+	uids.clear();
+	Tokenize(s_uids, uids, ",");
+
+	for (size_t i = 0; i < uids.size(); ++i)
+	{
+		std::string accountname = (base64_decode_dash(urbackup_tokens->getValue(uids[i] + ".accountname", std::string())));
+		if (accountname == "root")
+		{
+			backup_dao->addUserToken(accountname, clientid, urbackup_tokens->getValue(uids[i] + ".token", std::string()));
+			break;
+		}
+	}
+
 	std::vector<std::string> keys = urbackup_tokens->getKeys();
 	for(size_t i=0;i<keys.size();++i)
 	{
@@ -2191,8 +2223,10 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
+		local_hash2.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id));
+
 		metadata_apply_thread.reset(new server::FileMetadataDownloadThread::FileMetadataApplyThread(metadata_download_thread.get(),
-			backuppath_hashes, backuppath, client_main, local_hash.get(), filepath_corrections, max_file_id));
+			backuppath_hashes, backuppath, client_main, local_hash2.get(), filepath_corrections, max_file_id));
 
 		metadata_apply_thread_ticket = Server->getThreadPool()->execute(metadata_apply_thread.get(), "fb meta apply");
 	}	

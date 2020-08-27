@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# This compiler wrapper removes e.g. -mno-sse4.2 if both -mno-sse4.2 and -msse4.2 are specified
+
+set -e
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+#echo "ORIG_ARGS: $@" >> "$DIR/x86_64_cxx_wrapper.log"
+
+args=()
+
+containsElement () {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
+
+removeElement () {
+	new_args=()
+	for v in "${args[@]}"; do
+		if [[ $v != "$1" ]]; then
+			new_args+=($v)
+		fi
+	done
+	args=("${new_args[@]}")
+}
+
+for var in "$@"
+do
+	ADD=1
+	if [[ $var == "-mno-sse4.1" ]]; then
+		ADD=0
+		if ! containsElement "-msse4.1" "${args[@]}" && ! containsElement "-msse4.2" "${args[@]}"; then
+			args+=("$var")
+		fi
+	fi
+	if [[ $var == "-mno-sse4.2" ]]; then
+		ADD=0
+		if ! containsElement "-msse4.2" "${args[@]}"; then
+			args+=("$var")
+		fi
+	fi
+	if [[ $var == "-mno-sse4a" ]]; then
+		ADD=0
+		if ! containsElement "-msse4a" "${args[@]}" && ! containsElement "-msse4.2" "${args[@]}" && ! containsElement "-msse4.1" "${args[@]}"; then
+			args+=("$var")
+		fi
+	fi
+	if [[ $var == "-mno-sse3" ]]; then
+		ADD=0
+		if ! containsElement "-msse3" "${args[@]}" && ! containsElement "-mssse3" "${args[@]}" && ! containsElement "-msse4a" "${args[@]}" && ! containsElement "-msse4.2" "${args[@]}" && ! containsElement "-msse4.1" "${args[@]}"; then
+			args+=("$var")
+		fi
+	fi
+
+	if [[ $var == "-msse4.1" ]]; then
+		removeElement "-mno-sse4.1"
+		removeElement "-mno-sse4a"
+	fi
+	if [[ $var == "-msse4.2" ]]; then
+		removeElement "-mno-sse4.2"
+		removeElement "-mno-sse4.1"
+		removeElement "-mno-sse4a"
+	fi
+	if [[ $var == "-msse4a" ]]; then
+		removeElement "-mno-sse4a"
+	fi
+	if [[ $var == "-msse3" ]]; then
+		removeElement "-mno-sse3"
+	fi	
+	if [[ $var == "-mssse3" ]]; then
+		removeElement "-mno-sse3"
+	fi
+
+	if [[ $ADD == 1 ]]; then
+		args+=("$var")
+	fi
+done
+
+CXX=$(cat "$DIR/cxx_path")
+
+#echo "ARGS: ${args[@]}" >> "$DIR/x86_64_cxx_wrapper.log"
+exec $CXX ${args[@]}

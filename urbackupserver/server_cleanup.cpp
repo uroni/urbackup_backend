@@ -814,7 +814,8 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 {
 	std::string image_extension = findextension(path);
 
-	if (image_extension != "raw")
+	if (image_extension != "raw"
+		|| !BackupServer::isImageSnapshotsEnabled())
 	{
 		bool b = true;
 		if (!deleteAndTruncateFile(logid, path))
@@ -834,6 +835,7 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 		}
 		deleteAndTruncateFile(logid, path + ".cbitmap");
 		deleteAndTruncateFile(logid, path + ".sync");
+		deleteAndTruncateFile(logid, path + ".bitmap");
 
 		if (b && ExtractFileName(ExtractFilePath(path)) != clientname)
 		{
@@ -875,7 +877,7 @@ int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int
 	return max_allowed_del_refs;
 }
 
-bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids, bool cleanup_only_one)
+bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 minspace, int& imagebid)
 {
 	ServerSettings settings(db, clientid);
 
@@ -928,18 +930,10 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			}
 			else
 			{
-				imageids.push_back(backupid);
-
-				if (cleanup_only_one)
-				{
-					return true;
-				}
+				imagebid = backupid;
+				return true;
 			}
 		}
-
-		int r=hasEnoughFreeSpace(minspace, &settings);
-		if( r==-1 || r==1 )
-			return true;
 				
 		full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
 	}
@@ -990,18 +984,10 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			}
 			else
 			{
-				imageids.push_back(backupid);
-
-				if (cleanup_only_one)
-				{
-					return true;
-				}
+				imagebid = backupid;
+				return true;
 			}
 		}
-
-		int r=hasEnoughFreeSpace(minspace, &settings);
-		if( r==-1 || r==1 )
-			return true;
 				
 		incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 	}
@@ -1066,12 +1052,14 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		{
 			int clientid = res[i];
 
-			std::vector<int> imageids;
-			if (cleanup_images_client(clientid, minspace, imageids, true))
+			int imagebid;
+			if (cleanup_one_imagebackup_client(clientid, minspace, imagebid))
 			{
 				int r = hasEnoughFreeSpace(minspace, &settings);
 				if (r == -1 || r == 1)
 					return;
+
+				deleted_something = true;
 			}
 		}
 
@@ -2096,21 +2084,33 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 			if(state==0)
 			{
-				std::vector<int> imageids;
-				cleanup_images_client(clientid, target_minspace, imageids, true);
-				if(!imageids.empty())
+				int imagebid;
+				bool enough_space = false;
+				while (true)
 				{
-					log << "Removed " << imageids.size() << " image with id ";
-					for(size_t i=0;i<imageids.size();++i) log << imageids[i] << " ";
-					log << std::endl;
+					if (cleanup_one_imagebackup_client(clientid, target_minspace, imagebid))
+					{
+						log << "Removed image backupd with id " << imagebid << std::endl;
+						did_remove_something = true;
+						//TODO: wait here for btrfs subvol remove to finish
+						if (hasEnoughFreeSpace(target_minspace, &client_settings))
+						{
+							enough_space = true;
+							break;
+						}
+					}
+					else
+					{
+						++nopc;
+						break;
+					}
+				}
 
-					did_remove_something=true;
+				if (enough_space)
+				{
 					break;
 				}
-				else
-				{
-					++nopc;
-				}
+				
 			}
 			else
 			{
@@ -2121,6 +2121,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 					did_remove_something=true;
 					nopc=0;
+					//TODO: wait here for btrfs subvol remove to finish
 					if(hasEnoughFreeSpace(target_minspace, &client_settings))
 					{
 						break;
@@ -2525,6 +2526,14 @@ void ServerCleanupThread::cleanup_other()
 	ServerLogger::Log(logid, "Cleaning up client lists...", LL_INFO);
 	cleanup_clientlists();
 	ServerLogger::Log(logid, "Done cleaning up client lists.", LL_INFO);
+	ServerLogger::Log(logid, "Cleaning up old client access tokens...", LL_INFO);
+	cleanupdao->getDatabase()->Write("DELETE FROM user_tokens WHERE id IN ("
+		"SELECT a.id FROM user_tokens a WHERE EXISTS ("
+		"SELECT id FROM user_tokens b WHERE a.username=b.username "
+		"AND a.clientid=b.clientid AND a.tgroup=b.tgroup AND b.created>a.created "
+		"AND (strftime('%s', b.created)-strftime('%s', a.created)) > 15552000));");
+	ServerLogger::Log(logid, "Done cleaning up old client access tokens.", LL_INFO);
+
 }
 
 void ServerCleanupThread::removeFileBackupSql( int backupid )

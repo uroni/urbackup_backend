@@ -1132,7 +1132,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	ClientConnector::removeRunningProcess(image_inf->running_process_id, success);
+	ClientConnector::removeRunningProcess(image_inf->running_process_id, success, true);
 }
 
 void ImageThread::updateShadowCopyStarttime( int save_id )

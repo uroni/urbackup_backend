@@ -1625,8 +1625,10 @@ bool IncrFileBackup::doFileBackup()
 			if (!os_sync(backuppath)
 				|| !os_sync(backuppath_hashes))
 			{
-				ServerLogger::Log(logid, "Syncing file system failed. Backup is not completely on disk. " + os_last_error_str(), LL_ERROR);
-				c_has_error = true;
+				ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), BackupServer::canSyncFs() ? LL_ERROR : LL_DEBUG);
+
+				if(BackupServer::canSyncFs())
+					c_has_error = true;
 			}
 
 			std::auto_ptr<IFile> sync_f;
@@ -1730,12 +1732,27 @@ bool IncrFileBackup::doFileBackup()
 		if (!os_sync(backuppath)
 			|| !os_sync(backuppath_hashes))
 		{
-			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), BackupServer::canSyncFs() ? LL_ERROR : LL_DEBUG);
+
+			if (BackupServer::canSyncFs())
+				c_has_error = true;
 		}
 
-		std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
+		std::auto_ptr<IFile> sync_f;
+		if (!c_has_error)
+		{
+			sync_f.reset(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
 
-		if (make_subvolume_readonly)
+			if (sync_f.get() != NULL
+				&& !sync_f->Sync())
+			{
+				ServerLogger::Log(logid, "Error syncing sync file to disk. " + os_last_error_str(), LL_ERROR);
+				c_has_error = true;
+			}
+		}
+
+		if (!c_has_error
+			&& make_subvolume_readonly)
 		{
 			if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 			{
@@ -1751,7 +1768,7 @@ bool IncrFileBackup::doFileBackup()
 			backup_dao->setFileBackupDone(backupid);
 			backup_dao->setFileBackupSynced(backupid);
 		}
-		else
+		else if(!c_has_error)
 		{
 			ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done", LL_ERROR);
 			c_has_error = true;
@@ -1904,7 +1921,9 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				}
 
 				if( hasChange(line, deleted_ids) 
-					&& (deleted_inplace_ids ==NULL || !hasChange(line, *deleted_inplace_ids) ) )
+					&& ( (deleted_inplace_ids ==NULL || !hasChange(line, *deleted_inplace_ids) ) 
+						|| (!curr_file.isdir && curr_dir_exists && curr_path == snapshot_path + os_file_sep() + "urbackup_backup_scripts" )
+						) )
 				{					
 					std::string curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)
@@ -1945,12 +1964,20 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 						if( curr_dir_exists )
 						{
 							int ftype = EFileType_File;
+							bool keep_inplace = false;
 							if (curr_path == snapshot_path + os_file_sep() + "urbackup_backup_scripts")
 							{
 								ftype = os_get_file_type(os_file_prefix(curr_fn));
+
+								if (ftype & EFileType_File
+									&& !hash_dir
+									&& (deleted_inplace_ids == NULL || !hasChange(line, *deleted_inplace_ids) ) )
+								{
+									keep_inplace = true;
+								}
 							}
 
-							if(ftype & EFileType_File
+							if(ftype & EFileType_File && !keep_inplace
 								&& !Server->deleteFile(os_file_prefix(curr_fn)) )
 							{
 								std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix(curr_fn), MODE_READ));

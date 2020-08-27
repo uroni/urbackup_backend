@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [2.4.7.0], [martin@urbackup.org])
+AC_INIT([urbackup-server], [2.4.13.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -33,9 +33,13 @@ AC_ARG_ENABLE([fortify],
 AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 
 AC_ARG_ENABLE([embedded-cryptopp],
-     AS_HELP_STRING([--enable-embedded-cryptopp], [Compile and use Crypto++ 5.6.3 included with the source distribution.]))
+     AS_HELP_STRING([--enable-embedded-cryptopp], [Compile and use Crypto++ included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_CRYPTOPP, test "x$enable_embedded_cryptopp" = xyes)
 AM_CONDITIONAL(TARGET_CPU_IS_X86, test "x$TARGET_CPU" = xx86)
+
+AC_ARG_ENABLE([embedded-zstd],
+     AS_HELP_STRING([--enable-embedded-zstd], [Compile and use ZSTD included with the source distribution.]))
+AM_CONDITIONAL(EMBEDDED_ZSTD, test "x$enable_embedded_zstd" = xyes)
 
 
 # Checks for programs.
@@ -101,15 +105,21 @@ AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs fallocate64 utimensat accept4])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
-AC_CHECK_LIB(zstd, ZSTD_CCtx_setParameter, [HAS_ZSTD_LIB=1])
-AC_CHECK_HEADER(zstd.h, [HAS_ZSTD_HEADER=1])
 
-if test "x$HAS_ZSTD_LIB" != "x1" || test "x$HAS_ZSTD_HEADER" != "x1"
+if test "x$enable_embedded_zstd" != "xyes"
 then
-	AC_MSG_WARN([ZSTD compression library not present or not recent enough. Compiling without ZSTD support])		
-fi
-AM_CONDITIONAL(WITH_ZSTD, test "x$HAS_ZSTD_LIB" == "x1" && test "x$HAS_ZSTD_HEADER" == "x1")
+	AC_CHECK_LIB(zstd, ZSTD_CCtx_setParameter, [HAS_ZSTD_LIB=1])
+	AC_CHECK_HEADER(zstd.h, [HAS_ZSTD_HEADER=1])
 
+	if test "x$HAS_ZSTD_LIB" != "x1" || test "x$HAS_ZSTD_HEADER" != "x1"
+	then
+		AC_MSG_WARN([ZSTD compression library not present or not recent enough. Compiling without ZSTD support. Install libzstd-dev(el) or use --enable-embedded-zstd])		
+	fi
+	AM_CONDITIONAL(WITH_ZSTD, test "x$HAS_ZSTD_LIB" == "x1" && test "x$HAS_ZSTD_HEADER" == "x1")
+else
+	AM_CONDITIONAL(WITH_ZSTD, true)
+fi
+	
 P_SUBDIRS="snapshot_helper fsimageplugin httpserver urbackupserver"
 
 AM_CONDITIONAL(WITH_URLPLUGIN, test "x$with_mail" != "xno")
@@ -162,9 +172,11 @@ then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
 	
 	SAVED_LDFLAGS="$LDFLAGS"
-	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS $CRYPTOPP_LIBS"
+	SAVED_LIBS="$LIBS"
 	SAVED_CPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$CPPFLAGS $CRYPTOPP_CPPFLAGS"
+	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS"
+	CPPFLAGS="$CPPFLAGS $CRYPTOPP_CPPFLAGS $PTHREAD_CFLAGS"
+	LIBS="$LIBS $CRYPTOPP_LIBS $PTHREAD_LIBS"
 	CRYPTOPP_INC="<$CRYPTOPP_INCLUDE_PREFIX/misc.h>"
 	AC_MSG_CHECKING([whether Crypto++ contains CryptoPP::AlignedAllocate function])
 	AC_LINK_IFELSE(
@@ -177,6 +189,7 @@ then
 	  ])
 	LDFLAGS="$SAVED_LDFLAGS"
 	CPPFLAGS="$SAVED_CPPFLAGS"
+	LIBS="$SAVED_LIBS"
 else
 	AC_CONFIG_SUBDIRS([cryptoplugin/src])
 fi

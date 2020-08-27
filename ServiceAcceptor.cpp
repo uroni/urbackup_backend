@@ -294,10 +294,20 @@ bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget b
 	type |= SOCK_CLOEXEC;
 #endif
 	s = socket(AF_INET, type, 0);
-	if (s < 1)
+	if (s == SOCKET_ERROR)
 	{
-		Server->Log(name + ": Creating SOCKET failed", LL_ERROR);
-		return false;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		if (errno == EINVAL)
+		{
+			type &= ~SOCK_CLOEXEC;
+			s = socket(AF_INET, type, 0);
+		}
+#endif
+		if (s == SOCKET_ERROR)
+		{
+			Server->Log(name + ": Creating SOCKET failed", LL_ERROR);
+			return false;
+		}
 	}
 
 	if (!prepareSocket(s))

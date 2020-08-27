@@ -15,6 +15,8 @@ public:
 
 	bool next(db_single_result &res);
 
+	bool reset();
+
 	bool has_error();
 
 	virtual void shutdown();
@@ -31,6 +33,7 @@ private:
 
 #ifdef LOG_READ_QUERIES
 	ScopedAddActiveQuery *active_query;
+	CDatabase* db;
 #endif
 };
 

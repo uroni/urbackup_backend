@@ -12,11 +12,17 @@ class ICondition;
 class IInternetServicePipe;
 class ICompressedPipe;
 class IECDHKeyExchange;
+class BackupServer;
 
 class InternetService : public IService
 {
+public:
+	InternetService(BackupServer* backup_server);
+
 	virtual ICustomClient* createClient();
 	virtual void destroyClient( ICustomClient * pClient);
+private:
+	BackupServer* backup_server;
 };
 
 enum InternetServiceState
@@ -34,6 +40,8 @@ class InternetServiceConnector;
 
 struct SClientData
 {
+	SClientData()
+		: last_seen(-1) {}
 	std::vector<InternetServiceConnector*> spare_connections;
 	int64 last_seen;
 	std::string endpoint_name;
@@ -58,7 +66,7 @@ const char SERVICE_FILESRV=1;
 class InternetServiceConnector : public ICustomClient
 {
 public:
-	InternetServiceConnector(void);
+	InternetServiceConnector(BackupServer* backup_server);
 	~InternetServiceConnector(void);
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 
@@ -149,4 +157,6 @@ private:
 	static std::set<std::string> internet_expect_endpoint;
 
 	unsigned int client_ping_interval;
+
+	BackupServer* backup_server;
 };

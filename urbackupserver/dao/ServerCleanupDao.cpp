@@ -31,6 +31,11 @@ ServerCleanupDao::~ServerCleanupDao(void)
 	destroyQueries();
 }
 
+IDatabase * ServerCleanupDao::getDatabase()
+{
+	return db;
+}
+
 /**
 * @-SQLGenAccess
 * @func std::vector<SIncompleteImages> ServerCleanupDao::getIncompleteImages

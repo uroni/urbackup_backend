@@ -17,7 +17,7 @@ then
 	./switch_build.sh server
 	./download_cryptopp.sh
 	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd --enable-embedded-cryptopp LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
+	./configure --enable-packaging --enable-install_initd --with-mountvhd --enable-embedded-cryptopp --enable-embedded-zstd
 	touch build_server_debian_ok
 fi
 
@@ -32,8 +32,10 @@ sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian
 
 if [ "x$EMBEDDED_CRYPTOPP" != "x" ]
 then
-	sed -i 's/--enable-packaging/--enable-packaging --enable-embedded-cryptopp/g' debian/rules
-fi
+	sed -i 's/--enable-packaging/--enable-packaging --enable-embedded-cryptopp --enable-embedded-zstd/g' debian/rules
+else
+	sed -i 's/--enable-packaging/--enable-packaging -enable-embedded-zstd/g' debian/rules
+fi	
 
 if [ "x$LDFLAGS" != "x" ]
 then

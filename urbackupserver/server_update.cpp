@@ -29,7 +29,7 @@ extern IUrlFactory *url_fak;
 
 namespace
 {
-	std::string urbackup_update_url = "http://update6.urbackup.org/";
+	std::string urbackup_update_url = "http://update.urbackup.org/2.4.x/";
 	std::string urbackup_update_url_alt;
 
 	struct SUpdatePlatform
@@ -64,7 +64,6 @@ void ServerUpdate::update_client()
 	std::vector<SUpdatePlatform> update_files;
 
 	update_files.push_back(SUpdatePlatform("exe", "UrBackupUpdate", "version.txt"));
-	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateMac", "version_osx.txt"));
 	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateLinux", "version_linux.txt"));
 
 	std::string curr_update_url = urbackup_update_url;
@@ -197,9 +196,12 @@ void ServerUpdate::update_client()
 				sig_file.reset();
 				Server->deleteFile(del_fn);
 
-				del_fn = update_file->getFilename();
-				update_file.reset();
-				Server->deleteFile(del_fn);
+				if (update_file.get() != NULL)
+				{
+					del_fn = update_file->getFilename();
+					update_file.reset();
+					Server->deleteFile(del_fn);
+				}
 			}
 		}
 	}
@@ -296,10 +298,13 @@ void ServerUpdate::read_update_location()
 		urbackup_update_url_alt = read_update_location;
 		urbackup_update_url = urbackup_update_url_alt;
 
-		if (!urbackup_update_url.empty()
-			&& urbackup_update_url[urbackup_update_url.size() - 1] != '/')
-			urbackup_update_url += "/";
+		if (read_update_location.find("cbt.urbackup.com") != std::string::npos)
+		{
+			if (!urbackup_update_url.empty()
+				&& urbackup_update_url[urbackup_update_url.size() - 1] != '/')
+				urbackup_update_url += "/";
 
-		urbackup_update_url += "2.3.x/";
+			urbackup_update_url += "2.4.x/";
+		}
 	}
 }

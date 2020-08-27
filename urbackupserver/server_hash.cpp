@@ -18,6 +18,7 @@
 #include "server_hash.h"
 #include "server_prepare_hash.h"
 #include "server_settings.h"
+#include "server.h"
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
@@ -641,7 +642,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		}
 		if (!b)
 		{
-			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks, &copy);
+			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots || (use_reflink && !BackupServer::canHardlink()), &too_many_hardlinks, &copy);
 		}
 		if(!b)
 		{
@@ -929,15 +930,32 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 			if( fs>0 && available_space<=fs )
 			{
-				if(space_logcnt==0)
+				if (extent_iterator != NULL)
 				{
-					ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					extent_iterator->reset();
+
+					IFsFile::SSparseExtent ext;
+					while ((ext = extent_iterator->nextExtent()).offset!=-1)
+					{
+						if(ext.size>0)
+							fs -= ext.size;
+					}
+
+					extent_iterator->reset();
 				}
-				else
+
+				if (fs > 0 && available_space <= fs)
 				{
-					ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					if (space_logcnt == 0)
+					{
+						ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					}
+					else
+					{
+						ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					}
+					free_ok = freeSpace(fs, os_file_prefix(tfn));
 				}
-				free_ok=freeSpace(fs, os_file_prefix(tfn));
 			}
 
 			if(!free_ok)

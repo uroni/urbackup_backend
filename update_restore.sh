@@ -8,7 +8,7 @@ set -x
 
 autoreconf --install
 
-./configure CXXFLAGS="-DRESTORE_CLIENT -flto" CFLAGS="-flto" LDFLAGS="-flto" --enable-headless --enable-embedded-cryptopp
+./configure CXXFLAGS="-DRESTORE_CLIENT" --enable-headless --enable-embedded-cryptopp
 
 make -j4
 

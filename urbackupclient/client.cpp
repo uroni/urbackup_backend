@@ -85,9 +85,11 @@ const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
 const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
-const char IndexThread::IndexThreadAction_UpdateCbt = 7;
+const char IndexThread::IndexThreadAction_RestartFilesrv = 7;
+const char IndexThread::IndexThreadAction_Stop = 8;
 const char IndexThread::IndexThreadAction_SnapshotCbt = 12;
 const char IndexThread::IndexThreadAction_WriteTokens = 13;
+const char IndexThread::IndexThreadAction_UpdateCbt = 14;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -1286,14 +1288,14 @@ void IndexThread::operator()(void)
 			stop_index=false;
 		}
 #endif
-		else if(action==7) // restart filesrv
+		else if(action== IndexThreadAction_RestartFilesrv) // restart filesrv
 		{
 			IScopedLock lock(filesrv_mutex);
 			filesrv->stopServer();
 			start_filesrv();
 			readBackupDirs();
 		}
-		else if(action==8) //stop
+		else if(action==IndexThreadAction_Stop) //stop
 		{
 			break;
 		}
@@ -3185,6 +3187,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 				++index_c_db_update;
 				modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
+				++target_generation;
 			}
 		}
 		else
@@ -3218,6 +3221,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 				{
 					++index_c_db_update;
 					modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
+					++target_generation;
 				}
 			}
 
@@ -4534,7 +4538,7 @@ void IndexThread::unshare_dirs()
 void IndexThread::doStop(void)
 {
 	CWData wd;
-	wd.addUChar(8);
+	wd.addChar(IndexThreadAction_Stop);
 	wd.addUInt(0);
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
@@ -4617,7 +4621,8 @@ void IndexThread::commitAddFilesBuffer()
 	db->BeginWriteTransaction();
 	for(size_t i=0;i<add_file_buffer.size();++i)
 	{
-		cd->addFiles(add_file_buffer[i].path, add_file_buffer[i].tgroup, add_file_buffer[i].files);
+		cd->addFiles(add_file_buffer[i].path, add_file_buffer[i].tgroup, add_file_buffer[i].files,
+			add_file_buffer[i].target_generation);
 	}
 	db->EndTransaction();
 
@@ -6108,12 +6113,12 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	if (!b)
 	{
-		unlock_cbt_mutex();
-
 		DWORD lasterr = GetLastError();
-
 		std::string errmsg;
 		int64 err = os_last_error(errmsg);
+
+		unlock_cbt_mutex();
+
 		int ll = (lasterr != ERROR_INVALID_FUNCTION 
 			&& lasterr!= ERROR_NOT_SUPPORTED ) ? LL_ERROR : LL_DEBUG;
 		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", ll);
@@ -6174,6 +6179,57 @@ bool IndexThread::normalizeVolume(std::string & volume)
 
 	return true;
 }
+
+inline int64 roundDown(int64 numToRound, int64 multiple)
+{
+	return ((numToRound / multiple) * multiple);
+}
+
+#ifdef _WIN32
+bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize, const PURBCT_BITMAP_DATA& bitmap_data)
+{
+	std::auto_ptr<IFsFile> hive_file(Server->openFile(fpath, MODE_READ));
+
+	if (hive_file.get() != nullptr)
+	{
+		bool ret = true;
+		bool more_exts = true;
+		int64 offset = 0;
+		while (more_exts)
+		{
+			std::vector<IFsFile::SFileExtent> exts = hive_file->getFileExtents(offset, blocksize, more_exts);
+			for (size_t j = 0; j < exts.size(); ++j)
+			{
+				for (int64 k = roundDown(exts[j].volume_offset, URBT_BLOCKSIZE);
+					k < exts[j].volume_offset + exts[j].size; k += URBT_BLOCKSIZE)
+				{
+					int64 block = k / URBT_BLOCKSIZE;
+					int64 bitmap_byte_wmagic = block / 8;
+					int64 real_block_size = bitmap_data->SectorSize - URBT_MAGIC_SIZE;
+					int64 bitmap_byte = (bitmap_byte_wmagic / real_block_size)
+						* bitmap_data->SectorSize + URBT_MAGIC_SIZE + bitmap_byte_wmagic % real_block_size;
+					unsigned int bitmap_bit = block % 8;
+
+					if (bitmap_byte >= bitmap_data->BitmapSize)
+					{
+						VSSLog("Registry hive extent outside of cbt data", LL_WARNING);
+						ret = false;
+					}
+					else
+					{
+						bitmap_data->Bitmap[bitmap_byte] |= (1 << bitmap_bit);
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	else
+	{
+		return false;
+	}
+}
+#endif
 
 bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 {
@@ -6267,7 +6323,18 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	{
 		BytesPerSector = alignmentDescr.BytesPerPhysicalSector;
 	}
-	
+
+	DWORD sectors_per_cluster;
+	DWORD bytes_per_sector;
+	DWORD NumberOfFreeClusters;
+	DWORD TotalNumberOfClusters;
+	b = GetDiskFreeSpaceW((Server->ConvertToWchar(volume) + L"\\").c_str(), &sectors_per_cluster, &bytes_per_sector, &NumberOfFreeClusters, &TotalNumberOfClusters);
+	if (!b)
+	{
+		VSSLog("Error in GetDiskFreeSpaceW. "+os_last_error_str(), LL_ERROR);
+		return false;
+	}
+	DWORD blocksize = bytes_per_sector * sectors_per_cluster;
 
 	ULONGLONG bitmapBlocks = lengthInfo.Length.QuadPart / URBT_BLOCKSIZE + (lengthInfo.Length.QuadPart%URBT_BLOCKSIZE == 0 ? 0 : 1);
 
@@ -6496,6 +6563,62 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 				VSSLog("Error reading last bitmap data for CBT for other", LL_ERROR);
 				return false;
 			}
+		}
+	}
+
+	if (!snap_volume.empty())
+	{
+		HKEY profile_list;
+		if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+			Server->ConvertToWchar("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList").c_str(),
+			0, KEY_READ, &profile_list) == ERROR_SUCCESS)
+		{
+			wchar_t buf[300];
+
+			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf)) == ERROR_SUCCESS; ++i)
+			{
+				DWORD rsize = sizeof(buf) * sizeof(wchar_t);
+				if (RegGetValueW(profile_list, std::wstring(buf).c_str(), L"ProfileImagePath",
+					RRF_RT_REG_SZ, NULL, buf, &rsize) == ERROR_SUCCESS)
+				{
+					std::string profile_path = Server->ConvertFromWchar(buf);
+
+					if (next(profile_path, 0, volume))
+					{
+						profile_path.erase(0, volume.size());
+
+						addFileToCbt(snap_volume + profile_path + "\\NTUSER.DAT", blocksize, bitmap_data);
+						for (size_t n = 1; n < 100; ++n)
+						{
+							if (!addFileToCbt(snap_volume + profile_path + "\\ntuser.dat.LOG"+convert(n), blocksize, bitmap_data))
+								break;
+						}
+					}
+				}
+			}
+			
+			RegCloseKey(profile_list);
+		}
+
+		if (strlower(volume) == "c:")
+		{
+			char* locations[] = { "\\Windows\\System32\\config\\SYSTEM",
+				"\\Windows\\System32\\config\\SOFTWARE",
+				"\\Windows\\System32\\config\\SECURITY",
+				"\\Windows\\System32\\config\\SAM",
+				"\\Windows\\System32\\config\\DEFAULT" };
+
+			for (size_t i = 0; i < sizeof(locations) / sizeof(locations[0]); ++i)
+			{
+				std::string loc = locations[i];
+
+				addFileToCbt(snap_volume + loc, blocksize, bitmap_data);
+				for (size_t n = 1; n < 100; ++n)
+				{
+					if (!addFileToCbt(snap_volume + loc +"LOG" + convert(n), blocksize, bitmap_data))
+						break;
+				}
+			}			
 		}
 	}
 

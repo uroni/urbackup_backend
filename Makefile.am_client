@@ -51,7 +51,9 @@ urbackupclientbackend_CPPFLAGS+=-DNDEBUG
 endif
 
 if WITH_ZSTD
+if !EMBEDDED_ZSTD
 urbackupclientbackend_LDADD += -lzstd
+endif
 urbackupclientbackend_CXXFLAGS += -DZSTD_STATIC_LINKING_ONLY
 else
 urbackupclientbackend_CXXFLAGS += -DNO_ZSTD_COMPRESSION
@@ -75,6 +77,41 @@ if WITH_OPENSSL
 urbackupclientbackend_CPPFLAGS += $(OPENSSL_INCLUDES) -DWITH_OPENSSL
 urbackupclientbackend_LDADD += $(OPENSSL_LIBS)
 urbackupclientbackend_LDFLAGS += $(OPENSSL_LDFLAGS)
+endif
+
+if EMBEDDED_ZSTD
+urbackupclientbackend_SOURCES += external/zstd/common/debug.c \
+	external/zstd/common/entropy_common.c \
+	external/zstd/common/error_private.c \
+	external/zstd/common/fse_decompress.c \
+	external/zstd/common/pool.c \
+	external/zstd/common/threading.c \
+	external/zstd/common/xxhash.c \
+	external/zstd/common/zstd_common.c \
+	external/zstd/compress/fse_compress.c \
+	external/zstd/compress/hist.c \
+	external/zstd/compress/huf_compress.c \
+	external/zstd/compress/zstdmt_compress.c \
+	external/zstd/compress/zstd_compress.c \
+	external/zstd/compress/zstd_compress_literals.c \
+	external/zstd/compress/zstd_compress_sequences.c \
+	external/zstd/compress/zstd_double_fast.c \
+	external/zstd/compress/zstd_fast.c \
+	external/zstd/compress/zstd_lazy.c \
+	external/zstd/compress/zstd_ldm.c \
+	external/zstd/compress/zstd_opt.c \
+	external/zstd/decompress/huf_decompress.c \
+	external/zstd/decompress/zstd_ddict.c \
+	external/zstd/decompress/zstd_decompress.c \
+	external/zstd/decompress/zstd_decompress_block.c \
+	external/zstd/deprecated/zbuff_common.c \
+	external/zstd/deprecated/zbuff_compress.c \
+	external/zstd/deprecated/zbuff_decompress.c \
+	external/zstd/dictBuilder/cover.c \
+	external/zstd/dictBuilder/divsufsort.c \
+	external/zstd/dictBuilder/fastcover.c \
+	external/zstd/dictBuilder/zdict.c
+urbackupclientbackend_CPPFLAGS+=-Iexternal/zstd -Iexternal/zstd/common -DXXH_NAMESPACE=ZSTD_
 endif
 
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp clientctl/jsoncpp.cpp
@@ -267,8 +304,41 @@ tclap_headers = \
 			 tclap/StandardTraits.h
 			 
 blockalign_headers = blockalign_src/crc32c-adler.h blockalign_src/crc.h
+
+zstd_headers = \
+		external/zstd/common/bitstream.h \
+		external/zstd/common/compiler.h \
+		external/zstd/common/cpu.h \
+		external/zstd/common/debug.h \
+		external/zstd/common/error_private.h \
+		external/zstd/common/fse.h \
+		external/zstd/common/huf.h \
+		external/zstd/common/mem.h \
+		external/zstd/common/pool.h \
+		external/zstd/common/threading.h \
+		external/zstd/common/xxhash.h \
+		external/zstd/common/zstd_errors.h \
+		external/zstd/common/zstd_internal.h \
+		external/zstd/compress/hist.h \
+		external/zstd/compress/zstdmt_compress.h \
+		external/zstd/compress/zstd_compress_internal.h \
+		external/zstd/compress/zstd_compress_literals.h \
+		external/zstd/compress/zstd_compress_sequences.h \
+		external/zstd/compress/zstd_double_fast.h \
+		external/zstd/compress/zstd_fast.h \
+		external/zstd/compress/zstd_lazy.h \
+		external/zstd/compress/zstd_ldm.h \
+		external/zstd/compress/zstd_opt.h \
+		external/zstd/decompress/zstd_ddict.h \
+		external/zstd/decompress/zstd_decompress_block.h \
+		external/zstd/decompress/zstd_decompress_internal.h \
+		external/zstd/deprecated/zbuff.h \
+		external/zstd/dictBuilder/cover.h \
+		external/zstd/dictBuilder/divsufsort.h \
+		external/zstd/dictBuilder/zdict.h \
+		external/zstd/zstd.h
 			 
-noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h sqlite/shell.h SQLiteFactory.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h client_version.h Interface/SharedMutex.h SharedMutex_lin.h StaticPluginRegistration.h  common/bitmap.h OpenSSLPipe.h $(cryptoplugin_headers) $(fileservplugin_headers) $(fsimageplugin_headers) $(urbackupclientctl_headers) $(client_headers) $(tclap_headers) $(urbackupclient_headers) $(cryptopp_headers) $(blockalign_headers)
+noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h sqlite/shell.h SQLiteFactory.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h client_version.h Interface/SharedMutex.h SharedMutex_lin.h StaticPluginRegistration.h  common/bitmap.h OpenSSLPipe.h $(cryptoplugin_headers) $(fileservplugin_headers) $(fsimageplugin_headers) $(urbackupclientctl_headers) $(client_headers) $(tclap_headers) $(urbackupclient_headers) $(cryptopp_headers) $(blockalign_headers) $(zstd_headers)
 
 
 EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h

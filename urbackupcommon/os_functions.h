@@ -242,4 +242,6 @@ bool os_disable_prioritize(SPrioInfo& prio_info);
 
 size_t os_get_num_cpus();
 
+int os_system(const std::string& cmd);
+
 #endif //OS_FUNCTIONS_H

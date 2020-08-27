@@ -245,7 +245,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					( report_sendonly==3 && !r_success && !has_timeout_error) ) )
 				{
 					if (run_report_script(incremental, resumed, image, infos, warnings,
-						errors, r_success, report_mail, data, clientname))
+						errors, r_success, report_mail, data, clientname, clientid, db))
 					{
 						return;
 					}

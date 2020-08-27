@@ -63,6 +63,7 @@
 
 #if defined(__ANDROID__)
 #define fsblkcnt64_t fsblkcnt_t
+#include "android_popen.h"
 #endif
 
 
@@ -1040,6 +1041,10 @@ int os_popen(const std::string& cmd, std::string& ret)
 {
 	ret.clear();
 
+#ifdef __ANDROID__
+    POFILE* pin = NULL;
+#endif
+
 	FILE* in = NULL;
 
 #ifndef _WIN32
@@ -1047,7 +1052,10 @@ int os_popen(const std::string& cmd, std::string& ret)
 #define _pclose pclose
 #endif
 
-#ifdef __linux__
+#ifdef __ANDROID__
+    pin = and_popen(cmd.c_str(), "r");
+    if(pin!=NULL) in=pin->fp;
+#elif __linux__
 	in = _popen(cmd.c_str(), "re");
 	if(!in) in = _popen(cmd.c_str(), "r");
 #else
@@ -1071,7 +1079,11 @@ int os_popen(const std::string& cmd, std::string& ret)
 	}
 	while(read==sizeof(buf));
 
-	return _pclose(in);
+#ifdef __ANDROID__
+    return and_pclose(pin);
+#else
+    return _pclose(in);
+#endif
 }
 
 std::string os_last_error_str()
@@ -1314,7 +1326,8 @@ bool os_sync(const std::string & path)
 	{
 		if(ioctl(fd, BTRFS_IOC_SYNC, NULL)==-1)
 		{
-			if(errno!=ENOTTY && errno!=ENOSYS)
+			if(errno!=ENOTTY && errno!=ENOSYS 
+				&& errno!=EINVAL)
 			{
 				close(fd);
 				return false;
@@ -1329,12 +1342,13 @@ bool os_sync(const std::string & path)
 #if defined(HAVE_SYNCFS)
 		if(syncfs(fd)!=0)
 		{
-			close(fd);
 			if(errno==ENOSYS)
 			{
+				close(fd);
 				sync();
 				return true;
 			}
+			close(fd);
 			return false;
 		}
 		else
@@ -1362,4 +1376,13 @@ bool os_sync(const std::string & path)
 size_t os_get_num_cpus()
 {
 	return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+int os_system(const std::string& cmd)
+{
+#ifdef __ANDROID__
+	return and_system(cmd.c_str());
+#else
+	return system(cmd.c_str());
+#endif
 }

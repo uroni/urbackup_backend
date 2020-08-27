@@ -36,7 +36,7 @@ public:
 
 private:
 	bool hashFile(CRData& data, ClientDAO& clientdao);
-	void addToStdoutBuf(const char* ptr, size_t size);
+	bool addToStdoutBuf(const char* ptr, size_t size);
 	void addModifyFileBuffer(ClientDAO& clientdao, const std::string& path, int tgroup, const std::vector<SFileAndHash>& files, int64 target_generation);
 	void commitModifyFileBuffer(ClientDAO& clientdao);
 	size_t calcBufferSize(const std::string &path, const std::vector<SFileAndHash> &data);

@@ -52,12 +52,15 @@ public:
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static void testFilesystemLinkAvailability(IDatabase *db, bool reflink);
 	static void testFilesystemLinkAvailability(IDatabase *db);
+	static void testFilesystemSyncFs(IDatabase *db);
 	static void testFilesystem(IDatabase * db);
 	static void testFilesystemThread();
 	static bool isFilesystemTransactionEnabled();
 	static bool canMountImages();
 	static bool canReflink();
 	static bool canHardlink();
+
+	static bool canSyncFs();
 
 	static void updateDeletePending();
 
@@ -68,6 +71,8 @@ public:
 	static bool useTreeHashing();
 
 	static void setupUseTreeHashing();
+
+	void wakeupNewClient();
 
 private:
 	void findClients(FileClient &fc);
@@ -108,6 +113,7 @@ private:
 	static bool use_tree_hashing;
 	static bool can_reflink;
 	static bool can_hardlink;
+	static bool can_syncfs;
 
 	static volatile bool update_delete_pending_clients;
 	std::vector<std::string> delete_pending_clients;

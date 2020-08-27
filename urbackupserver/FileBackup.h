@@ -227,6 +227,7 @@ protected:
 		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
 	void notifyClientBackupSuccessful(void);
+	void notifyClientBackupFailed();
 	void waitForFileThreads();
 	bool verify_file_backup(IFile *fileentries);
 	void save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash);
@@ -270,6 +271,7 @@ protected:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	std::auto_ptr<BackupServerHash> local_hash;
+	std::auto_ptr<BackupServerHash> local_hash2;
 
 	std::string filelist_async_id;
 

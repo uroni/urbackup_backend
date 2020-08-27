@@ -201,6 +201,25 @@ void ClientMain::unloadSQL(void)
 
 void ClientMain::operator ()(void)
 {
+	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	DBScopedFreeMemory free_db_memory(db);
+
+	server_settings.reset(new ServerSettings(db));
+
+	if (tooManyClients(db, clientname, server_settings.get()))
+	{
+		ServerStatus::setStatusError(clientname, se_too_many_clients);
+		Server->Log("client_main Thread for client " + clientname + " finished, because there were too many clients (1)", LL_INFO);
+
+		Server->wait(10 * 60 * 1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
+		pipe->Write("ok");
+		ServerLogger::reset(logid);
+		delete this;
+		return;
+	}
+
 	if(!sendServerIdentity(true))
 	{
 		pipe->Write("ok");
@@ -248,29 +267,23 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	std::string identity = getIdentity();
-
-	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	DBScopedFreeMemory free_db_memory(db);
+	std::string identity = getIdentity();	
 
 	std::auto_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
 	backup_dao = local_server_backup_dao.get();
 
-	server_settings=new ServerSettings(db);
-
-	clientid=getClientID(db, clientname, server_settings, NULL);
+	clientid=getClientID(db, clientname, server_settings.get(), NULL);
 
 	if(clientid==-1)
 	{
 		ServerStatus::setStatusError(clientname, se_too_many_clients);
-		Server->Log("client_main Thread for client "+clientname+" finished, because there were too many clients", LL_INFO);
+		Server->Log("client_main Thread for client "+clientname+" finished, because there were too many clients (2)", LL_INFO);
 
 		Server->wait(10*60*1000); //10min
 
 		BackupServer::forceOfflineClient(clientname);
 		pipe->Write("ok");
 		ServerLogger::reset(logid);
-		delete server_settings;
 		delete this;
 		return;
 	}
@@ -281,8 +294,7 @@ void ClientMain::operator ()(void)
 
 	logid = ServerLogger::getLogId(clientid);
 
-	delete server_settings;
-	server_settings=new ServerSettings(db, clientid);
+	server_settings.reset(new ServerSettings(db, clientid));
 
 	if(!createDirectoryForClient())
 	{
@@ -304,7 +316,6 @@ void ClientMain::operator ()(void)
 		{
 			BackupServer::forceOfflineClient(clientname);
 			pipe->Write("ok");
-			delete server_settings;
 			delete this;
 			return;
 		}
@@ -341,7 +352,6 @@ void ClientMain::operator ()(void)
 
 		pipe->Write("ok");
 		BackupServer::forceOfflineClient(clientname);
-		delete server_settings;
 		delete this;
 		return;
 	}
@@ -429,7 +439,9 @@ void ClientMain::operator ()(void)
 
 	bool skip_checking=false;
 
-	if( server_settings->getSettings()->startup_backup_delay>0 )
+	if( server_settings->getSettings()->startup_backup_delay>0
+		&& (!do_full_backup_now && !do_incr_backup_now
+			&& !do_incr_backup_now && !do_full_image_now) )
 	{
 		pipe->isReadable(server_settings->getSettings()->startup_backup_delay*1000);
 		skip_checking=true;
@@ -1036,8 +1048,7 @@ void ClientMain::operator ()(void)
 	ServerLogger::reset(clientid);
 	
 	
-	delete server_settings;
-	server_settings=NULL;
+	server_settings.reset();
 	pipe->Write("ok");
 	Server->Log("client_main Thread for client "+clientname+" finished");
 
@@ -1674,6 +1685,20 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
 		}
+		it = params.find("BACKUP");
+		if (it != params.end())
+		{
+			if (it->second == "incr-file")
+				do_incr_backup_now = true;
+			else if (it->second == "full-file")
+				do_full_backup_now = true;
+			else if (it->second == "incr-image")
+				do_incr_image_now = true;
+			else if (it->second == "full-image")
+				do_full_image_now = true;
+			else
+				Server->Log("Unknown immediate backup type \"" + it->second + "\"", LL_WARNING);
+		}
 
 		bool update_settings = false;
 		size_t idx = 0;
@@ -1818,7 +1843,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	std::string identity = getIdentity();
 
 	FileClient fc(false, identity, protocol_versions.filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
-	_u32 rc=getClientFilesrvConnection(&fc, server_settings);
+	_u32 rc=getClientFilesrvConnection(&fc, server_settings.get());
 	if(rc!=ERR_CONNECTED)
 	{
 		ServerLogger::Log(logid, "Getting Client settings of "+clientname+" failed - CONNECT error", LL_ERROR);
@@ -2090,7 +2115,7 @@ void ClientMain::checkClientVersion(void)
 			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings, 10000));
+			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings.get(), 10000));
 			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
@@ -2260,6 +2285,38 @@ int ClientMain::getNumberOfRunningFileBackups(void)
 	return running_file_backups;
 }
 
+bool ClientMain::tooManyClients(IDatabase * db, const std::string & clientname, ServerSettings * server_settings)
+{
+	IQuery *q = db->Prepare("SELECT id FROM clients WHERE name=?", false);
+	if (q == NULL)
+		return false;
+
+	q->Bind(clientname);
+	db_results res = q->Read();
+	db->destroyQuery(q);
+
+	if(res.empty())
+	{
+		IQuery *q_get_num_clients = db->Prepare("SELECT count(*) AS c FROM clients WHERE lastseen > date('now', '-2 month')", false);
+		if (q_get_num_clients == NULL)
+			return false;
+		db_results res_r = q_get_num_clients->Read();
+		q_get_num_clients->Reset();
+		int c_clients = -1;
+		if (!res_r.empty()) c_clients = watoi(res_r[0]["c"]);
+
+		db->destroyQuery(q_get_num_clients);
+
+		if (server_settings!=NULL
+			&& c_clients >= server_settings->getSettings()->max_active_clients)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 {
 	IScopedLock lock(throttle_mutex);
@@ -2292,7 +2349,7 @@ void ClientMain::updateClientAccessKey()
 
 bool ClientMain::isDataplanOkay(bool file)
 {
-	return isDataplanOkay(server_settings, file);
+	return isDataplanOkay(server_settings.get(), file);
 }
 
 bool ClientMain::isOnline(ServerChannelThread& channel_thread)
@@ -3164,17 +3221,19 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 		}
 
 		if (image_snapshot_groups=="all"
+			|| image_snapshot_groups == "all_nonusb"
 			|| std::find(vols.begin(), vols.end(), vol) != vols.end())
 		{
 			for (size_t k = 0; k < backup_queue.size(); ++k)
 			{
-				if (backup_queue[k].backup->isIncrementalBackup()
-					&& full)
+				if ( (!backup_queue[k].backup->isIncrementalBackup()) != full
+					|| backup_queue[k].backup->isFileBackup())
 				{
 					continue;
 				}
 
 				if (image_snapshot_groups == "all"
+					|| image_snapshot_groups == "all_nonusb"
 					|| std::find(vols.begin(), vols.end(), normalizeVolumeUpper(backup_queue[k].letter))
 						!= vols.end())
 				{
@@ -3479,12 +3538,16 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		cleanup_dao.changeImagePath(new_path, images[i].id);
 	}
 
-	backup_dao->addClientMoved(old_name.name, clientname);
 
-	std::vector<std::string> moved_to = backup_dao->getClientMoved(old_name.name);
-	for (size_t i = 0; i < moved_to.size(); ++i)
+	if (backup_dao->hasFileBackups(rename_from) > 0)
 	{
-		backup_dao->addClientMoved(moved_to[i], clientname);
+		backup_dao->addClientMoved(old_name.name, clientname);
+
+		std::vector<std::string> moved_to = backup_dao->getClientMovedLimit5(old_name.name);
+		for (size_t i = 0; i < moved_to.size(); ++i)
+		{
+			backup_dao->addClientMoved(moved_to[i], clientname);
+		}
 	}
 
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");

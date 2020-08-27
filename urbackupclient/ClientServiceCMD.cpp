@@ -607,6 +607,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 		Server->Log("Wait for async index " + async_id, LL_DEBUG);
 		state = CCSTATE_START_FILEBACKUP_ASYNC;
 		++it->second.refcount;
+		it->second.last_update = Server->getTimeMS();
 		curr_result_id = it->second.result_id;
 		IndexThread::refResult(curr_result_id);
 	}
@@ -965,10 +966,13 @@ int64 ClientConnector::getLastBackupTime()
 
 std::string ClientConnector::getCurrRunningJob(bool reset_done, int& pcdone)
 {
+	IScopedLock lock_process(process_mutex);
+
 	SRunningProcess* proc = getActiveProcess(x_pingtimeout);
 
 	if(proc==NULL )
 	{
+		lock_process.relock(NULL);
 		return getHasNoRecentBackup();
 	}
 	else

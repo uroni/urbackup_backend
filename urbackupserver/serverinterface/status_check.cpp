@@ -2,6 +2,10 @@
 #include "../server_settings.h"
 #include "../ClientMain.h"
 
+#ifndef NAME_MAX
+#define NAME_MAX _POSIX_NAME_MAX
+#endif
+
 namespace
 {
 	void access_dir_details(std::string folder, std::string& ret)
@@ -205,7 +209,6 @@ namespace
 #endif
 				has_access_error = true;
 			}
-#ifdef _WIN32
 			else if (!server_settings->no_file_backups
 				&& os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + "testfo~1")))
 			{
@@ -223,7 +226,6 @@ namespace
 					ret.set("dir_error_volume", "<VOLUME>");
 				}
 			}
-#endif
 
 			if (!server_settings->no_file_backups)
 			{
@@ -246,6 +248,73 @@ namespace
 				}
 
 				os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+			}
+
+#ifndef _WIN32
+			if (!server_settings->no_file_backups)
+			{
+				std::string test1_path = testfolderpath + os_file_sep() + "test1";
+				std::string test2_path = testfolderpath + os_file_sep() + "Test1";
+
+				if (!os_create_dir(test1_path)
+					|| !os_create_dir(test2_path))
+				{
+					ret.set("system_err", os_last_error_str());
+					ret.set("dir_error", true);
+					ret.set("dir_error_ext", "err_file_system_case_insensitive");
+					ret.set("dir_error_hint", "err_file_system_case_insensitive");
+					add_stop_show(db, ret, "err_file_system_case_insensitive");
+				}
+
+				os_remove_dir(test1_path);
+				os_remove_dir(test2_path);
+
+				std::string test3_path = testfolderpath + os_file_sep() + "CON";
+
+				std::auto_ptr<IFile> test_file(Server->openFile(test3_path, MODE_WRITE));
+
+				if (test_file.get() == NULL)
+				{
+					ret.set("system_err", os_last_error_str());
+					ret.set("dir_error", true);
+					ret.set("dir_error_ext", "err_file_system_special_windows_files_disallowed");
+					ret.set("dir_error_hint", "err_file_system_special_windows_files_disallowed");
+					add_stop_show(db, ret, "err_file_system_special_windows_files_disallowed");
+				}
+
+				test_file.reset();
+				Server->deleteFile(test3_path);
+			}
+#endif
+
+			if (!server_settings->no_file_backups)
+			{			
+				std::string test1_path = testfolderpath + os_file_sep();
+				std::string max_path_str;
+#ifdef _WIN32
+				std::string unicode_name = "\xC3\x84";
+				for (size_t i = 0; i < 240; ++i)
+				{
+					test1_path += unicode_name;
+				}
+				max_path_str = "(255 UCS-2 code points/UTF-16 with max 2*255 bytes)";
+#else
+				std::string name_max_path(NAME_MAX - 1, 'a');
+				test1_path += name_max_path;
+				max_path_str = std::string("(max ") +convert(NAME_MAX) + " bytes)";
+#endif
+
+				if (!os_create_dir(os_file_prefix(test1_path)))
+				{
+					ret.set("system_err", os_last_error_str());
+					ret.set("dir_error", true);
+					ret.set("dir_error_ext", "err_long_create_failed");
+					ret.set("dir_error_hint", "err_long_create_failed");
+					ret.set("max_path_str", max_path_str);
+					add_stop_show(db, ret, "err_long_create_failed");
+				}
+
+				os_remove_dir(os_file_prefix(test1_path));
 			}
 
 			if (!server_settings->no_file_backups)

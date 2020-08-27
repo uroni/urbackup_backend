@@ -135,10 +135,15 @@ namespace
 				if (t2 == LUA_TTABLE)
 				{
 					if (!unserialize_table(state, data))
+					{
+						lua_rawset(state, -3);
 						return false;
+					}
 				}
 				else if (!unserialize_val(state, t2, data))
 				{
+					lua_pushnil(state);
+					lua_rawset(state, -3);
 					return false;
 				}
 
@@ -512,7 +517,7 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	else if (!unserialize_table(state, state_data))
 	{
 		Server->Log("Error unserializing state data", LL_ERROR);
-		return -1;
+		assert(false);
 	}
 
 	lua_setglobal(state, "state");
@@ -524,7 +529,7 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	else if (!unserialize_table(state, state_data_mem))
 	{
 		Server->Log("Error unserializing state data mem", LL_ERROR);
-		return -1;
+		assert(false);
 	}
 
 	lua_setglobal(state, "state_mem");
@@ -536,7 +541,7 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	else if (!unserialize_table(state, global_data))
 	{
 		Server->Log("Error unserializing global data", LL_ERROR);
-		return -1;
+		assert(false);
 	}
 
 	lua_setglobal(state, "global");
@@ -548,7 +553,7 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	else if (!unserialize_table(state, global_data_mem))
 	{
 		Server->Log("Error unserializing global data mem", LL_ERROR);
-		return -1;
+		assert(false);
 	}
 
 	lua_setglobal(state, "global_mem");
@@ -572,7 +577,8 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	state_data = serialize_table(state);
 	if (state_data.empty())
 	{
-		Server->Log("Error serializing state data", LL_WARNING);
+		Server->Log("Error serializing state data", LL_ERROR);
+		assert(false);
 	}
 
 	lua_getglobal(state, "state_mem");
@@ -580,7 +586,8 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	state_data_mem = serialize_table(state);
 	if (state_data_mem.empty())
 	{
-		Server->Log("Error serializing state mem data", LL_WARNING);
+		Server->Log("Error serializing state mem data", LL_ERROR);
+		assert(false);
 	}
 
 	lua_getglobal(state, "global");
@@ -588,7 +595,8 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	global_data = serialize_table(state);
 	if (global_data.empty())
 	{
-		Server->Log("Error serializing global data", LL_WARNING);
+		Server->Log("Error serializing global data", LL_ERROR);
+		assert(false);
 	}
 
 	lua_getglobal(state, "global_mem");
@@ -596,7 +604,8 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 	global_data_mem = serialize_table(state);
 	if (global_data_mem.empty())
 	{
-		Server->Log("Error serializing global mem data", LL_WARNING);
+		Server->Log("Error serializing global mem data", LL_ERROR);
+		assert(false);
 	}
 	
 	return ret;

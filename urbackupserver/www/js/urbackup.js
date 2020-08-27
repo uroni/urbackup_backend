@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2004000000;
+g.current_version=2004001300;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -1138,6 +1138,24 @@ function show_status_check2(data)
 				ext_text+="<br>MS-DOS 8.3 compatibility names are created on the backup storage. This can lead to problems. You can disable 8.3 name generation by runnning <br>"
 					+ "<code><pre>fsutil 8dot3name set "+data.dir_error_volume+" 1</pre></code><br>as administrator. UrBackup will stop showing this error after you run this command.";
 			}
+			else if(data.dir_error_hint=="err_file_system_case_insensitive")
+			{
+				ext_text+="<br>UrBackup Server is running on a operating system where file systems are usually case sensitive. Work-arounds for UrBackup to work with case insensitive backup storage are disabled."
+					+"The backup storage is case insensitive, however. This might cause issues.";
+			}
+			else if(data.dir_error_hint=="err_file_system_special_windows_files_disallowed")
+			{
+				ext_text+="<br>UrBackup Server has trouble storing files named 'CON' to backup storage. When running on Windows UrBackup Server has work-arounds to avoid storing such files. "
+					"Those work-arounds are disabled when not running on Windows, however. So if a client has files named like this, there might be issues with backups.";
+			}
+			else if(data.dir_error_hint=="err_long_create_failed")
+			{
+				var max_path_str="";
+				if(data.max_path_str)
+					max_path_str = " "+ data.max_path_str;
+				ext_text+="<br>UrBackup Server has trouble storing files to backup storage with the maximum file name length it was compiled with"+max_path_str+
+					". There might be issues when backing up files/folders with long file name.";
+			}
 			else
 			{
 				ext_text+="<br>"+data.dir_error_hint;
@@ -1146,7 +1164,10 @@ function show_status_check2(data)
 		
 		if( data.dir_error_ext
 			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
-				|| data.dir_error_ext=="dos_names_created") )
+				|| data.dir_error_ext=="dos_names_created"
+				|| data.dir_error_ext=="err_file_system_case_insensitive"
+				|| data.dir_error_ext=="err_file_system_special_windows_files_disallowed"
+				|| data.dir_error_ext=="err_long_create_failed") )
 		{
 			generic_text=false;
 		}
@@ -1474,7 +1495,6 @@ function show_status2(data)
 		var client_download_data=build_client_download_select(data.client_downloads);
 		status_client_download_windows=dustRender("status_client_download", {download_clients: client_download_data, os: "windows", os_windows: true});
 		status_client_download_linux=dustRender("status_client_download", {download_clients: client_download_data, os: "linux", os_linux: true});
-		status_client_download_mac=dustRender("status_client_download", {download_clients: client_download_data, os: "mac", os_mac: true});
 		has_client_download=true;
 	}
 	
@@ -1486,7 +1506,7 @@ function show_status2(data)
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: data.added_new_client, new_authkey: data.new_authkey, new_clientname: data.new_clientname,
-		status_client_download_windows: status_client_download_windows, status_client_download_linux: status_client_download_linux, status_client_download_mac: status_client_download_mac,
+		status_client_download_windows: status_client_download_windows, status_client_download_linux: status_client_download_linux,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
 		has_client_download: has_client_download, allow_add_client:allow_add_client});
 	
@@ -2949,6 +2969,7 @@ function show_settings2(data)
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
 			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
+			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -3092,6 +3113,7 @@ function show_settings2(data)
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
 			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
+			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -3668,6 +3690,7 @@ g.settings_list=[
 "exclude_files",
 "include_files",
 "default_dirs",
+"backup_dirs_optional",
 "allow_config_paths",
 "allow_starting_full_file_backups",
 "allow_starting_incr_file_backups",

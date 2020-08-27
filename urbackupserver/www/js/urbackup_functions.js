@@ -933,7 +933,7 @@ function getISODatestamp()
 
 function base64_decode_dash(b)
 {
-	return $.base64.decode(b.replace(/-/g, "="));
+	return decodeURIComponent( escape( $.base64.decode(b.replace(/-/g, "=")) ));
 }
 
 //from https://stackoverflow.com/questions/4003823/javascript-getcookie-functions/4004010#4004010

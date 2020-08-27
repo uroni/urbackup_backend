@@ -163,6 +163,7 @@ public:
 
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);
+	static bool tooManyClients(IDatabase *db, const std::string &clientname, ServerSettings *server_settings);
 	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey=NULL, int* client_group=NULL);
 
 	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL);
@@ -334,7 +335,7 @@ private:
 
 	int clientid;
 
-	ServerSettings *server_settings;
+	std::auto_ptr<ServerSettings> server_settings;
 
 	IQuery *q_update_lastseen;
 	IQuery *q_update_setting;

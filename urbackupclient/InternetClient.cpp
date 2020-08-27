@@ -37,6 +37,10 @@
 
 #include "../stringtools.h"
 
+#ifndef _WIN32
+#include "../config.h"
+#endif
+
 #include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
@@ -976,6 +980,7 @@ void InternetClientThread::printInfo( IPipe * pipe )
 
 IPipe * InternetClient::connect(const SServerConnectionSettings & selected_server_settings, CTCPStack& tcpstack)
 {
+#if defined(_WIN32) || defined(WITH_OPENSSL)
 	std::string proxy = selected_server_settings.proxy;
 	if (!proxy.empty())
 	{
@@ -1140,6 +1145,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 		Server->destroy(cs);
 		return NULL;
 	}
+#endif
 	
 	return Server->ConnectStream(selected_server_settings.hostname,
 		selected_server_settings.port, 10000);

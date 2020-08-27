@@ -46,9 +46,17 @@ namespace
 {
 	void read_tokens(std::string token_path, std::string& tokens)
 	{
-            if(os_directory_exists(os_file_prefix(token_path)))
+#ifdef _WIN32
+		std::string prefixed_token_path = os_file_prefix(token_path);
+		if (!os_directory_exists(prefixed_token_path))
+			prefixed_token_path = token_path;
+#else
+		std::string prefixed_token_path = token_path;
+#endif
+
+            if(os_directory_exists(prefixed_token_path))
             {
-		std::vector<SFile> token_files = getFiles(token_path);
+		std::vector<SFile> token_files = getFiles(prefixed_token_path);
 
 		for(size_t i=0;i<token_files.size();++i)
 		{
@@ -57,7 +65,7 @@ namespace
 				continue;
 			}
 
-			std::string nt = getFile(token_path + os_file_sep() + token_files[i].name);
+			std::string nt = getFile(prefixed_token_path + os_file_sep() + token_files[i].name);
 			if(!nt.empty())
 			{
 				if(!tokens.empty())
@@ -109,6 +117,22 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	type |= SOCK_CLOEXEC;
 #endif
 	SOCKET p=socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
+
+	if (p == SOCKET_ERROR)
+	{
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		if (errno == EINVAL)
+		{
+			type &= ~SOCK_CLOEXEC;
+			p = socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
+		}
+#endif
+		if (p == SOCKET_ERROR)
+		{
+			std::cout << "Error creating socket for connection to backend" << std::endl;
+			return "";
+		}
+	}
 
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
 	fcntl(p, F_SETFD, fcntl(p, F_GETFD, 0) | FD_CLOEXEC);

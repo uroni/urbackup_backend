@@ -117,6 +117,13 @@ namespace
 			ret.params.push_back(param);
 		}
 
+		db_results res_script = db->Read("SELECT global_state FROM alert_scripts WHERE id=" + convert(script_id));
+
+		if (!res_script.empty())
+		{
+			ret.global = res_script[0]["global_state"];
+		}
+
 		return ret;
 	}
 
@@ -152,10 +159,13 @@ void Alerts::operator()()
 
 	db->Write("UPDATE clients SET alerts_next_check=NULL");
 
-	IQuery* q_get_alert_clients = db->Prepare("SELECT id, name, file_ok, image_ok, alerts_state, strftime('%s', lastbackup) AS lastbackup, "
-		"strftime('%s', lastseen) AS lastseen, strftime('%s', lastbackup_image) AS lastbackup_image, created, os_simple "
-		"FROM clients WHERE alerts_next_check IS NULL OR alerts_next_check<=?");
+	IQuery* q_get_alert_clients = db->Prepare("SELECT c.id AS clientid, c.name AS clientname, file_ok, image_ok, alerts_state, strftime('%s', lastbackup) AS lastbackup, "
+		"strftime('%s', lastseen) AS lastseen, strftime('%s', lastbackup_image) AS lastbackup_image, created, os_simple, groupid, cg.name AS groupname "
+		"FROM "
+		" (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id) "
+		" WHERE alerts_next_check IS NULL OR alerts_next_check<=?");
 	IQuery* q_update_client = db->Prepare("UPDATE clients SET  file_ok=?, image_ok=?, alerts_next_check=?, alerts_state=? WHERE id=?");
+	IQuery* q_update_global_state = db->Prepare("UPDATE alert_scripts SET global_state=? WHERE id=?");
 
 	std::map<int, SScript> alert_scripts;
 
@@ -182,7 +192,7 @@ void Alerts::operator()()
 
 		for (size_t i = 0; i < res.size(); ++i)
 		{
-			int clientid = watoi(res[i]["id"]);
+			int clientid = watoi(res[i]["clientid"]);
 			ServerSettings server_settings(db, clientid);
 			int script_id = server_settings.getSettings()->alert_script;
 			std::map<int, SScript>::iterator it = alert_scripts.find(script_id);
@@ -197,7 +207,7 @@ void Alerts::operator()()
 				ILuaInterpreter::Param params_raw;
 				ILuaInterpreter::Param::params_map& params = *params_raw.u.params;
 				params["clientid"] = clientid;
-				params["clientname"] = res[i]["name"];
+				params["clientname"] = res[i]["clientname"];
 				int update_freq_file_incr = server_settings.getUpdateFreqFileIncr();
 				int update_freq_file_full = server_settings.getUpdateFreqFileFull();
 				params["incr_file_interval"] = update_freq_file_incr;
@@ -209,6 +219,8 @@ void Alerts::operator()()
 				params["no_images"] = server_settings.getSettings()->no_images;
 				params["no_file_backups"] = server_settings.getSettings()->no_file_backups;
 				params["os_simple"] = res[i]["os_simple"];
+				params["groupid"] = watoi(res[i]["groupid"]);
+				params["groupname"] = res[i]["groupname"];
 
 				int64 times = Server->getTimeSeconds();
 				int64 created = watoi64(res[i]["created"]);
@@ -284,9 +296,10 @@ void Alerts::operator()()
 				}
 
 				std::string state = res[i]["alerts_state"];
+				std::string global_state = it->second.global;
 				int64 ret2;
 				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, 
-					it->second.state_mem[clientid], it->second.global, it->second.global_mem, funcs);
+					it->second.state_mem[clientid], global_state, it->second.global_mem, funcs);
 				bool needs_update = false;
 				
 				if (ret>=0)
@@ -376,10 +389,20 @@ void Alerts::operator()()
 					q_update_client->Bind(i_file_ok);
 					q_update_client->Bind(i_image_ok);
 					q_update_client->Bind(next_check);
-					q_update_client->Bind(state);
+					q_update_client->Bind(state.c_str(), state.size());
 					q_update_client->Bind(clientid);
 					q_update_client->Write();
 					q_update_client->Reset();
+				}
+
+				if (global_state != it->second.global)
+				{
+					it->second.global = global_state;
+
+					q_update_global_state->Bind(global_state.c_str(), global_state.size());
+					q_update_global_state->Bind(script_id);
+					q_update_global_state->Write();
+					q_update_global_state->Reset();
 				}
 			}
 		}

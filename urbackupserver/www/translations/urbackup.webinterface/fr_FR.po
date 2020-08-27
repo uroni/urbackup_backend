@@ -10,11 +10,13 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2018
+# Translators:
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2018-2019
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2018-04-05 12:25+0000\n"
+"PO-Revision-Date: 2019-09-06 10:10+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (France) (http://www.transifex.com/uroni/urbackup/language/fr_FR/)\n"
 "MIME-Version: 1.0\n"
@@ -120,7 +122,7 @@ msgid "unknown"
 msgstr "inconnu"
 
 msgid "overview"
-msgstr "Résumé"
+msgstr "Synthèse"
 
 msgid "no_recent_backup"
 msgstr "Pas de sauvegarde récente"
@@ -1107,7 +1109,7 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Mode pour les sauvegardes complètes de fichiers LAN"
 
 msgid "tRaw"
-msgstr "Raw - rapide"
+msgstr "Raw"
 
 msgid "tHashed"
 msgstr "Hashage - transfert contrôlé"
@@ -1128,7 +1130,7 @@ msgid "tInternet image backup transfer mode"
 msgstr "Mode réseau internet pour la sauvegarde système"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr "Utiliser des liens symboliques durant le sauvegarde incrémentielle de fichiers"
+msgstr "Utiliser des liens symboliques durant la sauvegarde incrémentielle de fichiers"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1158,7 +1160,7 @@ msgid "tYou need to create a user to be able to send reports"
 msgstr "Vous devez créer un utilisateur pour pouvoir envoyer un rapport"
 
 msgid "tShow when a new server version is available"
-msgstr "Indiquer quand un nouveau serveur est disponible"
+msgstr "Indiquer quand une nouvelle version d'UrBackup serveur est disponible"
 
 msgid "tVHD (Virtual HardDisk)"
 msgstr "VHD (Disque dur virtuel)"
@@ -1685,7 +1687,7 @@ msgid "tOk. Reset this error"
 msgstr "Ok acquitter cette erreur"
 
 msgid "tOk. Stop showing this error"
-msgstr "Ok, arrêter de montrer cette erreur."
+msgstr "Ok. arrêter de montrer cette erreur"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
@@ -1751,7 +1753,7 @@ msgid "tUpdate data limit estimation database"
 msgstr "Estimation de la durée de mise à jour de la base"
 
 msgid "tFull image backup #1"
-msgstr "Image système complète de base"
+msgstr "Image système complète #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
 msgstr "Grouper les volumes pendant la sauvegarde système."

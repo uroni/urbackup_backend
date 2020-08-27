@@ -58,6 +58,7 @@ bool BackupServer::can_mount_images = false;
 bool BackupServer::can_reflink = false;
 bool BackupServer::can_hardlink = false;
 IMutex* BackupServer::fs_test_mutex = NULL;
+bool BackupServer::can_syncfs = true;
 
 extern IFSImageFactory *image_fak;
 
@@ -920,6 +921,34 @@ void BackupServer::testFilesystemLinkAvailability(IDatabase * db)
 	testFilesystemLinkAvailability(db, true);
 }
 
+void BackupServer::testFilesystemSyncFs(IDatabase * db)
+{
+	ServerSettings settings(db);
+
+	std::string backupfolder = settings.getSettings()->backupfolder;
+
+	std::string testfolder = backupfolder + os_file_sep() + "05b89714-7c4d-40fb-a908-e45f326c0624";
+
+	if (!os_directory_exists(testfolder)
+		&& !os_create_dir(testfolder))
+	{
+		Server->Log("Could not create folder at " + testfolder + ". " + os_last_error_str(), LL_DEBUG);
+		return;
+	}
+
+	if (!os_sync(testfolder))
+	{
+		Server->Log("Syncing " + testfolder + " failed. This may cause problems with backup consistency on disk. " + os_last_error_str(), LL_WARNING);
+		can_syncfs = false;
+	}
+	else
+	{
+		can_syncfs = true;
+	}
+
+	os_remove_dir(testfolder);
+}
+
 void BackupServer::testFilesystem(IDatabase * db)
 {
 	IScopedLock lock(fs_test_mutex);
@@ -927,6 +956,7 @@ void BackupServer::testFilesystem(IDatabase * db)
 	testSnapshotAvailability(db);
 	testFilesystemTransactionAvailabiliy(db);
 	testFilesystemLinkAvailability(db);
+	testFilesystemSyncFs(db);
 }
 
 namespace
@@ -964,6 +994,11 @@ bool BackupServer::canReflink()
 bool BackupServer::canHardlink()
 {
 	return can_hardlink;
+}
+
+bool BackupServer::canSyncFs()
+{
+	return can_syncfs;
 }
 
 void BackupServer::updateDeletePending()
@@ -1390,6 +1425,11 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	}
 
 	db->destroyAllQueries();
+}
+
+void BackupServer::wakeupNewClient()
+{
+	exitpipe->Write("nc");
 }
 
 std::string BackupServer::findFile(const std::string & path, const std::string & fn)

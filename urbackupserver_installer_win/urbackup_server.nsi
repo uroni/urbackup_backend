@@ -80,18 +80,18 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedistInstalled64:
-		File "..\deps\redist\vc_redist_2015.x64.exe"
-		ExecWait '"$TEMP\vc_redist_2015.x64.exe" /q /norestart' $0
+		File "..\deps\redist\vc_redist_2019.x64.exe"
+		ExecWait '"$TEMP\vc_redist_2019.x64.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
 		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
-			ExecWait '"$TEMP\vc_redist_2015.x64.exe" /passive /norestart' $0
+			ExecWait '"$TEMP\vc_redist_2019.x64.exe" /passive /norestart' $0
 			${If} $0 != '0'
 			${If} $0 != '3010'
-				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				MessageBox MB_OK "Unable to install Visual Studio 2019 runtime. UrBackup needs that runtime."
 				Quit
 			${EndIf}
 			${EndIf}
@@ -113,18 +113,18 @@ Section "install"
 				; Delete '$TEMP\vcredist_x86.exe'
 			; ${EndIf}
 		; ${EndIf}
-		File "..\deps\redist\vc_redist_2015.x86.exe"
-		ExecWait '"$TEMP\vc_redist_2015.x86.exe" /q /norestart' $0
+		File "..\deps\redist\vc_redist_2019.x86.exe"
+		ExecWait '"$TEMP\vc_redist_2019.x86.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
 		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
-			ExecWait '"$TEMP\vc_redist_2015.x86.exe"  /passive /norestart' $0
+			ExecWait '"$TEMP\vc_redist_2019.x86.exe"  /passive /norestart' $0
 			${If} $0 != '0'
 			${If} $0 != '3010'
-				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				MessageBox MB_OK "Unable to install Visual Studio 2019 runtime. UrBackup needs that runtime."
 				Quit
 			${EndIf}
 			${EndIf}
@@ -196,7 +196,7 @@ Section "install"
 	
 	ExecWait '"$INSTDIR\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --run-test true' $0
 	${If} $0 != '0'
-		MessageBox MB_OK "Cannot run UrBackup server executable. This can be caused by issues with the Visual Studio 2015 runtime. Please wait for all Windows updates to finish (this installs the Universal CRT), then reinstall the Visual Studio 2015 runtime and then retry this installation."
+		MessageBox MB_OK "Cannot run UrBackup server executable. This can be caused by issues with the Visual Studio 2019 runtime. Please wait for all Windows updates to finish (this installs the Universal CRT), then reinstall the Visual Studio 2019 runtime and then retry this installation."
 		Quit
 	${EndIf}
 	

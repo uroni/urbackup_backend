@@ -11,26 +11,13 @@
 			<ul>
 				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
 				<li>
-					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'mac')">{tDownload preconfigured client installer for Mac OS X}</a>
-					<p>
-						{tInstall it directly in the terminal via:}
-						<blockquote>
-							<p>
-								<code>
-									TF=`mktemp` && curl "{mac_url}" > $TF && bash $TF; rm $TF
-								</code>
-							</p>
-						</blockquote>
-					</p>
-				</li>
-				<li>
 					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a>
 					<p>
 						{tInstall it directly in the terminal via:}
 						<blockquote>
 							<p>
 								<code>
-									TF=`mktemp` && wget "{linux_url}" -O $TF && sh $TF; rm $TF
+									TF=`mktemp` && wget "{linux_url}" -O $TF && sudo sh $TF; rm -f $TF
 								</code>
 							</p>
 						</blockquote>
@@ -41,7 +28,7 @@
 									RUN TF=`mktemp` &&\<br>
 										wget "{linux_url}" -O $TF &&\<br>
 										sh $TF &&\<br>
-										rm $TF &&\<br>
+										rm -f $TF &&\<br>
 										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
 										( [ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient )
 								</code>
@@ -54,7 +41,7 @@
 									RUN TF=`mktemp` &&\<br>
 										wget "https://hndl.urbackup.org/Client/latest/update/UrBackupUpdateLinux.sh" -O $TF &&\<br>
 										sh $TF &&\<br>
-										rm $TF &&\<br>
+										rm -f $TF &&\<br>
 										urbackupclientctl wait-for-backend &&\<br>
 										urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}{internet_proxy_settings} &&\<br>
 										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>

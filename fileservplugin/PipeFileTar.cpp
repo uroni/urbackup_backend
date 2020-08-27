@@ -182,11 +182,7 @@ std::string PipeFileTar::Read(_u32 tr, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	if (hash_pos == pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
-		hash_pos += ret.size();
-	}
+	hashReadData(pos, ret.data(), ret.size());
 	assert(pos + ret.size() <= hash_pos);
 
 	tar_file.pos += ret.size();
@@ -212,11 +208,7 @@ std::string PipeFileTar::Read(int64 spos, _u32 tr, bool * has_error)
 	std::string ret = pipe_file->pipe_file->Read(pf_offset, max_read, has_error);
 
 	lock.relock(mutex.get());
-	if (spos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
-		hash_pos += ret.size();
-	}
+	hashReadData(spos, ret.data(), ret.size());
 	assert(spos + ret.size() <= hash_pos);
 
 	return ret;
@@ -234,11 +226,7 @@ _u32 PipeFileTar::Read(char * buffer, _u32 bsize, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	if (tar_file.pos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
-		hash_pos += ret;
-	}
+	hashReadData(tar_file.pos, buffer, ret);
 	assert(pos + ret <= hash_pos);
 	
 	tar_file.pos += ret;
@@ -263,11 +251,7 @@ _u32 PipeFileTar::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 	_u32 ret = pipe_file->pipe_file->Read(pf_offset, buffer, bsize, has_error);
 
 	lock.relock(mutex.get());
-	if (spos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
-		hash_pos += ret;
-	}
+	hashReadData(spos, buffer, ret);
 	assert(spos + ret <= hash_pos);
 
 	return ret;
@@ -313,6 +297,30 @@ _i64 PipeFileTar::Size()
 	IScopedLock lock(mutex.get());
 
 	return tar_file.size;
+}
+
+void PipeFileTar::hashReadData(int64 spos, const char * buffer, _u32 bsize)
+{
+	_u32 off = 0;
+	if (spos < hash_pos)
+	{
+		_u32 off = hash_pos - spos;
+		if (off >= bsize)
+		{
+			return;
+		}
+		Server->Log("Hash tar file off!=0", LL_DEBUG);
+	}
+	if (spos+off == hash_pos)
+	{
+		Server->Log("Hash tar file spos=" + convert(spos) + " len=" + convert(bsize) +" off="+convert(off), LL_DEBUG);
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer+off), bsize-off);
+		hash_pos += bsize-off;
+	}
+	else
+	{
+		Server->Log("Don't hash tar file spos=" + convert(spos) + " len=" + convert(bsize), LL_DEBUG);
+	}
 }
 
 std::string PipeFileTar::buildCurrMetadata()
@@ -612,6 +620,8 @@ std::string PipeFileTar::getStdErr()
 
 	unsigned char dig[SHA_DEF_DIGEST_SIZE];
 	sha_def_final(&sha_ctx, dig);
+
+	Server->Log("Hash tar file final (" + tar_file.fn + ") pos="+convert(tar_file.pos)+" hash_pos="+convert(hash_pos)+" size="+convert(tar_file.size)+" h="+base64_encode(dig, SHA_DEF_DIGEST_SIZE), LL_DEBUG);
 
 	stderr_ret.append(1, 1);
 
