@@ -481,4 +481,14 @@ IFsFile::os_file_handle File::getOsHandle(bool release_handle)
 	}
 	return ret;
 }
+
+int64 File::getValidDataLength(IVdlVolCache* p_vol_cache)
+{
+	return -1;
+}
+
+IVdlVolCache* File::createVdlVolCache()
+{
+	return NULL;
+}
 #endif

@@ -61,7 +61,8 @@ namespace
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
-	: parent(parent), file(NULL), has_error(false), cbt_hash_file_info()
+	: parent(parent), file(NULL), has_error(false), cbt_hash_file_info(),
+	vdl_vol_cache(NULL)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
@@ -69,6 +70,7 @@ ChunkSendThread::ChunkSendThread(CClientThread *parent)
 ChunkSendThread::~ChunkSendThread(void)
 {
 	delete []chunk_buf;
+	Server->destroy(vdl_vol_cache);
 }
 
 void ChunkSendThread::operator()(void)
@@ -135,7 +137,8 @@ void ChunkSendThread::operator()(void)
 			Server->Log("Retaining file " + file->getFilename(), LL_DEBUG);
 			s_filename = chunk.s_filename;
 			curr_hash_size=chunk.hashsize;
-			curr_file_size=chunk.startpos;
+			curr_file_size =chunk.startpos;
+			curr_max_vdl = -1;
 			cbt_hash_file_info = chunk.cbt_hash_file_info;
 			pipe_file_user.reset(chunk.pipe_file_user);
 			file_extents.clear();
@@ -410,13 +413,24 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 						&& cbt_hash_file_info.blocksize > 0)
 					{
 						file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+
+						if (curr_max_vdl == -1)
+						{
+							if (vdl_vol_cache == NULL)
+							{
+								vdl_vol_cache = fs_file->createVdlVolCache();
+							}
+
+							curr_max_vdl = fs_file->getValidDataLength(vdl_vol_cache);
+						}
 					}
 				}
 
 				for (size_t i = 0; i < file_extents.size(); ++i)
 				{
 					if (file_extents[i].offset <= spos &&
-						file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
+						file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist &&
+						 (curr_max_vdl<0 || file_extents[i].offset + file_extents[i].size <= curr_max_vdl ) )
 					{
 						int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
 						index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
