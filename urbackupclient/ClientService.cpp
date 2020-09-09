@@ -39,6 +39,9 @@
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../urbackupcommon/CompressedPipe2.h"
+#include "../urbackupcommon/CompressedPipeZstd.h"
+#include "../urbackupcommon/InternetServicePipe2.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -89,7 +92,7 @@ int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
-std::map<std::pair<std::string, std::string>, std::string> ClientConnector::challenges;
+std::map<std::pair<std::string, std::string>, ClientConnector::SChallenge> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
 std::vector < ClientConnector::SFilesrvConnection > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
@@ -190,6 +193,30 @@ namespace
 			}
 		}
 	};
+
+	class FileservClientThread : public IThread
+	{
+	public:
+		FileservClientThread(IPipe* pipe, const char* p_extra_buffer, size_t extra_buffer_size)
+			: pipe(pipe)
+		{
+			if (extra_buffer_size > 0)
+			{
+				extra_buffer.assign(p_extra_buffer, p_extra_buffer + extra_buffer_size);
+			}
+		}
+
+		void operator()()
+		{
+			IndexThread::getFileSrv()->runClient(pipe, &extra_buffer);
+			delete pipe;
+			delete this;
+		}
+
+	private:
+		IPipe* pipe;
+		std::vector<char> extra_buffer;
+	};
 }
 
 void ClientConnector::init_mutex(void)
@@ -279,6 +306,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	retrieved_has_components=false;
 	status_has_components=false;
 	curr_result_id = 0;
+	is_encrypted = false;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -915,10 +943,24 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		}
 	}
 
-	tcpstack.AddData((char*)cmd.c_str(), cmd.size());
+	tcpstack.AddData(cmd.data(), cmd.size());
 
-	while( tcpstack.getPacket(cmd) && !cmd.empty())
+	while(true)
 	{
+		if (!tcpstack.getPacket(cmd) || cmd.empty())
+		{
+			size_t rc = pipe->Read(&cmd, 0);
+			if (rc > 0)
+			{
+				tcpstack.AddData(cmd.data(), cmd.size());
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
@@ -956,13 +998,14 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 		}
 
-		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity, endpoint_name))
+		std::string secret_session_key;
+		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity, endpoint_name, secret_session_key))
 		{
 			ident_ok=true;
 		}
 		else if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
 		{
-			if(!ServerIdentityMgr::hasPublicKey(identity) || crypto_fak==NULL)
+			if(!ServerIdentityMgr::hasPublicKey(identity, true) || crypto_fak==NULL)
 			{
 				ident_ok=true;
 			}
@@ -996,6 +1039,72 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 
 		if(ident_ok) //Commands from Server
 		{
+			if (next(cmd, 0, "ENC?"))
+			{
+				str_map params;
+				ParseParamStrHttp(cmd.substr(4), &params);
+
+				std::string resp = "ok=1";
+
+				std::string client_keyadd;
+				std::string server_keyadd;
+				if (!secret_session_key.empty())
+				{
+					server_keyadd = base64_decode_dash(params["keyadd"]);
+					if (server_keyadd.empty())
+					{
+						Server->Log("Server keyadd is empty", LL_WARNING);
+						return;
+					}
+					client_keyadd.resize(16);
+					Server->randomFill(&client_keyadd[0], client_keyadd.size());
+					resp += "&keyadd=" + base64_encode_dash(client_keyadd);
+				}
+
+				tcpstack.Send(pipe, resp);
+
+				if (!secret_session_key.empty())
+				{	
+					Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + server_keyadd + client_keyadd) + " (client)");
+					InternetServicePipe2* isp = new InternetServicePipe2(pipe, secret_session_key + server_keyadd + client_keyadd);
+					isp->destroyBackendPipeOnDelete(true);
+					pipe = isp;
+					is_encrypted = true;
+				}
+
+				std::string compress = params["compress"];
+				int compression_level = watoi(params["compress_level"]);
+
+				if (compress == "zlib")
+				{
+					CompressedPipe2* comp_pipe = new CompressedPipe2(pipe, compression_level);
+					comp_pipe->destroyBackendPipeOnDelete(true);
+					pipe = comp_pipe;
+				}
+#ifndef NO_ZSTD_COMPRESSION
+				else if (compress == "zstd")
+				{
+					CompressedPipeZstd* comp_pipe = new CompressedPipeZstd(pipe, compression_level, -1);
+					comp_pipe->destroyBackendPipeOnDelete(true);
+					pipe = comp_pipe;
+
+				}
+#endif
+				else
+				{
+					Server->Log("Unknown compression method from server: \"" + compress + "\"", LL_ERROR);
+				}
+
+				continue;
+			}
+
+			if (!secret_session_key.empty()
+				&& !is_encrypted)
+			{
+				tcpstack.Send(pipe, "ERR REQUIRE ENC");
+				return;
+			}
+
 			if( cmd=="START BACKUP" || cmd=="2START BACKUP" || next(cmd, 0, "3START BACKUP") )
 			{
 				CMD_START_INCR_FILEBACKUP(cmd); continue;
@@ -1003,6 +1112,16 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP" || next(cmd, 0, "3START FULL BACKUP") )
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
+			}
+			else if (cmd == "FILESRV")
+			{
+				Server->Log("Start FILESRV thread");
+				Server->getThreadPool()->execute(new FileservClientThread(pipe, 
+					tcpstack.getBuffer(), tcpstack.getBuffersize()), "tfileserver");
+				state = CCSTATE_FILESERV;
+				do_quit = true;
+				want_receive = false;
+				return;
 			}
 			else if (next(cmd, 0, "WAIT FOR INDEX "))
 			{
@@ -3752,7 +3871,8 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 		{
 			if (!channel_pipes[i].server_identity.empty())
 			{
-				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
+				std::string secret_key;
+				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name, secret_key);
 			}
 			break;
 		}

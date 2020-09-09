@@ -86,7 +86,7 @@ namespace
 			return ss.hostname;
 		}
 
-		return ss.hostname
+		return "urbackup://"+ss.hostname+":"+convert(ss.port)
 			+ (ss.proxy.empty() ? "" : (" via HTTP proxy " + ss.proxy));
 	}
 }
@@ -686,8 +686,14 @@ void InternetClientThread::operator()(void)
 		{
 			std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
 
-			authkey=server_settings.authkey;			
-			std::string salt = challenge+client_challenge+ecdh_key_exchange->getSharedKey(server_pubkey);
+			std::string shared_key = ecdh_key_exchange->getSharedKey(server_pubkey);
+			if (shared_key.empty())
+			{
+				Server->Log("Error calculating ECDH shared key from server public key", LL_ERROR);
+				goto cleanup;
+			}
+			authkey=server_settings.authkey;
+			std::string salt = challenge+client_challenge+ shared_key;
 			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(pbkdf2_iterations,server_iterations) );
 			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
 			data.addString(hmac_l);

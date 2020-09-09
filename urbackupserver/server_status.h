@@ -39,7 +39,12 @@ enum SStatusError
 	se_none,
 	se_ident_error,
 	se_authentication_error,
-	se_too_many_clients
+	se_too_many_clients,
+	se_uid_changed,
+	se_authenticating,
+	se_settings,
+	se_startup,
+	se_unknown
 };
 
 enum ERestore

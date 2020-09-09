@@ -90,7 +90,7 @@
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	: extra_buffer(NULL), waiting_for_chunk(false),
-	backup_semantics(true)
+	backup_semantics(true), is_tunneled(false)
 {
 	int_socket=pSocket;
 
@@ -138,7 +138,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 }
 
 CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vector<char>* extra_buffer)
-	: extra_buffer(extra_buffer), waiting_for_chunk(false)
+	: extra_buffer(extra_buffer), waiting_for_chunk(false), is_tunneled(true)
 {
 	stopped=false;
 	killable=false;
@@ -280,6 +280,11 @@ bool CClientThread::RecvMessage()
 		if(extra_buffer==NULL || extra_buffer->empty())
 		{
 			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, 60*1000);
+
+			if (rc > 0)
+			{
+				Server->Log("FileSRV received " + convert(rc));
+			}
 		}
 		else
 		{
@@ -356,7 +361,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 #ifdef CHECK_IDENT
 				std::string ident;
 				data->getStr(&ident);
-				if(!FileServ::checkIdentity(ident))
+				if(!FileServ::checkIdentity(ident, is_tunneled))
 				{
 					Log("Identity check failed -2 ("+ ident+")", LL_DEBUG);
 					return false;
@@ -1702,7 +1707,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 #ifdef CHECK_IDENT
 	std::string ident;
 	data->getStr(&ident);
-	if(!FileServ::checkIdentity(ident))
+	if(!FileServ::checkIdentity(ident, is_tunneled))
 	{
 		Log("Identity check failed -2", LL_DEBUG);
 		return false;
@@ -2098,7 +2103,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 #ifdef CHECK_IDENT
 	std::string ident;
 	data->getStr(&ident);
-	if(!FileServ::checkIdentity(ident))
+	if(!FileServ::checkIdentity(ident, is_tunneled))
 	{
 		Log("Identity check failed -hash", LL_DEBUG);
 		return false;
@@ -2400,7 +2405,7 @@ bool CClientThread::InformMetadataStreamEnd( CRData * data )
 #ifdef CHECK_IDENT
 	std::string ident;
 	data->getStr(&ident);
-	if(!FileServ::checkIdentity(ident))
+	if(!FileServ::checkIdentity(ident, is_tunneled))
 	{
 		Log("Identity check failed -hash", LL_DEBUG);
 		return false;
@@ -2433,7 +2438,7 @@ bool CClientThread::StopPhash(CRData * data)
 #ifdef CHECK_IDENT
 	std::string ident;
 	data->getStr(&ident);
-	if (!FileServ::checkIdentity(ident))
+	if (!FileServ::checkIdentity(ident, is_tunneled))
 	{
 		Log("Identity check failed -hash", LL_DEBUG);
 		return false;
@@ -2469,7 +2474,7 @@ bool CClientThread::FinishScript( CRData * data )
 #ifdef CHECK_IDENT
 	std::string ident;
 	data->getStr(&ident);
-	if(!FileServ::checkIdentity(ident))
+	if(!FileServ::checkIdentity(ident, is_tunneled))
 	{
 		Log("Identity check failed -FinishScript", LL_DEBUG);
 		return false;

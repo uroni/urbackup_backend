@@ -28,7 +28,7 @@
 #include "PipeFileExt.h"
 
 IMutex *FileServ::mutex=NULL;
-std::vector<std::string> FileServ::identities;
+std::vector<FileServ::SIdentity> FileServ::identities;
 bool FileServ::pause=false;
 std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
@@ -86,13 +86,14 @@ std::string FileServ::getShareDir(const std::string &name, const std::string& id
 	return map_file(name, identity, allow_exec, NULL);
 }
 
-void FileServ::addIdentity(const std::string &pIdentity)
+void FileServ::addIdentity(const std::string &pIdentity, bool only_tunneled)
 {
+	SIdentity identity(pIdentity, only_tunneled);
 	IScopedLock lock(mutex);
-	if(std::find(identities.begin(), identities.end(), pIdentity)
+	if(std::find(identities.begin(), identities.end(), identity)
 		== identities.end())
 	{
-		identities.push_back(pIdentity);
+		identities.push_back(identity);
 	}
 }
 
@@ -106,12 +107,13 @@ void FileServ::destroy_mutex(void)
 	Server->destroy(mutex);
 }
 
-bool FileServ::checkIdentity(const std::string &pIdentity)
+bool FileServ::checkIdentity(const std::string &pIdentity, bool tunneled)
 {
 	IScopedLock lock(mutex);
 	for(size_t i=0;i<identities.size();++i)
 	{
-		if(identities[i]==pIdentity)
+		if(identities[i].identity==pIdentity
+			&& (!identities[i].tunneled || tunneled) )
 		{
 			return true;
 		}
@@ -147,8 +149,9 @@ void FileServ::runClient(IPipe *cp, std::vector<char>* extra_buffer)
 
 bool FileServ::removeIdentity( const std::string &pIdentity )
 {
+	SIdentity identity(pIdentity, false);
 	IScopedLock lock(mutex);
-	std::vector<std::string>::iterator it = std::find(identities.begin(), identities.end(), pIdentity);
+	std::vector<SIdentity>::iterator it = std::find(identities.begin(), identities.end(), identity);
 	if(it!=identities.end())
 	{
 		identities.erase(it);

@@ -13,7 +13,7 @@
 	{/show_select_box}
 	<td>{name}</td>
 	<td>{groupname}</td>
-	<td>{online} {?online_add_status}({status|s}){/online_add_status}</td>
+	<td>{online} {?online_add_status}({status|s}){/online_add_status} {?reset_client_uid}<a class="btn btn-sm btn-danger" href="javascript: allowNewClient({id});">{tAllow new client}</a>{/reset_client_uid}</td>
 	<td>{status|s}</td>
 	<td>{lastseen}</td>
 	<td>{lastbackup}{start_file_backup|s}</td>

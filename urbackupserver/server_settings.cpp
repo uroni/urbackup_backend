@@ -563,6 +563,12 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 
 	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
+
+	settings->local_encrypt = true;
+	readBoolClientSetting(q_get_client_setting, "local_encrypt", &settings->local_encrypt, false);
+
+	settings->local_compress = true;
+	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -611,6 +617,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "internet_compress", &settings->internet_compress);
 	readBoolClientSetting(q_get_client_setting, "internet_encrypt", &settings->internet_encrypt);
 	readBoolClientSetting(q_get_client_setting, "internet_connect_always", &settings->internet_connect_always);
+	readBoolClientSetting(q_get_client_setting, "local_encrypt", &settings->local_encrypt);
+	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress);
 
 	readStringClientSetting(q_get_client_setting, "vss_select_components", "&", &settings->vss_select_components);
 
@@ -959,7 +967,7 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 {
 	std::string key;
 	key.resize(32);
-	Server->secureRandomFill((char*)key.data(), 32);
+	Server->secureRandomFill(&key[0], 32);
 	return key;
 }
 

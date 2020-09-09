@@ -17,7 +17,7 @@ public:
 	void stopServer(void);
 	std::string getServerName(void);
 	std::string getShareDir(const std::string &name, const std::string& identity);
-	void addIdentity(const std::string &pIdentity);
+	void addIdentity(const std::string &pIdentity, bool only_tunneled);
 	bool removeIdentity(const std::string &pIdentity);
 	void setPause(bool b);
 	bool getPause(void);
@@ -35,7 +35,7 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
-	static bool checkIdentity(const std::string &pIdentity);
+	static bool checkIdentity(const std::string &pIdentity, bool tunneled);
 
 	static std::string mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file, IPipeFile*& pipe_file);
 
@@ -76,7 +76,27 @@ private:
 	THREADPOOL_TICKET serverticket;
 	std::string servername;
 
-	static std::vector<std::string> identities;
+	struct SIdentity
+	{
+		SIdentity()
+			: tunneled(false)
+		{
+
+		}
+
+		SIdentity(std::string identity, bool tunneled)
+			: identity(identity), tunneled(tunneled)
+		{}
+
+		bool operator==(const SIdentity& other)
+		{
+			return identity == other.identity;
+		}
+
+		std::string identity;
+		bool tunneled;
+	};
+	static std::vector<SIdentity > identities;
 	static bool pause;
 
 	struct SScriptMapping

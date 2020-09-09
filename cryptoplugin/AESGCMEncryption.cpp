@@ -35,7 +35,7 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 	if(hash_password)
 	{
 		m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
-		CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)key.c_str(), key.size() );
+		CryptoPP::SHA256().CalculateDigest(m_sbbKey.BytePtr(), reinterpret_cast<const byte*>(key.data()), key.size() );
 	}
 	else
 	{
@@ -63,8 +63,14 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 
 void AESGCMEncryption::put( const char *data, size_t data_size )
 {
+	Server->Log("AESGCMEncryption::put " + std::string(data, data_size));
 	encryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
 	message_size+=data_size;
+
+	if (message_size > 2LL * 1024 * 1024 * 1024 - 1)
+	{
+		flush();
+	}
 }
 
 void AESGCMEncryption::flush()

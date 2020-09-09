@@ -13,6 +13,8 @@ public:
 	virtual IAESGCMDecryption* createAESGCMDecryptionNoDerivation(const std::string &password);
 	virtual IZlibCompression* createZlibCompression(int compression_level);
 	virtual IZlibDecompression* createZlibDecompression(void);
+	virtual IECIESDecryption* createECIESDecryption();
+	virtual IECIESEncryption* createECIESEncryption(const std::string& pubkey);
 	virtual bool generatePrivatePublicKeyPair(const std::string &keybasename);
 	virtual bool generatePrivatePublicKeyPairDSA(const std::string &keybasename);
 	virtual bool signFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename);
@@ -28,5 +30,6 @@ public:
 	virtual std::string decryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations=20000);
 	virtual IECDHKeyExchange* createECDHKeyExchange();
 	virtual std::string sha1Binary(const std::string& data);
+	virtual std::string sha256Binary(const std::string& data);
 
 };

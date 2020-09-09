@@ -144,6 +144,8 @@ struct SSettings
 	std::string alert_params;
 	std::string archive;
 	std::string client_settings_tray_access_pw;
+	bool local_encrypt;
+	bool local_compress;
 };
 
 struct SLDAPSettings
