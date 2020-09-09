@@ -12,7 +12,7 @@ public:
 
 	bool has_error;
 private:
-	CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256>::Encryptor encryptor;
+	CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256, CryptoPP::IncompatibleCofactorMultiplication>::Encryptor encryptor;
 };
 
 class ECIESDecryption : public IECIESDecryption
@@ -25,5 +25,5 @@ public:
 
 	bool has_error;
 private:
-	CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256>::Decryptor decryptor;
+	CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256, CryptoPP::IncompatibleCofactorMultiplication>::Decryptor decryptor;
 };
