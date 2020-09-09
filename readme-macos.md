@@ -35,7 +35,7 @@ Install Homebrew (see https://brew.sh ):
 
 Use Homebrew to install supporting tools:
 ```bash
-brew install wget autoconf automake libtool python3 gnu-sed
+brew install wget autoconf automake libtool python3 gnu-sed bash makeself
 ```
 
 Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads/
@@ -44,7 +44,7 @@ Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads
 ```bash
 mkdir build-cocoa-debug
 cd build-cocoa-debug
-../configure --enable-debug --with-macosx-version-min=10.9
+../configure --enable-debug --with-macosx-version-min=10.9 --disable-shared --without-liblzma
 sudo make install
 ```
 
