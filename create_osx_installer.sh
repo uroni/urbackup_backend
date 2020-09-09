@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/local/bin/bash
 
 set -e
 
@@ -73,6 +73,50 @@ else
 	VERSION_SHORT="0.1"
 fi
 
+function notarization_info {
+	echo "$UPLOAD_INFO_PLIST" > tmp.plist
+	xcrun altool --notarization-info `/usr/libexec/PlistBuddy -c "Print :notarization-upload:RequestUUID" tmp.plist` -u "$AC_USERNAME" -p "@env:AC_PASSWORD" --output-format xml
+}
+
+function wait_for_notarization {
+	echo "Waiting for notarization to finish..."
+	sleep 30
+	while true; do
+		REQUEST_INFO_PLIST=$(notarization_info || true)
+		echo "$REQUEST_INFO_PLIST" > tmp.plist
+		if [ "x$(/usr/libexec/PlistBuddy -c 'Print :product-errors:0:code' tmp.plist)" = x1519 ]; then
+			sleep 30
+			continue
+		fi
+		if [ "x$(/usr/libexec/PlistBuddy -c 'Print :notarization-info:Status' tmp.plist)" != "xin progress" ]; then
+			echo "Notarization finished"
+			break
+		fi
+		sleep 60
+	done
+
+}
+
+function notarize_int {
+	xcrun altool --notarize-app --primary-bundle-id "org.urbackup.client.frontend" -u "$AC_USERNAME" -p "@env:AC_PASSWORD" -t osx -f "$1" --output-format xml
+}
+
+function notarize {
+	echo "Sending $1 to notarization..."
+	UPLOAD_INFO_PLIST=$(notarize_int $1)
+	echo $UPLOAD_INFO_PLIST
+	wait_for_notarization
+}
+
+if !($development); then
+	echo "Signing code..."
+	security unlock-keychain -p foobar /Users/martin/Library/Keychains/dev.keychain
+	codesign --deep --keychain dev.keychain --sign 3Y4WACCWC5 --timestamp --options runtime osx-pkg2/Applications/UrBackup\ Client.app
+	ditto -c -k --keepParent "osx-pkg2/Applications" "urbackup-client.zip"
+	notarize "urbackup-client.zip"
+	xcrun stapler staple "osx-pkg2/Applications/UrBackup Client.app"
+fi
+
 rm -R pkg1 || true
 mkdir pkg1 || true
 pkgbuild --root osx-pkg --identifier org.urbackup.client.service --version $VERSION_SHORT_NUM --ownership recommended pkg1/output.pkg
@@ -80,8 +124,9 @@ pkgbuild --root "osx-pkg2/Applications/UrBackup Client.app" --identifier "org.ur
 productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version $VERSION_SHORT_NUM final.pkg
 
 if !($development); then
-	security unlock-keychain -p foobar /Users/martin/Library/Keychains/dev.keychain
 	productsign --keychain /Users/martin/Library/Keychains/dev.keychain --sign 3Y4WACCWC5 final.pkg final-signed.pkg
+	notarize final-signed.pkg
+	xcrun stapler staple final-signed.pkg
 
 	cp final-signed.pkg "UrBackup Client $VERSION_SHORT.pkg"
 
