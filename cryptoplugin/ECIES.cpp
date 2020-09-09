@@ -69,7 +69,7 @@ std::string ECIESDecryption::getPublicKey()
 {
 	std::string ret;
 	CryptoPP::StringSink rsink(ret);
-	CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256, CryptoPP::IncompatibleCofactorMultiplication>::Encryptor encryptor(decryptor);
+	CryptoPP::ECIES<CryptoPP::ECP>::Encryptor encryptor(decryptor);
 	encryptor.GetPublicKey().Save(rsink);
 	return ret;
 }
