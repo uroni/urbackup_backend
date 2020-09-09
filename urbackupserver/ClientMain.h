@@ -453,6 +453,4 @@ private:
 
 	static IMutex* client_uid_reset_mutex;
 	static ICondition* client_uid_reset_cond;
-
-	static IECIESDecryption* ecies_decryption;
 };

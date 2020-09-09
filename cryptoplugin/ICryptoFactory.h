@@ -9,7 +9,6 @@
 #include "IZlibDecompression.h"
 #include "../Interface/Plugin.h"
 #include "IECDHKeyExchange.h"
-#include "IECIES.h"
 
 class ICryptoFactory: public IPlugin
 {
@@ -24,8 +23,6 @@ public:
 	virtual IAESGCMDecryption* createAESGCMDecryptionNoDerivation(const std::string &password)=0;
 	virtual IZlibCompression* createZlibCompression(int compression_level)=0;
 	virtual IZlibDecompression* createZlibDecompression(void)=0;
-	virtual IECIESDecryption* createECIESDecryption() = 0;
-	virtual IECIESEncryption* createECIESEncryption(const std::string& pubkey) = 0;
 	virtual bool generatePrivatePublicKeyPair(const std::string &name)=0;
 	virtual bool generatePrivatePublicKeyPairDSA(const std::string &name)=0;
 	virtual bool signFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)=0;

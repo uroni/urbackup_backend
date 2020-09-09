@@ -48,9 +48,6 @@
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="ECIES.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h">
@@ -102,12 +99,6 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="ECDHKeyExchange.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
-    <ClInclude Include="IECIES.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
-    <ClInclude Include="ECIES.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>

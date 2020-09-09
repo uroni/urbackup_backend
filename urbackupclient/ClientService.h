@@ -403,21 +403,15 @@ private:
 
 		SChallenge(std::string challenge_str,
 			IECDHKeyExchange* shared_key_exchange,
-			bool local_compressed,
-			std::string ecies_pubkey,
-			std::string tmp_ecies_key)
+			bool local_compressed)
 			: challenge_str(challenge_str),
 			shared_key_exchange(shared_key_exchange),
-			local_compressed(local_compressed),
-			ecies_pubkey(ecies_pubkey),
-			tmp_ecies_key(tmp_ecies_key)
+			local_compressed(local_compressed)
 		{}
 
 		std::string challenge_str;
 		IECDHKeyExchange* shared_key_exchange;
 		bool local_compressed;
-		std::string ecies_pubkey;
-		std::string tmp_ecies_key;
 	};
 
 	static std::map < std::pair<std::string, std::string>, SChallenge > challenges;

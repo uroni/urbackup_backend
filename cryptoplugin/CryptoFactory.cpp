@@ -30,7 +30,6 @@
 
 #include "cryptopp_inc.h"
 #include "ECDHKeyExchange.h"
-#include "ECIES.h"
 
 using namespace CryptoPPCompat;
 
@@ -230,28 +229,6 @@ IZlibCompression* CryptoFactory::createZlibCompression(int compression_level)
 IZlibDecompression* CryptoFactory::createZlibDecompression(void)
 {
 	return new ZlibDecompression;
-}
-
-IECIESDecryption* CryptoFactory::createECIESDecryption()
-{
-	ECIESDecryption* ret = new ECIESDecryption;
-	if (ret->has_error)
-	{
-		delete ret;
-		return NULL;
-	}
-	return ret;
-}
-
-IECIESEncryption* CryptoFactory::createECIESEncryption(const std::string& pubkey)
-{
-	ECIESEncryption* ret = new ECIESEncryption(pubkey);
-	if (ret->has_error)
-	{
-		delete ret;
-		return NULL;
-	}
-	return ret;
 }
 
 bool CryptoFactory::signData(const std::string &pubkey, const std::string &data, std::string &signature)

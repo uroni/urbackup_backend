@@ -185,7 +185,6 @@
     <ClCompile Include="CryptoFactory.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ECDHKeyExchange.cpp" />
-    <ClCompile Include="ECIES.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="ZlibCompression.cpp" />
     <ClCompile Include="ZlibDecompression.cpp" />
@@ -197,14 +196,12 @@
     <ClInclude Include="AESGCMEncryption.h" />
     <ClInclude Include="CryptoFactory.h" />
     <ClInclude Include="ECDHKeyExchange.h" />
-    <ClInclude Include="ECIES.h" />
     <ClInclude Include="IAESDecryption.h" />
     <ClInclude Include="IAESEncryption.h" />
     <ClInclude Include="IAESGCMDecryption.h" />
     <ClInclude Include="IAESGCMEncryption.h" />
     <ClInclude Include="ICryptoFactory.h" />
     <ClInclude Include="IECDHKeyExchange.h" />
-    <ClInclude Include="IECIES.h" />
     <ClInclude Include="IZlibCompression.h" />
     <ClInclude Include="IZlibDecompression.h" />
     <ClInclude Include="pluginmgr.h" />

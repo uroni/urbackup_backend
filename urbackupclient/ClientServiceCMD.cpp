@@ -157,7 +157,6 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 		local_compressed = settings->getValue("local_compressed", true);
 	}
 
-	std::string tmp_ecies_key;
 	if (with_enc)
 	{
 		if (local_compressed)
@@ -171,20 +170,8 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 
 		if (local_encrypted)
 		{
-			tmp_ecies_key.resize(32);
-			Server->secureRandomFill(&tmp_ecies_key[0], 32);
-
 			shared_key_exchange = crypto_fak->createECDHKeyExchange();
 			ret_params += "&pubkey_ecdh233k1=" + base64_encode_dash(shared_key_exchange->getPublicKey());
-
-			IECIESEncryption* encryptor = crypto_fak->createECIESEncryption(ecies_pubkey);
-			if (encryptor == NULL)
-			{
-				Server->Log("Error creating ECIES encryptor", LL_ERROR);
-				return;
-			}
-
-			ret_params += "&ecies_key=" + base64_encode_dash(encryptor->encrypt(tmp_ecies_key));
 		}
 
 		if (!ret_params.empty())
@@ -198,7 +185,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 
 	IScopedLock lock(ident_mutex);
 	std::string challenge = Server->secureRandomString(30)+"-"+convert(Server->getTimeSeconds())+"-"+convert(Server->getTimeMS());
-	challenges[std::make_pair(identity, clientsubname)]=SChallenge(challenge, shared_key_exchange, local_compressed, ecies_pubkey, tmp_ecies_key);
+	challenges[std::make_pair(identity, clientsubname)]=SChallenge(challenge, shared_key_exchange, local_compressed);
 
 	tcpstack.Send(pipe, challenge + ret_params);
 }
@@ -273,9 +260,8 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	{
 		if (challenge_it->second.shared_key_exchange==NULL ||
 			(crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge + pubkey_ecdh233k1, signature_ecdh233k1) &&
-				crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge + challenge_it->second.ecies_pubkey, signature_ecies) &&
 				!(ecdh_shared_key = challenge_it->second.shared_key_exchange->getSharedKey(pubkey_ecdh233k1)).empty() &&
-				!(secret_session_key_decrypted = crypto_fak->decryptAuthenticatedAES(secret_session_key, challenge_it->second.tmp_ecies_key + "|" +
+				!(secret_session_key_decrypted = crypto_fak->decryptAuthenticatedAES(secret_session_key,
 					ecdh_shared_key, 1)).empty()
 			) )
 		{

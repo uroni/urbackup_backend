@@ -104,7 +104,6 @@ IMutex* ClientMain::ecdh_key_exchange_mutex = NULL;
 std::vector<std::pair<IECDHKeyExchange*, int64> > ClientMain::ecdh_key_exchange_buffer;
 IMutex* ClientMain::client_uid_reset_mutex = NULL;
 ICondition* ClientMain::client_uid_reset_cond = NULL;
-IECIESDecryption* ClientMain::ecies_decryption = NULL;
 
 ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName,
 	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
@@ -193,11 +192,6 @@ void ClientMain::init_mutex(void)
 	ecdh_key_exchange_mutex = Server->createMutex();
 	client_uid_reset_cond = Server->createCondition();
 	client_uid_reset_mutex = Server->createMutex();
-	if (crypto_fak != NULL)
-	{
-		Server->Log("Generating temporary secp256r1 ECC key...", LL_INFO);
-		ecies_decryption = crypto_fak->createECIESDecryption();
-	}
 }
 
 void ClientMain::destroy_mutex(void)
@@ -3226,13 +3220,10 @@ bool ClientMain::authenticatePubKey()
 bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 {
 	std::string params;
-	
-	std::string ecies_pubkey = ecies_decryption->getPublicKey();
 
 	if (!internet_connection)
 	{
 		params = " with_enc=1";
-		params += "&ecies_pubkey=" + base64_encode_dash(ecies_pubkey);
 	}
 
 	if (!clientsubname.empty())
@@ -3324,13 +3315,6 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 		{
 			l_secret_session_key = ServerSettings::generateRandomBinaryKey();
 
-			std::string tmp_key = ecies_decryption->decrypt(base64_decode_dash(challenge_params["ecies_key"]));
-			if (tmp_key.empty())
-			{
-				Server->Log("Decrypting ECIES encrypted data failed", LL_ERROR);
-				return false;
-			}
-
 			std::string ecdh_shared_key = ecdh_key_exchange->getSharedKey(client_ecdh_pubkey);
 			if (ecdh_shared_key.empty())
 			{
@@ -3339,7 +3323,7 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 			}
 
 			session_key = "&secret_session_key="+ base64_encode_dash(crypto_fak->encryptAuthenticatedAES(l_secret_session_key,
-				tmp_key + "|" + ecdh_shared_key, 1));
+				ecdh_shared_key, 1));
 
 			std::string ecdh_pubkey = ecdh_key_exchange->getPublicKey();
 			session_key += "&pubkey_ecdh233k1=" + base64_encode_dash(ecdh_pubkey);
@@ -3354,18 +3338,6 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 			}
 
 			session_key += "&signature_ecdh233k1=" + base64_encode_dash(signature_ecdh233k1);
-
-			std::string signature_ecies;
-			bool rc = crypto_fak->signData(privkey_ecdsa409k1, challenge + ecies_pubkey, signature_ecies);
-
-			if (!rc)
-			{
-				Server->Log("Signing ecies pubkey failed -2", LL_ERROR);
-				return false;
-			}
-
-			session_key += "&signature_ecies=" + base64_encode_dash(signature_ecies);
-			
 		}
 
 		std::string l_session_compressed = challenge_params["compress"];
