@@ -2,6 +2,20 @@
 
 Please see the website at https://www.urbackup.org for more information, wiki, forums and the issue tracker.
 
+### Note
+
+This version includes an additional script - `buildmacOSexclusions` - which compiles a list
+of the standard items which Time Machine excludes from a backup. This list is saved into
+`/Library/Application Support/UrBackup Client/var/urbackup/macos_exclusions.txt`.
+
+This list can be edited as required to remove or add further exclusions without polluting the
+usual exclusion list inside UrBackup.
+
+To rebuild the list afresh from the Time Machine settings, run:
+```bash
+sudo ./Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions --force
+```
+
 
 ### Building on macOS
 
@@ -21,7 +35,7 @@ Install Homebrew (see https://brew.sh ):
 
 Use Homebrew to install supporting tools:
 ```bash
-brew install wget autoconf automake libtool python3 gnu-sed
+brew install wget autoconf automake libtool python3 gnu-sed bash makeself
 ```
 
 Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads/
@@ -30,7 +44,7 @@ Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads
 ```bash
 mkdir build-cocoa-debug
 cd build-cocoa-debug
-../configure --enable-debug --with-macosx-version-min=10.9
+../configure --enable-debug --with-macosx-version-min=10.9 --disable-shared --without-liblzma
 sudo make install
 ```
 
@@ -55,14 +69,6 @@ cd client
 git checkout dev
 ```
 
-Download cocoasudo:
-```bash
-cd ~/UrBackup
-git clone https://github.com/performantdesign/cocoasudo.git
-cd cocoasudo
-git checkout master
-```
-
 Switch to building the client:
 ```bash
 cd ~/UrBackup/urbackup_backend
@@ -70,33 +76,16 @@ cd ~/UrBackup/urbackup_backend
 autoreconf -fvi
 ```
 
-For development, there are some changes that need to be manually applied:
-
-In `create_osx_installer.sh`:
-- Comment out lines 6-10, 64-65 and 75;
-- Replace lines 55-56 with this:
-```bash
-VERSION_SHORT_NUM="0.1"
-VERSION_SHORT="0.1"
-```
-In `osx_installer/info.plist`:
-- Replace lines 16, 18, 24 and 26 respectively with these:
-```bash
-<string>0.1</string>
-
-<string>0.1</string>
-
-<integer>0</integer>
-
-<integer>1</integer>
-```
-
-
-
 And then build it!
 ```bash
 cd ~/UrBackup/urbackup_backend
 ./create_osx_installer.sh
+```
+
+For development, use the `-d` or `--development` switches
+```bash
+cd ~/UrBackup/urbackup_backend
+./create_osx_installer.sh -d
 ```
 
 

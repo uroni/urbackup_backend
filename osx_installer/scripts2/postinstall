@@ -28,3 +28,5 @@ else
 		fi
 	done
 fi
+
+"$2/Contents/MacOS/bin/buildmacOSexclusions"
