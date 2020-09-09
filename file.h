@@ -63,6 +63,8 @@ public:
 	SSparseExtent nextSparseExtent();
 	std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data);
 	IFsFile::os_file_handle getOsHandle(bool release_handle = false);
+	IVdlVolCache* createVdlVolCache();
+	int64 getValidDataLength(IVdlVolCache* vol_cache);
 
 #ifdef _WIN32
 	static void init_mutex();
@@ -85,6 +87,15 @@ private:
 	std::string fn;
 
 #ifdef _WIN32
+	class VdlVolCache : public IVdlVolCache
+	{
+	public:
+		~VdlVolCache();
+		std::string volfn;
+		HANDLE vol;
+		NTFS_VOLUME_DATA_BUFFER vol_data;
+	};
+
 	bool setSparse();
 
 	static size_t tmp_file_index;

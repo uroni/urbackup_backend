@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include "../Interface/Types.h"
+#include "../Interface/File.h"
 #include "../urbackupcommon/TreeHash.h"
 
 class IHashFunc;
@@ -23,6 +24,7 @@ public:
 
 private:
 	IFile* index_hdat_file;
+	IVdlVolCache* vdl_vol_cache;
 	bool own_hdat_file;
 	int64 index_hdat_fs_block_size;
 	int64 index_chunkhash_pos;

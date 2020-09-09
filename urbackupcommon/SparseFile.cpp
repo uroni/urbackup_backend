@@ -364,6 +364,16 @@ _u32 SparseFile::mappedOrigOp(IOrigOp * orig_op, _u32 op_size, bool * has_error)
 	return op_size_orig - op_size;
 }
 
+IVdlVolCache* SparseFile::createVdlVolCache()
+{
+	return nullptr;
+}
+
+int64 SparseFile::getValidDataLength(IVdlVolCache* vol_cache)
+{
+	return -1;
+}
+
 int64 SparseFile::mapToBackingOffset(int64 offset)
 {
 	SPosMap last = lastBackingOffset(offset);

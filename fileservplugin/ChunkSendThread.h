@@ -31,8 +31,10 @@ private:
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	_i64 curr_hash_size;
 	_i64 curr_file_size;
+	_i64 curr_max_vdl;
 	IFileServ::CbtHashFileInfo cbt_hash_file_info;
 	std::vector<IFsFile::SFileExtent> file_extents;
+	IVdlVolCache* vdl_vol_cache;
 	bool has_more_extents;
 
 	char *chunk_buf;

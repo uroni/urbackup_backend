@@ -375,6 +375,212 @@ IFsFile::os_file_handle File::getOsHandle(bool release_handle)
 	return ret;
 }
 
+IVdlVolCache* File::createVdlVolCache()
+{
+	return new VdlVolCache;
+}
+
+namespace
+{
+	std::string os_file_prefix(std::string path)
+	{
+		if (path.size() >= 2 && path[0] == '\\' && path[1] == '\\')
+		{
+			if (path.size() >= 3 && path[2] == '?')
+			{
+				return path;
+			}
+			else
+			{
+				return "\\\\?\\UNC" + path.substr(1);
+			}
+		}
+		else
+			return "\\\\?\\" + path;
+	}
+
+#pragma pack(push)
+#pragma pack(1)
+	struct NTFSFileRecord
+	{
+		char magic[4];
+		unsigned short sequence_offset;
+		unsigned short sequence_size;
+		uint64 lsn;
+		unsigned short squence_number;
+		unsigned short hardlink_count;
+		unsigned short attribute_offset;
+		unsigned short flags;
+		unsigned int real_size;
+		unsigned int allocated_size;
+		uint64 base_record;
+		unsigned short next_id;
+		//char padding[470];
+	};
+
+	struct MFTAttribute
+	{
+		unsigned int type;
+		unsigned int length;
+		unsigned char nonresident;
+		unsigned char name_lenght;
+		unsigned short name_offset;
+		unsigned short flags;
+		unsigned short attribute_id;
+		unsigned int attribute_length;
+		unsigned short attribute_offset;
+		unsigned char indexed_flag;
+		unsigned char padding1;
+		//char padding2[488];
+	};
+
+	struct MFTAttributeNonResident
+	{
+		unsigned int type;
+		unsigned int lenght;
+		unsigned char nonresident;
+		unsigned char name_length;
+		unsigned short name_offset;
+		unsigned short flags;
+		unsigned short attribute_id;
+		uint64 starting_vnc;
+		uint64 last_vnc;
+		unsigned short run_offset;
+		unsigned short compression_size;
+		unsigned int padding;
+		uint64 allocated_size;
+		uint64 real_size;
+		uint64 initial_size;
+	};
+#pragma pack(pop)
+
+	HANDLE GetVolumeData(const std::wstring& volfn, NTFS_VOLUME_DATA_BUFFER& vol_data)
+	{
+		HANDLE vol = CreateFileW(volfn.c_str(), GENERIC_WRITE | GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		if (vol == INVALID_HANDLE_VALUE)
+			return vol;
+
+		DWORD ret_bytes;
+		BOOL b = DeviceIoControl(vol, FSCTL_GET_NTFS_VOLUME_DATA,
+			NULL, 0, &vol_data, sizeof(vol_data), &ret_bytes, NULL);
+
+		if (!b)
+		{
+			CloseHandle(vol);
+			return INVALID_HANDLE_VALUE;
+		}
+
+		return vol;
+	}
+
+
+	int64 GetFileValidData(HANDLE file, HANDLE vol, const NTFS_VOLUME_DATA_BUFFER& vol_data)
+	{
+		BY_HANDLE_FILE_INFORMATION hfi;
+		BOOL b = GetFileInformationByHandle(file, &hfi);
+		if (!b)
+			return -1;
+
+		NTFS_FILE_RECORD_INPUT_BUFFER record_in;
+		record_in.FileReferenceNumber.HighPart = hfi.nFileIndexHigh;
+		record_in.FileReferenceNumber.LowPart = hfi.nFileIndexLow;
+		std::vector<BYTE> buf;
+		buf.resize(sizeof(NTFS_FILE_RECORD_OUTPUT_BUFFER) + vol_data.BytesPerFileRecordSegment - 1);
+		NTFS_FILE_RECORD_OUTPUT_BUFFER* record_out = reinterpret_cast<NTFS_FILE_RECORD_OUTPUT_BUFFER*>(buf.data());
+		DWORD bout;
+		b = DeviceIoControl(vol, FSCTL_GET_NTFS_FILE_RECORD, &record_in,
+			sizeof(record_in), record_out, 4096, &bout, NULL);
+
+		if (!b)
+			return -1;
+
+		NTFSFileRecord* record = reinterpret_cast<NTFSFileRecord*>(record_out->FileRecordBuffer);
+
+		_u32 currpos = record->attribute_offset;
+		MFTAttribute* attr = nullptr;
+		while ((attr == nullptr ||
+			attr->type != 0xFFFFFFFF)
+			&& record_out->FileRecordBuffer + currpos + sizeof(MFTAttribute) < buf.data() + bout)
+		{
+			attr = reinterpret_cast<MFTAttribute*>(record_out->FileRecordBuffer + currpos);
+			if (attr->type == 0x80
+				&& record_out->FileRecordBuffer + currpos + attr->attribute_offset + sizeof(MFTAttributeNonResident)
+				< buf.data() + bout)
+			{
+				if (attr->nonresident == 0)
+					return -1;
+
+				MFTAttributeNonResident* dataattr = reinterpret_cast<MFTAttributeNonResident*>(record_out->FileRecordBuffer
+					+ currpos + attr->attribute_offset);
+				return dataattr->initial_size;
+			}
+			currpos += attr->length;
+		}
+
+		return -1;
+	}
+}
+
+File::VdlVolCache::~VdlVolCache()
+{
+	if (!volfn.empty())
+	{
+		CloseHandle(vol);
+	}
+}
+
+
+int64 File::getValidDataLength(IVdlVolCache* p_vol_cache)
+{
+	VdlVolCache* vol_cache = static_cast<VdlVolCache*>(p_vol_cache);
+
+	if (!vol_cache->volfn.empty()
+		&& !next(fn, 0, vol_cache->volfn))
+	{
+		CloseHandle(vol_cache->vol);
+		vol_cache->volfn.clear();
+	}
+
+	if (vol_cache->volfn.empty())
+	{
+		std::string prefixedbpath = os_file_prefix(fn);
+		std::wstring tvolume;
+		tvolume.resize(prefixedbpath.size() + 100);
+		DWORD cchBufferLength = static_cast<DWORD>(tvolume.size());
+		BOOL b = GetVolumePathNameW(Server->ConvertToWchar(prefixedbpath).c_str(), &tvolume[0], cchBufferLength);
+		if (!b)
+		{
+			return -1;
+		}
+
+		std::string volfn = Server->ConvertFromWchar(tvolume);
+		std::string volume_lower = strlower(volfn);
+
+		if (volume_lower.find("\\\\?\\") == 0
+			&& volume_lower.find("\\\\?\\globalroot") != 0
+			&& volume_lower.find("\\\\?\\volume") != 0)
+		{
+			volfn.erase(0, 4);
+			tvolume.erase(0, 4);
+		}
+
+		if (!tvolume.empty())
+		{
+			HANDLE vol = GetVolumeData(tvolume, vol_cache->vol_data);
+
+			if (vol == INVALID_HANDLE_VALUE)
+				return -1;
+
+			vol_cache->vol = vol;
+			vol_cache->volfn = volfn;
+		}
+	}
+
+	return GetFileValidData(hfile, vol_cache->vol, vol_cache->vol_data);
+}
+
 void File::init_mutex()
 {
 	index_mutex = Server->createMutex();
