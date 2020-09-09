@@ -3847,13 +3847,15 @@ bool ClientMain::checkClientName(bool& continue_start_backups)
 	str_map msg_params;
 	ParseParamStrHttp(msg, &msg_params);
 
-	if (msg_params["name"] == clientname)
+	std::string curr_clientname = conv_filename(msg_params["name"]);
+
+	if (curr_clientname == clientname)
 	{
 		return true;
 	}
 	else
 	{
-		Server->Log("Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
+		ServerLogger::Log(logid, "Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
 		return false;
 	}
 }
