@@ -2995,7 +2995,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 			rp = getClientCommandConnection(server_settings.get(), c_filesrv_connect_timeout);
 			if (rp == NULL)
 			{
-				return false;
+				return NULL;
 			}
 
 			CTCPStack tcpstack(internet_connection);
@@ -3006,7 +3006,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 			if (tcpstack.Send(rp, tosend) != tosend.size())
 			{
 				Server->destroy(rp);
-				return false;
+				return NULL;
 			}
 		}
 		else
