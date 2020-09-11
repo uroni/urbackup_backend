@@ -61,7 +61,7 @@ cd ..
 
 echo "rm -Rf \"/Applications/UrBackup Client.app\"" >> "$UNINSTALLER"
 
-echo "OK=true" >> $UNINSTALLER
+echo "OK=true" >> "$UNINSTALLER"
 
 chmod +x "$UNINSTALLER"
 
