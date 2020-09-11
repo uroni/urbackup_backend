@@ -13,6 +13,16 @@ fi
 
 
 if !($development); then
+	if [ "x$AC_USERNAME" = x ]; then
+		echo "Notarization username not set (AC_USERNAME)"
+		exit 1
+	fi
+
+	if [ "x$AC_PASSWORD" = x ]; then
+		echo "Notarization account password not set (AC_PASSWORD)"
+		exit 1
+	fi
+
 	git reset --hard
 	cd client
 	git reset --hard
