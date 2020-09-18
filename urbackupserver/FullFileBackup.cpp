@@ -452,7 +452,7 @@ bool FullFileBackup::doFileBackup()
 							}
 							else
 							{
-								ServerLogger::Log(logid, "Stoping shadowcopy \""+t+"\".", LL_DEBUG);
+								ServerLogger::Log(logid, "Stopping shadowcopy \""+t+"\".", LL_DEBUG);
 								server_download->addToQueueStopShadowcopy(t);
 							}							
 						}
