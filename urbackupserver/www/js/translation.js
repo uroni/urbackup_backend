@@ -1402,6 +1402,7 @@ translations.en = {
 "tmpdir_error_text": "The directory where UrBackup will save temporary files is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
 "validate_text_empty": "Please enter a value for the {name}",
 "validate_text_notint": "Please enter a numeric value for the {name}",
+"validate_text_notregexp": "Format for {name} wrong. Please correct.",
 "validate_name_min_file_incr": "minimal number of incremental file backups",
 "validate_name_max_file_full": "maximal number of full file backups",
 "validate_name_min_file_full": "minimal number of full file backups",
