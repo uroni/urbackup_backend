@@ -746,18 +746,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!vhdcopy_in.empty())
 	{
 		Server->Log("VHDCopy.");
-		VHDFile in(vhdcopy_in, true,0);
-		if(in.isOpen()==false)
+		IVHDFile* in = open_device_file(vhdcopy_in);
+		if(in==NULL || in->isOpen()==false)
 		{
-			Server->Log("Error opening VHD-File \""+vhdcopy_in+"\"", LL_ERROR);
+			Server->Log("Error opening image file \""+vhdcopy_in+"\"", LL_ERROR);
 			exit(4);
 		}
 
-		uint64 vhdsize=in.getSize();
-		float vhdsize_gb=(vhdsize/1024)/1024.f/1024.f;
-		uint64 vhdsize_mb=vhdsize/1024/1024;
-		Server->Log("VHD Info: Size: "+convert(vhdsize_gb)+" GB "+convert(vhdsize_mb)+" MB",LL_INFO);
-		unsigned int vhd_blocksize=in.getBlocksize();
+		uint64 vhdsize=in->getSize();
+		Server->Log("Image info: Size: "+PrettyPrintBytes(vhdsize),LL_INFO);
+		unsigned int vhd_blocksize=in->getBlocksize();
 		
 		std::string vhdcopy_out=Server->getServerParameter("vhdcopy_out");
 		if(vhdcopy_out.empty())
@@ -787,7 +785,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				}
 
 				Server->Log("Skipping "+convert(skip)+" bytes...", LL_INFO);
-				in.Seek(skip);
+				in->Seek(skip);
 				char buffer[4096];
 				size_t read;
 				int last_pc=0;
@@ -798,7 +796,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				out->Seek(0);
 				while(currpos%vhd_blocksize!=0)
 				{
-					is_ok=in.Read(buffer, 512, read);
+					is_ok=in->Read(buffer, 512, read);
 					if(read>0)
 					{
 						_u32 rc=out->Write(buffer, (_u32)read);
@@ -818,9 +816,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 				do
 				{
-					if(in.has_sector())
+					if(in->has_sector())
 					{
-						is_ok=in.Read(buffer, 4096, read);
+						is_ok=in->Read(buffer, 4096, read);
 						if(read>0)
 						{
 							_u32 rc=out->Write(buffer, (_u32)read);
@@ -836,7 +834,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					{
 						read=4096;
 						currpos+=read;
-						in.Seek(currpos);
+						in->Seek(currpos);
 						out->Seek(currpos-skip);
 					}
 					
