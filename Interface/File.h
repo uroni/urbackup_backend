@@ -83,13 +83,21 @@ public:
 
 	struct SFileExtent
 	{
+		enum FeFlags
+		{
+			FeFlag_None = 0,
+			FeFlag_Unwritten = 1
+		};
+
 		SFileExtent()
-			: offset(-1), size(-1), volume_offset(-1)
+			: offset(-1), size(-1), volume_offset(-1),
+			flags(0)
 		{}
 
 		int64 offset;
 		int64 size;
 		int64 volume_offset;
+		unsigned int flags;
 	};
 
 	virtual void resetSparseExtentIter() = 0;

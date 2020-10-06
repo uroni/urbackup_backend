@@ -429,9 +429,23 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				for (size_t i = 0; i < file_extents.size(); ++i)
 				{
 					if (file_extents[i].offset <= spos &&
-						file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist &&
-						 (curr_max_vdl<0 || file_extents[i].offset + file_extents[i].size <= curr_max_vdl ) )
+						file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist )
 					{
+						if (file_extents[i].volume_offset < 0 ||
+							(file_extents[i].flags & IFsFile::SFileExtent::FeFlag_Unwritten))
+						{
+							index_chunkhash_pos = -1;
+							found_extent = true;
+							break;
+						}
+
+						if (curr_max_vdl >= 0 &&
+							file_extents[i].offset + file_extents[i].size > curr_max_vdl)
+						{
+							has_more_extents = false;
+							break;
+						}
+
 						int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
 						index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
 						index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);

@@ -531,6 +531,16 @@ std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, in
 		ret[i].offset = ext.fe_logical;
 		ret[i].size = ext.fe_length;
 		ret[i].volume_offset = ext.fe_physical;
+
+		if (ext.fe_flags & FIEMAP_EXTENT_UNKNOWN)
+		{
+			ret[i].volume_offset = -1;
+		}
+
+		if (ext.fe_flags & FIEMAP_EXTENT_UNWRITTEN)
+		{
+			ret[i].flags |= SFileExtent::FeFlag_Unwritten;
+		}
 	}
 
 	if (starting_offset == 0

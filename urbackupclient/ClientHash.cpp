@@ -175,6 +175,8 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 			}
 
 			if (curr_extent_idx<extents.size()
+				&& extents[curr_extent_idx].volume_offset >= 0
+				&& !(extents[curr_extent_idx].flags & IFsFile::SFileExtent::FeFlag_Unwritten)
 				&& extents[curr_extent_idx].offset <= fpos
 				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= fpos + static_cast<int64>(bsize)
 				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size <= max_vdl )
