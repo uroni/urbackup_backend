@@ -519,6 +519,11 @@ void OpenSSLPipe::shutdown(void)
 	bpipe->shutdown();
 }
 
+size_t OpenSSLPipe::getNumWaiters()
+{
+	return bpipe->getNumWaiters();
+}
+
 size_t OpenSSLPipe::getNumElements(void)
 {
 	return bpipe->getNumElements();
