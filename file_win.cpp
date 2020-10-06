@@ -21,6 +21,7 @@
 #include "types.h"
 #include "stringtools.h"
 #include <sstream>
+#include <assert.h>
 
 #ifdef MODE_WIN
 
@@ -452,6 +453,17 @@ namespace
 		uint64 real_size;
 		uint64 initial_size;
 	};
+
+	struct MFTAttributeListItem
+	{
+		unsigned int type;
+		unsigned short length;
+		unsigned char name_length;
+		unsigned char name_offset;
+		uint64 attr_vcn;
+		uint64 attr_frn;
+		unsigned short attr_id;
+	};
 #pragma pack(pop)
 
 	HANDLE GetVolumeData(const std::wstring& volfn, NTFS_VOLUME_DATA_BUFFER& vol_data)
@@ -475,25 +487,27 @@ namespace
 		return vol;
 	}
 
-
-	int64 GetFileValidData(HANDLE file, HANDLE vol, const NTFS_VOLUME_DATA_BUFFER& vol_data)
+	int64 getMftIndex(int64 frn)
 	{
-		BY_HANDLE_FILE_INFORMATION hfi;
-		BOOL b = GetFileInformationByHandle(file, &hfi);
-		if (!b)
-			return -1;
+		return (frn & 0xFFFFFFFFFFFFLL);
+	}
 
+	int64 GetFileValidData(int64 frn, HANDLE vol, const NTFS_VOLUME_DATA_BUFFER& vol_data)
+	{
 		NTFS_FILE_RECORD_INPUT_BUFFER record_in;
-		record_in.FileReferenceNumber.HighPart = hfi.nFileIndexHigh;
-		record_in.FileReferenceNumber.LowPart = hfi.nFileIndexLow;
+		record_in.FileReferenceNumber.QuadPart = frn;
 		std::vector<BYTE> buf;
 		buf.resize(sizeof(NTFS_FILE_RECORD_OUTPUT_BUFFER) + vol_data.BytesPerFileRecordSegment - 1);
 		NTFS_FILE_RECORD_OUTPUT_BUFFER* record_out = reinterpret_cast<NTFS_FILE_RECORD_OUTPUT_BUFFER*>(buf.data());
 		DWORD bout;
-		b = DeviceIoControl(vol, FSCTL_GET_NTFS_FILE_RECORD, &record_in,
+		BOOL b = DeviceIoControl(vol, FSCTL_GET_NTFS_FILE_RECORD, &record_in,
 			sizeof(record_in), record_out, 4096, &bout, NULL);
 
 		if (!b)
+			return -1;
+
+		int64 mft_index_nr = getMftIndex(frn);
+		if (record_out->FileReferenceNumber.QuadPart != mft_index_nr)
 			return -1;
 
 		NTFSFileRecord* record = reinterpret_cast<NTFSFileRecord*>(record_out->FileRecordBuffer);
@@ -510,16 +524,59 @@ namespace
 				< buf.data() + bout)
 			{
 				if (attr->nonresident == 0)
+				{
+					assert(false);
 					return -1;
+				}
 
 				MFTAttributeNonResident* dataattr = reinterpret_cast<MFTAttributeNonResident*>(record_out->FileRecordBuffer
 					+ currpos + attr->attribute_offset);
 				return dataattr->initial_size;
 			}
+			else if (attr->type == 0x20)
+			{
+				size_t curr_attr_pos = attr->attribute_offset;
+				BYTE* attr_end = record_out->FileRecordBuffer + currpos + attr->length;
+				while (record_out->FileRecordBuffer + currpos + curr_attr_pos + sizeof(MFTAttributeListItem) < attr_end)
+				{
+					MFTAttributeListItem* attr_list_item = reinterpret_cast<MFTAttributeListItem*>(record_out->FileRecordBuffer + currpos + curr_attr_pos);
+
+					if (attr_list_item->type == 0x80 &&
+						getMftIndex(attr_list_item->attr_frn)!=mft_index_nr)
+					{
+						if (attr_list_item->attr_vcn != 0)
+						{
+							assert(false);
+							return -1;
+						}
+
+						int64 ret = GetFileValidData(attr_list_item->attr_frn, vol, vol_data);
+						if (ret >= 0)
+							return ret;
+					}
+
+					curr_attr_pos += attr_list_item->length;
+				}
+			}
 			currpos += attr->length;
 		}
 
 		return -1;
+	}
+
+
+	int64 GetFileValidData(HANDLE file, HANDLE vol, const NTFS_VOLUME_DATA_BUFFER& vol_data)
+	{
+		BY_HANDLE_FILE_INFORMATION hfi;
+		BOOL b = GetFileInformationByHandle(file, &hfi);
+		if (!b)
+			return -1;
+
+		LARGE_INTEGER frn;
+		frn.HighPart = hfi.nFileIndexHigh;
+		frn.LowPart = hfi.nFileIndexLow;
+
+		return GetFileValidData(frn.QuadPart, vol, vol_data);
 	}
 }
 
@@ -555,7 +612,7 @@ int64 File::getValidDataLength(IVdlVolCache* p_vol_cache)
 			return -1;
 		}
 
-		std::string volfn = Server->ConvertFromWchar(tvolume);
+		std::string volfn = Server->ConvertFromWchar(tvolume).c_str();
 		std::string volume_lower = strlower(volfn);
 
 		if (volume_lower.find("\\\\?\\") == 0
@@ -566,7 +623,16 @@ int64 File::getValidDataLength(IVdlVolCache* p_vol_cache)
 			tvolume.erase(0, 4);
 		}
 
-		if (!tvolume.empty())
+		size_t tvolume_len = wcslen(tvolume.c_str());
+		if (tvolume_len > 0
+			&& tvolume[tvolume_len - 1] == '\\')
+		{
+			tvolume[tvolume_len - 1] = 0;
+			--tvolume_len;
+		}
+
+		if (!tvolume.empty()
+			&& tvolume_len>0)
 		{
 			HANDLE vol = GetVolumeData(tvolume, vol_cache->vol_data);
 
