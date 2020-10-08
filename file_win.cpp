@@ -639,7 +639,7 @@ namespace
 
 					attr_buf.resize((attrlist->last_vnc - attrlist->starting_vnc + 1) * vol_data.BytesPerCluster);
 
-					std::auto_ptr<IFile> dev(Server->openFileFromHandle(vol, "vol"));
+					std::auto_ptr<IFsFile> dev(Server->openFileFromHandle(vol, "vol"));
 					if (dev.get() == NULL)
 						return -1;
 
@@ -652,6 +652,7 @@ namespace
 							Server->Log("Error getting data run " + convert(i), LL_ERROR);
 #endif
 							assert(false);
+							dev->getOsHandle(true);
 							return -1;
 						}
 
@@ -661,15 +662,18 @@ namespace
 							Server->Log("Error reading data from vol at pos " + convert(lcn * vol_data.BytesPerCluster), LL_ERROR);
 #endif
 							assert(false);
+							dev->getOsHandle(true);
 							return -1;
 						}
 					}
 
+					dev->getOsHandle(true);
+
+					currpos += attr->length;
+
 					attr = reinterpret_cast<MFTAttribute*>(attr_buf.data());
 					attr_end = reinterpret_cast<BYTE*>(attr_buf.data() + attr_buf.size());
 					curr_attr_pos = 0;
-
-					currpos += attr->length;
 				}				
 
 				while (reinterpret_cast<BYTE*>(attr) + curr_attr_pos + sizeof(MFTAttributeListItem) < attr_end)
