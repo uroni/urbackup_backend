@@ -932,6 +932,8 @@ void ClientConnector::CMD_BACKUP_FAILED(const std::string & cmd)
 		status_updated = true;
 	}
 
+	IndexThread::execute_postbackup_hook("postfilebackup_failed", atoi(params["group"].c_str()), params["clientsubname"]);
+
 	exit_backup_immediate(1);
 }
 
