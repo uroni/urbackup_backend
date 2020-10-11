@@ -72,6 +72,8 @@ ServerDownloadThreadGroup::ServerDownloadThreadGroup(FileClient& fc, FileClientC
 			sc_failure_fatal, i, filepath_corrections, max_file_id, active_dls_ids);
 
 		tickets.push_back(Server->getThreadPool()->execute(dl_thread.dl_thread, "fbackup load" + convert(i)));
+
+		dl_threads.push_back(dl_thread);
 	}
 }
 
