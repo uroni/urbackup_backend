@@ -66,6 +66,8 @@ namespace
 	};
 #define FIEMAP_MAX_OFFSET (~0ULL)
 #define FIEMAP_EXTENT_LAST 0x00000001
+#define FIEMAP_EXTENT_UNWRITTEN 0x00000800
+#define FIEMAP_EXTENT_SHARED 0x00002000
 #define FS_IOC_FIEMAP _IOWR('f', 11, struct fiemap)
 }
 #endif
