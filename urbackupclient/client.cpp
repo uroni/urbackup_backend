@@ -844,7 +844,7 @@ void IndexThread::operator()(void)
 
 				IndexErrorInfo error_info = indexDirs(false, running_jobs>1);
 
-				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
+				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group, error_info))!=0 )
 				{
 					addResult(curr_result_id, "error - postfileindex script failed with error code " + convert(e_rc));
 				}
@@ -945,7 +945,7 @@ void IndexThread::operator()(void)
 
 				IndexErrorInfo error_info = indexDirs(true, running_jobs>1);
 
-				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
+				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group, error_info))!=0 )
 				{
 					addResult(curr_result_id, "error - postfileindex script failed with error code "+convert(e_rc));
 				}
@@ -3974,7 +3974,7 @@ IFileServ *IndexThread::getFileSrv(void)
 	return filesrv;
 }
 
-int IndexThread::execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group)
+int IndexThread::execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group, int* error_info)
 {
 	if (!FileExists(script_name))
 	{
@@ -3997,6 +3997,7 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" 
 		+ server_token + "\" "
 		+ (index_group!=NULL ? convert(*index_group) : "" )
+		+ (error_info!=NULL ? convert(*error_info) : "" )
 		+" 2>&1", output);
 
 	if (rc != 0 && !output.empty())
@@ -4031,7 +4032,7 @@ int IndexThread::execute_prebackup_hook(bool incr, std::string server_token, int
 	return execute_hook(script_name, incr, server_token, &index_group);
 }
 
-int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int index_group)
+int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int index_group, IndexErrorInfo error_info)
 {
 	std::string script_name;
 #ifdef _WIN32
@@ -4040,7 +4041,9 @@ int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int
 	script_name = SYSCONFDIR "/urbackup/postfileindex";
 #endif
 
-	return execute_hook(script_name, incr, server_token, &index_group);
+	int i_error_info = static_cast<int>(error_info);
+
+	return execute_hook(script_name, incr, server_token, &index_group, &i_error_info);
 }
 
 void IndexThread::execute_postbackup_hook(std::string scriptname, int group, const std::string& clientsubname)

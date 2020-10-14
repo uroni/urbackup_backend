@@ -434,9 +434,9 @@ private:
 
 	enum IndexErrorInfo
 	{
-		IndexErrorInfo_Ok,
-		IndexErrorInfo_Error,
-		IndexErrorInfo_NoBackupPaths
+		IndexErrorInfo_Ok = 0,
+		IndexErrorInfo_Error = 1,
+		IndexErrorInfo_NoBackupPaths = 2
 	};
 
 	IndexErrorInfo indexDirs(bool full_backup, bool simultaneous_other);
@@ -500,9 +500,9 @@ private:
 
 	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname, bool for_imagebackup);
 
-	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group);
+	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group, int* error_info=NULL);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
-	int execute_postindex_hook(bool incr, std::string server_token, int index_group);
+	int execute_postindex_hook(bool incr, std::string server_token, int index_group, IndexErrorInfo error_info);
 	std::string execute_script(const std::string& cmd, const std::string& args);
 
 	int execute_preimagebackup_hook(bool incr, std::string server_token);
