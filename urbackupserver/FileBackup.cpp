@@ -54,7 +54,7 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clien
 	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental, server_token, details, scheduled),
 	group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
-	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
+	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET),
 	last_speed_received_bytes(0), speed_set_time(0)
