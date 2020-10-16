@@ -2859,7 +2859,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe* pipe;
 		if (protocol_versions.filesrvtunnel > 0)
 		{
-			IPipe* pipe = new_fileclient_connection();
+			pipe = new_fileclient_connection();
 			if (pipe == NULL)
 				return false;
 		}
