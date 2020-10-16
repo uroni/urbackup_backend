@@ -63,7 +63,6 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 
 void AESGCMEncryption::put( const char *data, size_t data_size )
 {
-	Server->Log("AESGCMEncryption::put " + std::string(data, data_size));
 	encryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
 	message_size+=data_size;
 
