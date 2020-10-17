@@ -2651,7 +2651,10 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 	else
 	{
 		IPipe *ret=Server->ConnectStream(getClientaddr().toString(), serviceport, timeoutms);
-		if(server_settings!=NULL && ret!=NULL)
+		if (ret == NULL)
+			return NULL;
+
+		if(server_settings!=NULL)
 		{
 			int local_speed=server_settings->getLocalSpeed();
 			if(local_speed!=0
