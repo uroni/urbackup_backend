@@ -6396,6 +6396,8 @@ bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize
 			std::vector<IFsFile::SFileExtent> exts = hive_file->getFileExtents(offset, blocksize, more_exts);
 			for (size_t j = 0; j < exts.size(); ++j)
 			{
+				offset = (std::max)(offset, exts[j].offset + exts[j].size);
+
 				if (exts[j].volume_offset < 0)
 					continue;
 
