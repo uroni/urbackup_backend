@@ -164,7 +164,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 #ifndef NO_ZSTD_COMPRESSION
 			ret_params += "&compress=zstd";
 #else
-			ret_params += "&compress=zstd";
+			ret_params += "&compress=zlib";
 #endif
 		}
 
