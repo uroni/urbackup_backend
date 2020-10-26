@@ -3346,6 +3346,13 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 		std::string l_session_compressed = challenge_params["compress"];
 		int l_session_compression_level = server_settings->getSettings()->internet_compression_level;
 
+#ifdef NO_ZSTD_COMPRESSION
+		if (l_session_compressed == "zstd")
+		{
+			l_session_compressed = "zlib";
+		}
+#endif
+
 		bool ret = sendClientMessageRetry("SIGNATURE#pubkey="+base64_encode_dash(pubkey)+
 			"&pubkey_ecdsa409k1="+base64_encode_dash(pubkey_ecdsa)+
 			"&signature="+base64_encode_dash(signature)+
