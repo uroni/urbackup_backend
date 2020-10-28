@@ -9059,11 +9059,14 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	size_t client_hash_threads = 0;
+	size_t client_hash_threads = 1;
 	if (curr_settings.get() != NULL)
 	{
-		client_hash_threads = curr_settings->getValue("client_hash_threads", 0);
+		client_hash_threads = curr_settings->getValue("client_hash_threads", 1);
 	}
+
+	if (client_hash_threads > 0)
+		--client_hash_threads;
 
 	std::string fn = "phash_" + bytesToHex(async_ticket);
 	phash_queue = new SQueueRef(Server->openTemporaryFile(), this, fn);
