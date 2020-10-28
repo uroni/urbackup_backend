@@ -526,10 +526,13 @@ void ParallelHash::runExtraThread()
 	while (!do_quit)
 	{
 		while (extra_queue.empty() &&
-			do_quit)
+			!do_quit)
 		{
 			extra_cond->wait(&lock);
 		}
+
+		if (do_quit)
+			break;
 
 		std::pair<int64, std::string> msg = extra_queue.front();
 		extra_queue.pop_front();
