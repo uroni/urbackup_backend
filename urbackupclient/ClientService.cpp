@@ -1405,13 +1405,27 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+		if (!server_default)
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0");
+		}
+		else
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+		}
 	}
 	else
 	{
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		if (!server_default)
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		}
+		else
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		}
 	}
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert(server_default?1:0)+", ?, ?)");
+	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? , ?, ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1577,13 +1591,25 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 
 				new_watchdirs.push_back(new_dir);
 			}
+
+			int curr_server_default = 0;
+
+			if (server_default)
+			{
+				str_map::iterator server_default_arg = args.find("dir_" + convert(i) + "_server_default");
+				if (server_default_arg != args.end())
+				{
+					curr_server_default = watoi(server_default_arg->second);
+				}
+			}
 			
-			q->Bind(name);
-			q->Bind(dir);
-			q->Bind(flags);
-			q->Bind(group);
-			q->Write();
-			q->Reset();
+			q_insert_dir->Bind(name);
+			q_insert_dir->Bind(dir);
+			q_insert_dir->Bind(curr_server_default);
+			q_insert_dir->Bind(flags);
+			q_insert_dir->Bind(group);
+			q_insert_dir->Write();
+			q_insert_dir->Reset();
 		}
 		++i;
 	}
@@ -1721,7 +1747,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}	
 #endif
 
-	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset))
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end()))
 	{
 		IScopedLock lock(backup_mutex);
 		for (size_t o = 0; o<channel_pipes.size(); ++o)
@@ -1844,6 +1870,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	int default_dirs_use = new_settings->getValue("default_dirs.use", 0);
 	std::vector<std::string> default_dirs_toks;
+	size_t default_dirs_client_off = std::string::npos;
 
 	if (default_dirs_use & c_use_group)
 	{
@@ -1862,6 +1889,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 		std::string val;
 		std::vector<std::string> toks;
 		Tokenize(new_settings->getValue("default_dirs.client", ""), toks, ";");
+		default_dirs_client_off = default_dirs_toks.size();
 		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
 	}
 
@@ -1889,6 +1917,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 				args["dir_"+convert(i)+"_name"]=name;
 
 			args["dir_"+convert(i)+"_group"]=convert(group);
+			args["dir_" + convert(i) + "_server_default"] = convert(i>= default_dirs_client_off ? 0 : 1);
 		}
 
 		saveBackupDirs(args, true, group_offset);
@@ -3305,6 +3334,9 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 		}
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
+		if (curr_settings == NULL)
+			return false;
+
 		std::string val;
 		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)
 			|| curr_settings->getValue("internet_calculate_filehashes_on_client_def", &val))
@@ -3879,13 +3911,13 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 	}
 }
 
-bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset)
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use)
 {
 	db_results res_virtual_clients;
 	if(all_virtual_clients)
-		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
 	else
-		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
 
 	if (all_virtual_clients || group_offset == 0)
 	{
@@ -3905,6 +3937,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
 
 		int default_dirs_use = c_use_value_client;
+		bool has_client_path = false;
 		std::string default_dirs;
 		for (size_t j = 0; j < res_paths.size(); ++j)
 		{
@@ -3914,6 +3947,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			{
 				default_dirs_use |= c_use_group | c_use_value;
 				continue;
+			}
+			else
+			{
+				has_client_path = true;
 			}
 			
 			int optional = watoi(res_path["optional"]);
@@ -3960,11 +3997,30 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 		if (curr_settings.get() != NULL)
 		{
 			str_map settings_repl;
+
+			int64 default_dirs_use_lm_orig = curr_settings->getValue("default_dirs.use_lm", 0LL);
+
+			int64 ctime = Server->getTimeSeconds();
+			if (default_dirs_use_lm_orig > ctime)
+				ctime = default_dirs_use_lm_orig + 1;
+
 			if (curr_settings->getValue("default_dirs.use", 0) == 0)
 			{
-				settings_repl["default_dirs.use"] = convert(default_dirs_use);	
+				settings_repl["default_dirs.use"] = convert(default_dirs_use);
+				settings_repl["default_dirs.use_lm"] = convert(ctime);
 				mod = true;
 			}
+			else if (update_use)
+			{
+				int curr_use = curr_settings->getValue("default_dirs.use", 0);
+				if (has_client_path && !(curr_use & c_use_value_client))
+				{
+					settings_repl["default_dirs.use"] = convert(curr_use|c_use_value_client);
+					settings_repl["default_dirs.use_lm"] = convert(ctime);
+					mod = true;
+				}
+			}
+
 
 			if (curr_settings->getValue("default_dirs.client", "") != default_dirs)
 			{

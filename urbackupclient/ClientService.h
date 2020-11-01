@@ -238,11 +238,11 @@ public:
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
-	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset);
+	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
-	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
+	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
 	void replaceSettings(const std::string &pData);

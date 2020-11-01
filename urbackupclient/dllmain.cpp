@@ -755,7 +755,7 @@ void update_client26_27(IDatabase* db)
 
 void update_client27_28(IDatabase* db)
 {
-	ClientConnector::updateDefaultDirsSetting(db, true, 0);
+	ClientConnector::updateDefaultDirsSetting(db, true, 0, false);
 }
 
 bool upgrade_client(void)

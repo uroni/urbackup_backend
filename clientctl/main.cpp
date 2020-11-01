@@ -1293,6 +1293,7 @@ int action_list_backupdirs(std::vector<std::string> args)
 
 	bool has_virtual_client = false;
 	bool has_group = false;
+	bool has_server_default = false;
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
@@ -1304,6 +1305,8 @@ int action_list_backupdirs(std::vector<std::string> args)
 		{
 			has_group = true;
 		}
+		if (backup_dirs[i].server_default)
+			has_server_default = true;
 	}
 
 	std::vector<std::vector<std::string> > tab;
@@ -1320,6 +1323,10 @@ int action_list_backupdirs(std::vector<std::string> args)
 		tab_header.push_back("VIRTUAL CLIENT");
 	}
 	tab_header.push_back("FLAGS");
+	if (has_server_default)
+	{
+		tab_header.push_back("CONFIGURED ON SERVER");
+	}
 
 	tab.push_back(tab_header);
 
@@ -1353,6 +1360,18 @@ int action_list_backupdirs(std::vector<std::string> args)
 		}
 
 		row.push_back(backup_dirs[i].flags);
+
+		if (has_server_default)
+		{
+			if (backup_dirs[i].server_default)
+			{
+				row.push_back("Yes");
+			}
+			else
+			{
+				row.push_back("No");
+			}
+		}
 
 		tab.push_back(row);
 	}
@@ -1394,20 +1413,35 @@ int action_remove_backupdir(std::vector<std::string> args)
 	}
 
 	bool del_ok = false;
+	bool del_server_default = true;
 
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
 		if (!name_arg.getValue().empty()
 			&& backup_dirs[i].name == name_arg.getValue())
 		{
-			backup_dirs.erase(backup_dirs.begin() + i);
-			del_ok = true;
+			if (backup_dirs[i].server_default)
+			{
+				del_server_default = true;
+			}
+			else
+			{
+				backup_dirs.erase(backup_dirs.begin() + i);
+				del_ok = true;
+			}
 		}
 		else if (!path_arg.getValue().empty()
 			&& backup_dirs[i].path == path_arg.getValue())
 		{
-			backup_dirs.erase(backup_dirs.begin() + i);
-			del_ok = true;
+			if (backup_dirs[i].server_default)
+			{
+				del_server_default = true;
+			}
+			else
+			{
+				backup_dirs.erase(backup_dirs.begin() + i);
+				del_ok = true;
+			}
 		}
 		else
 		{
@@ -1417,7 +1451,14 @@ int action_remove_backupdir(std::vector<std::string> args)
 
 	if (!del_ok)
 	{
-		std::cerr << "Backup directory to remove not found" << std::endl;
+		if (del_server_default)
+		{
+			std::cerr << "Backup directory was configured on the server. Please remove it there" << std::endl;
+		}
+		else
+		{
+			std::cerr << "Backup directory to remove not found" << std::endl;
+		}
 		return 1;
 	}
 
