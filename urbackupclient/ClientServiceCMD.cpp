@@ -380,6 +380,14 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	bool async_list = params.find("async") != params.end()
 		&& params["async"] == "1";
 
+	if (async_list &&
+		(flags & flag_calc_checksums) &&
+		params["phash"] == "1" &&
+		params["ph_skip_small"] == "1")
+	{
+		flags |= flag_phash_skip_small;
+	}
+
 	IScopedLock lock(backup_mutex);
 
 	CWData data;
@@ -552,6 +560,14 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	bool async_list = params.find("async") != params.end()
 		&& params["async"] == "1";
+
+	if (async_list &&
+		(flags & flag_calc_checksums) &&
+		params["phash"] == "1" &&
+		params["ph_skip_small"] == "1")
+	{
+		flags |= flag_phash_skip_small;
+	}
 
 	IScopedLock lock(backup_mutex);
 

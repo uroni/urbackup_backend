@@ -545,7 +545,8 @@ bool FullFileBackup::doFileBackup()
 					else if (!file_ok
 						&& phash_load.get() != NULL
 						&& !script_dir
-						&& extra_params.find("no_hash") == extra_params.end())
+						&& extra_params.find("no_hash") == extra_params.end()
+						&& cf.size >= link_file_min_size)
 					{
 						if (!phash_load->getHash(line, curr_sha2))
 						{
