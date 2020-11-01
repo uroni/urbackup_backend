@@ -2548,8 +2548,7 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			else if (calculate_filehashes_on_client
 				&& phash_queue != NULL
 				&& !files[i].isspecialf
-				&& (!(index_flags & flag_phash_skip_small)>0
-					|| files[i].size>=link_file_min_size ) )
+				&& files[i].size>=link_file_min_size )
 			{
 				if (!finish_phash_path)
 				{
