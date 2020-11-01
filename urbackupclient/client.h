@@ -59,6 +59,8 @@ const unsigned int flag_calc_checksums = 8;
 const unsigned int flag_with_orig_path = 16;
 const unsigned int flag_with_sequence = 32;
 const unsigned int flag_with_proper_symlinks = 64;
+const unsigned int flag_phash_skip_small = 128;
+
 
 const uint64 change_indicator_symlink_bit = 0x4000000000000000ULL;
 const uint64 change_indicator_special_bit = 0x2000000000000000ULL;

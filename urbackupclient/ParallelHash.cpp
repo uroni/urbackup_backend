@@ -110,6 +110,11 @@ void ParallelHash::operator()()
 		return;
 	}
 
+	if (extra_n_threads > 0)
+	{
+		++extra_n_threads;
+	}
+
 	extra_thread = true;
 	for (size_t i = 0; i < extra_n_threads; ++i)
 	{
