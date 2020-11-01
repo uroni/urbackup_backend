@@ -3983,7 +3983,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			else if (str_flags == str_flags_default)
 				str_flags.clear();
 
-			default_dirs += EscapePathParamString(res_path["path"])+"|"+EscapePathParamString(res_path["name"]) + str_flags;
+			default_dirs += res_path["path"]+"|"+res_path["name"] + str_flags;
 		}
 
 		std::string settings_fn = "urbackup/data/settings.cfg";
