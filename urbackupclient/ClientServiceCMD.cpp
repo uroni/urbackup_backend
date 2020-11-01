@@ -902,7 +902,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 		return;
 	}
 
-	if(saveBackupDirs(params))
+	if(saveBackupDirs(params, false, 0))
 	{
 		tcpstack.Send(pipe, "OK");
 	}
