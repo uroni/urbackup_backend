@@ -64,6 +64,7 @@ private:
 	std::vector<char> stdout_buf;
 	size_t stdout_buf_pos;
 	size_t stdout_buf_size;
+	bool do_quit_extra;
 	volatile bool do_quit;
 	volatile bool eof;
 	int64 phash_queue_pos;
