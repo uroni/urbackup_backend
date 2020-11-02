@@ -23,7 +23,7 @@ ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version, size_t extra
 	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false),
 	extra_n_threads(extra_n_threads), extra_thread(false),
 	extra_mutex(Server->createMutex()), extra_cond(Server->createCondition()),
-	modify_file_buffer_mutex(Server->createMutex())
+	modify_file_buffer_mutex(Server->createMutex()), do_quit_extra(false)
 {
 	stdout_buf.resize(4090);
 	ticket = Server->getThreadPool()->execute(this, extra_n_threads>0 ? "phash master": "phash");
@@ -180,7 +180,7 @@ void ParallelHash::operator()()
 
 	{
 		IScopedLock lock(extra_mutex.get());
-		do_quit = true;
+		do_quit_extra = true;
 		extra_cond->notify_all();
 	}
 
@@ -537,15 +537,15 @@ size_t ParallelHash::calcBufferSize(const std::string &path, const std::vector<S
 void ParallelHash::runExtraThread()
 {
 	IScopedLock lock(extra_mutex.get());
-	while (!do_quit)
+	while (!do_quit_extra)
 	{
 		while (extra_queue.empty() &&
-			!do_quit)
+			!do_quit_extra)
 		{
 			extra_cond->wait(&lock);
 		}
 
-		if (do_quit)
+		if (do_quit_extra)
 			break;
 
 		std::pair<int64, std::string> msg = extra_queue.front();
