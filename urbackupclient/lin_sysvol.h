@@ -55,7 +55,7 @@ namespace
 		struct stat stbuf;
 		if (stat(path.c_str(), stbuf) == 0)
 		{
-			if (S_ISBLK(stat_buf.st_mode))
+			if (S_ISBLK(stbuf.st_mode))
 			{
 				return true;
 			}
