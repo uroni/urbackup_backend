@@ -53,7 +53,7 @@ namespace
 	bool isDevice(const std::string& path)
 	{
 		struct stat stbuf;
-		if (stat(path.c_str(), stbuf) == 0)
+		if (stat(path.c_str(), &stbuf) == 0)
 		{
 			if (S_ISBLK(stbuf.st_mode))
 			{
