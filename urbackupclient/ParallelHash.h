@@ -53,7 +53,7 @@ private:
 	bool hashFile(int64 working_file_id, CRData& data, ClientDAO& clientdao);
 	bool finishDir(ParallelHash::SCurrDir* dir, ClientDAO& clientdao, const int64& target_generation, int64& id);
 	bool addToStdoutBuf(const char* ptr, size_t size);
-	void addModifyFileBuffer(ClientDAO& clientdao, const std::string& path, int tgroup, const std::vector<SFileAndHash>& files, int64 target_generation);
+	void addModifyFileBuffer(ClientDAO& clientdao, const std::string& path, int tgroup, const std::vector<SFileAndHash>& files, int64 target_generation, bool insert);
 	void commitModifyFileBuffer(ClientDAO& clientdao);
 	size_t calcBufferSize(const std::string &path, const std::vector<SFileAndHash> &data);
 	void runExtraThread();
@@ -82,14 +82,15 @@ private:
 
 	struct SBufferItem
 	{
-		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files, int64 target_generation)
-			: path(path), tgroup(tgroup), files(files), target_generation(target_generation)
+		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files, int64 target_generation, bool insert)
+			: path(path), tgroup(tgroup), files(files), target_generation(target_generation), insert(insert)
 		{}
 
 		std::string path;
 		int tgroup;
 		std::vector<SFileAndHash> files;
 		int64 target_generation;
+		bool insert;
 	};
 
 	std::auto_ptr<IMutex> modify_file_buffer_mutex;

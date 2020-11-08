@@ -472,17 +472,31 @@ bool ParallelHash::finishDir(ParallelHash::SCurrDir* dir, ClientDAO& clientdao, 
 
 		if (added_hash)
 		{
-			addModifyFileBuffer(clientdao, path_lower, dir->tgroup, files, target_generation);
+			addModifyFileBuffer(clientdao, path_lower, dir->tgroup, files, target_generation, false);
+		}
+	}
+	else
+	{
+		bool has_hash = false;
+		std::sort(dir->files.begin(), dir->files.end());
+		for (size_t i = 0; i < dir->files.size(); ++i)
+		{
+			if (!dir->files[i].hash.empty())
+			{
+				has_hash = true;
+				break;
+			}
 		}
 
-		IScopedLock lock(mutex.get());
-		curr_dirs.erase(id);
-		return true;
+		if (has_hash)
+		{
+			addModifyFileBuffer(clientdao, path_lower, dir->tgroup, files, target_generation, true);
+		}
 	}
 
 	IScopedLock lock(mutex.get());
 	curr_dirs.erase(id);
-	return false;
+	return true;
 }
 
 bool ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
@@ -553,13 +567,13 @@ void ParallelHash::runExtraThread()
 }
 
 void ParallelHash::addModifyFileBuffer(ClientDAO& clientdao, const std::string & path, int tgroup,
-	const std::vector<SFileAndHash>& files, int64 target_generation)
+	const std::vector<SFileAndHash>& files, int64 target_generation, bool insert)
 {
 	IScopedLock lock(modify_file_buffer_mutex.get());
 
 	modify_file_buffer_size += calcBufferSize(path, files);
 
-	modify_file_buffer.push_back(SBufferItem(path, tgroup, files, target_generation));
+	modify_file_buffer.push_back(SBufferItem(path, tgroup, files, target_generation, insert));
 
 	if (last_file_buffer_commit_time == 0)
 	{
@@ -578,8 +592,16 @@ void ParallelHash::commitModifyFileBuffer(ClientDAO& clientdao)
 	DBScopedWriteTransaction trans(clientdao.getDatabase());
 	for (size_t i = 0; i<modify_file_buffer.size(); ++i)
 	{
-		clientdao.modifyFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup,
-			modify_file_buffer[i].files, modify_file_buffer[i].target_generation);
+		if (modify_file_buffer[i].insert)
+		{
+			clientdao.addFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup,
+				modify_file_buffer[i].files, modify_file_buffer[i].target_generation);
+		}
+		else
+		{
+			clientdao.modifyFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup,
+				modify_file_buffer[i].files, modify_file_buffer[i].target_generation);
+		}
 	}
 
 	modify_file_buffer.clear();
