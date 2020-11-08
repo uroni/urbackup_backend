@@ -1535,10 +1535,9 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 		}
 #ifndef _WIN32
-		else if (image_inf.image_letter == "C"
-			|| image_inf.image_letter == "C:")
+		else
 		{
-			image_inf.image_letter = getRootVol();
+			image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
 		}
 #endif
 
@@ -1643,11 +1642,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.clientsubname = params["clientsubname"];
 
 #ifndef _WIN32
-			if (image_inf.image_letter == "C"
-				|| image_inf.image_letter == "C:")
-			{
-				image_inf.image_letter = getRootVol();
-			}
+			image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
 #endif
 
 			str_map::iterator f_cbitmapsize = params.find("cbitmapsize");
@@ -1779,7 +1774,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	}
 	else if(params.find("disk_path")!=params.end())
 	{
-		dl=params["disk_path"];
+		dl= mapLinuxDev(params["disk_path"]);
 	}
 #endif
 
