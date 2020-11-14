@@ -53,6 +53,8 @@ else
 fi
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions"
+mv "osx-pkg2/Library/Application Support" "osx-pkg/Library"
+rm -R "osx-pkg2/Library"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
 strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
