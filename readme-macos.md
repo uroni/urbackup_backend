@@ -38,13 +38,14 @@ Use Homebrew to install supporting tools:
 brew install wget autoconf automake libtool python3 gnu-sed bash makeself
 ```
 
-Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads/
+Download and unzip wxWidgets from https://www.wxwidgets.org/downloads/
+(Tested ok with 3.1.4)
 
 `cd` into the wxWidgets folder, then install:
 ```bash
 mkdir build-cocoa-debug
 cd build-cocoa-debug
-../configure --enable-debug --with-macosx-version-min=10.9 --disable-shared --without-liblzma
+../configure --enable-debug --with-macosx-version-min=10.10 --disable-shared --without-liblzma
 sudo make install
 ```
 
@@ -82,7 +83,7 @@ cd ~/UrBackup/urbackup_backend
 ./create_osx_installer.sh
 ```
 
-For development, use the `-d` or `--development` switches
+For development, use the `-d` or `--development` switches:
 ```bash
 cd ~/UrBackup/urbackup_backend
 ./create_osx_installer.sh -d
