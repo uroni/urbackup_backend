@@ -30,3 +30,6 @@ else
 fi
 
 "$2/Contents/MacOS/bin/buildmacOSexclusions"
+
+/bin/launchctl load "/Library/LaunchAgents/org.urbackup.client.plist"
+/bin/launchctl start "org.urbackup.client.frontend"

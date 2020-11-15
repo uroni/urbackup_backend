@@ -137,7 +137,7 @@ do
 	fi
 done
 
-echo "Stoping MariaDB/MySQL..."
+echo "Stopping MariaDB/MySQL..."
 if command -v systemctl >/dev/null 2>&1
 then
 	systemctl stop mysql.service || true
