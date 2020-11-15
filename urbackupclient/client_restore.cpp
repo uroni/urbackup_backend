@@ -634,13 +634,10 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 		return rc;
 	}
 
-	int64 orig_imgsize = imgsize;
-
 	if (!mbr && imgsize > out_file->Size())
 	{
-		Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = "+convert(imgsize), LL_WARNING);
-		imgsize = out_file->Size();
-		//return EDownloadResult_DeviceTooSmall;
+		Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = "+convert(imgsize), LL_ERROR);
+		return EDownloadResult_DeviceTooSmall;
 	}
 
 	const size_t c_buffer_size=32768;
@@ -707,27 +704,25 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 						if(imgsize>=pos && imgsize-pos<c_block_size)
 							tw=(_u32)(imgsize-pos);
 
-						if (pos < imgsize)
+						//Write to blockdev
+						_u32 woff=0;
+						do
 						{
-							//Write to blockdev
-							_u32 woff = 0;
-							do
+							bool has_write_error = false;
+							_u32 w=out_file->Write(&blockdata[woff], tw-woff, &has_write_error);
+							if(w==0)
 							{
-								bool has_write_error = false;
-								_u32 w = out_file->Write(&blockdata[woff], tw - woff, &has_write_error);
-								if (w == 0)
-								{
-									Server->Log("Writing to output file failed", LL_ERROR);
-									return EDownloadResult_WriteFailed;
-								}
-								if (has_write_error)
-								{
-									Server->Log("Writing to output file failed -2", LL_ERROR);
-									return EDownloadResult_WriteFailed;
-								}
-								woff += w;
-							} while (tw - woff > 0);
+								Server->Log("Writing to output file failed", LL_ERROR);
+								return EDownloadResult_WriteFailed;
+							}
+							if (has_write_error)
+							{
+								Server->Log("Writing to output file failed -2", LL_ERROR);
+								return EDownloadResult_WriteFailed;
+							}
+							woff+=w;
 						}
+						while(tw-woff>0);
 
 						if (pos > dl_status.offset)
 						{
@@ -758,16 +753,8 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 						}
 						if(*s>imgsize)
 						{
-							if (*s > orig_imgsize)
-							{
-								Server->Log("Invalid seek value: " + convert(*s), LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							else
-							{
-								Server->Log("Invalid seek value: " + convert(*s), LL_WARNING);
-							}
-							
+							Server->Log("Invalid seek value: "+convert(*s), LL_ERROR);
+							//TODO return error code here after deprecation period
 							pos=*s;
 							break;
 						}
@@ -2346,8 +2333,6 @@ void restore_wizard(void)
 					}
 				}
 
-				int64 dev_size = dev->Size();
-
 				Server->destroy(dev);
 
 				system("cat urbackup/restore/reading_partition_table");
@@ -2425,21 +2410,6 @@ void restore_wizard(void)
 					err="no_restore_partition";
 					state=101;
 					break;
-				}
-				else if (mbrdata.partition_number < partitions.size() &&
-					dev_size>=0)
-				{
-					IFSImageFactory::SPartition partition = partitions[mbrdata.partition_number];
-					if (partition.offset + partition.length > dev_size)
-					{
-						std::string errmsg = greplace("_1_",
-							PrettyPrintBytes(partition.offset + partition.length), greplace("_2_", PrettyPrintBytes(dev_size), getFile("urbackup/restore/device_too_small"))); break;
-
-						system(("dialog --msgbox \"`cat urbackup/restore/error_happend`  " + errmsg + "\" 10 70").c_str());
-						err = "no_restore_partition";
-						state = 101;
-						break;
-					}
 				}
 				selpart=partpath;
 				Server->destroy(dev);
