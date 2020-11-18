@@ -21,13 +21,9 @@ jobs:
       run: ./configure --with-mountvhd
     - name: make (server)
       run: make -j$((`nproc`+1))
-    - name: make distcheck (server)
-      run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mountvhd" -j$((`nproc`+1))
     - name: autoconf (client)
       run: ./switch_build.sh client && autoreconf --install
     - name: configure (client)
       run: ./configure --enable-headless
     - name: make (client)
       run: make -j$((`nproc`+1))
-    - name: make distcheck (client)
-      run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--enable-headless" -j$((`nproc`+1))
