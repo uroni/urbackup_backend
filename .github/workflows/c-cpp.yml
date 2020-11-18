@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install build dependencies
-      run: apt-get update && apt-get install libfuse-dev libcurl4-nss-dev libcrypto++-dev libzstd-dev
+      run: sudo apt-get update && sudo apt-get install libfuse-dev libcurl4-nss-dev libcrypto++-dev libzstd-dev
     - name: autoconf (server)
       run: ./switch_build.sh server && autoreconf --install
     - name: configure (server)
