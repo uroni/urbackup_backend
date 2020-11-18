@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
@@ -22,7 +22,7 @@ jobs:
     - name: make (server)
       run: make -j$((`nproc`+1))
     - name: make distcheck (server)
-      run: make distcheck
+      run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mountvhd" -j$((`nproc`+1))
     - name: autoconf (client)
       run: ./switch_build.sh client && autoreconf --install
     - name: configure (client)
@@ -30,4 +30,4 @@ jobs:
     - name: make (client)
       run: make -j$((`nproc`+1))
     - name: make distcheck (client)
-      run: make distcheck
+      run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--enable-headless" -j$((`nproc`+1))
