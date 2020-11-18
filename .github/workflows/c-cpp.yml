@@ -20,7 +20,7 @@ jobs:
     - name: configure (server)
       run: ./configure --with-mountvhd
     - name: make (server)
-      run: make
+      run: make -j$((`nproc`+1))
     - name: make distcheck (server)
       run: make distcheck
     - name: autoconf (client)
@@ -28,6 +28,6 @@ jobs:
     - name: configure (client)
       run: ./configure --enable-headless
     - name: make (client)
-      run: make
+      run: make -j$((`nproc`+1))
     - name: make distcheck (client)
       run: make distcheck
