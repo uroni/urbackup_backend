@@ -92,3 +92,17 @@ std::string SnapshotHelper::getMountpoint(bool image, std::string clientname, st
 
 	return trim(ret);
 }
+
+std::string SnapshotHelper::getBackupfolder()
+{
+	std::string ret;
+	int rc = os_popen(helper_name + " " + convert(BackupServer::getSnapshotMethod(false)) + " backupfolder",
+		ret);
+
+	if (rc != 0)
+	{
+		return std::string();
+	}
+
+	return trim(ret);
+}

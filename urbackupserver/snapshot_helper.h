@@ -11,6 +11,7 @@ public:
 	static void setSnapshotHelperCommand(std::string helper_command);
 	static bool makeReadonly(bool image, std::string clientname, std::string name);
 	static std::string getMountpoint(bool image, std::string clientname, std::string name);
+	static std::string getBackupfolder();
 private:
 	static std::string helper_name;
 };
