@@ -86,7 +86,6 @@ const unsigned int c_internet_fileclient_timeout=30*60*1000;
 const unsigned int c_sleeptime_failed_imagebackup=20*60;
 const unsigned int c_sleeptime_failed_filebackup=20*60;
 const unsigned int c_exponential_backoff_div=2;
-const unsigned int c_image_cowraw_bit=1024;
 
 const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
 
@@ -351,11 +350,11 @@ void ClientMain::operator ()(void)
 
 	if(server_settings->getImageFileFormat()==image_file_format_cowraw)
 	{
-		curr_image_version = curr_image_version & c_image_cowraw_bit;
+		curr_image_version = 0;
 	}
 	else
 	{
-		curr_image_version = curr_image_version & ~c_image_cowraw_bit;
+		curr_image_version = 1;
 	}
 
 	prepareSQL();
@@ -675,11 +674,11 @@ void ClientMain::operator ()(void)
 
 					if(server_settings->getImageFileFormat()==image_file_format_cowraw)
 					{
-						curr_image_version = curr_image_version & c_image_cowraw_bit;
+						curr_image_version = 0;
 					}
 					else
 					{
-						curr_image_version = curr_image_version & ~c_image_cowraw_bit;
+						curr_image_version = 1;
 					}
 
 					updateVirtualClients();
