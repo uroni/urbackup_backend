@@ -23,7 +23,8 @@ ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version, size_t extra
 	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false),
 	extra_n_threads(extra_n_threads), extra_thread(false),
 	extra_mutex(Server->createMutex()), extra_cond(Server->createCondition()),
-	modify_file_buffer_mutex(Server->createMutex()), do_quit_extra(false)
+	modify_file_buffer_mutex(Server->createMutex()), do_quit_extra(false),
+	has_read(false)
 {
 	stdout_buf.resize(4090);
 	ticket = Server->getThreadPool()->execute(this, extra_n_threads>0 ? "phash master": "phash");
@@ -44,6 +45,8 @@ void ParallelHash::forceExit()
 
 bool ParallelHash::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & read_bytes)
 {
+	has_read = true;
+
 	while(!do_quit)
 	{
 		IScopedLock lock(mutex.get());
@@ -99,6 +102,8 @@ bool ParallelHash::readStderrIntoBuffer(char * buf, size_t buf_avail, size_t & r
 
 void ParallelHash::operator()()
 {
+	int64 starttime = Server->getTimeMS();
+
 	if (extra_thread)
 	{
 		runExtraThread();
@@ -190,6 +195,15 @@ void ParallelHash::operator()()
 	}
 
 	Server->getThreadPool()->waitFor(extra_tickets);
+
+	while (!has_read &&
+		Server->getTimeMS() - starttime < 5 * 60 * 1000)
+	{
+		//Wait at least 5min for server to start reading because
+		//deleting below might make it inaccessible if the server
+		//hasn't started reading yet
+		Server->wait(1000);
+	}
 
 	if (phash_queue->deref())
 	{

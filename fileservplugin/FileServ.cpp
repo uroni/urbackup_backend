@@ -418,6 +418,7 @@ void FileServ::deregisterScriptPipeFile(const std::string & script_fn)
 	std::map<std::string, SScriptMapping>::iterator it = script_mappings.find(script_fn);
 	if (it != script_mappings.end())
 	{
+		delete it->second.pipe_file;
 		script_mappings.erase(it);
 	}
 }

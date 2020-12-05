@@ -67,6 +67,7 @@ private:
 	bool do_quit_extra;
 	volatile bool do_quit;
 	volatile bool eof;
+	volatile bool has_read;
 	int64 phash_queue_pos;
 	SQueueRef* phash_queue;
 	std::auto_ptr<IMutex> mutex;	
