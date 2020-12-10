@@ -366,7 +366,7 @@ _u32 SparseFile::mappedOrigOp(IOrigOp * orig_op, _u32 op_size, bool * has_error)
 
 IVdlVolCache* SparseFile::createVdlVolCache()
 {
-	return nullptr;
+	return NULL;
 }
 
 int64 SparseFile::getValidDataLength(IVdlVolCache* vol_cache)
