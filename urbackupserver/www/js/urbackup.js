@@ -2897,7 +2897,7 @@ function settingChangeKey(key)
 	}
 
 	if(typeof use=="undefined"
-		|| use==2)
+		|| (use&2)>0)
 	{
 		if(typeof use=="undefined")
 		{
