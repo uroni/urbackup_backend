@@ -192,13 +192,16 @@ void ServerUpdate::update_client()
 			}
 			else
 			{
-				std::string del_fn = sig_file->getFilename();
-				sig_file.reset();
-				Server->deleteFile(del_fn);
+				if (sig_file.get() != NULL)
+				{
+					std::string del_fn = sig_file->getFilename();
+					sig_file.reset();
+					Server->deleteFile(del_fn);
+				}
 
 				if (update_file.get() != NULL)
 				{
-					del_fn = update_file->getFilename();
+					std::string del_fn = update_file->getFilename();
 					update_file.reset();
 					Server->deleteFile(del_fn);
 				}

@@ -77,6 +77,21 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	init();
 }
 
+FileMetadataPipe::FileMetadataPipe()
+	: PipeFileBase(std::string()), pipe(NULL),
+#ifdef _WIN32
+	hFile(INVALID_HANDLE_VALUE),
+	backup_read_state(-1),
+#else
+	backup_state(BackupState_StatInit),
+#endif
+	metadata_state(MetadataState_Wait),
+	errpipe(Server->createMemoryPipe()),
+	metadata_file(NULL)
+{
+	metadata_buffer.resize(4096);
+}
+
 FileMetadataPipe::~FileMetadataPipe()
 {
 	assert(token_callback.get() == NULL);
@@ -731,6 +746,22 @@ void FileMetadataPipe::forceExitWait()
 	errpipe->shutdown();
 
 	waitForExit();
+}
+
+IPipe* FileMetadataPipe::getErrPipe()
+{
+	return errpipe.get();
+}
+
+bool FileMetadataPipe::openOsMetadataFile(const std::string& fn)
+{
+	local_fn = fn;
+	return openFileHandle();
+}
+
+bool FileMetadataPipe::readCurrOsMetadata(char* buf, size_t buf_avail, size_t& read_bytes)
+{
+	return transmitCurrMetadata(buf, buf_avail, read_bytes);
 }
 
 #ifdef _WIN32

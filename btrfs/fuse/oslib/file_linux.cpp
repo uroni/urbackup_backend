@@ -1,0 +1,557 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
+#define _FILE_OFFSET_BITS 64
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include "Server.h"
+#include "file.h"
+#include "types.h"
+#include "stringtools.h"
+
+#ifdef MODE_LIN
+#include "config.h"
+#include <errno.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
+#ifdef __linux__
+#ifdef HAVE_LINUX_FIEMAP_H
+#include <linux/fiemap.h>
+#else
+namespace
+{
+	struct fiemap_extent
+	{
+		uint64 fe_logical;
+		uint64 fe_physical;
+		uint64 fe_length;
+		uint64 fe_reserved64[2];
+		unsigned int fe_flags;
+		unsigned int fe_reserved[3];
+	};
+
+	struct fiemap
+	{
+		uint64 fm_start;
+		uint64 fm_length;
+		unsigned int fm_flags;
+		unsigned int fm_mapped_extents;
+		unsigned int fm_extent_count;
+		unsigned int fm_reserved;
+		struct fiemap_extent fm_extents[0];
+	};
+#define FIEMAP_MAX_OFFSET (~0ULL)
+#define FIEMAP_EXTENT_LAST 0x00000001
+#define FS_IOC_FIEMAP _IOWR('f', 11, struct fiemap)
+}
+#endif
+#ifndef FALLOC_FL_KEEP_SIZE
+#define FALLOC_FL_KEEP_SIZE    0x1
+#endif
+#ifndef FALLOC_FL_PUNCH_HOLE
+#define FALLOC_FL_PUNCH_HOLE   0x2
+#endif
+
+#ifndef SEEK_DATA
+#define SEEK_DATA 3
+#endif
+#ifndef SEEK_HOLE
+#define SEEK_HOLE 4
+#endif
+#endif //__linux__
+
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define open64 open
+#define off64_t off_t
+#define lseek64 lseek
+#define O_LARGEFILE 0
+#define stat64 stat
+#define fstat64 fstat
+#define ftruncate64 ftruncate
+#define fallocate64 fallocate
+#define pwrite64 pwrite
+#define pread64 pread
+#else
+#include <linux/fs.h>
+
+#if !defined(BLKGETSIZE64) && defined(__i386__) && defined(__x86_64__)
+#define BLKGETSIZE64 _IOR(0x12,114,size_t)
+#endif
+
+#endif
+
+#if defined(__FreeBSD__)
+//2017-05-12: Make illegal. Performance problems with ZFS on FreeBSD
+#undef SEEK_HOLE
+#define SEEK_HOLE 400
+#endif
+
+File::File()
+	: fd(-1), last_sparse_pos(0)
+{
+
+}
+
+bool File::Open(std::string pfn, int mode)
+{
+	if (mode == MODE_RW_RESTORE)
+	{
+		mode = MODE_RW;
+	}
+	if (mode == MODE_RW_CREATE_RESTORE)
+	{
+		mode = MODE_RW_CREATE;
+	}
+	if (mode == MODE_RW_CREATE_DEVICE
+		|| mode == MODE_RW_CREATE_DELETE )
+	{
+		mode = MODE_RW_CREATE;
+	}
+	if (mode == MODE_READ_DEVICE_OVERLAPPED)
+	{
+		mode = MODE_READ_DEVICE;
+	}
+
+	fn=pfn;
+	int flags=0;
+	mode_t imode=S_IRWXU|S_IRWXG;
+	if( mode==MODE_READ
+		|| mode==MODE_READ_DEVICE
+		|| mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP)
+	{
+		flags=O_RDONLY;
+	}
+	else if( mode==MODE_WRITE )
+	{
+		DeleteFileInt(pfn);
+		flags=O_WRONLY|O_CREAT;
+	}
+	else if( mode==MODE_APPEND )
+	{
+		flags=O_RDWR | O_APPEND;
+	}
+	else if( mode==MODE_RW
+		|| mode==MODE_RW_SEQUENTIAL
+		|| mode==MODE_RW_CREATE
+		|| mode==MODE_RW_READNONE
+		|| mode==MODE_RW_DEVICE
+		|| mode==MODE_RW_DELETE
+		|| mode==MODE_RW_DIRECT
+		|| mode==MODE_RW_CREATE_DIRECT)
+	{
+		flags=O_RDWR;
+		if( mode==MODE_RW_CREATE
+			|| mode==MODE_RW_CREATE_DIRECT )
+		{
+			flags|=O_CREAT;
+		}
+	}
+	
+#ifdef __linux__
+	if( mode==MODE_RW_CREATE_DIRECT
+		|| mode==MODE_RW_DIRECT )
+	{
+		flags|=O_DIRECT;
+	}
+#endif
+	
+	struct stat buf;
+	if(stat((fn).c_str(), &buf)==0)
+	{
+		if(S_ISDIR(buf.st_mode) )
+			return false;
+	}
+	
+#if defined(O_CLOEXEC)
+	flags |= O_CLOEXEC;
+#endif
+#if defined(O_NOATIME)
+	if (mode == MODE_READ_SEQUENTIAL_BACKUP)
+	{
+		flags |= O_NOATIME;
+	}
+#endif
+	
+	fd=open64((fn).c_str(), flags|O_LARGEFILE, imode);
+
+#ifdef __linux__
+	if(mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode==MODE_RW_SEQUENTIAL)
+	{
+		posix_fadvise64(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+	}
+
+	if( mode==MODE_RW_READNONE )
+	{
+		posix_fadvise64(fd, 0, 0, POSIX_FADV_DONTNEED);
+	}
+#endif
+	
+	if( fd!=-1 )
+	{
+		return true;
+	}
+	else
+		return false;
+}
+
+bool File::OpenTemporaryFile(const std::string &dir, bool first_try)
+{
+	char *tmpdir=getenv("TMPDIR");
+	std::string stmpdir;
+	if(tmpdir==NULL )
+		stmpdir="/tmp";
+	else
+	    stmpdir=tmpdir; 
+
+	stmpdir=stmpdir+"/cps.XXXXXX";
+
+	mode_t cur_umask = umask(S_IRWXO | S_IRWXG); 
+	fd=mkstemp((char*)stmpdir.c_str());
+	umask(cur_umask);
+	
+	fn=(stmpdir);
+	if( fd==-1 )
+		return false;
+	else
+		return true;
+}
+
+bool File::Open(void *handle, const std::string& pFilename)
+{
+	fd=(int)((intptr_t)handle);
+	fn = pFilename;
+	return true;
+}
+
+std::string File::Read(_u32 tr, bool *has_error)
+{
+	std::string ret;
+	ret.resize(tr);
+	_u32 gc=Read((char*)ret.c_str(), tr, has_error);
+	if( gc<tr )
+		ret.resize( gc );
+	
+	return ret;
+}
+
+std::string File::Read(int64 spos, _u32 tr, bool *has_error)
+{
+	std::string ret;
+	ret.resize(tr);
+	_u32 gc=Read(spos, (char*)ret.c_str(), tr, has_error);
+	if( gc<tr )
+		ret.resize( gc );
+
+	return ret;
+}
+
+_u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t r=read(fd, buffer, bsize);
+	if( r<0 )
+	{
+		if(has_error) *has_error=true;
+		r=0;
+	}
+	
+	return (_u32)r;
+}
+
+_u32 File::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t r=pread64(fd, buffer, bsize, spos);
+	if (r < 0)
+	{
+		if (has_error) *has_error = true;
+		r = 0;
+	}
+
+	return (_u32)r;
+}
+
+_u32 File::Write(const std::string &tw, bool *has_error)
+{
+	return Write( tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 File::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t w=write(fd, buffer, bsize);
+	if( w<0 )
+	{
+		Server->Log("Write failed. errno="+convert(errno), LL_DEBUG);
+		if (has_error) *has_error = true;
+		w=0;
+	}
+	return (_u32)w;
+}
+
+_u32 File::Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t w=pwrite64(fd, buffer, bsize, spos);
+	if( w<0 )
+	{
+		Server->Log("Write failed. errno="+convert(errno), LL_DEBUG);
+		if(has_error) *has_error=true;
+		w=0;
+	}
+	return (_u32)w;
+}
+
+bool File::Seek(_i64 spos)
+{
+	off64_t ot=lseek64(fd, spos, SEEK_SET);
+	if( ot==(off64_t)-1 )
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+_i64 File::Size(void)
+{
+	struct stat64 stat_buf;
+	int rc = fstat64(fd, &stat_buf);
+	
+	if(rc==0)
+	{
+#if defined(BLKGETSIZE64)
+		if(S_ISBLK(stat_buf.st_mode))
+		{
+			_i64 ret;
+			rc = ioctl(fd, BLKGETSIZE64, &ret);
+			if(rc==0)
+			{
+				return ret;
+			}
+		}
+#endif
+		
+		return stat_buf.st_size;	
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+_i64 File::RealSize(void)
+{
+	struct stat64 stat_buf;
+	fstat64(fd, &stat_buf);
+
+	return stat_buf.st_blocks*512;
+}
+
+void File::Close()
+{
+	if( fd!=-1 )
+	{
+		close( fd );
+		fd=-1;
+	}
+}
+
+bool File::PunchHole(_i64 spos, _i64 size)
+{
+#ifdef __APPLE__
+	return false;
+#elif __FreeBSD__
+	/* Does not exist yet...
+	struct flock64 s;
+	s.l_whence = SEEK_SET;
+	s.l_start = spos;
+	s.l_len = size;
+	int rc = fcntl(fd, F_FREESP64, &s);
+	return rc == 0;*/
+	return false;
+#elif defined(HAVE_FALLOCATE64)
+	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, spos, size);
+
+	return rc == 0;
+#else
+	return false;
+#endif
+}
+
+bool File::Sync()
+{
+	return fsync(fd)==0;
+}
+
+bool File::Resize(int64 new_size, bool set_sparse)
+{
+	return ftruncate64(fd, new_size) == 0;
+}
+
+void File::resetSparseExtentIter()
+{
+	last_sparse_pos = 0;
+}
+
+namespace
+{
+	class ResetCur
+	{
+	public:
+		ResetCur(int fd, off64_t pos)
+			: fd(fd), pos(pos)
+		{}
+
+		~ResetCur()
+		{
+			lseek64(fd, pos, SEEK_SET);
+		}
+
+	private:
+		int fd;
+		off64_t pos;
+	};
+}
+
+IFsFile::SSparseExtent File::nextSparseExtent()
+{
+#ifdef SEEK_HOLE
+	if (last_sparse_pos == -1)
+	{
+		return SSparseExtent();
+	}
+
+	off64_t curr_pos = lseek64(fd, 0, SEEK_CUR);
+
+	if (curr_pos == -1)
+	{
+		return SSparseExtent();
+	}
+
+	ResetCur reset_cur(fd, curr_pos);
+	
+	off64_t next_hole_start = lseek64(fd, last_sparse_pos, SEEK_HOLE);
+
+	if (next_hole_start == -1)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
+	_i64 fsize = Size();
+
+	if (next_hole_start == fsize)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
+	last_sparse_pos = lseek64(fd, next_hole_start, SEEK_DATA);
+
+	if (last_sparse_pos == -1)
+	{
+		return SSparseExtent(next_hole_start, fsize - next_hole_start);
+	}
+
+	if(next_hole_start == last_sparse_pos)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
+	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
+#else //SEEK_HOLE
+	return SSparseExtent();
+#endif 
+}
+
+std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+{
+#ifdef __linux__
+	std::vector<char> buf;
+	buf.resize(4096 * 4);
+
+	struct fiemap* fiemap = reinterpret_cast<struct fiemap*>(buf.data());
+	fiemap->fm_extent_count = (buf.size() - sizeof(struct fiemap)) / sizeof(struct fiemap_extent);
+	fiemap->fm_start = starting_offset;
+	fiemap->fm_length = FIEMAP_MAX_OFFSET - starting_offset;
+	fiemap->fm_flags = 0;
+
+	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0)
+	{
+		return std::vector<SFileExtent>();
+	}
+
+	std::vector<SFileExtent> ret;
+	ret.resize(fiemap->fm_mapped_extents);
+	more_data = true;
+	for (_u32 i = 0; i < fiemap->fm_mapped_extents; ++i)
+	{
+		struct fiemap_extent& ext = fiemap->fm_extents[i];
+
+		if (i + 1 >= fiemap->fm_mapped_extents)
+		{
+			if (ext.fe_flags & FIEMAP_EXTENT_LAST)
+			{
+				more_data = false;
+			}
+		}
+
+		ret[i].offset = ext.fe_logical;
+		ret[i].size = ext.fe_length;
+		ret[i].volume_offset = ext.fe_physical;
+	}
+
+	if (starting_offset == 0
+		&& fiemap->fm_mapped_extents == 0)
+	{
+		more_data = false;
+	}
+
+	return ret;
+#else
+	return std::vector<SFileExtent>();
+#endif
+}
+
+IFsFile::os_file_handle File::getOsHandle(bool release_handle)
+{
+	int ret = fd;
+	if (release_handle)
+	{
+		fd = -1;
+	}
+	return ret;
+}
+#endif

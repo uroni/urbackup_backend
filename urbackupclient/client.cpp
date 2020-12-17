@@ -619,6 +619,9 @@ void IndexThread::updateDirs(void)
 	std::vector<ContinuousWatchEnqueue::SWatchItem> continuous_watch;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		watching.push_back(backup_dirs[i].path);
 
 		if(backup_dirs[i].group==c_group_continuous)
@@ -637,6 +640,9 @@ void IndexThread::updateDirs(void)
 	{
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
+			if (backup_dirs[i].facet != index_facet_id)
+				continue;
+
 			std::string msg="A"+backup_dirs[i].path;
 			dwt->getPipe()->Write(msg);
 		}
@@ -746,6 +752,7 @@ void IndexThread::operator()(void)
 			data.getInt(&sha_version);
 			int running_jobs = 2;
 			data.getInt(&running_jobs);
+			data.getInt(&index_facet_id);
 			char async_index = 0;
 			data.getChar(&async_index);
 			std::string async_ticket;
@@ -894,6 +901,7 @@ void IndexThread::operator()(void)
 			data.getInt(&sha_version);
 			int running_jobs = 2;
 			data.getInt(&running_jobs);
+			data.getInt(&index_facet_id);
 			char async_index = 0;
 			data.getChar(&async_index);
 			std::string async_ticket;
@@ -1490,6 +1498,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	std::vector<int> selected_dir_db_tgroup;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if(backup_dirs[i].group==index_group
 			|| (backup_with_vss_components
 				&& backup_dirs[i].group== c_group_vss_components) )
@@ -1567,6 +1578,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		backup_dirs[i].symlinked_confirmed=false;
 	}
 
@@ -1575,10 +1589,10 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	last_tmp_update_time=Server->getTimeMS();
 	index_error=false;
 
-	std::string filelist_dest_fn = "urbackup/data/filelist.ub";
+	std::string filelist_dest_fn = "urbackup/data_"+convert(index_facet_id)+"/filelist.ub";
 	if (index_group != c_group_default)
 	{
-		filelist_dest_fn = "urbackup/data/filelist_" + convert(index_group) + ".ub";
+		filelist_dest_fn = "urbackup/data_"+convert(index_facet_id)+"/filelist_" + convert(index_group) + ".ub";
 	}
 
 	IFile* last_filelist_f = NULL;
@@ -1596,7 +1610,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		last_filelist->f = last_filelist_f;
 	}
 
-	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
+	std::string filelist_fn = "urbackup/data_"+convert(index_facet_id)+
+		"/filelist_new_" + convert(index_group) + ".ub";
 
 	std::streamoff outfile_size = 0;
 	{
@@ -1657,6 +1672,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
+			if (backup_dirs[i].facet != index_facet_id)
+				continue;
+
 			if(backup_dirs[i].group!=index_group)
 			{
 				continue;
@@ -1869,6 +1887,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
 				{
+					if (backup_dirs[k].facet != index_facet_id)
+						continue;
+
 					SCDirs *scd=getSCDir(backup_dirs[k].tname, index_clientsubname, false);
 					release_shadowcopy(scd);
 				}
@@ -2030,6 +2051,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if (backup_dirs[i].group == index_group
 			&& backup_dirs[i].reset_keep)
 		{
@@ -2041,6 +2065,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if (backup_dirs[i].group == index_group
 			&& (!backup_dirs[i].symlinked || backup_dirs[i].symlinked_confirmed) )
 		{
@@ -2068,6 +2095,9 @@ void IndexThread::updateBackupDirsWithAll()
 	std::vector<std::string> filter_add;
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if (backup_dirs[i].group == index_group
 			&& backup_dirs[i].path == "ALL" && backup_dirs[i].tname == "ALL"
 			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
@@ -2148,7 +2178,7 @@ void IndexThread::updateBackupDirsWithAll()
 	std::vector<std::string> volumes_norm;
 	if (!volumes.empty())
 	{
-		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?)", false);
+		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, facet) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?, ?)", false);
 		IQuery *q_name = db->Prepare("SELECT id FROM backupdirs WHERE name=?", false);
 
 		for (size_t i = 0; i < volumes.size(); ++i)
@@ -2176,6 +2206,9 @@ void IndexThread::updateBackupDirsWithAll()
 			bool found = false;
 			for (size_t j = 0; j < backup_dirs.size(); ++j)
 			{
+				if (backup_dirs[j].facet != index_facet_id)
+					continue;
+
 				std::string ovol = backup_dirs[j].path;
 #ifdef _WIN32
 				if (ovol.size() <= 3)
@@ -2247,6 +2280,7 @@ void IndexThread::updateBackupDirsWithAll()
 				q_add->Bind(cvol);
 				q_add->Bind(new_flags);
 				q_add->Bind(index_group);
+				q_add->Bind(index_facet_id);
 				q_add->Write();
 				q_add->Reset();
 			}
@@ -2259,6 +2293,12 @@ void IndexThread::updateBackupDirsWithAll()
 	IQuery* q_del = NULL;
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+		{
+			++i;
+			continue;
+		}
+
 		if (backup_dirs[i].group == index_group
 			&& backup_dirs[i].server_default == EBackupDirServerDefault_AllSrc)
 		{
@@ -2283,6 +2323,9 @@ void IndexThread::updateBackupDirsWithAll()
 				bool found = false;
 				for (size_t j = 0; j < backup_dirs.size(); ++j)
 				{
+					if (backup_dirs[j].facet != index_facet_id)
+						continue;
+
 					if (backup_dirs[j].path == cpath)
 					{
 						found = true;
@@ -2868,6 +2911,9 @@ bool IndexThread::readBackupDirs(void)
 	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if (isAllSpecialDir(backup_dirs[i]))
 		{
 			if (index_group != -1 && backup_dirs[i].group == index_group)
@@ -4603,7 +4649,6 @@ void IndexThread::start_filesrv(void)
 
 	filesrv=filesrv_fak->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
 		backgroundBackupsEnabled(std::string()));
-	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data", std::string(), false);
 
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
@@ -5984,11 +6029,13 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 
 bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
+	return false;
+
+	std::string settings_fn = "urbackup/data_"+convert(index_facet_id)+"/settings.cfg";
 
 	if (!clientsubname.empty())
 	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
+		settings_fn = "urbackup/data_"+ convert(index_facet_id) + "/settings_" + conv_filename(clientsubname) + ".cfg";
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -6795,7 +6842,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		{
 			wchar_t buf[300];
 
-			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf) == ERROR_SUCCESS); ++i)
+			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf)) == ERROR_SUCCESS; ++i)
 			{
 				DWORD rsize = sizeof(buf) * sizeof(wchar_t);
 				if (RegGetValueW(profile_list, std::wstring(buf).c_str(), L"ProfileImagePath",
@@ -7913,6 +7960,9 @@ void IndexThread::updateCbt()
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		std::string cvol = trim(backup_dirs[i].path);
 		if (!normalizeVolume(cvol))
 			continue;
@@ -8070,6 +8120,9 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if(backup_dirs[i].group!=index_group)
 			continue;
 
@@ -8160,7 +8213,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& o
 
 	SBackupDir backup_dir;
 
-	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1);
+	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1, index_facet_id);
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
@@ -8190,6 +8243,9 @@ bool IndexThread::backupNameInUse( const std::string& name )
 {
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		if(backup_dirs[i].tname==name)
 		{
 			return true;
@@ -8202,6 +8258,12 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 {
 	for(size_t i=off;i<backup_dirs.size();)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+		{
+			++i;
+			continue;
+		}
+
 		if(index_group == backup_dirs[i].group)
 		{
 			if(backup_dirs[i].symlinked
@@ -8843,6 +8905,9 @@ void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::s
 				std::vector<std::string> groups_mem;
 				for (size_t i = 0; i < backup_dirs.size(); ++i)
 				{
+					if (backup_dirs[i].facet != index_facet_id)
+						continue;
+
 					if (backup_dirs[i].group == index_group)
 					{
 						std::string vol = backup_dirs[i].path;
@@ -9001,6 +9066,9 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 	std::vector<int> db_tgroup;
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
+		if (backup_dirs[i].facet != index_facet_id)
+			continue;
+
 		std::string path = backup_dirs[i].path;
 #ifdef _WIN32
 		path = strlower(path);

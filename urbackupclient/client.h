@@ -718,6 +718,7 @@ private:
 	EBackupDirServerDefault index_server_default;
 	bool index_follow_last;
 	bool index_keep_files;
+	int index_facet_id = 1;
 
 	SCDirs* index_scd;
 

@@ -7,6 +7,7 @@
 #include "../Interface/Condition.h"
 #include "IFileServ.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "IFileMetadataPipe.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -25,18 +26,27 @@ const char METADATA_PIPE_SEND_RAW = 1;
 const char METADATA_PIPE_EXIT = 2;
 const char METADATA_PIPE_SEND_RAW_FILEDATA = 3;
 
-class FileMetadataPipe : public PipeFileBase
+class FileMetadataPipe : public PipeFileBase, public IFileMetadataPipe
 {
 public:
 	FileMetadataPipe(IPipe* pipe, const std::string& cmd);
+	FileMetadataPipe();
+
 	~FileMetadataPipe();
 
 	virtual bool getExitCode( int& exit_code );
 
 	void forceExitWait();
 
+	virtual IPipe* getErrPipe();
+
+	virtual bool openOsMetadataFile(const std::string& fn);
+
+	virtual bool readCurrOsMetadata(char* buf, size_t buf_avail, size_t& read_bytes);
+
 protected:
-	virtual bool readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes );
+
+	virtual bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
 
 	virtual void finishStdout();
 

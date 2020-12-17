@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{B6ED0533-D4DB-4571-BE69-EDF0A1655064}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>fuse</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>btrfsfuse</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>nt;oslib;$(SolutionDir)/external/btrfs</AdditionalIncludeDirectories>
+      <PreprocessToFile>false</PreprocessToFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SolutionDir)$(Platform)\$(Configuration)\oslib.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;BTRFS_FUSE%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)nt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\external\btrfs\src\balance.c" />
+    <ClCompile Include="..\..\external\btrfs\src\blake2b-ref.c" />
+    <ClCompile Include="..\..\external\btrfs\src\boot.c" />
+    <ClCompile Include="..\..\external\btrfs\src\btrfs.c" />
+    <ClCompile Include="..\..\external\btrfs\src\cache.c" />
+    <ClCompile Include="..\..\external\btrfs\src\calcthread.c" />
+    <ClCompile Include="..\..\external\btrfs\src\compress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\crc32c.c" />
+    <ClCompile Include="..\..\external\btrfs\src\create.c" />
+    <ClCompile Include="..\..\external\btrfs\src\devctrl.c" />
+    <ClCompile Include="..\..\external\btrfs\src\dirctrl.c" />
+    <ClCompile Include="..\..\external\btrfs\src\extent-tree.c" />
+    <ClCompile Include="..\..\external\btrfs\src\fastio.c" />
+    <ClCompile Include="..\..\external\btrfs\src\fileinfo.c" />
+    <ClCompile Include="..\..\external\btrfs\src\flushthread.c" />
+    <ClCompile Include="..\..\external\btrfs\src\free-space.c" />
+    <ClCompile Include="..\..\external\btrfs\src\fsctl.c" />
+    <ClCompile Include="..\..\external\btrfs\src\fsrtl.c" />
+    <ClCompile Include="..\..\external\btrfs\src\galois.c" />
+    <ClCompile Include="..\..\external\btrfs\src\pnp.c" />
+    <ClCompile Include="..\..\external\btrfs\src\read.c" />
+    <ClCompile Include="..\..\external\btrfs\src\registry.c" />
+    <ClCompile Include="..\..\external\btrfs\src\reparse.c" />
+    <ClCompile Include="..\..\external\btrfs\src\scrub.c" />
+    <ClCompile Include="..\..\external\btrfs\src\search.c" />
+    <ClCompile Include="..\..\external\btrfs\src\security.c" />
+    <ClCompile Include="..\..\external\btrfs\src\send.c" />
+    <ClCompile Include="..\..\external\btrfs\src\sha256.c" />
+    <ClCompile Include="..\..\external\btrfs\src\treefuncs.c" />
+    <ClCompile Include="..\..\external\btrfs\src\volume.c" />
+    <ClCompile Include="..\..\external\btrfs\src\worker-thread.c" />
+    <ClCompile Include="..\..\external\btrfs\src\write.c" />
+    <ClCompile Include="..\..\external\btrfs\src\xxhash.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\adler32.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\deflate.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inffast.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inflate.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inftrees.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\trees.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zlib\zutil.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\entropy_common.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\error_private.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\fse_compress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\fse_decompress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\hist.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\huf_compress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\huf_decompress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_common.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_compress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_decompress.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_double_fast.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_fast.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_lazy.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_ldm.c" />
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_opt.c" />
+    <ClCompile Include="fuse.cpp" />
+    <ClCompile Include="nt\device.cpp" />
+    <ClCompile Include="nt\resource.cpp" />
+    <ClCompile Include="nt\windef.cpp" />
+    <ClCompile Include="nt\workqueue.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="fuse.h" />
+    <ClInclude Include="nt\ata.h" />
+    <ClInclude Include="nt\device.h" />
+    <ClInclude Include="nt\guiddef.h" />
+    <ClInclude Include="nt\mountdev.h" />
+    <ClInclude Include="nt\mountmgr.h" />
+    <ClInclude Include="nt\ntdddisk.h" />
+    <ClInclude Include="nt\ntddk.h" />
+    <ClInclude Include="nt\ntddscsi.h" />
+    <ClInclude Include="nt\ntddvol.h" />
+    <ClInclude Include="nt\ntddstor.h" />
+    <ClInclude Include="nt\ntdef.h" />
+    <ClInclude Include="nt\ntifs.h" />
+    <ClInclude Include="nt\ntstatus.h" />
+    <ClInclude Include="nt\ntstrsafe.h" />
+    <ClInclude Include="nt\os.h\Header.h" />
+    <ClInclude Include="nt\resource.h" />
+    <ClInclude Include="nt\wdm.h" />
+    <ClInclude Include="nt\windef.h" />
+    <ClInclude Include="nt\Windows.h" />
+    <ClInclude Include="nt\winnt.h" />
+    <ClInclude Include="nt\workqueue.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

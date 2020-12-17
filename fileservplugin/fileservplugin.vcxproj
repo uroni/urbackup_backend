@@ -225,6 +225,7 @@
     <ClInclude Include="FileMetadataPipe.h" />
     <ClInclude Include="FileServ.h" />
     <ClInclude Include="FileServFactory.h" />
+    <ClInclude Include="IFileMetadataPipe.h" />
     <ClInclude Include="IFileServ.h" />
     <ClInclude Include="IFileServFactory.h" />
     <ClInclude Include="IPermissionCallback.h" />

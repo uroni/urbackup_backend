@@ -9,8 +9,8 @@ struct SSessionIdentity
 
 	}
 
-	SSessionIdentity(std::string ident, std::string endpoint, int64 onlinetime, std::string secret_key)
-		: ident(ident), endpoint(endpoint), onlinetime(onlinetime), secret_key(secret_key)
+	SSessionIdentity(std::string ident, std::string endpoint, int64 onlinetime, std::string secret_key, std::string server_identity)
+		: ident(ident), endpoint(endpoint), onlinetime(onlinetime), secret_key(secret_key), server_identity(server_identity)
 	{
 
 	}
@@ -19,6 +19,7 @@ struct SSessionIdentity
 	std::string endpoint;
 	int64 onlinetime;
 	std::string secret_key;
+	std::string server_identity;
 
 	bool operator==(const SSessionIdentity& other) const
 	{
@@ -85,7 +86,8 @@ public:
 	static bool setPublicKeys(const std::string &pIdentity, const SPublicKeys &pPublicKeys);
 	static void loadServerIdentities(void);
 	static size_t numServerIdentities(void);
-	static void addSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string secret_key);
+	static void addSessionIdentity(const std::string &pIdentity, const std::string& endpoint, const std::string& server_identity, std::string secret_key);
+	static std::string getIdentityFromSessionIdentity(const std::string& session_identity);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

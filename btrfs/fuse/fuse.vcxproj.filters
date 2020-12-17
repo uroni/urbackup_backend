@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Quelldateien">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Headerdateien">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Ressourcendateien">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="btrfs">
+      <UniqueIdentifier>{71c5887e-07aa-43dd-9f01-bef959a55f26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="nt">
+      <UniqueIdentifier>{690387f0-0463-482c-9f9d-43557212fc08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="btrfs\zstd">
+      <UniqueIdentifier>{394cd095-b22c-4ba5-ab51-5d8408724d78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="btrfs\zlib">
+      <UniqueIdentifier>{d31f708a-d5c4-4c76-a8c4-e51296eb9a02}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="fuse.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="nt\resource.cpp">
+      <Filter>nt</Filter>
+    </ClCompile>
+    <ClCompile Include="nt\windef.cpp">
+      <Filter>nt</Filter>
+    </ClCompile>
+    <ClCompile Include="nt\workqueue.cpp">
+      <Filter>nt</Filter>
+    </ClCompile>
+    <ClCompile Include="nt\device.cpp">
+      <Filter>nt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\balance.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\blake2b-ref.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\boot.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\btrfs.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\cache.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\calcthread.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\compress.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\crc32c.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\create.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\devctrl.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\dirctrl.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\extent-tree.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\fastio.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\fileinfo.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\flushthread.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\free-space.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\fsctl.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\fsrtl.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\galois.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\pnp.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\read.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\registry.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\reparse.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\scrub.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\search.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\security.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\send.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\sha256.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\treefuncs.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\volume.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\worker-thread.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\write.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\xxhash.c">
+      <Filter>btrfs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\entropy_common.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\error_private.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\fse_compress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\fse_decompress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\hist.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\huf_compress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\huf_decompress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_common.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_compress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_decompress.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_double_fast.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_fast.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_lazy.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_ldm.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_opt.c">
+      <Filter>btrfs\zstd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\adler32.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\deflate.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inffast.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inflate.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\inftrees.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\trees.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\zlib\zutil.c">
+      <Filter>btrfs\zlib</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="nt\ntifs.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ata.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\mountmgr.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntddk.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntstrsafe.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\wdm.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\windef.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\winnt.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntddscsi.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntdddisk.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntddvol.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\guiddef.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntddstor.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\resource.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntstatus.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\os.h\Header.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\workqueue.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\mountdev.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\ntdef.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="fuse.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\device.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\Windows.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -2231,7 +2231,7 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 	{
 		SBackupDir backup_dir;
 
-		cd->addBackupDir(named_prefix, path, 0, index_flags, c_group_vss_components, 0);
+		cd->addBackupDir(named_prefix, path, 0, index_flags, c_group_vss_components, 0, index_facet_id);
 
 		backup_dir.id = static_cast<int>(db->getLastInsertID());
 

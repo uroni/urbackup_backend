@@ -479,6 +479,8 @@ void ClientMain::operator ()(void)
 
 	bool do_exit_now=false;
 	
+	do_full_backup_now = true;
+
 	while(true)
 	{
 		if(!skip_checking)

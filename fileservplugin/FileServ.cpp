@@ -26,6 +26,7 @@
 #include "CUDPThread.h"
 #include "PipeSessions.h"
 #include "PipeFileExt.h"
+#include "FileMetadataPipe.h"
 
 IMutex *FileServ::mutex=NULL;
 std::vector<FileServ::SIdentity> FileServ::identities;
@@ -421,4 +422,9 @@ void FileServ::deregisterScriptPipeFile(const std::string & script_fn)
 		delete it->second.pipe_file;
 		script_mappings.erase(it);
 	}
+}
+
+IFileMetadataPipe* FileServ::getFileMetadataPipe()
+{
+	return new FileMetadataPipe;
 }
