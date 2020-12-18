@@ -241,6 +241,7 @@ public:
 	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
 
 private:
+	void ReceivePacketsInt(IRunOtherCallback* run_other);
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
@@ -363,6 +364,7 @@ private:
 
 	unsigned int curr_result_id;
 	IPipe *pipe;
+	IPipe* orig_pipe;
 	THREAD_ID tid;
 	ClientConnectorState state;
 	int64 lasttime;

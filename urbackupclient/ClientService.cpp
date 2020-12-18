@@ -284,6 +284,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 {
 	tid=pTID;
 	pipe=pPipe;
+	orig_pipe = pipe;
 	state=CCSTATE_NORMAL;
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
@@ -814,6 +815,14 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 
 void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 {
+	do
+	{
+		ReceivePacketsInt(p_run_other);
+	} while (pipe != orig_pipe && pipe->isReadable());
+}
+
+void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
+{
 	run_other = p_run_other;
 
 	if(state==CCSTATE_UPDATE_FINISH)
@@ -944,29 +953,15 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}			
 		}
 		else
-		{
-			return;
+			{
+				return;
+			}
 		}
-	}
 
 	tcpstack.AddData(cmd.data(), cmd.size());
 
-	while(true)
+	while(tcpstack.getPacket(cmd) && !cmd.empty())
 	{
-		if (!tcpstack.getPacket(cmd) || cmd.empty())
-		{
-			size_t rc = pipe->Read(&cmd, 0);
-			if (rc > 0)
-			{
-				tcpstack.AddData(cmd.data(), cmd.size());
-				continue;
-			}
-			else
-			{
-				break;
-			}
-		}
-
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
