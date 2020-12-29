@@ -49,7 +49,7 @@
 #endif
 #include <assert.h>
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 #include <sys/uio.h>
 #define open64 open
 #define off64_t off_t
@@ -57,14 +57,19 @@
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
-
-#if defined(__FreeBSD__)
 #define sendfile64(a, b, c, d, e) sendfile(a, b, c, d, NULL, e, 0)
-#else
-#define sendfile64(a, b, c, d, e) sendfile(a, b, c, e, NULL, 0)
-#endif
+#endif	// defined(__FreeBSD__)
 
-#endif
+#if defined(__APPLE__)
+#include <sys/uio.h>
+#define open64 open
+#define off64_t off_t
+#define lseek64 lseek
+#define O_LARGEFILE 0
+//#define stat64 stat
+//#define fstat64 fstat
+#define sendfile64(a, b, c, d, e) sendfile(a, b, c, e, NULL, 0)
+#endif	// defined(__APPLE__)
 
 #include "FileMetadataPipe.h"
 
