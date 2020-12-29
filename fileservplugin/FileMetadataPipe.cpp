@@ -47,8 +47,8 @@
 #if defined(__APPLE__)
 #define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
 #define lgetxattr(path, name, value, size) getxattr(path, name, value, size, 0, XATTR_NOFOLLOW)
-//#define stat64 stat
-//#define lstat64 lstat
+#define stat64 stat
+#define lstat64 lstat
 #endif
 
 #if defined(__FreeBSD__)

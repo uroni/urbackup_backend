@@ -50,12 +50,10 @@
 #include "crc.h"
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
 #define lstat64 lstat
 #define stat64 stat
 #define fstat64 fstat
-#define open64 open
-#elif defined(__APPLE__)
 #define open64 open
 #endif
 
