@@ -44,6 +44,10 @@
 #define lstat64 lstat
 #endif
 
+#if defined(__APPLE__)
+#define open64 open
+#endif
+
 
 void getMousePos(int &x, int &y)
 {

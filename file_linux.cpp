@@ -87,13 +87,24 @@ namespace
 #endif
 #endif //__linux__
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__)
 #define open64 open
 #define off64_t off_t
 #define lseek64 lseek
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
+#define ftruncate64 ftruncate
+#define fallocate64 fallocate
+#define pwrite64 pwrite
+#define pread64 pread
+#elif defined(__APPLE__)
+#define open64 open
+#define off64_t off_t
+#define lseek64 lseek
+#define O_LARGEFILE 0
+//#define stat64 stat
+//#define fstat64 fstat
 #define ftruncate64 ftruncate
 #define fallocate64 fallocate
 #define pwrite64 pwrite

@@ -51,9 +51,19 @@
 #endif
 #include <stack>
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__)
 #define lstat64 lstat
 #define stat64 stat
+#define statvfs64 statvfs
+#define open64 open
+#define readdir64 readdir
+#define dirent64 dirent
+#define fsblkcnt64_t fsblkcnt_t
+#endif
+
+#if defined(__APPLE__)
+//#define lstat64 lstat
+//#define stat64 stat
 #define statvfs64 statvfs
 #define open64 open
 #define readdir64 readdir
@@ -377,8 +387,12 @@ int64 os_free_space(const std::string &path)
     int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
+#if defined(__FreeBSD__) || defined(__APPLE__)
+		int64 free = (int64)buf.f_frsize*buf.f_bavail;
+#else
 		fsblkcnt64_t blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
 		fsblkcnt64_t free = blocksize*buf.f_bavail;
+#endif
 		if(free>LLONG_MAX)
 		{
 			return LLONG_MAX;
@@ -406,7 +420,11 @@ int64 os_total_space(const std::string &path)
 	if(rc==0)
 	{
 		fsblkcnt64_t used=buf.f_blocks-buf.f_bfree;
+#if defined(__FreeBSD__) || defined(__APPLE__)
+		int64 total = (int64)(used+buf.f_bavail)*buf.f_frsize;
+#else
 		fsblkcnt64_t total = (used+buf.f_bavail)*buf.f_bsize;
+#endif
 		if(total>LLONG_MAX)
 		{
 			return LLONG_MAX;
