@@ -3,7 +3,7 @@
 
 USERNAME=urbackup
 GROUPNAME=urbackup
-PLISTFILE=org.urbackup.plist
+PLISTFILE=org.urbackup.server.plist
 
 
 if [ $EUID -ne 0 ]; then
