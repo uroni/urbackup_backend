@@ -14,7 +14,7 @@
 	<key>Disabled</key>
 	<true/>
 	<key>Label</key>
-	<string>org.urbackup</string>
+	<string>org.urbackup.server</string>
 	<key>KeepAlive</key>
 	<dict>
 		<key>Crashed</key>
