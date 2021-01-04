@@ -114,7 +114,7 @@ std::string getSystemServerName(bool use_fqdn)
 			Server->wait(100);
 		}
 	}
-#endif
+#else
 
     _i32 rc=gethostname(hostname, MAX_PATH);
 
@@ -154,6 +154,7 @@ std::string getSystemServerName(bool use_fqdn)
 	}
 
 	return ret;
+#endif
 }
 
 bool CUDPThread::hasError(void)
