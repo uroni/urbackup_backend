@@ -350,7 +350,13 @@ int main(int argc, char* argv[])
 		real_args.push_back("--workingdir");
 		real_args.push_back(VARDIR);
 		real_args.push_back("--script_path");
+#if defined(__APPLE__)
+		// ./UrBackup\ Client.app/Contents/MacOS/bin/urbackupclientctl../../share/urbackup/scripts
+		std::string datadir = ExtractFilePath(ExtractFilePath(argv[0])) + "/share/urbackup/scripts";
+		real_args.push_back( datadir + ":" SYSCONFDIR "/urbackup/scripts");
+#else
 		real_args.push_back( DATADIR "/urbackup/scripts:" SYSCONFDIR "/urbackup/scripts");
+#endif
 		real_args.push_back("--pidfile");
 		real_args.push_back(pidfile_arg.getValue());
 		if(std::find(real_args.begin(), real_args.end(), "--logfile")==real_args.end())
