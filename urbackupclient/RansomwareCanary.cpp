@@ -211,6 +211,15 @@ static void setupRansomwareCanaryFile(const std::string& curr_path, const std::s
 		}		
 	}
 
+	if (!mz_zip_writer_finalize_archive(&canary_doc_out))
+	{
+		Server->Log("Error finalizing archive \"" + out_fn + "\"", LL_ERROR);
+		return;
+	}
+
+	mz_zip_writer_end(&canary_doc_out);
+	mz_zip_reader_end(&canary_doc);
+
 	delete_fn.release();
 	out_file->Sync();
 	out_file.reset();
