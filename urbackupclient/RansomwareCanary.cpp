@@ -310,6 +310,7 @@ static void setupRansomwareCanariesPath(const std::string& curr_path, const std:
 				Server->Log("Error creating directory \"" + curr_path + comp +
 					"\" for ransomware canary. " + os_last_error_str(), LL_ERROR);
 			}
+			setOwner(curr_path + comp, owner);
 		}
 		else if (last_comp)
 		{
