@@ -42,6 +42,7 @@
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
 #include "../urbackupcommon/InternetServicePipe2.h"
+#include "RansomwareCanary.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -1880,6 +1881,17 @@ void ClientConnector::updateSettings(const std::string &pData)
 	{
 		IScopedLock lock(backup_mutex);
 		settings_update_versions[clientsubname] = (std::max)(settings_update_version, settings_update_versions[clientsubname]);
+	}
+
+	std::string ransomware_canary_paths;
+	std::string server_token;
+	if (new_settings->getValue("ransomware_canary_paths", &ransomware_canary_paths)
+		&& !ransomware_canary_paths.empty()
+		&& new_settings->getValue("server_token", &server_token)
+		&& !server_token.empty())
+	{
+		setupRansomwareCanaries(ransomware_canary_paths, server_token,
+			group_offset);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));

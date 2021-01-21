@@ -610,6 +610,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readBoolClientSetting(q_get_client_setting, "client_rename_detection", &settings->client_rename_detection, false);
 
 	readIntClientSetting(q_get_client_setting, "max_running_jobs_per_client_group", &settings->max_running_jobs_per_client_group, false);
+
+	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", std::string(";"), &settings->ransomware_canary_paths, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -744,6 +746,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "allow_config_max_backups", &settings->allow_config_max_backups);
 	
 	readBoolClientSetting(q_get_client_setting, "client_rename_detection", &settings->client_rename_detection, false);
+
+	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", ";", &settings->ransomware_canary_paths, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
@@ -1574,6 +1578,7 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_BOOL(allow_config_max_backups);
 	SET_SETTING_BOOL(client_rename_detection);
 	SET_SETTING_INT(max_running_jobs_per_client_group);
+	SET_SETTING_STR(ransomware_canary_paths);
 #undef SET_SETTING
 	return ret;
 }

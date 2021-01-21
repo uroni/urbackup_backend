@@ -228,6 +228,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING_DB(restore_authkey, std::string());
 	SET_SETTING_DB(internet_expect_endpoint, std::string());
 	SET_SETTING_DB(internet_server_bind_port, std::string());
+	SET_SETTING_DB(ransomware_canary_paths, std::string());
 #undef SET_SETTING
 #undef SET_SETTING_DB
 }

@@ -4380,7 +4380,8 @@ g.settings_list=[
 "image_compress_threads",
 "allow_config_max_backups",
 "client_rename_detection",
-"max_running_jobs_per_client_group"
+"max_running_jobs_per_client_group",
+"ransomware_canary_paths"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4444,7 +4445,8 @@ g.mergable_settings_list=[
 "default_dirs",
 "image_letters",
 "vss_select_components",
-"archive"
+"archive",
+"ransomware_canary_paths"
 ];
 g.client_settings_list=[
 "update_freq_incr",

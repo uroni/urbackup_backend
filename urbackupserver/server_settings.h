@@ -158,6 +158,7 @@ struct SSettings
 	bool allow_config_max_backups;
 	bool client_rename_detection;
 	int max_running_jobs_per_client_group;
+	std::string ransomware_canary_paths;
 	int group_id;
 };
 
