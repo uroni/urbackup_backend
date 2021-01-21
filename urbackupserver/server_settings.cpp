@@ -578,6 +578,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	settings->image_compress_threads = 0;
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
+
+	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", std::string(";"), &settings->ransomware_canary_paths, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -701,6 +703,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
+
+	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", ";", &settings->ransomware_canary_paths, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)

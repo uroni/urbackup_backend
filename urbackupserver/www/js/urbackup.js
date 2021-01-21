@@ -4178,7 +4178,8 @@ g.settings_list=[
 "download_threads",
 "hash_threads",
 "client_hash_threads",
-"image_compress_threads"
+"image_compress_threads",
+"ransomware_canary_paths"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4240,7 +4241,8 @@ g.mergable_settings_list=[
 "default_dirs",
 "image_letters",
 "vss_select_components",
-"archive"
+"archive",
+"ransomware_canary_paths"
 ];
 g.client_settings_list=[
 "update_freq_incr",

@@ -150,6 +150,7 @@ struct SSettings
 	int hash_threads;
 	int client_hash_threads;
 	int image_compress_threads;
+	std::string ransomware_canary_paths;
 };
 
 struct SLDAPSettings

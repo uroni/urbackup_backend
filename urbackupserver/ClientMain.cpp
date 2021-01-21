@@ -1933,6 +1933,7 @@ void ClientMain::sendSettings(void)
 			}
 		}
 	}
+	s_settings += "server_token=" + server_token + "\n";
 	escapeClientMessage(s_settings);
 	if(!sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{

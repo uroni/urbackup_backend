@@ -68,6 +68,7 @@
     <ClCompile Include="LocalFullFileBackup.cpp" />
     <ClCompile Include="ParallelHash.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
+    <ClCompile Include="RansomwareCanary.cpp" />
     <ClCompile Include="RestoreDownloadThread.cpp" />
     <ClCompile Include="RestoreFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
@@ -128,6 +129,7 @@
     <ClInclude Include="LocalFullFileBackup.h" />
     <ClInclude Include="ParallelHash.h" />
     <ClInclude Include="PersistentOpenFiles.h" />
+    <ClInclude Include="RansomwareCanary.h" />
     <ClInclude Include="RestoreDownloadThread.h" />
     <ClInclude Include="RestoreFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />

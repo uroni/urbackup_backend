@@ -111,6 +111,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("hash_threads");
 	ret.push_back("client_hash_threads");
 	ret.push_back("image_compress_threads");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 
@@ -160,6 +161,7 @@ std::vector<std::string> getClientMergableSettingsList()
 	ret.push_back("image_letters");
 	ret.push_back("vss_select_components");
 	ret.push_back("archive");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 
@@ -199,6 +201,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("alert_params");
 	ret.push_back("archive");
 	ret.push_back("client_settings_tray_access_pw");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 

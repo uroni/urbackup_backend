@@ -42,6 +42,7 @@
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
 #include "../urbackupcommon/InternetServicePipe2.h"
+#include "RansomwareCanary.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -1861,6 +1862,17 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 		db->destroyQuery(q);
 	}
 
+	std::string ransomware_canary_paths;
+	std::string server_token;
+	if (new_settings->getValue("ransomware_canary_paths", &ransomware_canary_paths)
+		&& !ransomware_canary_paths.empty()
+		&& new_settings->getValue("server_token", &server_token)
+		&& !server_token.empty())
+	{
+		setupRansomwareCanaries(ransomware_canary_paths, server_token,
+			facet_id, group_offset);
+	}
+
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> critical_settings;
@@ -3391,8 +3403,8 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 
 bool ClientConnector::getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id)
 {
-	dest = "raw-file://D:\\tmp\\btrfs.img";
-	return true;
+	/*dest = "raw-file://D:\\tmp\\btrfs.img";
+	return true;*/
 
 	if (facet_id == 0)
 		return false;
