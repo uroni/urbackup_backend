@@ -61,6 +61,10 @@
 #define fsblkcnt64_t fsblkcnt_t
 #endif
 
+#if defined(__APPLE__)
+#include <pthread.h>
+#endif
+
 #if defined(__ANDROID__)
 #define fsblkcnt64_t fsblkcnt_t
 #include "android_popen.h"
@@ -1291,6 +1295,128 @@ bool os_disable_prioritize(SPrioInfo& prio_info)
 void os_reset_priority()
 {
 	ioprio_set(IOPRIO_WHO_PROCESS, 0, 4 | IOPRIO_CLASS_BE << IOPRIO_CLASS_SHIFT);
+	setpriority(PRIO_PROCESS, 0, 0);
+}
+
+#elif defined (__APPLE__)
+
+struct SPrioInfoInt
+{
+	int io_prio;
+	int cpu_prio;
+};
+
+SPrioInfo::SPrioInfo()
+ : prio_info(new SPrioInfoInt)
+{
+}
+
+SPrioInfo::~SPrioInfo()
+{
+	delete prio_info;
+}
+
+bool os_enable_background_priority(SPrioInfo& prio_info)
+{
+	if(prio_info.prio_info==NULL)
+	{
+		return false;
+	}
+
+	uint64 thread_id;
+	if(pthread_threadid_np(NULL, &thread_id) == 0
+		&& (uint64)getpid() == thread_id )
+	{
+		//This would set it for the whole process
+		return false;
+	}
+	
+	prio_info.prio_info->io_prio = getiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_DARWIN_THREAD, 0);
+
+	if(setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD, IOPOL_THROTTLE)==-1)
+	{
+		return false;
+	}
+	int cpuprio = 19;
+	if(setpriority(PRIO_DARWIN_THREAD, 0, cpuprio)==-1)
+	{
+		os_disable_background_priority(prio_info);
+		return false;
+	}
+	
+	return true;
+}
+
+bool os_disable_background_priority(SPrioInfo& prio_info)
+{
+	if(prio_info.prio_info==NULL)
+	{
+		return false;
+	}
+		
+	bool success = (setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD, prio_info.prio_info->io_prio)==0);
+	success &= (setpriority(PRIO_DARWIN_THREAD, 0, prio_info.prio_info->cpu_prio)==0);
+	return success;
+}
+
+bool os_enable_prioritize(SPrioInfo& prio_info, EPrio prio)
+{
+	if(prio_info.prio_info==NULL)
+	{
+		return false;
+	}
+
+	uint64 thread_id;
+	if(pthread_threadid_np(NULL, &thread_id) == 0
+		&& (uint64)getpid() == thread_id )
+	{
+		//This would set it for the whole process
+		return false;
+	}
+
+	prio_info.prio_info->io_prio = getiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_DARWIN_THREAD, 0);
+	
+	int ioprio = IOPOL_STANDARD;
+	int cpuprio = -10;
+	
+	if(prio==Prio_SlightPrioritize)
+	{
+		ioprio=IOPOL_IMPORTANT;
+		cpuprio=-3;
+	}
+	else if(prio==Prio_SlightBackground)
+	{
+		ioprio=IOPOL_UTILITY;
+		cpuprio=5;
+	}
+	
+	if(setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD, ioprio)==-1)
+	{
+		return false;
+	}	
+	if(setpriority(PRIO_DARWIN_THREAD, 0, cpuprio)==-1)
+	{
+		os_disable_prioritize(prio_info);
+		return false;
+	}
+	
+	return true;
+}
+
+bool os_disable_prioritize(SPrioInfo& prio_info)
+{
+	return os_disable_background_priority(prio_info);
+}
+
+void assert_process_priority()
+{
+}
+
+void os_reset_priority()
+{
+	setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_PROCESS, IOPOL_STANDARD);
 	setpriority(PRIO_PROCESS, 0, 0);
 }
 
