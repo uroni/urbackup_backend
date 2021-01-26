@@ -71,6 +71,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/file.h>
 #endif
 
 #if defined(__ANDROID__)
@@ -3772,6 +3773,12 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 #ifdef _WIN32
 	return deleteShadowcopyWin(dir);
 #else
+
+	for (size_t i = 0; i < dir->ref->flock_fds.size(); ++i)
+		close(dir->ref->flock_fds[i]);
+
+	dir->ref->flock_fds.clear();
+
 	std::string loglines;
 	std::string scriptname;
 	if(dir->fileserv)
@@ -8531,6 +8538,15 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	std::string snapshot_target;
 	std::string cbt_info;
 	std::string cbt_file;
+	struct FLockFile
+	{
+		FLockFile(std:string fn, bool perm)
+			: fn(fn), perm(perm) {}
+
+		std:string fn;
+		bool perm;
+	};
+	std::vector<FLockFile> flock_files;
 	for(size_t i=0;i<lines.size();++i)
 	{
 		std::string line = trim(lines[i]);
@@ -8546,6 +8562,14 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		else if(next(line, 0, "SNAPSHOT="))
 		{
 			snapshot_target = line.substr(9);
+		}
+		else if (next(line, 0, "FLOCK="))
+		{
+			flock_files.push_back(FLockFile(line.substr(6), false));
+		}
+		else if (next(line, 0, "FLOCK_PERM="))
+		{
+			flock_files_perm.push_back(FLockFile(line.substr(11), true));
 		}
 		else
 		{
@@ -8566,6 +8590,45 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	{
 		VSSLog("Could not find snapshot target. Please include a snapshot target output in the script (e.g. echo SNAPSHOT=/mnt/snap/xxxx)", LL_ERROR);
 		return false;
+	}
+
+	for (size_t i = 0; i < flock_files.size(); ++i)
+	{
+		std::string flock_fp = flock_files[i].fn;
+		std::auto_ptr<IFsFile> flock_f(Server->openFile(flock_fp, MODE_RW));
+		if (flock_f.get() == NULL)
+		{
+			VSSLog("Error opening file to lock: " + flock_fp + ". " + os_last_error_str(), LL_WARNING);
+		}
+		else
+		{
+			IFsFile::os_file_handle fd = flock_f->getOsHandle(true);
+
+			struct flock fl = {};
+			fl.l_type = F_WRLCK;
+			fl.l_whence = SEEK_SET;
+			fl.l_start = 0;
+			fl.l_len = 0;
+
+			int rc = fcntl(fd, F_SETLK, &fl);
+
+			if (rc != 0)
+			{
+				VSSLog("Error locking file (F_SETLK) " + flock_fp + ". " + os_last_error_str(), LL_WARNING);
+			}
+
+			rc = flock(fd, LOCK_EX);
+
+			if (rc != 0)
+			{
+				VSSLog("Error locking file (flock) " + flock_fp + ". " + os_last_error_str(), LL_WARNING);
+			}
+
+			if (flock_files[i].perm)
+				flock_fds_perm.push_back(fd);
+			else
+				dir->ref->flock_fds.push_back(fd);
+		}
 	}
 
 	dir->target.erase(0,wpath.size());

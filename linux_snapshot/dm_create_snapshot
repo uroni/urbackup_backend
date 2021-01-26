@@ -31,6 +31,12 @@ then
     exit $?
 fi
 
+if [ "x$TYPE" != "xxfs" ] && [ "x$TYPE" != "xext4" ]
+then
+    echo "File system $TYPE not supported"
+    exit 1
+fi
+
 if [ "x$DEVICE" = "x" ]
 then
     echo "Cannot get device for filesystem $SNAP_MOUNTPOINT"
@@ -82,6 +88,8 @@ then
 	fi
 
 	fallocate -l $META_SIZE "$SNAP_MOUNTPOINT/$ERA_META_FN"
+	chattr +i "$SNAP_MOUNTPOINT/$ERA_META_FN"
+	echo "FLOCK_PERM=$SNAP_MOUNTPOINT/$ERA_META_FN"
 
 	ORIG_DEVICE="/dev/mapper/$DEVNAME-$RUUID-clone-era"
 	dmsetup table "$DEVICE" | dmsetup create "$DEVNAME-$RUUID-clone-era"
@@ -101,6 +109,8 @@ then
 fi
 
 fallocate -l 5G "$OVERLAY_FN"
+chattr +i "$OVERLAY_FN"
+echo "FLOCK=$OVERLAY_FN"
 
 if ! [ -e "/dev/mapper/$DEVNAME-$RUUID-clone" ]
 then
