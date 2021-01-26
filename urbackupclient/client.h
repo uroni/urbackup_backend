@@ -115,6 +115,10 @@ struct SCRef
 	bool with_writers;
 	std::string cbt_file;
 	CbtType cbt_type;
+
+#ifndef _WIN32
+	std::vector<IFsFile::os_file_handle> flock_fds;
+#endif
 };
 
 struct SCDirs
@@ -874,6 +878,8 @@ private:
 	static std::map<unsigned int, SResult> index_results;
 	static unsigned int next_result_id;
 	static IMutex* result_mutex;
+
+	std::vector<IFsFile> flock_fds_perm;
 
 #ifdef _WIN32
 	struct SComponent
