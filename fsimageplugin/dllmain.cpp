@@ -1462,15 +1462,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if (ch == 'Y'
 				|| ch == 'y')
 			{
-				HANDLE hDev = CreateFileW(Server->ConvertToWchar("\\\\?\\" + disk_scrub+":").c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
+				HANDLE hDev = CreateFileW(Server->ConvertToWchar("\\\\?\\" + disk_scrub+":").c_str(), 
+					GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
+					FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
+
 				if (hDev == INVALID_HANDLE_VALUE)
 				{
 					Server->Log("Error opening device. Last error: "+convert((int64)GetLastError()), LL_ERROR);
 					exit(3);
 				}
 
-				std::vector<char> buf;
-				buf.resize(fs.getBlocksize());
+				size_t buf_size = fs.getBlocksize();
+				char* buf = reinterpret_cast<char*>(_aligned_malloc(buf_size, buf_size));
+				memset(buf, 0, buf_size);
 
 				IFsFile* vol = Server->openFileFromHandle(hDev, disk_scrub);
 
@@ -1478,15 +1482,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				{
 					Server->Log("Zeroing sector of volume " + disk_scrub + " at position " + convert(error_blocks[i] * fs.getBlocksize())+"...");
 					_u32 rc = vol->Write(error_blocks[i] * fs.getBlocksize(),
-						buf.data(), static_cast<_u32>(buf.size()));
+						buf, static_cast<_u32>(buf_size));
 
-					if (rc != buf.size())
+					if (rc != buf_size)
 					{
 						Server->Log("Error writing to volume " + disk_scrub + " at position " + convert(error_blocks[i] * fs.getBlocksize()) +
 							". Last error: " + convert((int64)GetLastError()), LL_ERROR);
 					}
 				}
 
+				_aligned_free(buf);
 				Server->Log("Zeroing complete.");
 			}
 		}
