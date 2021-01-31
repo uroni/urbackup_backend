@@ -1709,20 +1709,18 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 
 			state = CCSTATE_IMAGE_HASHDATA;
 
-			size_t bufpos = 0;
 			IFile* datafile = hashdatafile;
 			_u32* dataleft = &hashdataleft;
-			while(bufpos<tcpstack.getBuffersize())
+			while(tcpstack.getBuffersize()>0)
 			{
-				_u32 towrite = (std::min)(static_cast<_u32>(tcpstack.getBuffersize() - bufpos), *dataleft);
-				if(datafile->Write(tcpstack.getBuffer()+ bufpos, towrite)!= towrite)
+				_u32 towrite = (std::min)(static_cast<_u32>(tcpstack.getBuffersize()), *dataleft);
+				if(datafile->Write(tcpstack.getBuffer(), towrite)!= towrite)
 				{
 					Server->Log("Error writing to data temporary file in CMD_INCR_IMAGE", LL_ERROR);
 					do_quit=true;
 					return;
 				}
 				
-				bufpos += towrite;
 				*dataleft -= towrite;
 
 				tcpstack.removeFront(towrite);

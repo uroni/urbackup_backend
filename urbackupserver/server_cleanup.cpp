@@ -2778,7 +2778,8 @@ bool ServerCleanupThread::cleanup_clientlists()
 		{
 			int backupid = watoi(getbetween("clientlist_b_", ".ub", files[i].name));
 
-			if(cleanupdao->hasMoreRecentFileBackup(backupid).exists)
+			if(!cleanupdao->getFileBackupInfo(backupid).exists ||
+				cleanupdao->hasMoreRecentFileBackup(backupid).exists)
 			{
 				if(!Server->deleteFile(os_file_prefix(srcfolder+os_file_sep()+files[i].name)))
 				{
