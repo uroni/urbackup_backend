@@ -1765,7 +1765,14 @@ std::string os_format_errcode(int64 errcode)
 bool os_enable_background_priority(SPrioInfo& prio_info)
 {
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
-	return SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) == TRUE;
+	bool b= SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) == TRUE;
+	if (b)
+	{
+		THREAD_POWER_THROTTLING_STATE ps = {};
+		ps.Version = THREAD_POWER_THROTTLING_CURRENT_VERSION;
+		SetThreadInformation(GetCurrentThread(), ThreadPowerThrottling, &ps, sizeof(ps));
+	}
+	return b;
 #else
 	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST)==TRUE;
 #endif
