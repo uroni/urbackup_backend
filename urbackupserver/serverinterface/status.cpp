@@ -189,6 +189,9 @@ bool is_stop_show(IDatabase* db, std::string stop_key)
 
 std::string ipAddrToStr(const std::string& ip_addr_binary)
 {
+	if (ip_addr_binary.empty())
+		return std::string();
+
 	FileClient::SAddrHint addr_hint;
 	if (ip_addr_binary.size() == sizeof(addr_hint.addr_ipv6))
 	{
