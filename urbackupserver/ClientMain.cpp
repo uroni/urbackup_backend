@@ -1028,7 +1028,8 @@ void ClientMain::operator ()(void)
 			}
 
 			std::string client_token_key;
-			if (restore_client_access_encryption)
+			if (restore_client_access_encryption
+				|| getProtocolVersions().restore_version<1)
 			{
 				client_token_key = "client_token";
 				if (crypto_fak == NULL)
