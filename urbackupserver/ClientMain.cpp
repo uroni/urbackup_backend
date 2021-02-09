@@ -2573,6 +2573,10 @@ std::string ClientMain::getClientIpStr(const std::string & clientname)
 		addr_hint.is_ipv6 = false;
 		memcpy(&addr_hint.addr_ipv4, ip_addr_binary.data(), ip_addr_binary.size());
 	}
+	else if(ip_addr_binary.empty())
+	{
+		return std::string();
+	}
 	else
 	{
 		assert(false);
