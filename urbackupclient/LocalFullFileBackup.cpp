@@ -6,9 +6,22 @@
 #include "../fileservplugin/IFileMetadataPipe.h"
 #include "client.h"
 #include "../btrfs/btrfsplugin/IBackupFileSystem.h"
+#include <ctime>
 
+bool LocalFullFileBackup::prepareBackuppath() {
 
-inline bool LocalFullFileBackup::prepareBackuppath() {
+	const std::time_t t = std::time(nullptr);
+	char mbstr[100];
+	if (!std::strftime(mbstr, sizeof(mbstr), "%y%m%d-%H%M", std::localtime(&t)))
+		return false;
+
+	std::string prefix = std::string(mbstr);
+
+	if (!orig_backup_files->createDir(prefix))
+		return false;
+
+	prepareBackupFiles(prefix);
+
 	backup_files->createDir(".hashes");
 	backup_files->createDir(getBackupInternalDataDir());
 
@@ -22,12 +35,12 @@ bool LocalFullFileBackup::run()
 	Server->secureRandomFill(&server_token[0], server_token.size());
 	server_token = bytesToHex(server_token);
 
-	unsigned int flags = flag_with_proper_symlinks | flag_calc_checksums;
+	unsigned int flags = flag_with_orig_path | flag_with_proper_symlinks;
 	int sha_version = 528;
 	int running_jobs = 2;
 
 	CWData data;
-	data.addChar(IndexThread::IndexThreadAction_StartIncrFileBackup);
+	data.addChar(IndexThread::IndexThreadAction_StartFullFileBackup);
 	unsigned int curr_result_id = IndexThread::getResultId();
 	data.addUInt(curr_result_id);
 	data.addString(server_token);
@@ -39,12 +52,12 @@ bool LocalFullFileBackup::run()
 	data.addInt(facet_id);
 	data.addChar(1);
 
-	std::string async_id;
+	/*std::string async_id;
 	async_id.resize(16);
 	Server->randomFill(&async_id[0], async_id.size());
 
 	//for phash
-	data.addString2(async_id);
+	data.addString2(async_id);*/
 
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
@@ -169,7 +182,7 @@ bool LocalFullFileBackup::run()
 
 						if (depth == 0)
 						{
-							//server_download->addToQueueStartShadowcopy(cf.name);
+							referenceShadowcopy(cf.name, server_token, clientsubname);
 						}
 						++depth;
 					}
@@ -184,13 +197,18 @@ bool LocalFullFileBackup::run()
 						}
 
 						--depth;
+
+						if (depth == 0)
+						{
+							unreferenceShadowcopy(curr_path, server_token, clientsubname, 0);
+						}
 					}
 				}
 				else
 				{
 					if (depth == 0)
 					{
-						//server_download->addToQueueStartShadowcopy(cf.name);
+						referenceShadowcopy(cf.name, server_token, clientsubname);
 					}
 
 					if (!has_orig_path)
@@ -205,9 +223,12 @@ bool LocalFullFileBackup::run()
 						}
 					}
 
-					std::string sourcepath = IndexThread::getFileSrv()->getShareDir(curr_path, std::string());
+					std::string sourcepath = IndexThread::getFileSrv()->getShareDir(curr_path+"/"+cf.name, std::string());
 					std::string metadatapath = ".hashes\\" + curr_os_path + "\\" + cf.name;
 					std::string targetpath = curr_os_path + "\\" + cf.name;
+
+					if (metadatapath.find("btrfs.h") != std::string::npos)
+						int abc = 5;
 
 					std::auto_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
 
@@ -279,6 +300,11 @@ bool LocalFullFileBackup::run()
 					{
 						//Log
 						return false;
+					}
+
+					if (depth == 0)
+					{
+						unreferenceShadowcopy(cf.name, server_token, clientsubname, 0);
 					}
 				}
 

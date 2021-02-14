@@ -3,7 +3,6 @@
 #include "../Interface/Condition.h"
 #include "ClientService.h"
 #include <memory>
-#include <ctime>
 
 namespace
 {
@@ -104,19 +103,10 @@ LocalBackup::LocalBackup(IBackupFileSystem* p_backup_files, int64 local_process_
 	: backup_updater_thread(NULL),
 	server_log_id(server_log_id), server_status_id(server_status_id),
 	backupid(backupid), server_token(std::move(server_token)), server_identity(std::move(server_identity)),
-	local_process_id(local_process_id), facet_id(facet_id)
+	local_process_id(local_process_id), facet_id(facet_id),
+	orig_backup_files(p_backup_files)
 {
-	std::time_t t = std::time(nullptr);
-	char mbstr[100];
-	if (std::strftime(mbstr, sizeof(mbstr), "%y%m%d-%H%M", std::localtime(&t)))
-	{
-		std::string prefix = std::string(mbstr);
-
-		if (p_backup_files->createDir(prefix))
-		{
-			backup_files.reset(new PrefixedBackupFiles(p_backup_files, prefix + "\\"));
-		}
-	}
+	
 }
 
 void LocalBackup::onStartBackup()
@@ -148,6 +138,11 @@ void LocalBackup::updateProgressSuccess(bool b)
 void LocalBackup::updateProgressSpeed(double n_speed_bpms)
 {
 	backup_updater_thread->update_speed(n_speed_bpms);
+}
+
+void LocalBackup::prepareBackupFiles(const std::string& prefix)
+{
+	backup_files = std::make_unique<PrefixedBackupFiles>(orig_backup_files.release(), prefix + "\\");
 }
 
 bool LocalBackup::PrefixedBackupFiles::hasError()

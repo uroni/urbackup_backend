@@ -14,6 +14,9 @@ public:
 	virtual bool hasError() override;
 	virtual bool Flush() override;
 	virtual bool deleteFile(const std::string& path) override;
+	virtual std::vector<SBtrfsFile> listFiles(const std::string& path) override;
+	virtual bool createSubvol(const std::string& path) override;
+	virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override;
 
 private:
 	std::unique_ptr<BtrfsFuse> btrfs;

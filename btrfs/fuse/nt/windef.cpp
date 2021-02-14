@@ -225,7 +225,7 @@ NTSTATUS RtlUpcaseUnicodeString(PUNICODE_STRING Dest, PUNICODE_STRING Source, BO
 		Dest->Buffer[i] = upch;
 	}
 
-	Dest->Length = i;
+	Dest->Length = i*sizeof(WCHAR);
 
 	return STATUS_SUCCESS;
 }

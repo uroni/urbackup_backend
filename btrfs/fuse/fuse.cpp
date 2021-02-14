@@ -52,6 +52,30 @@ namespace
         catch (...) {}
         return ret;
     }
+
+    std::string ConvertFromWchar(const std::wstring& input)
+    {
+        if (input.empty())
+        {
+            return std::string();
+        }
+
+        std::string ret;
+        try
+        {
+            if (sizeof(wchar_t) == 2)
+            {
+                utf8::utf16to8(&input[0], &input[input.size() - 1] + 1, back_inserter(ret));
+            }
+            else if (sizeof(wchar_t) == 4)
+            {
+                utf8::utf32to8(&input[0], &input[input.size() - 1] + 1, back_inserter(ret));
+            }
+
+        }
+        catch (...) {}
+        return ret;
+    }
 }
 
 void register_new_disk(PDEVICE_OBJECT disk)
@@ -618,6 +642,142 @@ bool BtrfsFuse::flush()
     return true;
 }
 
+std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
+{
+    std::unique_ptr<_FILE_OBJECT> file_obj;
+    
+    if (!path.empty())
+    {
+        file_obj = openFileInt(path, MODE_READ, true, false);
+
+        if (file_obj.get() == nullptr)
+            return std::vector<SBtrfsFile>();
+    }
+
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->StackLocation.MajorFunction = IRP_MJ_DIRECTORY_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_QUERY_DIRECTORY;
+
+    if (file_obj.get() != nullptr)
+        irp->StackLocation.FileObject = file_obj.get();
+    else
+        irp->StackLocation.FileObject = fs_data->root_file;
+
+    irp->StackLocation.Flags = SL_RESTART_SCAN;
+    std::vector<char> out_buf;
+    out_buf.resize(1024);
+    irp->UserBuffer = out_buf.data();
+    irp->StackLocation.Parameters.QueryDirectory.Length = out_buf.size();
+    irp->StackLocation.Parameters.QueryDirectory.FileInformationClass = FileBothDirectoryInformation;
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_DIRECTORY_CONTROL](fs_data->fs, irp.get());
+
+    if (rc != 0)
+    {
+        closeFile(std::move(file_obj));
+        errno = rc;
+        return std::vector<SBtrfsFile>();
+    }
+
+    std::vector<SBtrfsFile> ret;
+    for (size_t i = 0; i + sizeof(FILE_BOTH_DIR_INFORMATION) - sizeof(WCHAR) < irp->IoStatus.Information;)
+    {
+        FILE_BOTH_DIR_INFORMATION* fni = reinterpret_cast<FILE_BOTH_DIR_INFORMATION*>(out_buf.data() + i);
+
+        SBtrfsFile cf;
+        cf.name = ConvertFromWchar(std::wstring(fni->FileName, fni->FileNameLength / sizeof(WCHAR)));
+        cf.size = fni->EndOfFile.QuadPart;
+        cf.created = fni->CreationTime.QuadPart;
+        cf.accessed = fni->LastAccessTime.QuadPart;
+        cf.last_modified = fni->LastWriteTime.QuadPart;
+        cf.isdir = (fni->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) > 0;
+        cf.issym = (fni->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) > 0;
+
+        ret.push_back(cf);
+
+        if (fni->NextEntryOffset == 0)
+            break;
+
+        i += fni->NextEntryOffset;
+    }
+
+    closeFile(std::move(file_obj));
+    errno = 0;
+    return ret;
+}
+
+bool BtrfsFuse::create_subvol(const std::string& path)
+{
+    std::wstring path_w = ConvertToWchar(path);
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_CREATE_SUBVOL;
+    std::vector<char> bcs_buf(sizeof(btrfs_create_snapshot) + path_w.size());
+    btrfs_create_snapshot* bcs = reinterpret_cast<btrfs_create_snapshot*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = &bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = sizeof(bcs);
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = fs_data->root_file;
+
+    std::vector<char> bcs_buf(sizeof(btrfs_create_subvol) + path_w.size());
+    btrfs_create_subvol* bcs = reinterpret_cast<btrfs_create_subvol*>(bcs_buf.data());
+    memcpy(bcs->name, path.data(), path.size() * sizeof(WCHAR));
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+    
+    if (!NT_SUCCESS(rc))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool BtrfsFuse::create_snapshot(const std::string& src_path, const std::string& dest_path)
+{
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(src_path, MODE_READ, true, false);
+
+    if (src_file_obj.get() == nullptr)
+        return false;
+
+    std::wstring dest_path_w = ConvertToWchar(dest_path);
+
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_CREATE_SNAPSHOT;
+    std::vector<char> bcs_buf(sizeof(btrfs_create_snapshot) + dest_path_w.size());
+    btrfs_create_snapshot* bcs = reinterpret_cast<btrfs_create_snapshot*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = &bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = sizeof(bcs);
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = fs_data->root_file;
+
+    HANDLE hSrc = ObRegisterHandle(src_file_obj.get());
+    bcs->subvol = hSrc;
+    memcpy(bcs->name, dest_path_w.data(), dest_path_w.size() * sizeof(WCHAR));
+    bcs->namelen = dest_path_w.size();
+    bcs->posix = false;
+    bcs->readonly = false;
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+    bool ret = false;
+    if (NT_SUCCESS(rc))
+    {
+        ret = true;
+    }
+
+    ObDeregisterHandle(hSrc);
+
+    closeFile(std::move(src_file_obj));
+
+    return ret;
+}
+
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)
 {
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
@@ -663,6 +823,9 @@ bool BtrfsFuse::closeFile(std::unique_ptr<_FILE_OBJECT> file_object)
 
 bool BtrfsFuse::closeFile(PFILE_OBJECT file_object)
 {
+    if (file_object == nullptr)
+        return true;
+
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     /*irp->StackLocation.MajorFunction = IRP_MJ_CLOSE;
     irp->StackLocation.MinorFunction = IRP_MN_NORMAL;

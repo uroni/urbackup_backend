@@ -47,7 +47,10 @@ protected:
 	void updateProgressSuccess(bool b);
 	void updateProgressSpeed(double n_speed_bpms);
 
+	void prepareBackupFiles(const std::string& prefix);
+
 	std::unique_ptr<PrefixedBackupFiles> backup_files;
+	std::unique_ptr<IBackupFileSystem> orig_backup_files;
 	std::string server_token;
 	std::string server_identity;
 	int64 local_process_id;

@@ -1,6 +1,7 @@
 #include "LocalFileBackup.h"
 #include "../urbackupcommon/filelist_utils.h"
 #include "../common/data.h"
+#include "client.h"
 #include <assert.h>
 
 _i64 LocalFileBackup::getIncrementalSize(IFile* f, const std::vector<size_t>& diffs, bool& backup_with_components, bool all)
@@ -99,3 +100,33 @@ bool LocalFileBackup::hasChange(size_t line, const std::vector<size_t>& diffs)
 {
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
+
+void LocalFileBackup::referenceShadowcopy(const std::string& name, const std::string& server_token, const std::string& clientsubname)
+{
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_ReferenceShadowcopy);
+	unsigned int curr_result_id = IndexThread::getResultId();
+	data.addUInt(curr_result_id);
+	data.addString(name);
+	data.addString(server_token);
+	data.addUChar(0);
+	data.addUChar(1);
+	data.addString(clientsubname);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+}
+
+void LocalFileBackup::unreferenceShadowcopy(const std::string& name, const std::string& server_token, const std::string& clientsubname, int issues)
+{
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
+	unsigned int curr_result_id = IndexThread::getResultId();
+	data.addUInt(curr_result_id);
+	data.addString(name);
+	data.addString(server_token);
+	data.addUChar(0);
+	data.addInt(-1);
+	data.addString(clientsubname);
+	data.addInt(issues);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+}
+

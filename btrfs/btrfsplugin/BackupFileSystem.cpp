@@ -51,3 +51,18 @@ bool BtrfsBackupFileSystem::deleteFile(const std::string& path)
 {
 	return btrfs->deleteFile(path);
 }
+
+std::vector<SBtrfsFile> BtrfsBackupFileSystem::listFiles(const std::string& path)
+{
+	return btrfs->listFiles(path);
+}
+
+bool BtrfsBackupFileSystem::createSubvol(const std::string& path)
+{
+	return btrfs->create_subvol(path);
+}
+
+bool BtrfsBackupFileSystem::createSnapshot(const std::string& src_path, const std::string& dest_path)
+{
+	return btrfs->create_snapshot(src_path, dest_path);
+}

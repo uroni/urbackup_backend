@@ -9,10 +9,10 @@
 
 class IBackupFileSystem;
 
-class LocalFullFileBackup : public LocalFileBackup
+class LocalIncrFileBackup : public LocalFileBackup
 {
 public:
-	LocalFullFileBackup(IBackupFileSystem* backup_files,
+	LocalIncrFileBackup(IBackupFileSystem* backup_files,
 		int backupgroup, std::string clientsubname, int64 local_process_id, int64 server_log_id, int64 server_status_id,
 		int64 backupid, std::string server_token, std::string server_identity, int facet_id)
 		: backuppath(backuppath),
@@ -31,7 +31,6 @@ public:
 	}
 
 	bool run();
-
 
 private:
 

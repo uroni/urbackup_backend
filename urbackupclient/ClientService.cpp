@@ -3403,8 +3403,8 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 
 bool ClientConnector::getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id)
 {
-	/*dest = "raw-file://D:\\tmp\\btrfs.img";
-	return true;*/
+	dest = "raw-file://C:\\tmp\\btrfs.img";
+	return true;
 
 	if (facet_id == 0)
 		return false;

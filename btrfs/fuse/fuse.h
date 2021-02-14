@@ -2,6 +2,8 @@
 #include <string>
 #include "../../Interface/File.h"
 #include <memory>
+#include "../../urbackupcommon/os_functions.h"
+#include "fuse_t.h"
 
 struct _DEVICE_OBJECT;
 typedef struct _DEVICE_OBJECT* PDEVICE_OBJECT;
@@ -38,6 +40,14 @@ public:
 		const std::string& dest_path);
 
 	bool flush();
+
+	std::vector<SBtrfsFile> listFiles(const std::string& path);
+
+	bool create_subvol(const std::string& path);
+
+	bool create_snapshot(const std::string& src_path,
+		const std::string& dest_path);
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);

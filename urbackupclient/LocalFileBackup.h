@@ -19,5 +19,13 @@ protected:
 
 	bool openFileHandle(const std::string& fn);
 
+	void referenceShadowcopy(const std::string& name, const std::string& server_token, const std::string& clientsubname);
+
+	void unreferenceShadowcopy(const std::string& name, const std::string& server_token, const std::string& clientsubname, int issues);
+
+	std::string getBackupInternalDataDir() {
+		return ".hashes\\d42992c8-f07f-46e0-bba3-2c44913f91aa";
+	}
+
 private:
 };
