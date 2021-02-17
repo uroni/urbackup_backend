@@ -712,7 +712,7 @@ msgstr "Проверить SSL/TLS сертификат"
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr "Отправить тестовое письмо после сохранения настроек (оставить пустым, чтобы не отправлять)"
+msgstr "Email адрес на который будет отправлено тестовое письмо после сохранения настроек (оставить пустым, чтобы не отправлять)"
 
 msgid "tTest Mail sent successfully"
 msgstr "Тестовое сообщение отправлено"
