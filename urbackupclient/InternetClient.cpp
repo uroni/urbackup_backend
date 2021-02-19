@@ -271,7 +271,6 @@ void InternetClient::doUpdateSettings(void)
 			if(Server->getServerParameter("internet_only_mode")=="true")
 			{
 				Server->Log("Internet mode not enabled. Please set \"internet_mode_enabled\" to \"true\".", LL_ERROR);
-				exit(2);
 			}
 			else
 			{
