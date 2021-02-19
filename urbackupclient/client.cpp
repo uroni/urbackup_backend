@@ -7249,6 +7249,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		Server->deleteFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt");
 	} //for_image_backup
 
+	Server->deleteFile("urbackup\\hdat_other_" + conv_filename(strlower(volume)) + ".cbt");
+
 #ifndef _DEBUG
 	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, &bytesReturned, NULL);
 #endif
