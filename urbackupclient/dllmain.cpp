@@ -58,6 +58,7 @@ extern IServer* Server;
 
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "../btrfs/btrfsplugin/IBtrfsFactory.h"
 
 #include "database.h"
 #include "tokens.h"
@@ -80,6 +81,7 @@ extern IServer* Server;
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
+#include <vector>
 
 namespace
 {
@@ -104,6 +106,7 @@ namespace
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
+IBtrfsFactory* btrfs_fak;
 std::string server_identity;
 std::string server_token;
 
@@ -131,11 +134,11 @@ const std::string pw_change_file="urbackup/pw_change.txt";
 const std::string new_file="urbackup/new.txt";
 #endif
 
-THREADPOOL_TICKET indexthread_ticket;
-THREADPOOL_TICKET internetclient_ticket;
-
 namespace
 {
+	THREADPOOL_TICKET indexthread_ticket;
+	std::vector<THREADPOOL_TICKET> internetclient_tickets;
+
 	int64 roundUp(int64 numToRound, int64 multiple)
 	{
 		return ((numToRound + multiple - 1) / multiple) * multiple;
@@ -316,6 +319,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Error loading Cryptoplugin", LL_ERROR);
 	}
 
+	btrfs_fak = (IBtrfsFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("btrfsplugin", params));
+	if (btrfs_fak == nullptr)
+	{
+		Server->Log("Error loading Btrfsplugin", LL_ERROR);
+	}
+
 	{
 		str_map params;
 		image_fak = (IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
@@ -477,21 +486,33 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->deleteFile(INITIAL_SETTINGS_PREFIX "initial_settings.cfg");
 	}
 
+	std::vector<SFile> data_dirs = getFiles("urbackup");
+
 #ifndef _DEBUG
-	if(FileExists("urbackup/data/settings.cfg"))
+	for (SFile dir : data_dirs)
 	{
-		change_file_permissions_admin_only("urbackup/data/settings.cfg");
-	}
+		if (dir.isdir
+			&& next(dir.name, 0, "data"))
+		{
+			if (FileExists("urbackup/"+dir.name+"/settings.cfg"))
+			{
+				change_file_permissions_admin_only("urbackup/data/settings.cfg");
+			}
 
-	if(FileExists("urbackup/data/filelist.ub"))
-	{
-		change_file_permissions_admin_only("urbackup/data/filelist.ub");
-	}
+			if (FileExists("urbackup/"+dir.name+"/filelist.ub"))
+			{
+				change_file_permissions_admin_only("urbackup/data/filelist.ub");
+			}
 
+			change_file_permissions_admin_only("urbackup/"+dir.name);
+		}
+	}
+#endif
+
+#ifndef _DEBUG
 #ifdef _WIN32
 	change_file_permissions_admin_only("urbackup");
 #endif
-	change_file_permissions_admin_only("urbackup/data");
 
 	if(FileExists("debug.log"))
 	{
@@ -528,7 +549,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		indexthread_ticket=Server->getThreadPool()->execute(it, "file indexing");
 	}
 
-	internetclient_ticket=InternetClient::start(do_leak_check);
+	internetclient_tickets=InternetClient::start(do_leak_check);
 
 #ifdef _WIN32
 	cacheVolumes();
@@ -546,7 +567,7 @@ DLLEXPORT void UnloadActions(void)
 		Server->getThreadPool()->waitFor(indexthread_ticket);
 		ServerIdentityMgr::destroy_mutex();
 
-		InternetClient::stop(internetclient_ticket);
+		InternetClient::stop(internetclient_tickets);
 
 		ClientConnector::destroy_mutex();
 
@@ -755,7 +776,23 @@ void update_client26_27(IDatabase* db)
 
 void update_client27_28(IDatabase* db)
 {
-	ClientConnector::updateDefaultDirsSetting(db, true, 0, false);
+}
+
+void update_client28_29(IDatabase* db)
+{
+	db->Write("CREATE TABLE client_facets (id INTEGER PRIMARY KEY, name TEXT, server_identity TEXT)");
+	db->Write("ALTER TABLE backupdirs ADD facet INTEGER REFERENCES client_facets(id)");
+	db->Write("ALTER TABLE virtual_client_group_offsets ADD facet INTEGER REFERENCES client_facets(id)");
+	db->Write("ALTER TABLE fileaccess_tokens ADD facet INTEGER REFERENCES client_facets(id)");
+	db->Write("INSERT INTO client_facets (name, server_identity) VALUES ('default', '')");
+	int64 fid = db->getLastInsertID();
+	db->Write("UPDATE backupdirs SET facet=" + convert(fid));
+	db->Write("UPDATE virtual_client_group_offsets SET facet=" + convert(fid));
+	db->Write("UPDATE fileaccess_tokens SET facet=" + convert(fid));
+	os_rename_file("data", "data_" + convert(fid));
+	Server->deleteFile("urbackup/session_idents.txt");
+
+	ClientConnector::updateDefaultDirsSetting(db, true, 0, false, static_cast<int>(fid));
 }
 
 bool upgrade_client(void)
@@ -769,7 +806,7 @@ bool upgrade_client(void)
 		return false;
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 28;
+	int max_v = 29;
 
 	if (ver > max_v)
 	{
@@ -899,6 +936,10 @@ bool upgrade_client(void)
 				break;
 			case 27:
 				update_client27_28(db);
+				++ver;
+				break;
+			case 28:
+				update_client28_29(db);
 				++ver;
 				break;
 			default:

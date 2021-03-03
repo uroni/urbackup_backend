@@ -268,3 +268,9 @@ blockalign/x64/*
 /blockalign/Debug/*
 /luaplugin/Debug/*
 /urbackupserver/www/templates/post/*
+/blockalign_src/Release/*
+/btrfs/btrfsplugin/x64/*
+/btrfs/fuse/oslib/x64/*
+/btrfs/fuse/x64/*
+/luaplugin/Release/*
+/urbackup/data_*

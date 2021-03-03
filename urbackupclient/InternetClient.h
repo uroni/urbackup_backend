@@ -1,9 +1,12 @@
 #include <vector>
 #include <string>
 #include <queue>
+#include <set>
+#include <map>
 
 #include "../Interface/Thread.h"
 #include "../Interface/Types.h"
+#include "../Interface/Server.h"
 
 class IMutex;
 class IPipe;
@@ -34,6 +37,9 @@ struct SServerSettings
 class InternetClient : public IThread
 {
 public:
+	InternetClient(int facet_id, const std::string& settings_fn)
+		: facet_id(facet_id), settings_fn(settings_fn) {}
+
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 	static void hasLANConnection(void);
@@ -41,52 +47,56 @@ public:
 	static void setHasConnection(bool b);
 	static int64 timeSinceLastLanConnection();
 
-	static void newConnection(void);
-	static void rmConnection(void);
+	void newConnection(void);
+	void rmConnection(void);
 
-	static THREADPOOL_TICKET start(bool use_pool=false);
-	static void stop(THREADPOOL_TICKET tt=ILLEGAL_THREADPOOL_TICKET);
+	static std::vector<THREADPOOL_TICKET> start(bool use_pool=false);
+	static void stop(std::vector<THREADPOOL_TICKET> tt);
 
 	void operator()(void);
 
 	void doUpdateSettings(void);
 	bool tryToConnect(IScopedLock *lock);
 
-	static void setHasAuthErr(void);
-	static void resetAuthErr(void);
+	void setHasAuthErr(void);
+	void resetAuthErr(void);
 
 	static void updateSettings(void);
 
-	static void addOnetimeToken(const std::string &token);
-	static std::pair<unsigned int, std::string> getOnetimeToken(void);
-	static void clearOnetimeTokens();
+	void addOnetimeToken(const std::string &token);
+	std::pair<unsigned int, std::string> getOnetimeToken(void);
+	void clearOnetimeTokens();
 
-	static std::string getStatusMsg();
+	static std::string getStatusMsg(int facet_id);
 
-	static void setStatusMsg(const std::string& msg);
+	void setStatusMsg(const std::string& msg);
 
 	static IPipe* connect(const SServerConnectionSettings& selected_settings, CTCPStack& tcpstack);
 
 private:
-
-	static IMutex *mutex;
-	static IMutex *onetime_token_mutex;
+	static IMutex* g_mutex;
+	IMutex* mutex = Server->createMutex();
+	IMutex *onetime_token_mutex = Server->createMutex();
 	static bool connected;
-	static size_t n_connections;
+	size_t n_connections = 0;
 	static int64 last_lan_connection;
-	static bool update_settings;
+	static std::set<int> update_settings;
+	static std::map<int, ICondition*> running_client_facets;
 	static SServerSettings server_settings;
-	static ICondition *wakeup_cond;
-	static int auth_err;
-	static std::queue<std::pair<unsigned int, std::string> > onetime_tokens;
+	ICondition* wakeup_cond = Server->createCondition();
+	int auth_err = 0;
+	std::queue<std::pair<unsigned int, std::string> > onetime_tokens;
 	static bool do_exit;
-	static std::string status_msg;
+	static std::map<int,std::string> status_msgs;
+
+	std::string settings_fn;
+	int facet_id;
 };
 
 class InternetClientThread : public IThread
 {
 public:
-	InternetClientThread(IPipe *cs, const SServerSettings &server_settings, CTCPStack* tcpstack);
+	InternetClientThread(InternetClient* internet_client, IPipe *cs, const SServerSettings &server_settings, CTCPStack* tcpstack);
 	~InternetClientThread();
 	void operator()(void);
 
@@ -100,4 +110,5 @@ private:
 	IPipe *cs;
 	CTCPStack* tcpstack;
 	SServerSettings server_settings;
+	InternetClient* internet_client;
 };

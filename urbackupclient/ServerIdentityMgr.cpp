@@ -177,7 +177,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			l = l.substr(0, hashpos);
 
 			std::string secret_key = base64_decode_dash(params["secret_key"]);
-			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key);
+			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key, params["server_ident"]);
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
@@ -335,13 +335,24 @@ bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity, bool count_f
 	return false;
 }
 
-void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key)
+void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, const std::string& server_identity, std::string secret_key)
 {
 	IScopedLock lock(mutex);
-	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key);
+	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key, server_identity);
 	session_identities.push_back(session_ident);
 	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
 	writeSessionIdentities();
+}
+
+std::string ServerIdentityMgr::getIdentityFromSessionIdentity(const std::string& session_identity)
+{
+	IScopedLock lock(mutex);
+	for (SSessionIdentity& session : session_identities)
+	{
+		if (session.ident == session_identity)
+			return session.server_identity;
+	}
+	return session_identity;
 }
 
 void ServerIdentityMgr::writeSessionIdentities()
@@ -369,6 +380,7 @@ void ServerIdentityMgr::writeSessionIdentities()
 			idents+=session_identities[i].ident;
 			idents+="#endpoint="+session_identities[i].endpoint;
 			idents += "&secret_key=" + base64_encode_dash(session_identities[i].secret_key);
+			idents += "&server_ident=" + EscapeParamString(session_identities[i].server_identity);
 
 			++written;
 			if(written>=max_session_identities)

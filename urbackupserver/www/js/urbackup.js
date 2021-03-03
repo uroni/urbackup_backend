@@ -1165,6 +1165,12 @@ function show_status_check2(data)
 				ext_text+="<br>UrBackup Server has trouble storing files to backup storage with the maximum file name length it was compiled with"+max_path_str+
 					". There might be issues when backing up files/folders with long file name.";
 			}
+			else if(data.dir_error_hint=="err_btrfs_backupfolder_differs")
+			{
+				ext_text+="<br>Backup folder configured for btrfs (suid helper) at /etc/urbackup/backupfolder ("+data.btrfs_backupfolder
+					+") differs from backup folder configured for UrBackup (Settings -> General, "+data.urbackup_backupfolder+") " +
+					"This can lead to issues.";
+			}
 			else
 			{
 				ext_text+="<br>"+data.dir_error_hint;
@@ -1176,7 +1182,8 @@ function show_status_check2(data)
 				|| data.dir_error_ext=="dos_names_created"
 				|| data.dir_error_ext=="err_file_system_case_insensitive"
 				|| data.dir_error_ext=="err_file_system_special_windows_files_disallowed"
-				|| data.dir_error_ext=="err_long_create_failed") )
+				|| data.dir_error_ext=="err_long_create_failed"
+				|| data.dir_error_ext=="err_btrfs_backupfolder_differs") )
 		{
 			generic_text=false;
 		}
@@ -2897,7 +2904,7 @@ function settingChangeKey(key)
 	}
 
 	if(typeof use=="undefined"
-		|| use==2)
+		|| (use&2)>0)
 	{
 		if(typeof use=="undefined")
 		{
@@ -4171,7 +4178,8 @@ g.settings_list=[
 "download_threads",
 "hash_threads",
 "client_hash_threads",
-"image_compress_threads"
+"image_compress_threads",
+"ransomware_canary_paths"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4233,7 +4241,8 @@ g.mergable_settings_list=[
 "default_dirs",
 "image_letters",
 "vss_select_components",
-"archive"
+"archive",
+"ransomware_canary_paths"
 ];
 g.client_settings_list=[
 "update_freq_incr",

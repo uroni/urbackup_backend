@@ -264,6 +264,10 @@ std::map<std::string, std::string> parseAnnotations(const std::string& data)
 				content += ch;
 				state = 3;
 			}
+			else if (ch == '*' && state == 3)
+			{
+				content += ch;
+			}
 			else if (ch == '/' && state == 3)
 			{
 				state = 0;

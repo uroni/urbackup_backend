@@ -42,6 +42,7 @@
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
 #include "../urbackupcommon/InternetServicePipe2.h"
+#include "RansomwareCanary.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -367,7 +368,20 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 	case CCSTATE_START_FILEBACKUP:
 		{
 			std::string msg;
-			bool has_result = IndexThread::getResult(curr_result_id, 0, msg);
+			bool has_result = false;
+
+			if (curr_result_id != 0)
+			{
+				has_result = IndexThread::getResult(curr_result_id, 0, msg);
+			}
+			else if (curr_backup_tt != ILLEGAL_THREADPOOL_TICKET)
+			{
+				has_result = true;
+				if (Server->getThreadPool()->waitFor(curr_backup_tt, 0))
+				{
+					msg = "done";
+				}
+			}
 
 			if (state == CCSTATE_START_FILEBACKUP_ASYNC)
 			{
@@ -1107,11 +1121,11 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 
 			if( cmd=="START BACKUP" || cmd=="2START BACKUP" || next(cmd, 0, "3START BACKUP") )
 			{
-				CMD_START_INCR_FILEBACKUP(cmd); continue;
+				CMD_START_INCR_FILEBACKUP(cmd, identity); continue;
 			}
 			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP" || next(cmd, 0, "3START FULL BACKUP") )
 			{
-				CMD_START_FULL_FILEBACKUP(cmd); continue;
+				CMD_START_FULL_FILEBACKUP(cmd, identity); continue;
 			}
 			else if (cmd == "FILESRV")
 			{
@@ -1153,7 +1167,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 			else if(next(cmd, 0, "SETTINGS ") )
 			{
-				CMD_UPDATE_SETTINGS(cmd); continue;
+				CMD_UPDATE_SETTINGS(cmd, identity); continue;
 			}
 			else if(next(cmd, 0, "PING RUNNING") )
 			{
@@ -1396,36 +1410,38 @@ std::string ClientConnector::removeIllegalCharsFromBackupName(std::string in)
 	return ret;
 }
 
-bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset, int facet_id)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
-	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs");
+	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs WHERE facet="+convert(facet_id));
 	bool all_virtual_clients = false;
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND facet="+convert(facet_id));
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND facet="+convert(facet_id));
 		}
 	}
 	else
 	{
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " 
+				+ convert(group_offset) + " AND " + convert(group_offset + c_group_max)+ " AND facet="+convert(facet_id));
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " 
+				+ convert(group_offset) + " AND " + convert(group_offset + c_group_max)+ " AND facet="+convert(facet_id));
 		}
 	}
-	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? , ?, ?, ?)");
+	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, facet) VALUES (?, ? , ?, ?, ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1435,8 +1451,8 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		q->Reset();
 	}
 	*/
-	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
-	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?");
+	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=? AND facet="+convert(facet_id));
+	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet="+convert(facet_id));
 	std::string dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
@@ -1608,6 +1624,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			q_insert_dir->Bind(curr_server_default);
 			q_insert_dir->Bind(flags);
 			q_insert_dir->Bind(group);
+			q_insert_dir->Bind(facet_id);
 			q_insert_dir->Write();
 			q_insert_dir->Reset();
 		}
@@ -1628,15 +1645,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		{
 			data.addString(new_watchdirs[i].tname);
 		}
-		IndexThread::stopIndex();
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
 	IQuery* q_other_has_path = NULL;
 	if (!all_virtual_clients)
 	{
-		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)+" AND facet="+convert(facet_id));
 	}
+
+	IQuery* q_other_facet_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND facet!=" + convert(facet_id));
 
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
@@ -1652,6 +1670,12 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					continue;
 			}
 
+			q_other_facet_has_path->Bind(backupdirs[i]["path"]);
+			db_results res_other_f = q_other_facet_has_path->Read();
+			q_other_facet_has_path->Reset();
+			if (!res_other_f.empty())
+				continue;
+
 			//Delete the watch
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
@@ -1661,7 +1685,6 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			{
 				data.addString(backupdirs[i]["name"]);
 			}
-			IndexThread::stopIndex();
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		}
 	}
@@ -1747,7 +1770,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}	
 #endif
 
-	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end()))
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end(), facet_id))
 	{
 		IScopedLock lock(backup_mutex);
 		for (size_t o = 0; o<channel_pipes.size(); ++o)
@@ -1806,19 +1829,22 @@ void ClientConnector::updateLastBackup(void)
 
 std::vector<std::string> getSettingsList(void);
 
-void ClientConnector::updateSettings(const std::string &pData)
+void ClientConnector::updateSettings(const std::string &pData, const std::string& server_identity)
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
-	std::string settings_fn="urbackup/data/settings.cfg";
+	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
+	std::string facet_dir = "data_" + convert(facet_id);
+
+	std::string settings_fn="urbackup/"+ facet_dir +"/settings.cfg";
 	std::string clientsubname;
 	std::string str_group_offset;
 	int group_offset=0;
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty()
 		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
 	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_fn = "urbackup/"+ facet_dir +"/settings_"+conv_filename(clientsubname)+".cfg";
 		group_offset = atoi(str_group_offset.c_str());
 
 		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
@@ -1834,6 +1860,17 @@ void ClientConnector::updateSettings(const std::string &pData)
 		q->Write();
 		q->Reset();
 		db->destroyQuery(q);
+	}
+
+	std::string ransomware_canary_paths;
+	std::string server_token;
+	if (new_settings->getValue("ransomware_canary_paths", &ransomware_canary_paths)
+		&& !ransomware_canary_paths.empty()
+		&& new_settings->getValue("server_token", &server_token)
+		&& !server_token.empty())
+	{
+		setupRansomwareCanaries(ransomware_canary_paths, server_token,
+			facet_id, group_offset);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -1920,7 +1957,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 			args["dir_" + convert(i) + "_server_default"] = convert(i>= default_dirs_client_off ? 0 : 1);
 		}
 
-		saveBackupDirs(args, true, group_offset);
+		saveBackupDirs(args, true, group_offset, facet_id);
 	}
 
 	if(mod
@@ -1946,6 +1983,16 @@ void ClientConnector::replaceSettings(const std::string &pData)
 {
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
+	std::string facet_name = new_settings->getValue("facet_name", "default");
+
+	int facet_id = getFacetIdByName(facet_name);
+
+	if (facet_id == 0)
+	{
+		Server->Log("Facet \"" + facet_name + "\" not found. Cannot update settings.", LL_ERROR);
+		return;
+	}
+
 	std::string ncname=new_settings->getValue("computername", "");
 	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
 	{
@@ -1957,11 +2004,11 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
-	std::string settings_fn="urbackup/data/settings.cfg";
+	std::string settings_fn="urbackup/data_"+convert(facet_id )+"/settings.cfg";
 	std::string clientsubname;
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
 	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_fn = "urbackup/data_"+convert(facet_id)+"/settings_"+conv_filename(clientsubname)+".cfg";
 	}
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
@@ -3354,6 +3401,36 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 	return false;
 }
 
+bool ClientConnector::getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id)
+{
+	dest = "raw-file://C:\\tmp\\btrfs.img";
+	return true;
+
+	if (facet_id == 0)
+		return false;
+
+	std::string settings_fn = "urbackup/data_"+convert(facet_id )+"/settings.cfg";
+	if (!clientsubname.empty())
+	{
+		settings_fn = "urbackup/data_"+convert(facet_id )+"/settings_" + clientsubname + ".cfg";
+	}
+	ISettingsReader* curr_settings = Server->createFileSettingsReader(settings_fn);
+
+	if (curr_settings == NULL)
+		return false;
+
+	std::string val;
+	if (curr_settings->getValue("dest_url", &val)
+		|| curr_settings->getValue("dest_url", &val))
+	{
+		dest = val;
+	}
+
+	Server->destroy(curr_settings);
+
+	return true;
+}
+
 bool ClientConnector::isBackupRunning()
 {
 	IScopedLock lock(backup_mutex);
@@ -3487,6 +3564,53 @@ void ClientConnector::exit_backup_immediate(int rc)
 
 		exit(rc);
 	}
+}
+
+void ClientConnector::createFacet(const std::string& server_identity, const std::string& facet_name)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	ClientDAO clientdao(db);
+
+	ClientDAO::SClientFacet init_facet = clientdao.getClientFacet("");
+	if (init_facet.exists)
+	{
+		clientdao.updateClientFacet(server_identity, init_facet.id);
+	}
+
+	ClientDAO::SClientFacet facet = clientdao.getClientFacet(server_identity);
+
+	if (!facet.exists)
+	{
+		clientdao.addClientFacet(facet_name, server_identity);
+		facet.id = static_cast<int>(db->getLastInsertID());
+	}
+
+	std::string facet_dir = "urbackup" + os_file_sep() + "data_" + convert(facet.id);
+	if (!os_directory_exists(facet_dir))
+	{
+		os_create_dir(facet_dir);
+#ifndef _DEBUG
+		change_file_permissions_admin_only(facet_dir);
+#endif
+	}
+}
+
+int ClientConnector::getFacetId(const std::string& server_identity)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	ClientDAO clientdao(db);
+
+	ClientDAO::SClientFacet facet = clientdao.getClientFacet(server_identity);
+	return facet.id;
+}
+
+int ClientConnector::getFacetIdByName(const std::string& facet_name)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	ClientDAO clientdao(db);
+
+	ClientDAO::SClientFacet facet = clientdao.getClientFacetByName(facet_name);
+	return facet.id;
 }
 
 IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
@@ -3667,6 +3791,47 @@ bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_
 	return sendMessageToChannel("RESTORE DONE status_id="+convert(status_id)+
 		"&log_id=" + convert(log_id) +
 		"&id=" + convert(restore_id) +
+		"&success=" + convert(success), 60000, identity);
+}
+
+void ClientConnector::updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, const std::string& identity, const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms)
+{
+	IScopedLock lock(backup_mutex);
+
+	{
+		IScopedLock lock_process(process_mutex);
+
+		SRunningProcess* proc = getRunningProcess(local_process_id);
+
+		if (proc != NULL)
+		{
+			if (nv > 100)
+			{
+				removeRunningProcess(local_process_id, total_bytes == done_bytes);
+			}
+			else
+			{
+				proc->pcdone = nv;
+				proc->last_pingtime = Server->getTimeMS();
+				proc->details = details;
+				proc->total_bytes = total_bytes;
+				proc->done_bytes = done_bytes;
+				proc->speed_bpms = speed_bpms;
+			}
+		}
+	}
+
+	sendMessageToChannel("BACKUP PERCENT pc=" + convert(nv) + "&status_id=" + convert(status_id) + "&id=" + convert(backup_id)
+		+ "&details=" + EscapeParamString(details) + "&total_bytes=" + convert(total_bytes) + "&done_bytes=" + convert(done_bytes)
+		+ "&speed_bpms=" + convert(speed_bpms),
+		0, identity);
+}
+
+bool ClientConnector::localBackupDone(int64 log_id, int64 status_id, int64 backup_id, bool success, const std::string& identity)
+{
+	return sendMessageToChannel("BACKUP DONE status_id=" + convert(status_id) +
+		"&log_id=" + convert(log_id) +
+		"&id=" + convert(backup_id) +
 		"&success=" + convert(success), 60000, identity);
 }
 
@@ -3911,13 +4076,13 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 	}
 }
 
-bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use)
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id)
 {
 	db_results res_virtual_clients;
 	if(all_virtual_clients)
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE facet="+convert(facet_id));
 	else
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset)+" AND facet="+convert(facet_id));
 
 	if (all_virtual_clients || group_offset == 0)
 	{
@@ -3934,7 +4099,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 		int curr_group_offset = watoi(res_virtual_client["group_offset"]);
 
-		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
+		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset)+" AND facet="+convert(facet_id));
 
 		int default_dirs_use = c_use_value_client;
 		bool has_client_path = false;
@@ -3988,10 +4153,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			default_dirs += path +"|"+EscapePathParamString(res_path["name"]) + str_flags;
 		}
 
-		std::string settings_fn = "urbackup/data/settings.cfg";
+		std::string settings_fn = "urbackup/data_"+convert(facet_id)+"/settings.cfg";
 		if (curr_group_offset !=0)
 		{
-			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
+			settings_fn = "urbackup/data_"+convert(facet_id)+"/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
 		}
 
 		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));

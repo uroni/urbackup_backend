@@ -293,7 +293,7 @@ bool CTCPFileServ::TcpStep(void)
 			SOCKET accept_socket = conn[s].fd;
 #endif
 			SOCKET ns;
-			if (accept_socket == mSocketv6)
+			if (accept_socket == mSocket)
 			{
 				sockaddr_in naddr;
 				socklen_t addrsize = sizeof(naddr);

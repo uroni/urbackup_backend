@@ -195,6 +195,18 @@
     <ClCompile Include="..\urbackupcommon\WebSocketPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="LocalFullFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="LocalFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="LocalBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FilesystemManager.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -357,6 +369,18 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\CompressedPipeZStd.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalFullFileBackup.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalBackup.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FilesystemManager.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

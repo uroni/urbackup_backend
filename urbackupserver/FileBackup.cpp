@@ -40,6 +40,7 @@
 #include "../urbackupcommon/TreeHash.h"
 #include "../common/data.h"
 #include "PhashLoad.h"
+#include "../urbackupcommon/glob.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -863,6 +864,12 @@ bool FileBackup::doBackup()
 	{
 		ServerLogger::Log(logid, "FATAL: Backup failed because of disk problems (see previous messages)", LL_ERROR);
 		client_main->sendMailToAdmins("Fatal error occurred during backup", ServerLogger::getWarningLevelTextLogdata(logid));
+	}
+
+	if (!checkRansomwareCanaries())
+	{
+		ServerLogger::Log(logid, "Ransomware canary check failed", LL_ERROR);
+		backup_result = false;
 	}
 
 	if((!has_early_error && !backup_result) || disk_error)
@@ -2502,6 +2509,151 @@ bool FileBackup::stopPhashDownloadThread(const std::string& async_id)
 	phash_load.reset();
 
 	return true;
+}
+
+bool FileBackup::checkRansomwareCanaryFile(const std::string& last_backuppath, const std::string& curr_path, const std::string& fn_prefix)
+{
+	std::string canary_path = curr_path + fn_prefix + "-" + server_token + ".docx";
+
+	std::string curr_canary_path = backuppath + os_file_sep() + canary_path;
+	std::string last_canary_path = last_backuppath + os_file_sep() + canary_path;
+
+	std::unique_ptr<IFile> lastf(Server->openFile(last_canary_path, MODE_READ));
+
+	if (lastf.get() == nullptr)
+		return true;
+
+	std::unique_ptr<IFile> currf(Server->openFile(curr_canary_path, MODE_READ));
+
+	if (currf.get() == nullptr)
+	{
+		ServerLogger::Log(logid, "Ransomware canary at \"" + canary_path + "\" is now missing", LL_ERROR);
+		return false;
+	}
+
+	std::vector<char> buf1(32768*2);
+	std::vector<char> buf2(32768 * 2);
+
+	while (true)
+	{
+		_u32 read1 = lastf->Read(buf1.data(), buf1.size());
+		_u32 read2 = currf->Read(buf2.data(), buf2.size());
+
+		if (read1 != read2)
+		{
+			ServerLogger::Log(logid, "Ransomware canary at \"" + canary_path + "\" has changed size", LL_ERROR);
+			return false;
+		}
+
+		if (read1 == 0)
+			return true;
+
+		if (memcmp(buf1.data(), buf2.data(), read1) != 0)
+		{
+			ServerLogger::Log(logid, "Ransomware canary at \"" + canary_path + "\" has changed", LL_ERROR);
+			return false;
+		}
+	}
+}
+
+bool FileBackup::checkRansomwareCanariesPath(const std::string& last_backuppath, const std::string& curr_path, const std::vector<std::string> path_components, size_t idx)
+{
+	if (idx >= path_components.size())
+		return true;
+
+	bool last_comp = idx + 1 >= path_components.size();
+	std::string comp = path_components[idx];
+
+	bool create = false;
+
+	if (comp[0] == '^'
+		&& comp.find("*") == std::string::npos)
+	{
+		create = true;
+		comp = comp.substr(1);
+	}
+
+	if (comp=="." || comp == "..")
+		return false;
+
+	std::string curr_backuppath = backuppath + os_file_sep() + curr_path;
+	std::string last_path = last_backuppath + os_file_sep() + curr_path;
+
+	if (!last_comp
+		&& comp.find("*") != std::string::npos)
+	{
+		std::vector<SFile> files = getFiles(last_path);
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			if (idx == 0
+				&& files[i].isdir
+				&& files[i].name == ".hashes")
+				continue;
+
+			if (files[i].isdir
+				&& amatch(files[i].name.c_str(), comp.c_str()))
+			{
+				bool b = checkRansomwareCanariesPath(last_backuppath, curr_path + files[i].name + os_file_sep(),
+					path_components, idx + 1);
+				if (!b)
+					return false;
+			}
+		}
+	}
+	else
+	{
+		if (last_comp)
+		{
+			if (!checkRansomwareCanaryFile(last_backuppath, curr_path,
+				comp))
+				return false;
+		}
+
+		if (!last_comp)
+		{
+			bool b = checkRansomwareCanariesPath(last_backuppath, curr_path + comp + os_file_sep(), path_components, idx + 1);
+			if (!b)
+				return false;
+		}
+	}
+
+	return true;
+}
+
+bool FileBackup::checkRansomwareCanariesInt(const std::string& last_backuppath, const std::string& ransomware_canary_paths)
+{
+	std::vector<std::string> paths;
+	Tokenize(ransomware_canary_paths, paths, ";");
+
+	for (std::string path : paths)
+	{
+		std::vector<std::string> path_components;
+		Tokenize(path, path_components, "/");
+
+		if (!path_components.empty())
+		{
+			bool b = checkRansomwareCanariesPath(last_backuppath, std::string(), path_components, 0);
+			if (!b)
+				return false;
+		}
+	}
+
+	return true;
+}
+
+bool FileBackup::checkRansomwareCanaries()
+{
+	if (server_settings->getSettings()->ransomware_canary_paths.empty())
+		return true;
+
+	ServerBackupDao::SLastIncremental last = backup_dao->getLastIncrementalCompleteFileBackup(clientid, group);
+
+	if (!last.exists)
+		return true;
+
+	std::string last_backuppath = server_settings->getSettings()->backupfolder + os_file_sep() + clientname + os_file_sep() + last.path;
+
+	return checkRansomwareCanariesInt(last_backuppath, server_settings->getSettings()->ransomware_canary_paths);
 }
 
 void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)

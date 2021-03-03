@@ -250,6 +250,10 @@ protected:
 	bool loadWindowsBackupComponentConfigXml(FileClient &fc);
 	bool startPhashDownloadThread(const std::string& async_id);
 	bool stopPhashDownloadThread(const std::string& async_id);
+	bool checkRansomwareCanaries();
+	bool checkRansomwareCanariesInt(const std::string& last_backuppath, const std::string& ransomware_canary_paths);
+	bool checkRansomwareCanariesPath(const std::string& last_backuppath, const std::string& curr_path, const std::vector<std::string> path_components, size_t idx);
+	bool checkRansomwareCanaryFile(const std::string& last_backuppath, const std::string& curr_path, const std::string& fn_prefix);
 
 	int group;
 	bool use_tmpfiles;

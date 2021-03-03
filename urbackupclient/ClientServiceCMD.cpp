@@ -31,6 +31,8 @@
 #include "../urbackupcommon/json.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "file_permissions.h"
+#include "LocalFullFileBackup.h"
+#include "FilesystemManager.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -57,6 +59,8 @@ extern ICryptoFactory *crypto_fak;
 
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)
 {
+	bool create_token_dir = false;
+
 	if(identity.empty())
 	{
 		tcpstack.Send(pipe, "Identity empty");
@@ -66,10 +70,12 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 		if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
 		{
 			ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
-				tcpstack.Send(pipe, "OK");
+			createFacet(identity, endpoint_name);
+			tcpstack.Send(pipe, "OK");
 		}
 		else if( ident_ok )
 		{
+			createFacet(identity, endpoint_name);
 			tcpstack.Send(pipe, "OK");
 		}
 		else
@@ -77,6 +83,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
+				createFacet(identity, endpoint_name);
 				if(ServerIdentityMgr::hasPublicKey(identity, true))
 				{
 					tcpstack.Send(pipe, "needs certificate");
@@ -91,6 +98,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
 				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
+				createFacet(identity, endpoint_name);
 				tcpstack.Send(pipe, "OK");
 			}
 			else
@@ -271,8 +279,12 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 				return;
 			}
 
-			ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name,
+			ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name, identity,
 				secret_session_key_decrypted);
+
+			std::string facet_dir = Server->getServerWorkingDir() + os_file_sep() 
+				+ "urbackup" + os_file_sep() + "data_" + convert(getFacetId(identity));
+			IndexThread::getFileSrv()->shareDir("urbackup", facet_dir, "#I" + session_identity + "#", false);
 			
 			tcpstack.Send(pipe, "ok");
 			Server->destroy(challenge_it->second.shared_key_exchange);
@@ -291,7 +303,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	}
 }
 
-void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const std::string& server_identity)
 {
 	timeoutAsyncFileIndex();
 
@@ -336,6 +348,60 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	if(it_clientsubname!=params.end())
 	{
 		clientsubname = conv_filename((it_clientsubname->second));
+	}
+
+	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
+	std::string dest;
+	getBackupDest(clientsubname, dest, facet_id);
+
+	if (next(dest, 0, "raw-file://"))
+	{
+		std::string async_id;
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+
+		SRunningProcess new_proc;
+
+		new_proc.action = RUNNING_INCR_FILE;
+		new_proc.server_id = server_id;
+		new_proc.id = ++curr_backup_running_id;
+		new_proc.server_token = server_token;
+
+		IScopedLock process_lock(process_mutex);
+
+		removeTimedOutProcesses(server_token, true);
+
+		running_processes.push_back(new_proc);
+
+		std::string imgpath = getafter("raw-file://", dest);
+
+		if (!FilesystemManager::openFilesystemImage(imgpath))
+		{
+			tcpstack.Send(pipe, "ERR-Opening destination file system");
+			return;
+		}
+
+		int64 log_id = watoi64(params["log_id"]);
+
+		IBackupFileSystem* file_system = FilesystemManager::getFileSystem(imgpath);
+
+		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system,
+			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
+			server_identity, facet_id);
+
+		THREADPOOL_TICKET backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
+
+		SAsyncFileList new_async_backup = {
+			Server->getTimeMS(),
+			0,
+			0,
+			backup_ticket
+		};
+
+		async_file_index[async_id] = new_async_backup;
+
+		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+		return;
 	}
 
 	unsigned int flags = 0;
@@ -392,6 +458,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addString(clientsubname);
 	data.addInt(sha_version);
 	data.addInt(running_jobs);
+	data.addInt(getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity)));
 	data.addChar(async_list ? 1 : 0);
 
 	std::string async_id;
@@ -446,6 +513,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	if (!async_list)
 	{
 		state = CCSTATE_START_FILEBACKUP;
+		curr_backup_tt = ILLEGAL_THREADPOOL_TICKET;
 	}
 	else
 	{
@@ -454,7 +522,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
 			curr_result_id,
-			0
+			0,
+			ILLEGAL_THREADPOOL_TICKET
 		};
 
 		async_file_index[async_id] = new_async_file_list;
@@ -467,7 +536,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	}
 }
 
-void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const std::string& server_identity)
 {
 	timeoutAsyncFileIndex();
 
@@ -498,18 +567,75 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	}
 
 	int64 server_id = watoi64(params["status_id"]);
+
+	std::string clientsubname;
+	str_map::iterator it_clientsubname = params.find("clientsubname");
+	if (it_clientsubname != params.end())
+	{
+		clientsubname = conv_filename((it_clientsubname->second));
+	}
+
+	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
+	std::string dest;
+	getBackupDest(clientsubname, dest, facet_id);
+
+	if (next(dest, 0, "raw-file://"))
+	{
+		std::string async_id;
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+
+		SRunningProcess new_proc;
+
+		new_proc.action = RUNNING_FULL_FILE;
+		new_proc.server_id = server_id;
+		new_proc.id = ++curr_backup_running_id;
+		new_proc.server_token = server_token;
+
+		IScopedLock process_lock(process_mutex);
+
+		removeTimedOutProcesses(server_token, true);
+
+		running_processes.push_back(new_proc);
+
+		std::string imgpath = getafter("raw-file://", dest);
+
+		if (!FilesystemManager::openFilesystemImage(imgpath))
+		{
+			tcpstack.Send(pipe, "ERR-Opening destination file system");
+			return;
+		}
+
+		int64 log_id = watoi64(params["log_id"]);
+
+		IBackupFileSystem* file_system = FilesystemManager::getFileSystem(imgpath);
+
+		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system,
+			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
+			server_identity, facet_id);
+
+		THREADPOOL_TICKET backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
+
+		SAsyncFileList new_async_backup = {
+			Server->getTimeMS(),
+			0,
+			0,
+			backup_ticket
+		};
+
+		async_file_index[async_id] = new_async_backup;
+
+		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+		return;
+	}
+
 	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
 	if(!sha_version_str.empty())
 	{
 		sha_version = watoi(sha_version_str);
 	}
-	std::string clientsubname;
-	str_map::iterator it_clientsubname = params.find("clientsubname");
-	if(it_clientsubname!=params.end())
-	{
-		clientsubname = conv_filename((it_clientsubname->second));
-	}
+	
 
 	int flags = 0;
 
@@ -565,6 +691,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addString(clientsubname);
 	data.addInt(sha_version);
 	data.addInt(running_jobs);
+	data.addInt(facet_id);
 	data.addChar(async_list ? 1 : 0);
 
 	std::string async_id;
@@ -605,6 +732,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	if (!async_list)
 	{
 		state = CCSTATE_START_FILEBACKUP;
+		curr_backup_tt = ILLEGAL_THREADPOOL_TICKET;
 	}
 	else
 	{
@@ -613,7 +741,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
 			curr_result_id,
-			0
+			0,
+			ILLEGAL_THREADPOOL_TICKET
 		};
 
 		async_file_index[async_id] = new_async_file_list;
@@ -683,7 +812,15 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 		++it->second.refcount;
 		it->second.last_update = Server->getTimeMS();
 		curr_result_id = it->second.result_id;
-		IndexThread::refResult(curr_result_id);
+		if (curr_result_id != 0)
+		{
+			IndexThread::refResult(curr_result_id);
+			curr_backup_tt = ILLEGAL_THREADPOOL_TICKET;
+		}
+		else
+		{
+			curr_backup_tt = it->second.backup_ticket;
+		}
 	}
 }
 
@@ -902,7 +1039,13 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 		return;
 	}
 
-	if(saveBackupDirs(params, false, 0))
+	std::string facet_name = params["facet"];
+
+	if (facet_name.empty())
+		facet_name = "default";
+
+
+	if(saveBackupDirs(params, false, 0, getFacetIdByName(facet_name)))
 	{
 		tcpstack.Send(pipe, "OK");
 	}
@@ -1152,7 +1295,7 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("internet_connected", InternetClient::isConnected());
 
-	ret.set("internet_status", InternetClient::getStatusMsg());
+	ret.set("internet_status", InternetClient::getStatusMsg(getFacetIdByName("default")));
 
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
@@ -1165,11 +1308,11 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 }
 
-void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
+void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd, const std::string& server_identity)
 {
 	std::string s_settings=cmd.substr(9);
 	unescapeMessage(s_settings);
-	updateSettings( s_settings );
+	updateSettings( s_settings, server_identity);
 	tcpstack.Send(pipe, "OK");
 	lasttime=Server->getTimeMS();
 }
@@ -2655,7 +2798,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&FACET=1&OS_SIMPLE=windows"
 		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
@@ -2677,7 +2820,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&FACET=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }
@@ -3042,7 +3185,8 @@ void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
 	SAsyncFileList new_async_file_list = {
 		Server->getTimeMS(),
 		curr_result_id,
-		0
+		0,
+		ILLEGAL_THREADPOOL_TICKET
 	};
 
 	CWData data;

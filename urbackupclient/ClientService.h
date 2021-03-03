@@ -178,6 +178,7 @@ struct SAsyncFileList
 	int64 last_update;
 	unsigned int result_id;
 	size_t refcount;
+	THREADPOOL_TICKET backup_ticket;
 };
 
 struct SVolumesCache;
@@ -222,6 +223,11 @@ public:
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
+	static void updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, const std::string& identity,
+		const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms);
+
+	static bool localBackupDone(int64 log_id, int64 status_id, int64 backup_id, bool success, const std::string& identity);
+
 	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
 
 	static void requestRestoreRestart();
@@ -238,13 +244,13 @@ public:
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
-	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
+	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
-	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
+	bool saveBackupDirs(str_map &args, bool server_default, int group_offset, int facet_id);
 	std::string replaceChars(std::string in);
-	void updateSettings(const std::string &pData);
+	void updateSettings(const std::string &pData, const std::string& server_identity);
 	void replaceSettings(const std::string &pData);
 	void saveLogdata(const std::string &created, const std::string &pData);
 	std::string getLogpoints(void);
@@ -266,6 +272,7 @@ private:
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
+	bool getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
@@ -287,8 +294,8 @@ private:
 	void CMD_ADD_IDENTITY(const std::string &params);
 	void CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd);
 	void CMD_SIGNATURE(const std::string &identity, const std::string &cmd);
-	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
-	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
+	void CMD_START_INCR_FILEBACKUP(const std::string &cmd, const std::string& server_identity);
+	void CMD_START_FULL_FILEBACKUP(const std::string &cmd, const std::string& server_identity);
 	void CMD_WAIT_FOR_INDEX(const std::string &cmd);
 	void CMD_START_SHADOWCOPY(const std::string &cmd);
 	void CMD_STOP_SHADOWCOPY(const std::string &cmd);
@@ -300,7 +307,7 @@ private:
 	void CMD_BACKUP_FAILED(const std::string& cmd);
 	void CMD_STATUS(const std::string &cmd);
 	void CMD_STATUS_DETAIL(const std::string &cmd);
-	void CMD_UPDATE_SETTINGS(const std::string &cmd);
+	void CMD_UPDATE_SETTINGS(const std::string &cmd, const std::string& server_identity);
 	void CMD_PING_RUNNING(const std::string &cmd);
 	void CMD_PING_RUNNING2(const std::string &cmd);
 	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity);
@@ -349,6 +356,10 @@ private:
 	bool multipleChannelServers();
 	void exit_backup_immediate(int rc);
 
+	void createFacet(const std::string& server_identity, const std::string& facet_name);
+	int getFacetId(const std::string& server_identity);
+	int getFacetIdByName(const std::string& facet_name);
+
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
 	static void timeoutAsyncFileIndex();
@@ -362,6 +373,7 @@ private:
 	static void removeTimedOutProcesses(std::string server_token, bool file);
 
 	unsigned int curr_result_id;
+	THREADPOOL_TICKET curr_backup_tt;
 	IPipe *pipe;
 	THREAD_ID tid;
 	ClientConnectorState state;

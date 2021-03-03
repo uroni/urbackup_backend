@@ -831,6 +831,11 @@ int main(int argc, char *argv[])
 		
 		return make_readonly(mode, subvolume_folder)?0:1;
 	}
+	else if(cmd=="backupfolder")
+	{
+		std::cout << backupfolder << std::endl;
+		return 0;
+	}
 	else
 	{
 		std::cout << "Command not found" << std::endl;

@@ -71,6 +71,8 @@ public:
 
 	virtual void deregisterScriptPipeFile(const std::string& script_fn);
 
+	virtual IFileMetadataPipe* getFileMetadataPipe();
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;

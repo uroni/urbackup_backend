@@ -8,6 +8,7 @@
 
 class IPipe;
 class IPipeFileExt;
+class IFileMetadataPipe;
 
 class IFileServ : public IObject
 {
@@ -62,6 +63,7 @@ public:
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file) = 0;
 	virtual void deregisterScriptPipeFile(const std::string& script_fn) = 0;
 	virtual void clearReadErrors() = 0;
+	virtual IFileMetadataPipe* getFileMetadataPipe() = 0;
 
 	struct CbtHashFileInfo
 	{

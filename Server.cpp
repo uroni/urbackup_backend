@@ -1424,25 +1424,8 @@ struct SThreadInfo
 
 void thread_helper_f2(IThread* t)
 {
-#ifndef _DEBUG
-	try
-	{
-#endif
-		(*t)();
-		Server->destroyDatabases(Server->getThreadID());
-#ifndef _DEBUG
-	}
-	catch (std::exception& e)
-	{
-		Server->Log(std::string("Thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
-		throw;
-	}
-	catch (...)
-	{
-		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
-		throw;
-	}
-#endif
+	(*t)();
+	Server->destroyDatabases(Server->getThreadID());
 }
 
 DWORD WINAPI thread_helper_f(LPVOID param)

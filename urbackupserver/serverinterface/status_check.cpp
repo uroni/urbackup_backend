@@ -1,6 +1,8 @@
 #include "action_header.h"
 #include "../server_settings.h"
 #include "../ClientMain.h"
+#include "../snapshot_helper.h"
+#include "../server.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -165,6 +167,17 @@ namespace
 				ret.set("dir_error_hint", hint);
 			}
 #endif
+		}
+		else if (BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_Btrfs
+			&& SnapshotHelper::getBackupfolder() != trim(backupfolder))
+		{
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_btrfs_backupfolder_differs");
+
+			add_stop_show(db, ret, "dir_error_btrfs_backupfolder_differs");
+			ret.set("dir_error_hint", "err_btrfs_backupfolder_differs");
+			ret.set("btrfs_backupfolder", SnapshotHelper::getBackupfolder());
+			ret.set("urbackup_backupfolder", backupfolder);
 		}
 		else
 		{

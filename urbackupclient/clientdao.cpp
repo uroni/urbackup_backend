@@ -40,7 +40,7 @@ void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data, num, generation FROM files WHERE name=? AND tgroup=?", false);
 	q_add_files=db->Prepare("INSERT OR REPLACE INTO files (name, tgroup, num, data, generation) VALUES (?,?,?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep FROM backupdirs ORDER BY id ASC", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep, facet FROM backupdirs ORDER BY id ASC", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=?, generation=? WHERE name=? AND tgroup=? AND generation=?", false);
@@ -110,6 +110,10 @@ void ClientDAO::prepareQueriesGen(void)
 	q_hasHardLink=NULL;
 	q_addHardlink=NULL;
 	q_resetAllHardlinks=NULL;
+	q_getClientFacet=NULL;
+	q_getClientFacetByName=NULL;
+	q_addClientFacet=NULL;
+	q_updateClientFacet=NULL;
 }
 
 //@-SQLGenDestruction
@@ -130,6 +134,10 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_hasHardLink);
 	db->destroyQuery(q_addHardlink);
 	db->destroyQuery(q_resetAllHardlinks);
+	db->destroyQuery(q_getClientFacet);
+	db->destroyQuery(q_getClientFacetByName);
+	db->destroyQuery(q_addClientFacet);
+	db->destroyQuery(q_updateClientFacet);
 }
 
 void ClientDAO::restartQueries(void)
@@ -386,6 +394,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.symlinked=(res[i]["symlinked"]=="1");
 		dir.symlinked_confirmed=false;
 		dir.reset_keep = (res[i]["reset_keep"] == "1");
+		dir.facet = watoi(res[i]["facet"]);
 
 		if(dir.tname!="*")
 		{
@@ -833,16 +842,16 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 * @func void ClientDAO::addBackupDir
 * @sql
 *    INSERT INTO backupdirs
-*		(name, path, server_default, optional, tgroup, symlinked)
+*		(name, path, server_default, optional, tgroup, symlinked, facet)
 *    VALUES
 *       (:name(string), :path(string), :server_default(int), :flags(int), :tgroup(int),
-*        :symlinked(int) )
+*        :symlinked(int), :facet(int) )
 **/
-void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked)
+void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked, int facet)
 {
 	if(q_addBackupDir==NULL)
 	{
-		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked) VALUES (?, ?, ?, ?, ?, ? )", false);
+		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked, facet) VALUES (?, ?, ?, ?, ?, ?, ? )", false);
 	}
 	q_addBackupDir->Bind(name);
 	q_addBackupDir->Bind(path);
@@ -850,6 +859,7 @@ void ClientDAO::addBackupDir(const std::string& name, const std::string& path, i
 	q_addBackupDir->Bind(flags);
 	q_addBackupDir->Bind(tgroup);
 	q_addBackupDir->Bind(symlinked);
+	q_addBackupDir->Bind(facet);
 	q_addBackupDir->Write();
 	q_addBackupDir->Reset();
 }
@@ -971,6 +981,98 @@ void ClientDAO::resetAllHardlinks(void)
 	}
 	q_resetAllHardlinks->Write();
 }
+
+/**
+* @-SQLGenAccess
+* @func SClientFacet ClientDAO::getClientFacet
+* @return int id, string name, string server_identity
+* @sql
+*    SELECT id, name, server_identity FROM client_facets WHERE server_identity=:server_identity(string)
+**/
+ClientDAO::SClientFacet ClientDAO::getClientFacet(const std::string& server_identity)
+{
+	if(q_getClientFacet==NULL)
+	{
+		q_getClientFacet=db->Prepare("SELECT id, name, server_identity FROM client_facets WHERE server_identity=?", false);
+	}
+	q_getClientFacet->Bind(server_identity);
+	db_results res=q_getClientFacet->Read();
+	q_getClientFacet->Reset();
+	SClientFacet ret = { false, 0, "", "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi(res[0]["id"]);
+		ret.name=res[0]["name"];
+		ret.server_identity=res[0]["server_identity"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SClientFacet ClientDAO::getClientFacetByName
+* @return int id, string name, string server_identity
+* @sql
+*    SELECT id, name, server_identity FROM client_facets WHERE name=:name(string)
+**/
+ClientDAO::SClientFacet ClientDAO::getClientFacetByName(const std::string& name)
+{
+	if(q_getClientFacetByName==NULL)
+	{
+		q_getClientFacetByName=db->Prepare("SELECT id, name, server_identity FROM client_facets WHERE name=?", false);
+	}
+	q_getClientFacetByName->Bind(name);
+	db_results res=q_getClientFacetByName->Read();
+	q_getClientFacetByName->Reset();
+	SClientFacet ret = { false, 0, "", "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi(res[0]["id"]);
+		ret.name=res[0]["name"];
+		ret.server_identity=res[0]["server_identity"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::addClientFacet
+* @sql
+*    INSERT INTO client_facets (name, server_identity) VALUES (:name(string), :server_identity(string))
+**/
+void ClientDAO::addClientFacet(const std::string& name, const std::string& server_identity)
+{
+	if(q_addClientFacet==NULL)
+	{
+		q_addClientFacet=db->Prepare("INSERT INTO client_facets (name, server_identity) VALUES (?, ?)", false);
+	}
+	q_addClientFacet->Bind(name);
+	q_addClientFacet->Bind(server_identity);
+	q_addClientFacet->Write();
+	q_addClientFacet->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::updateClientFacet
+* @sql
+*    UPDATE client_facets SET server_identity=:server_identity(string) WHERE id=:id(int)
+**/
+void ClientDAO::updateClientFacet(const std::string& server_identity, int id)
+{
+	if(q_updateClientFacet==NULL)
+	{
+		q_updateClientFacet=db->Prepare("UPDATE client_facets SET server_identity=? WHERE id=?", false);
+	}
+	q_updateClientFacet->Bind(server_identity);
+	q_updateClientFacet->Bind(id);
+	q_updateClientFacet->Write();
+	q_updateClientFacet->Reset();
+}
+
+//-------------------
 
 std::vector<std::pair<int, std::string> > getFlagStrMapping()
 {
