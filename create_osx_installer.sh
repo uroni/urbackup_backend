@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -39,7 +39,11 @@ mkdir -p osx-pkg/Library/LaunchDaemons
 cp osx_installer/daemon.plist osx-pkg/Library/LaunchDaemons/org.urbackup.client.plist
 mkdir -p osx-pkg/Library/LaunchAgents
 cp osx_installer/agent.plist osx-pkg/Library/LaunchAgents/org.urbackup.client.plist
-./configure --enable-embedded-cryptopp --enable-clientupdate CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE" CFLAGS="-DNDEBUG -DURB_WITH_CLIENTUPDATE" LDFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+if !($development); then
+	./configure --enable-embedded-cryptopp --enable-clientupdate CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE" CFLAGS="-DNDEBUG -DURB_WITH_CLIENTUPDATE" LDFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+else
+	./configure --enable-embedded-cryptopp --enable-clientupdate CXXFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CFLAGS="-DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" LDFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+fi
 make clean
 make -j5
 make install DESTDIR=$PWD/osx-pkg2
@@ -54,8 +58,10 @@ fi
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
-strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
-strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
+if !($development); then
+	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
+	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
+fi
 
 mkdir -p "$PWD/osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin"
 UNINSTALLER="$PWD/osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackup_uninstall"
