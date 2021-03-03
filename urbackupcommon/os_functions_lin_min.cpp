@@ -38,7 +38,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
 #define stat64 stat
 #define lstat64 lstat

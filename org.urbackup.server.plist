@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+	Requirements:
+		sudo mkdir /var/log/urbackup
+		sudo chown urbackup:urbackup /var/log/urbackup
+		* Do not change permissions on /var/log as OS X installer resets this; same is true for "reset-permissions" tools
+	Install:       sudo cp org.urbackup.plist /Libraries/LaunchDaemons/
+	Service start: sudo launchctl load -w /Libraries/LaunchDaemons/org.urbackup.plist
+	Service stop:  sudo launchctl unload -w /Libraries/LaunchDaemons/org.urbackup.plist
+-->
+<dict>
+	<key>Disabled</key>
+	<true/>
+	<key>Label</key>
+	<string>org.urbackup.server</string>
+	<key>KeepAlive</key>
+	<dict>
+		<key>Crashed</key>
+		<true/>
+	</dict>
+	<!-- <key>EnvironmentVariables</key>
+	<dict>
+		<key>LC_TIME</key>		<string>de_DE.UTF-8</string>
+		<key>LC_NUMERIC</key>	<string>de_DE.UTF-8</string>
+		<key>LC_MONETARY</key>	<string>de_DE.UTF-8</string>
+	</dict>
+	-->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/urbackupsrv</string>
+		<string>run</string>
+		<string>-l</string>	<string>/var/log/urbackup/urbackup.log</string>
+		<!-- other customizable log settings
+		<string>-j</string>	<string>5</string>
+		<string>-g</string>	<string>5000000</string>
+		-->
+	</array>
+	<key>WorkingDirectory</key>	<string>/usr/local/var/urbackup</string>
+	<key>RunAtLoad</key>		<true/>
+	<key>UserName</key>			<string>urbackup</string>
+	<!-- Other usable service properties
+	<key>Umask</key>			<integer>0</integer>
+	<key>Nice</key>				<integer>0</integer>
+	<key>ProcessType</key>		<string>Adaptive</string>
+	<key>LowPriorityIO</key>	<false/>
+	-->
+</dict>
+</plist>
