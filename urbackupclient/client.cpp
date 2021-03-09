@@ -8747,7 +8747,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		}
 		else if (next(line, 0, "FLOCK_PERM="))
 		{
-			flock_files_perm.push_back(FLockFile(line.substr(11), true));
+			flock_files.push_back(FLockFile(line.substr(11), true));
 		}
 		else
 		{
