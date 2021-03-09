@@ -8481,7 +8481,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		FLockFile(std:string fn, bool perm)
 			: fn(fn), perm(perm) {}
 
-		std:string fn;
+		std::string fn;
 		bool perm;
 	};
 	std::vector<FLockFile> flock_files;
