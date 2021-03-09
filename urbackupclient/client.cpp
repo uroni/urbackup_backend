@@ -8478,7 +8478,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	std::string cbt_file;
 	struct FLockFile
 	{
-		FLockFile(std:string fn, bool perm)
+		FLockFile(std::string fn, bool perm)
 			: fn(fn), perm(perm) {}
 
 		std::string fn;
