@@ -880,7 +880,7 @@ private:
 	static unsigned int next_result_id;
 	static IMutex* result_mutex;
 
-	std::vector<IFsFile> flock_fds_perm;
+	std::vector<IFsFile::os_file_handle> flock_fds_perm;
 
 #ifdef _WIN32
 	struct SComponent
