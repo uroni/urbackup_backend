@@ -87,13 +87,13 @@ std::string getSystemServerName(bool use_fqdn)
 		{
 			if (fgets(hostname_appl, sizeof(hostname_appl), fd) != NULL)
 			{
+				pclose(fd);
 				std::string chostname = getafter("Computer Name: ", trim(hostname_appl));
 				if (chostname.empty())
 				{
 					Server->wait(100);
 					continue;
 				}
-				pclose(fd);
 
 				const std::string mac_add_fn = "urbackup/mac_computername_add.txt";
 				std::string mac_add = getStreamFile(mac_add_fn);
