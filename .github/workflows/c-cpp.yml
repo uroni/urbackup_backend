@@ -1,0 +1,29 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install libfuse-dev libcurl4-nss-dev libcrypto++-dev libzstd-dev
+    - name: autoconf (server)
+      run: ./switch_build.sh server && autoreconf --install
+    - name: configure (server)
+      run: ./configure --with-mountvhd
+    - name: make (server)
+      run: make -j$((`nproc`+1))
+    - name: autoconf (client)
+      run: ./switch_build.sh client && autoreconf --install
+    - name: configure (client)
+      run: ./configure --enable-headless
+    - name: make (client)
+      run: make -j$((`nproc`+1))

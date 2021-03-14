@@ -43,5 +43,3 @@ Microsoft Visual Studio 2015 should work.
 
 `build_client.bat` and `build_server.bat` build the installers but you need
 to install a lot of dependencies like WiX, NSIS plus plugins, etc.
-
-[![Build Status](https://travis-ci.org/uroni/urbackup_backend.svg?branch=dev)](https://travis-ci.org/uroni/urbackup_backend)
