@@ -49,7 +49,7 @@ namespace
 std::string mac_get_serial()
 {
 	char buf[4096];
-	FILE* fd = popen("system_profiler SPHardwareDataType | grep \"Serial Number\"", "r");
+	FILE* fd = popen("/usr/sbin/system_profiler SPHardwareDataType | grep \"Serial Number\"", "r");
 	std::string serial;
 	if (fd != NULL)
 	{
@@ -57,6 +57,7 @@ std::string mac_get_serial()
 		{
 			serial = trim(getafter(":", buf));
 		}
+		pclose(fd);
 	}
 
 	if (!serial.empty())
@@ -76,17 +77,17 @@ std::string mac_get_serial()
 
 std::string getSystemServerName(bool use_fqdn)
 {
-	char hostname[MAX_PATH];
 #ifdef __APPLE__
 	//TODO: Fix FQDN for Apple
 	while (true)
 	{
 		char hostname_appl[MAX_PATH + 15];
-		FILE* fd = popen("system_profiler SPSoftwareDataType | grep \"Computer Name: \"", "r");
+		FILE* fd = popen("/usr/sbin/system_profiler SPSoftwareDataType | grep \"Computer Name: \"", "r");
 		if (fd != NULL)
 		{
 			if (fgets(hostname_appl, sizeof(hostname_appl), fd) != NULL)
 			{
+				pclose(fd);
 				std::string chostname = getafter("Computer Name: ", trim(hostname_appl));
 				if (chostname.empty())
 				{
@@ -107,7 +108,8 @@ std::string getSystemServerName(bool use_fqdn)
 
 				return chostname + "-" + mac_add;
 			}
-			pclose(fd);
+			else
+				pclose(fd);
 		}
 		else
 		{
@@ -115,6 +117,8 @@ std::string getSystemServerName(bool use_fqdn)
 		}
 	}
 #else
+
+	char hostname[MAX_PATH];
 
     _i32 rc=gethostname(hostname, MAX_PATH);
 
