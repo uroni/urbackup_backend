@@ -8434,6 +8434,18 @@ int64 IndexThread::getChangeIndicator(const SFile & file)
 }
 
 #ifndef _WIN32
+namespace
+{
+	struct FLockFile
+	{
+		FLockFile(std::string fn, bool perm)
+			: fn(fn), perm(perm) {}
+
+		std::string fn;
+		bool perm;
+	};
+}
+
 bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured)
 {
 	std::string scriptname;
@@ -8476,14 +8488,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	std::string snapshot_target;
 	std::string cbt_info;
 	std::string cbt_file;
-	struct FLockFile
-	{
-		FLockFile(std::string fn, bool perm)
-			: fn(fn), perm(perm) {}
-
-		std::string fn;
-		bool perm;
-	};
+	
 	std::vector<FLockFile> flock_files;
 	for(size_t i=0;i<lines.size();++i)
 	{
