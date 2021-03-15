@@ -12,12 +12,12 @@ bool LocalFullFileBackup::prepareBackuppath() {
 
 	const std::time_t t = std::time(nullptr);
 	char mbstr[100];
-	if (!std::strftime(mbstr, sizeof(mbstr), "%y%m%d-%H%M", std::localtime(&t)))
+	if (!std::strftime(mbstr, sizeof(mbstr), "%y%m%d-%H%M.new", std::localtime(&t)))
 		return false;
 
 	std::string prefix = std::string(mbstr);
 
-	if (!orig_backup_files->createDir(prefix))
+	if (!orig_backup_files->createSubvol(prefix))
 		return false;
 
 	prepareBackupFiles(prefix);
@@ -312,6 +312,9 @@ bool LocalFullFileBackup::run()
 			}
 		}
 	}
+
+	if (!backup_files->renameToFinal())
+		return false;
 
 	return true;
 }

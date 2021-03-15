@@ -179,3 +179,29 @@ bool LocalBackup::PrefixedBackupFiles::Flush()
 {
 	return false;
 }
+
+bool LocalBackup::PrefixedBackupFiles::renameToFinal()
+{
+	return backup_files->rename(prefix.substr(0, prefix.size() - 1),
+		prefix.substr(0, prefix.size() - 5));
+}
+
+std::vector<SBtrfsFile> LocalBackup::PrefixedBackupFiles::listFiles(const std::string& path)
+{
+	return backup_files->listFiles(prefix + path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::createSubvol(const std::string& path)
+{
+	return backup_files->createSubvol(prefix + path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::createSnapshot(const std::string& src_path, const std::string& dest_path)
+{
+	return backup_files->createSnapshot(prefix+src_path, prefix+dest_path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::rename(const std::string& src_name, const std::string& dest_name)
+{
+	return backup_files->rename(prefix+src_name, prefix+dest_name);
+}

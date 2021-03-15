@@ -40,13 +40,13 @@ _i64 LocalFileBackup::getIncrementalSize(IFile* f, const std::vector<size_t>& di
 						backup_with_components = true;
 					}
 
-					if (indirchange == false && hasChange(line, diffs))
+					if (!indirchange && hasChange(line, diffs))
 					{
 						indirchange = true;
 						changelevel = depth;
 						indir_currdepth = 0;
 					}
-					else if (indirchange == true)
+					else if (indirchange)
 					{
 						if (cf.name != "..")
 							++indir_currdepth;
@@ -66,7 +66,7 @@ _i64 LocalFileBackup::getIncrementalSize(IFile* f, const std::vector<size_t>& di
 					else
 					{
 						--depth;
-						if (indirchange == true && depth == changelevel)
+						if (indirchange && depth == changelevel)
 						{
 							if (!all)
 							{
@@ -77,7 +77,7 @@ _i64 LocalFileBackup::getIncrementalSize(IFile* f, const std::vector<size_t>& di
 				}
 				else
 				{
-					if (indirchange == true || hasChange(line, diffs))
+					if (indirchange || hasChange(line, diffs))
 					{
 						if (cf.size > 0)
 						{

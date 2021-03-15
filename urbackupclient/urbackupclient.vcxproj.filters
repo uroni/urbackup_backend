@@ -207,6 +207,12 @@
     <ClCompile Include="FilesystemManager.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="RansomwareCanary.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="LocalIncrFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -371,9 +377,6 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipeZStd.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="LocalFullFileBackup.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="LocalFileBackup.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -381,6 +384,15 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="FilesystemManager.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="RansomwareCanary.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalIncrFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalFullFileBackup.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

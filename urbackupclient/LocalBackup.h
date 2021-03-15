@@ -28,6 +28,12 @@ class LocalBackup : public IThread
 		virtual bool deleteFile(const std::string& path) override;
 		virtual EFileType getFileType(const std::string& path) override;
 		virtual bool Flush() override;
+		virtual std::vector<SBtrfsFile> listFiles(const std::string& path) override;
+		virtual bool createSubvol(const std::string& path) override;
+		virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override;
+		virtual bool rename(const std::string& src_name, const std::string& dest_name) override;
+		
+		bool renameToFinal();
 
 	private:
 		std::string prefix;
