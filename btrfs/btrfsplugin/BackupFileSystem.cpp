@@ -66,3 +66,8 @@ bool BtrfsBackupFileSystem::createSnapshot(const std::string& src_path, const st
 {
 	return btrfs->create_snapshot(src_path, dest_path);
 }
+
+bool BtrfsBackupFileSystem::rename(const std::string& src_name, const std::string& dest_name)
+{
+	return btrfs->rename(src_name, dest_name);
+}

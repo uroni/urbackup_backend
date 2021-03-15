@@ -29,4 +29,7 @@ public:
 
 	virtual bool createSnapshot(const std::string& src_path,
 		const std::string& dest_path) = 0;
+
+	virtual bool rename(const std::string& src_name,
+		const std::string& dest_name) = 0;
 };

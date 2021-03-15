@@ -17,6 +17,7 @@ public:
 	virtual std::vector<SBtrfsFile> listFiles(const std::string& path) override;
 	virtual bool createSubvol(const std::string& path) override;
 	virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override;
+	virtual bool rename(const std::string& src_name, const std::string& dest_name) override;
 
 private:
 	std::unique_ptr<BtrfsFuse> btrfs;

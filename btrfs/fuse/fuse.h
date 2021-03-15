@@ -48,6 +48,8 @@ public:
 	bool create_snapshot(const std::string& src_path,
 		const std::string& dest_path);
 
+	bool rename(const std::string& orig_name, const std::string& new_name);
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);

@@ -749,7 +749,7 @@ bool BtrfsFuse::create_snapshot(const std::string& src_path, const std::string& 
     irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
     irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
     irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_CREATE_SNAPSHOT;
-    std::vector<char> bcs_buf(sizeof(btrfs_create_snapshot) + dest_path_w.size());
+    std::vector<char> bcs_buf(sizeof(btrfs_create_snapshot) + dest_path_w.size()*sizeof(wchar_t));
     btrfs_create_snapshot* bcs = reinterpret_cast<btrfs_create_snapshot*>(bcs_buf.data());
     irp->AssociatedIRP = irp.get();
     irp->UserBuffer = &bcs;
@@ -772,6 +772,48 @@ bool BtrfsFuse::create_snapshot(const std::string& src_path, const std::string& 
     }
 
     ObDeregisterHandle(hSrc);
+
+    closeFile(std::move(src_file_obj));
+
+    return ret;
+}
+
+bool BtrfsFuse::rename(const std::string& orig_name, const std::string& new_name)
+{
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(orig_name, MODE_READ, true, false);
+
+    if (src_file_obj.get() == nullptr)
+        return false;
+
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.MajorFunction = IRP_MJ_SET_INFORMATION;
+    irp->StackLocation.Parameters.SetFile.FileInformationClass = FileRenameInformation;
+
+
+    HANDLE root_handle = ObRegisterHandle(fs_data->root_file);
+
+    std::wstring new_name_w = ConvertToWchar(new_name);
+
+    std::vector<char> buf(sizeof(FILE_RENAME_INFORMATION) + new_name_w.size() * sizeof(wchar_t));
+    FILE_RENAME_INFORMATION* fri = reinterpret_cast<FILE_RENAME_INFORMATION*>(buf.data());
+    fri->RootDirectory = root_handle;
+    fri->ReplaceIfExists = TRUE;
+    fri->Flags = 0;
+    fri->FileNameLength = new_name_w.size();
+    
+    irp->StackLocation.Parameters.SetFile.Length = buf.size();
+    irp->StackLocation.FileObject = src_file_obj.get();
+    irp->AssociatedIrp.SystemBuffer = fri;
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_SET_INFORMATION](fs_data->fs, irp.get());
+
+    bool ret = false;
+    if (NT_SUCCESS(rc))
+    {
+        ret = true;
+    }
+
+    ObDeregisterHandle(root_handle);
 
     closeFile(std::move(src_file_obj));
 
