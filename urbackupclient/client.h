@@ -60,6 +60,7 @@ const unsigned int flag_with_orig_path = 16;
 const unsigned int flag_with_sequence = 32;
 const unsigned int flag_with_proper_symlinks = 64;
 
+
 const uint64 change_indicator_symlink_bit = 0x4000000000000000ULL;
 const uint64 change_indicator_special_bit = 0x2000000000000000ULL;
 const uint64 change_indicator_all_bits = change_indicator_symlink_bit | change_indicator_special_bit;
@@ -80,9 +81,18 @@ private:
 	volatile static bool pause;
 };
 
+enum CbtType
+{
+	CbtType_None,
+	CbtType_Datto,
+	CbtType_Era
+};
+
 struct SCRef
 {
-	SCRef(void): ok(false), dontincrement(false), cbt(false), for_imagebackup(false), with_writers(false) {
+	SCRef(void): ok(false), dontincrement(false), cbt(false),
+		for_imagebackup(false), with_writers(false),
+		cbt_type(CbtType_None) {
 #ifdef _WIN32
 		backupcom = NULL;
 #endif
@@ -105,6 +115,7 @@ struct SCRef
 	bool for_imagebackup;
 	bool with_writers;
 	std::string cbt_file;
+	CbtType cbt_type;
 };
 
 struct SCDirs
@@ -312,6 +323,11 @@ struct SQueueRef
 	}
 };
 
+#ifdef _WIN32
+struct _URBCT_BITMAP_DATA;
+typedef struct _URBCT_BITMAP_DATA* PURBCT_BITMAP_DATA;
+#endif
+
 class IndexThread : public IThread, public IFileServ::IReadErrorCallback, public IDeregisterFileSrvScriptFn
 {
 public:
@@ -353,6 +369,7 @@ public:
 	
 	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
+	static std::vector<std::string> buildExcludeList(const std::string& val);
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
@@ -418,9 +435,9 @@ private:
 
 	enum IndexErrorInfo
 	{
-		IndexErrorInfo_Ok,
-		IndexErrorInfo_Error,
-		IndexErrorInfo_NoBackupPaths
+		IndexErrorInfo_Ok = 0,
+		IndexErrorInfo_Error = 1,
+		IndexErrorInfo_NoBackupPaths = 2
 	};
 
 	IndexErrorInfo indexDirs(bool full_backup, bool simultaneous_other);
@@ -467,6 +484,7 @@ private:
 	void removeUnconfirmedVssDirs();
 	std::string expandPath(BSTR pathStr);
 	void removeBackupcomReferences(IVssBackupComponents *backupcom);
+	bool addFileToCbt(const std::string& fpath, const DWORD& blocksize, const PURBCT_BITMAP_DATA& bitmap_data);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
 	bool get_volumes_mounted_locally();
@@ -483,9 +501,9 @@ private:
 
 	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname, bool for_imagebackup);
 
-	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group);
+	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group, int* error_info=NULL);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
-	int execute_postindex_hook(bool incr, std::string server_token, int index_group);
+	int execute_postindex_hook(bool incr, std::string server_token, int index_group, IndexErrorInfo error_info);
 	std::string execute_script(const std::string& cmd, const std::string& args);
 
 	int execute_preimagebackup_hook(bool incr, std::string server_token);
@@ -524,6 +542,8 @@ private:
 	static void addFileExceptions(std::vector<std::string>& exclude_dirs);
 
 	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
+	static void addMacosExcludes(std::vector<std::string>& exclude_dirs);
+
 
 	void handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume);
 
@@ -573,7 +593,15 @@ private:
 
 	bool prepareCbt(std::string volume);
 
-	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
+	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file, CbtType cbt_type);
+
+#ifndef _WIN32
+	bool finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
+#endif
+
+	bool finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file, int64& hdat_file_era, int64& hdat_img_era);
+
+	bool finishCbtEra2(IFsFile* hdat, int64 hdat_era);
 
 	bool disableCbt(std::string volume);
 
@@ -608,6 +636,8 @@ private:
 	bool commitPhashQueue();
 
 	bool isAllSpecialDir(const SBackupDir& bdir);
+
+	bool punchHoleOrZero(IFile* f, int64 pos, const char* zero_buf, char* zero_read_buf, size_t zero_size);
 
 	SVolumesCache* volumes_cache;
 

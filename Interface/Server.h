@@ -31,6 +31,7 @@ class IScopedLock;
 class IDatabaseFactory;
 class IPipeThrottler;
 class IPipeThrottlerUpdater;
+class IWebSocket;
 
 struct SPostfile
 {
@@ -79,6 +80,9 @@ public:
 	virtual bool RemoveAction(IAction *action)=0;
 	virtual void setActionContext(std::string context)=0;
 	virtual void resetActionContext(void)=0;
+
+	virtual void addWebSocket(IWebSocket* websocket) = 0;
+	virtual THREAD_ID ExecuteWebSocket(const std::string& name, str_map& GET, str_map& PARAMS, IPipe* pipe, const std::string& endpoint_name) = 0;
 
 	virtual int64 getTimeSeconds(void)=0;
 	virtual int64 getTimeMS(void)=0;

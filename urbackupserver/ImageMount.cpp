@@ -521,6 +521,7 @@ std::string ImageMount::get_mount_path(int backupid, int clientid, int partition
 		has_mount_process = it != mount_processes.end();
 	}
 
+	bool image_mount_failed = false;
 	if ( (!image_inf.exists || image_inf.mounttime == 0)
 		|| has_mount_process)
 	{
@@ -528,7 +529,7 @@ std::string ImageMount::get_mount_path(int backupid, int clientid, int partition
 		{
 			if (!mount_image_int(backupid, partition, mounted_image, timeoutms, has_timeout, errmsg))
 			{
-				return std::string();
+				image_mount_failed = true;
 			}
 		}
 		else
@@ -554,6 +555,10 @@ std::string ImageMount::get_mount_path(int backupid, int clientid, int partition
 
 	if (os_directory_exists(ret))
 	{
+		if (image_mount_failed
+			&& getFiles(ret).empty())
+			return std::string();
+
 		mounted_image.reset(backupid);
 		if (image_inf.exists)
 			backup_dao.updateImageMounted(image_inf.id);
@@ -567,6 +572,10 @@ std::string ImageMount::get_mount_path(int backupid, int clientid, int partition
 
 	if (os_directory_exists(ret))
 	{
+		if (image_mount_failed
+			&& getFiles(ret).empty())
+			return std::string();
+
 		mounted_image.reset(backupid);
 		if (image_inf.exists)
 			backup_dao.updateImageMounted(image_inf.id);
@@ -584,6 +593,10 @@ std::string ImageMount::get_mount_path(int backupid, int clientid, int partition
 
 	if (os_directory_exists(ret))
 	{
+		if (image_mount_failed
+			&& getFiles(ret).empty())
+			return std::string();
+
 		mounted_image.reset(backupid);
 		if (image_inf.exists)
 			backup_dao.updateImageMounted(image_inf.id);

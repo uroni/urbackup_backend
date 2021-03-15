@@ -708,6 +708,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		Server->Log("FSCTL_SET_ZERO_DATA failed (setting unused image range) with errno " + convert(static_cast<int>(GetLastError())), LL_WARNING);
 		return false;
 	}
+	setBitmapRange(unused_start, unused_end, false);
 	return true;
 #else
 	if(!trim_warned)

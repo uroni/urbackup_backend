@@ -480,6 +480,15 @@ void BackupServer::startClients(FileClient &fc)
 				if( (it->second.changecount>5 && none_fits)
 					|| found_lan)
 				{
+					Server->Log("New client address for "+ curr_info.name+": " + curr_info.addr.toString()+" old address: "+it->second.addr.toString(), LL_INFO);
+					for (size_t j = 0; j < client_info.size(); ++j)
+					{
+						if (client_info[j].name == curr_info.name)
+						{
+							Server->Log("Available address (" + curr_info.name + "): " + client_info[j].addr.toString(), LL_INFO);
+						}
+					}
+
 					it->second.addr=curr_info.addr;
 					it->second.internet_connection=curr_info.internetclient;
 					std::string msg;
@@ -489,14 +498,16 @@ void BackupServer::startClients(FileClient &fc)
 					msg[7+sizeof(FileClient::SAddrHint)]=(curr_info.internetclient?1:0);
 					it->second.pipe->Write(msg);
 
-					Server->Log("New client address: "+it->second.addr.toString(), LL_INFO);
-
 					if(it->second.addr.is_ipv6)
 						ServerStatus::setIPv6(curr_info.name, it->second.addr.addr_ipv6);
 					else
 						ServerStatus::setIP(curr_info.name, it->second.addr.addr_ipv4);
 
 					it->second.offlinecount=0;
+				}
+				else if (!none_fits)
+				{
+					it->second.changecount = 0;
 				}
 			}
 		}

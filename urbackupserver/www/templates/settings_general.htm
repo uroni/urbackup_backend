@@ -6,8 +6,9 @@
 	<li><a href="#client" data-toggle="pill">{tClient}</a></li>
 	<li><a href="#archive" data-toggle="pill">{tArchive}</a></li>
 	<li><a href="#alerts" data-toggle="pill">{tAlerts}</a></li>
+	<li><a href="#passive" data-toggle="pill">{tLocal/passive clients}</a></li>
 	{internet_settings_start|s}
-	<li><a href="#internet" data-toggle="pill">{tInternet}</a></li>
+	<li><a href="#internet" data-toggle="pill">{tInternet/Active clients}</a></li>
 	{internet_settings_end|s}
 	<li><a href="#advanced" data-toggle="pill">{tAdvanced}</a></li>
 </ul>
@@ -24,9 +25,9 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="backupfolder">{tServer URL}:</label>
+				<label class="col-sm-4 control-label" for="server_url">{tServer URL for client file/backup access/browsing}:</label>
 				<div class="col-sm-6">
-					<input type="text" class="form-control" id="server_url" value="{server_url|s}"/>
+					<input type="text" class="form-control" id="server_url" value="{server_url|s}" placeholder="http://example.com:55414"/>
 				</div>
 			</div>
 			<div class="form-group">

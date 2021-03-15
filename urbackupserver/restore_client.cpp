@@ -293,7 +293,7 @@ namespace
 				}
 			}
 
-			fileserv->addIdentity(identity);
+			fileserv->addIdentity(identity, true);
 			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity, false);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl_filelist", identity, true, false));
 

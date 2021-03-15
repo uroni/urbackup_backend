@@ -115,21 +115,20 @@ void ServerSettings::createSettingsReaders(IDatabase* db, int clientid, std::aut
 	std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global,
 	int& settings_default_id)
 {
-	settings_default_id = 0;
+	settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
+
 	if(clientid>0)
 	{
-		settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
 		settings_default_id = settings_client->getValue("group_id", 0)*-1;
+
+		if (settings_default_id != 0)
+		{
+			settings_global.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=0"));
+		}
 	}
 	else
 	{
 		settings_default_id = 0;
-
-		if (clientid < 0)
-		{
-			settings_global.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=0"));
-			settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
-		}
 	}
 
 	settings_default.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid="+convert(settings_default_id)));
@@ -459,7 +458,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->local_speed = "-1";
 	readStringClientSetting(q_get_client_setting, "local_speed", std::string(), &settings->local_speed, false);
 	
-	settings->internet_mode_enabled = false;
+	settings->internet_mode_enabled = true;
 	readBoolClientSetting(q_get_client_setting, "internet_mode_enabled", &settings->internet_mode_enabled, false);
 
 	settings->silent_update = true;
@@ -564,6 +563,21 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 
 	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
+
+	settings->local_encrypt = true;
+	readBoolClientSetting(q_get_client_setting, "local_encrypt", &settings->local_encrypt, false);
+
+	settings->local_compress = true;
+	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress, false);
+
+	settings->download_threads = 1;
+	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
+	settings->hash_threads = 1;
+	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
+	settings->client_hash_threads = 1;
+	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+	settings->image_compress_threads = 0;
+	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -612,6 +626,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "internet_compress", &settings->internet_compress);
 	readBoolClientSetting(q_get_client_setting, "internet_encrypt", &settings->internet_encrypt);
 	readBoolClientSetting(q_get_client_setting, "internet_connect_always", &settings->internet_connect_always);
+	readBoolClientSetting(q_get_client_setting, "local_encrypt", &settings->local_encrypt);
+	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress);
 
 	readStringClientSetting(q_get_client_setting, "vss_select_components", "&", &settings->vss_select_components);
 
@@ -680,6 +696,11 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 
 	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
+
+	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
+	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
+	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
@@ -960,7 +981,7 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 {
 	std::string key;
 	key.resize(32);
-	Server->secureRandomFill((char*)key.data(), 32);
+	Server->secureRandomFill(&key[0], 32);
 	return key;
 }
 

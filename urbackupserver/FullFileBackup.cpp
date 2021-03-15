@@ -26,7 +26,7 @@
 #include "../urbackupcommon/fileclient/FileClient.h"
 #include "../urbackupcommon/filelist_utils.h"
 #include "server_running.h"
-#include "ServerDownloadThread.h"
+#include "ServerDownloadThreadGroup.h"
 #include "../urbackupcommon/file_metadata.h"
 #include "FileMetadataDownloadThread.h"
 #include "snapshot_helper.h"
@@ -223,18 +223,16 @@ bool FullFileBackup::doFileBackup()
 
 	std::string last_backuppath;
 	std::string last_backuppath_complete;
-	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, NULL, backuppath,
+	std::auto_ptr<ServerDownloadThreadGroup> server_download(new ServerDownloadThreadGroup(fc, NULL, backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components, filepath_corrections, max_file_id));
+		backup_with_components, server_settings->getSettings()->download_threads, server_settings.get(),
+		false, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
-
-	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
 
 	ServerStatus::setProcessTotalBytes(clientname, status_id, files_size);
 
@@ -452,7 +450,7 @@ bool FullFileBackup::doFileBackup()
 							}
 							else
 							{
-								ServerLogger::Log(logid, "Stoping shadowcopy \""+t+"\".", LL_DEBUG);
+								ServerLogger::Log(logid, "Stopping shadowcopy \""+t+"\".", LL_DEBUG);
 								server_download->addToQueueStopShadowcopy(t);
 							}							
 						}
@@ -547,7 +545,8 @@ bool FullFileBackup::doFileBackup()
 					else if (!file_ok
 						&& phash_load.get() != NULL
 						&& !script_dir
-						&& extra_params.find("no_hash") == extra_params.end())
+						&& extra_params.find("no_hash") == extra_params.end()
+						&& cf.size >= link_file_min_size)
 					{
 						if (!phash_load->getHash(line, curr_sha2))
 						{
@@ -618,7 +617,7 @@ bool FullFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 
-	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
+	while(!server_download->join(1000))
 	{
 		if(files_size==0)
 		{
@@ -716,6 +715,7 @@ bool FullFileBackup::doFileBackup()
 	std::stack<size_t> last_modified_offsets;
 	script_dir=false;
 	has_read_error = false;
+	size_t download_max_ok_id = server_download->getMaxOkId();
 	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 	{
 		if (has_read_error)
@@ -802,7 +802,7 @@ bool FullFileBackup::doFileBackup()
 					}					
 				}
 				else if(!cf.isdir && 
-					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
+					line <= (std::max)(download_max_ok_id, max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
 					bool metadata_missing = (!script_dir && metadata_download_thread.get()!=NULL
@@ -865,11 +865,18 @@ bool FullFileBackup::doFileBackup()
 		}
 	}
 
-	if( bsh->hasError() || bsh_prepare->hasError() )
+	for (size_t i = 0; i < bsh.size(); ++i)
 	{
-		disk_error=true;
+		if (bsh[i]->hasError())
+			disk_error = true;
 	}
-	else if(verification_ok)
+	for (size_t i = 0; i < bsh_prepare.size(); ++i)
+	{
+		if (bsh_prepare[i]->hasError())
+			disk_error = true;
+	}
+
+	if(!disk_error && verification_ok)
 	{
 		FileIndex::flush();
 

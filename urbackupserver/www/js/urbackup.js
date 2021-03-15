@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2005000400;
+g.current_version=2005001300;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -1041,6 +1041,7 @@ g.status_action_add_internetclient=2;
 g.status_action_stop_show=3;
 g.status_action_reset_error=4;
 g.status_action_stop_show_new_version=5;
+g.status_action_reset_client_uid=6;
 function show_status1(hostname, action, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
@@ -1079,6 +1080,10 @@ function show_status1(hostname, action, remove_client, stop_client_remove)
 		else if(action==g.status_action_stop_show_new_version)
 		{
 			pars+="stop_show_version="+hostname;
+		}
+		else if(action==g.status_action_reset_client_uid)
+		{
+			pars+="reset_client_uid="+hostname;
 		}
 	}
 	else if(remove_client && remove_client.length>0)
@@ -1342,7 +1347,15 @@ function show_status2(data)
 			case 11: obj.status=trans("ident_err")+" <a href=\"help.htm#ident_err\" target=\"_blank\">?</a>"; obj.online_add_status=true; break;
 			case 12: obj.status=trans("too_many_clients_err"); obj.online_add_status=true; break;
 			case 13: obj.status=trans("authentication_err"); obj.online_add_status=true; break;
-			default: obj.status="&nbsp;"
+			case 14:
+				obj.status=trans("uid_changed_err"); obj.online_add_status=true;
+				if(obj.uid && obj.uid.length>0)
+					obj.reset_client_uid=true;
+				break;
+			case 15: obj.status=trans("authenticating"); break;
+			case 16: obj.status=trans("exchanging_settings"); break;
+			case 17: obj.status=trans("client_starting_up"); break;
+			default: obj.status="&nbsp;";
 		}
 		
 		if(data.allow_modify_clients)
@@ -1501,6 +1514,7 @@ function show_status2(data)
 	}
 	
 	g.server_identity = data.server_identity;
+	g.server_pubkey = data.server_pubkey;
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
@@ -2295,6 +2309,13 @@ function show_backups2(data)
 		g.data_f=ndata;
 	}
 }
+function allowNewClient(clientid)
+{
+	if(confirm(trans("confirm_allow_new_client")))
+	{
+		show_status1(""+clientid, g.status_action_reset_client_uid);
+	}
+}
 function tabMouseOver(obj)
 {
 	g.mouse_over_styles=[];
@@ -2597,7 +2618,7 @@ function build_alert_params(alert_script)
 	
 	return {"options": script_options, "params": params_html};
 }
-function update_alert_params()
+function update_alert_params(nochange)
 {
 	var p = {};
 	for(var i=0;i<g.alert_params.length;++i)
@@ -2623,7 +2644,8 @@ function update_alert_params()
 		}
 	}
 	g.alert_params = $.param(p);
-	settingChangeKey("alert_params");
+	if(!nochange)
+		settingChangeKey("alert_params");
 }
 function update_alert_unit(name)
 {
@@ -2693,7 +2715,7 @@ function getVal(val)
 	}
 	else if(val.use==4)
 	{
-		return val.value_group;
+		return val.value_client;
 	}
 	else
 	{
@@ -2786,25 +2808,17 @@ function settingSwitch()
 		&& (use==3 || use>4))
 		use=1;
 
-	if(use==2
-		&& (typeof g.curr_settings[key].value == "undefined"
-			|| g.curr_settings[key].value.length==0))
+	if(use==2 &&
+		typeof g.curr_settings[key].value == "undefined")
 	{
 		g.curr_settings[key].value = getVal(g.curr_settings[key])
-	}
-
-	if(use==4
-		&& (typeof g.curr_settings[key].value_client == "undefined"
-			|| g.curr_settings[key].value_client.length==0))
-	{
-		g.curr_settings[key].value_client = getVal(g.curr_settings[key])
 	}
 
 	g.curr_settings[key].use=use;
 
 	renderSettingSwitch(key);
 
-	if(!I(key+"_home"))
+	if(!I(key+"_group"))
 	{
 		var val = getVal(g.curr_settings[key]);
 
@@ -2837,7 +2851,7 @@ function settingSwitch()
 	}
 	else
 	{
-		I(key+"_home").value = g.curr_settings[key].value;
+		I(key).value = g.curr_settings[key].value;
 		I(key+"_client").value = g.curr_settings[key].value_client;
 		I(key+"_group").value = g.curr_settings[key].value_group;
 	}
@@ -3039,7 +3053,7 @@ function renderMergeSetting(key)
 	c+='</div>';
 
 	c+='<div class="input-group">';
-	c+='<input type="text" class="form-control" id="'+key+'_home" value="'+escapeHTMLDoubleQuote(val.value)+'"/>';
+	c+='<input type="text" class="form-control" id="'+key+'" value="'+escapeHTMLDoubleQuote(val.value)+'"/>';
 	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-home move_left\'></span> Here" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Here"></input></div>';
 	c+='</div>';
 
@@ -3095,20 +3109,20 @@ function renderMergeSettingSwitch(key)
 
 	if(use&2)
 	{
-		I(key+"_check_group").checked=true;
+		I(key+"_check_home").checked=true;
 	}
 	else
 	{
-		I(key+"_check_group").checked=false;
+		I(key+"_check_home").checked=false;
 	}
 
 	if(use&4)
 	{
-		I(key+"_check_group").checked=true;
+		I(key+"_check_client").checked=true;
 	}
 	else
 	{
-		I(key+"_check_group").checked=false;
+		I(key+"_check_client").checked=false;
 	}
 }
 function renderSettingSwitchAll()
@@ -3394,6 +3408,20 @@ function show_settings2(data)
 			g.curr_settings = data.settings;
 			data.settings = getCurrentSettings(data.settings);
 			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
+			var internet_server = data.settings.internet_server;
+			if(internet_server.indexOf("ws://")!=0 &&
+				internet_server.indexOf("wss://")!=0 &&
+				internet_server.indexOf("urbackup://")!=0 )
+			{
+				if(data.settings.internet_server_port==55415)
+				{
+					data.settings.internet_server = "urbackup://" + internet_server;
+				}
+				else
+				{
+					data.settings.internet_server = "urbackup://" + internet_server + ":" + data.settings.internet_server_port;
+				}
+			}
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -4026,7 +4054,7 @@ function removeClientFromGroup()
 function settingsCheckboxHandle(cbid)
 {
 	if(!I(cbid)) return;
-	
+
 	if(I(cbid+'_disable').checked && I(cbid).disabled==false)
 	{
 		I(cbid).disabled=true;
@@ -4137,7 +4165,13 @@ g.settings_list=[
 "alert_script",
 "alert_params",
 "archive",
-"client_settings_tray_access_pw"
+"client_settings_tray_access_pw",
+"local_encrypt",
+"local_compress",
+"download_threads",
+"hash_threads",
+"client_hash_threads",
+"image_compress_threads"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4160,7 +4194,8 @@ g.general_settings_list=[
 "use_incremental_symlinks",
 "show_server_updates",
 "server_url",
-"internet_expect_endpoint"
+"internet_expect_endpoint",
+"internet_server_bind_port"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -4175,7 +4210,6 @@ g.mail_settings_list=[
 ];
 g.internet_settings_list=[
 "internet_server",
-"internet_server_port",
 "internet_server_proxy"
 ];
 g.ldap_settings_list=[
@@ -4229,10 +4263,12 @@ g.client_settings_list=[
 "internet_compress",
 "internet_encrypt",
 "internet_connect_always",
-"vss_select_components"
+"vss_select_components",
+"local_compress",
+"local_encrypt"
 ];
 
-g.time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
+g.time_span_regex = /^([-]?[\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
 g.time_span_speed_regex = /^([\d.]*[%]?(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
 
 function validateCommonSettings()
@@ -4240,18 +4276,19 @@ function validateCommonSettings()
 	if(!validate_text_regex([{ id: "update_freq_incr", regexp: g.time_span_regex },
 							 { id: "update_freq_full", regexp: g.time_span_regex },
 							 { id: "update_freq_image_incr", regexp: g.time_span_regex },
-							 { id: "update_freq_image_full", regexp: g.time_span_regex } ]) ) return false;
+							 { id: "update_freq_image_full", regexp: g.time_span_regex } ],
+							 getSettingSaveVal) ) return false;
 	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
-							"startup_backup_delay"] ) ) return false;
-	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_speed_regex})) return false;
-	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_speed_regex })) return false;
+							"startup_backup_delay"], getSettingSaveVal) ) return false;
+	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_speed_regex}, getSettingSaveVal)) return false;
+	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_speed_regex }, getSettingSaveVal)) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
 	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
-							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }] ) ) return false;
+							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ], getSettingSaveVal) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }], getSettingSaveVal) ) return false;
 	if(!validate_alert_params()) return;
 	return true;
 }
@@ -4263,15 +4300,19 @@ function getSettingSave(key)
 		|| key=="backup_window_full_image" )
 		&& I("backup_window"))
 	{
-		return g.curr_settings["backup_window_incr_file"];
+		key= "backup_window_incr_file";
 	}
+	
+	if(typeof g.curr_settings[key].value!="undefined")
+		return g.curr_settings[key];
+	else if(typeof g.curr_settings[key].use!="undefined")
+		return {use: 2, value: ""};
 	else
-	{
-		if(typeof g.curr_settings[key].value!="undefined")
-			return g.curr_settings[key];
-		else
-			return {use: 2, value: g.curr_settings[key]};
-	}		
+		return {use: 2, value: g.curr_settings[key]};		
+}
+function getSettingSaveVal(key)
+{
+	return getSettingSave(key).value;
 }
 function saveGeneralSettings()
 {
@@ -4323,15 +4364,59 @@ function saveLdapSettings()
 }
 function getInternetSettings()
 {	
-	if(!I('internet_server_port')) return "";
-	if(I('internet_server_port').value.indexOf(";")==-1 
-		&& !validate_text_int(["internet_server_port"]) ) return null;
-	if(!validate_text_regex([{ id: "internet_server", regexp: /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)/i }])) return null;
-	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	if(!I('internet_server')) return "";
+
+	var internet_servers = [I("internet_server").value];
+
+	if(internet_servers[0].indexOf(";")!=-1)
+	{
+		internet_servers = internet_servers.split(";");
+	}
+	
+	var internet_server_par = "";
+	var internet_server_port = 55415;
+	for(var i=0;i<internet_servers.length;++i)
+	{
+		var internet_server = internet_servers[i];
+
+		var server_regex = /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^(urbackup):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i;
+
+		if(!server_regex.test(internet_server))
+		{
+			alert(trans("validate_err_notregexp_internet_server"));
+			return null;
+		}
+
+		if(internet_server.indexOf("urbackup://")==0)
+		{
+			var internet_hostname = internet_server.substr(internet_server.indexOf("://")+3);
+			if(internet_hostname.indexOf(":")!=-1)		
+			{
+				internet_port = internet_hostname.substr(internet_hostname.indexOf(":")+1);
+				internet_hostname = internet_hostname.substr(0, internet_hostname.indexOf(":"));
+				if(internet_port.indexOf("/")!=-1)
+				{
+					internet_port = internet_port.substr(0, internet_port.indexOf("/"));
+				}
+				internet_server_port = parseInt(internet_port);
+			}
+			internet_server = internet_hostname;
+		}
+		internet_server_par+=internet_server;
+		if(i+1<internet_servers.length)
+			internet_server_par+=";";
+	}	
+
 	var pars="";
+	pars+="&internet_server="+encodeURIComponent(internet_server_par);
+	pars+="&internet_server_port="+encodeURIComponent(internet_server_port);
+
+	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
-		pars+=getPar(g.internet_settings_list[i]);
+		if(g.internet_settings_list[i]!="internet_server")
+			pars+=getPar(g.internet_settings_list[i]);
 	}
 	return pars;
 }
@@ -5873,7 +5958,7 @@ function addNewClient1()
 	if(!startLoading()) return;
 	stopLoading();
 	
-	var ndata=dustRender("add_client", {server_identity: g.server_identity});
+	var ndata=dustRender("add_client", {server_identity: g.server_identity, server_pubkey: g.server_pubkey});
 	
 	if(g.data_f!=ndata)
 	{
@@ -6136,10 +6221,9 @@ function saveReportScript()
 function updateAlertScriptParams()
 {
 	var script_id = I("alert_script").value;
-	settingChangeKey("alert_script");
 	var aparams = build_alert_params(script_id);
 	I("alert_script_params_container").innerHTML = aparams.params;
-	update_alert_params();
+	update_alert_params(true);
 }
 function updateArchiveParams()
 {

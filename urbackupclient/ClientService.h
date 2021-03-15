@@ -3,6 +3,7 @@
 #include "../Interface/Thread.h"
 #include "../Interface/File.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
+#include "../cryptoplugin/CryptoFactory.h"
 
 #include <map>
 #include <deque>
@@ -237,11 +238,11 @@ public:
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
-	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset);
+	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
-	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
+	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
 	void replaceSettings(const std::string &pData);
@@ -391,7 +392,29 @@ private:
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;
-	static std::map<std::pair<std::string, std::string>, std::string> challenges;
+
+	struct SChallenge
+	{
+		SChallenge()
+			: shared_key_exchange(NULL),
+			local_compressed(false)
+		{
+		}
+
+		SChallenge(std::string challenge_str,
+			IECDHKeyExchange* shared_key_exchange,
+			bool local_compressed)
+			: challenge_str(challenge_str),
+			shared_key_exchange(shared_key_exchange),
+			local_compressed(local_compressed)
+		{}
+
+		std::string challenge_str;
+		IECDHKeyExchange* shared_key_exchange;
+		bool local_compressed;
+	};
+
+	static std::map < std::pair<std::string, std::string>, SChallenge > challenges;
 	static bool has_file_changes;
 	static bool last_metered;
 
@@ -445,7 +468,11 @@ private:
 
 	int64 idle_timeout;
 
+	static int64 startup_timestamp;
+
 	std::string async_file_list_id;
+
+	bool is_encrypted;
 };
 
 class ScopedRemoveRunningBackup

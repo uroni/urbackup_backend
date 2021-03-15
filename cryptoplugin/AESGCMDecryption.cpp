@@ -34,7 +34,7 @@ AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_passw
 	if(hash_password)
 	{
 		m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
-		CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)password.c_str(), password.size() );
+		CryptoPP::SHA256().CalculateDigest(m_sbbKey.BytePtr(), reinterpret_cast<const byte*>(password.data()), password.size() );
 	}
 	else
 	{

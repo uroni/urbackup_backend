@@ -19,6 +19,7 @@ namespace
 	const char* incr_image_style_to_full = "to-full";
 	const char* incr_image_style_to_last = "to-last";
 
+	const int c_use_undefined = -1;
 	const int c_use_group = 1;
 	const int c_use_value = 2;
 	const char* c_use_value_str = "2";
@@ -143,6 +144,12 @@ struct SSettings
 	std::string alert_params;
 	std::string archive;
 	std::string client_settings_tray_access_pw;
+	bool local_encrypt;
+	bool local_compress;
+	int download_threads;
+	int hash_threads;
+	int client_hash_threads;
+	int image_compress_threads;
 };
 
 struct SLDAPSettings

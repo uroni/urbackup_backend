@@ -23,6 +23,9 @@ public:
 
 	virtual void shutdown(void);
 
+	virtual size_t getNumWaiters() {
+		return 0;
+	};
 	virtual size_t getNumElements(void){ return 0;};
 
 	SOCKET getSocket(void);
@@ -47,4 +50,6 @@ private:
 
 	std::vector<IPipeThrottler*> incoming_throttlers;
 	std::vector<IPipeThrottler*> outgoing_throttlers;
+
+	
 };

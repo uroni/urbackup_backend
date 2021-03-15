@@ -66,6 +66,9 @@ namespace
 	};
 #define FIEMAP_MAX_OFFSET (~0ULL)
 #define FIEMAP_EXTENT_LAST 0x00000001
+#define FIEMAP_EXTENT_UNKNOWN 0x00000002
+#define FIEMAP_EXTENT_UNWRITTEN 0x00000800
+#define FIEMAP_EXTENT_SHARED 0x00002000
 #define FS_IOC_FIEMAP _IOWR('f', 11, struct fiemap)
 }
 #endif
@@ -531,6 +534,16 @@ std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, in
 		ret[i].offset = ext.fe_logical;
 		ret[i].size = ext.fe_length;
 		ret[i].volume_offset = ext.fe_physical;
+
+		if (ext.fe_flags & FIEMAP_EXTENT_UNKNOWN)
+		{
+			ret[i].volume_offset = -1;
+		}
+
+		if (ext.fe_flags & FIEMAP_EXTENT_UNWRITTEN)
+		{
+			ret[i].flags |= SFileExtent::FeFlag_Unwritten;
+		}
 	}
 
 	if (starting_offset == 0
@@ -553,5 +566,15 @@ IFsFile::os_file_handle File::getOsHandle(bool release_handle)
 		fd = -1;
 	}
 	return ret;
+}
+
+int64 File::getValidDataLength(IVdlVolCache* p_vol_cache)
+{
+	return -1;
+}
+
+IVdlVolCache* File::createVdlVolCache()
+{
+	return NULL;
 }
 #endif

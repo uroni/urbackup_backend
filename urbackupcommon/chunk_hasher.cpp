@@ -154,11 +154,18 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	std::vector<IFsFile::SFileExtent> extents;
 	size_t curr_extent_idx = 0;
 	IFsFile* fs_f = dynamic_cast<IFsFile*>(f);
+	int64 max_vdl = fsize;
 	if (cbt_hash_file.first!=NULL
 		&& treehash!=NULL
 		&& fs_f!=NULL)
 	{
 		extents = fs_f->getFileExtents(0, cbt_hash_file.second, has_more_extents);
+		IVdlVolCache* vdl_vol_cache = fs_f->createVdlVolCache();
+		max_vdl = fs_f->getValidDataLength(vdl_vol_cache);
+		Server->destroy(vdl_vol_cache);
+
+		if (max_vdl < 0)
+			max_vdl = fsize;
 	}
 
 	for(_i64 pos=0;pos<fsize;)
@@ -302,8 +309,11 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 			}
 
 			if (curr_extent_idx < extents.size()
+				&& extents[curr_extent_idx].volume_offset >= 0
+				&& !(extents[curr_extent_idx].flags & IFsFile::SFileExtent::FeFlag_Unwritten)
 				&& extents[curr_extent_idx].offset <= pos
-				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= epos)
+				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= epos
+				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size <= max_vdl)
 			{
 				int64 volume_pos = extents[curr_extent_idx].volume_offset + (pos - extents[curr_extent_idx].offset);
 				int64 index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);

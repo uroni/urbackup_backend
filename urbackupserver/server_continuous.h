@@ -14,7 +14,7 @@
 #include "../stringtools.h"
 #include "server_settings.h"
 #include "database.h"
-#include "ServerDownloadThread.h"
+#include "ServerDownloadThreadGroup.h"
 #include "server_log.h"
 #include "dao/ServerBackupDao.h"
 #include "dao/ServerFilesDao.h"
@@ -169,7 +169,7 @@ public:
 		if(server_download.get())
 		{
 			server_download->queueStop();
-			Server->getThreadPool()->waitFor(server_download_ticket);
+			server_download->join(-1);
 		}
 
 		if(has_fullpath_entryid_mapping_table)
@@ -714,14 +714,12 @@ private:
 	void constructServerDownloadThread()
 	{
 		std::vector<std::string> shares_without_snapshot;
-		server_download.reset(new ServerDownloadThread(*fileclient.get(),
+		server_download.reset(new ServerDownloadThreadGroup(*fileclient.get(),
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
 			false, clientid, clientname, std::string(), use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version,
-			0, logid, true, shares_without_snapshot, true, NULL, false, filepath_corrections, max_file_id));
-
-		server_download_ticket = Server->getThreadPool()->execute(server_download.get(), "backup download");
+			0, logid, true, shares_without_snapshot, true, NULL, false, 1, server_settings.get(), true, filepath_corrections, max_file_id));
 	}
 
 	bool execMod(SChange& change)
@@ -940,8 +938,7 @@ private:
 
 	std::auto_ptr<ServerSettings> server_settings;
 
-	std::auto_ptr<ServerDownloadThread> server_download;
-	THREADPOOL_TICKET server_download_ticket;
+	std::auto_ptr<ServerDownloadThreadGroup> server_download;
 
 	std::deque<SQueueItem> dl_queue;
 

@@ -23,6 +23,7 @@
 #include "file_permissions.h"
 #include "DirectoryWatcherThread.h"
 #include "../urbackupcommon/json.h"
+#include "ClientService.h"
 #include <assert.h>
 
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
@@ -1106,11 +1107,29 @@ bool IndexThread::getVssSettings()
 	bool ret = false;
 	if (curr_settings.get() != NULL)
 	{
+		std::string use_val;
+		int use = curr_settings->getValue("vss_select_components.use", c_use_value_client);
+
 		std::string val;
-		if (!curr_settings->getValue("vss_select_components", &val)
-			 && !curr_settings->getValue("vss_select_components_def", &val))
+		if (use & c_use_value_client)
 		{
-			val = "default=1";
+			val = curr_settings->getValue("vss_select_components.client");
+		}
+		if (use & c_use_group)
+		{
+			std::string add = curr_settings->getValue("vss_select_components.group");
+			if (!add.empty()
+				&& add[0] != '&')
+				val += "&";
+			val += add;
+		}
+		if (use & c_use_value)
+		{
+			std::string add = curr_settings->getValue("vss_select_components.home");
+			if (!add.empty()
+				&& add[0] != '&')
+				val += "&";
+			val += add;
 		}
 
 		if (!val.empty())

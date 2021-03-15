@@ -211,6 +211,7 @@ do
 done
 
 install -c "backup_scripts/list" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/list_incr" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbdump" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresqldump" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresbase" "$PREFIX/share/urbackup/scripts"
@@ -218,6 +219,7 @@ install -c "backup_scripts/postgresqlprebackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/postgresqlpostbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/setup-postgresbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbxtrabackup" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/mariadbxtrabackup_incr" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/restore-mariadbbackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbprebackup" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadbpostbackup" "$PREFIX/share/urbackup/scripts"
@@ -229,6 +231,8 @@ install -c "lvm_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "lvm_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_create_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_remove_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_create_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_remove_snapshot" "$PREFIX/share/urbackup"
 install -c "filesystem_snapshot_common" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
@@ -418,6 +422,7 @@ then
     DATTO=no
     LVM=no
     BTRFS=no
+	DMSETUP=no
 
     if [ $DEBIAN = no ]
     then
@@ -501,6 +506,14 @@ then
 		echo "-LVM not installed"
 	fi
 	
+	if command -v dmsetup >/dev/null 2>&1
+	then
+		DMSETUP=yes
+		echo "+dmsetup present"
+	else
+		echo "-dmsetup not present"
+	fi
+	
 
     while true
     do
@@ -519,8 +532,13 @@ then
         then
             echo "3) btrfs filesystem snapshots (dattobd and LVM will automatically use btrfs snapshots for btrfs filesystems)"
         fi
+		
+		if [ $DMSETUP != no ]
+        then
+            echo "4) Linux device mapper based snapshots (supports image backups and changed block tracking)"
+        fi
 
-        echo "4) Use no snapshot mechanism"
+        echo "5) Use no snapshot mechanism"
 
         read snapn
 
@@ -540,6 +558,11 @@ then
         fi
 
         if [ "x$snapn" = x4 ]
+        then
+            break
+        fi
+		
+		if [ "x$snapn" = x5 ]
         then
             break
         fi
@@ -591,6 +614,36 @@ then
     fi
 	
 	if [ $snapn = 4 ]
+	then
+		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_create_snapshot"
+		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_remove_snapshot"
+		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_create_snapshot"
+		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_remove_snapshot"
+		
+		if [ $DEBIAN = yes ] || [ $UBUNTU = yes ]
+		then
+			echo "## Install thin-provisioning tools for changed block detection and partclone for used space optimization ##"
+			apt-get install thin-provisioning-tools partclone || true
+		fi
+		
+		echo "Convert root device into device mapper device on boot (initramfs)? This is required for root device/filesystem backup. [Y/n]"
+		read yn
+		if [ "x$yn" != xn ]
+		then
+			if [ -e /usr/share/initramfs-tools/hooks ]
+			then
+				install -c "hooks_urbackup-setup-snapshot" /usr/share/initramfs-tools/hooks/urbackup-setup-snapshot
+				mkdir -p /usr/share/initramfs-tools/scripts/local-top
+				install -c "scripts_local-top_urbackup-setup-snapshot" /usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot
+				update-initramfs -u
+				echo "Info: You need to reboot your system in order to be able to snapshot the root file system/device"
+			else
+				echo "Did not find initramfs-tools. Installation failed."
+			fi
+		fi
+	fi
+	
+	if [ $snapn = 5 ]
 	then
 		touch $PREFIX/etc/urbackup/no_filesystem_snapshot
 		echo "Configured no snapshot mechanism"

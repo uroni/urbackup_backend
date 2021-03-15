@@ -136,7 +136,7 @@ public:
 
 	bool getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data, int64& generation);
 
-	void addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	void addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	void modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	bool hasFiles(std::string path, int tgroup);
 	

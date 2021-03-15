@@ -48,13 +48,15 @@ namespace
 	size_t getNumCompThreads(bool read_only)
 	{
 		if (read_only)
-			return 0;
+			return 1;
 
 		const size_t maxCpus = 5;
 #ifdef _WIN32
 		SYSTEM_INFO system_info;
 		GetSystemInfo(&system_info);
 		DWORD numCpus = system_info.dwNumberOfProcessors;
+		if (numCpus == 0)
+			return 1;
 		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
 #else
 		long numCpus = sysconf(_SC_NPROCESSORS_ONLN);
@@ -62,12 +64,16 @@ namespace
 		{
 			numCpus = 2;
 		}
+		else if (numCpus == 0)
+		{
+			numCpus = 1;
+		}
 		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
 #endif
 	}
 }
 
-VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress, size_t compress_n_threads)
 	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false),
 	file(NULL)
 {
@@ -98,7 +104,7 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 
 	if(check_if_compressed() || compress)
 	{
-		compressed_file = new CompressedFile(backing_file, openedExisting, read_only, getNumCompThreads(pRead_only));
+		compressed_file = new CompressedFile(backing_file, openedExisting, read_only, compress_n_threads==0 ? getNumCompThreads(pRead_only): compress_n_threads);
 		file = compressed_file;
 
 		if(compressed_file->hasError())
@@ -162,7 +168,7 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 	}
 }
 
-VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress, uint64 pDstsize)
+VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress, uint64 pDstsize, size_t compress_n_threads)
 	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false), file(NULL)
 {
 	compressed_file=NULL;
@@ -191,7 +197,7 @@ VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 	if(check_if_compressed() || compress)
 	{
-		file = new CompressedFile(backing_file, openedExisting, read_only, getNumCompThreads(pRead_only));
+		file = new CompressedFile(backing_file, openedExisting, read_only, compress_n_threads==0 ? getNumCompThreads(pRead_only) : compress_n_threads);
 	}
 	else
 	{

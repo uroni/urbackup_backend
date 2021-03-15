@@ -36,6 +36,8 @@ public:
 
 	virtual void shutdown(void);
 
+	virtual size_t getNumWaiters();;
+
 	virtual size_t getNumElements(void);
 
 	void destroyBackendPipeOnDelete(bool b);

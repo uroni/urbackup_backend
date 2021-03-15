@@ -25,7 +25,7 @@
 #include "server_dir_links.h"
 #include "server_running.h"
 #include "server_cleanup.h"
-#include "ServerDownloadThread.h"
+#include "ServerDownloadThreadGroup.h"
 #include "FileIndex.h"
 #include <stack>
 #include "../urbackupcommon/file_metadata.h"
@@ -324,14 +324,15 @@ bool IncrFileBackup::doFileBackup()
 
 		ServerLogger::Log(logid, clientname+": Creating snapshot...", LL_INFO);
 		std::string errmsg;
-		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single, errmsg)
-			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
+		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single+ ".startup-del", errmsg)
+			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single+ ".startup-del") )
 		{
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
 				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
 
-			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single))
+			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single+".startup-del")
+				|| SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
 			{
 				if (zfs_file)
 				{
@@ -367,16 +368,16 @@ bool IncrFileBackup::doFileBackup()
 					return false;
 				}
 
-				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				if (!os_link_symbolic(mountpoint, backuppath + ".startup-del"))
 				{
 					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 
-				if (!os_rename_file(backuppath + "_new", backuppath))
+				if (!os_rename_file(backuppath + ".startup-del", backuppath))
 				{
-					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + ".startup-del to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
@@ -403,29 +404,50 @@ bool IncrFileBackup::doFileBackup()
 					return false;
 				}
 
-				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				if (!os_link_symbolic(mountpoint, backuppath + ".startup-del"))
 				{
 					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 
-				if (!os_rename_file(backuppath + "_new", backuppath))
+				Server->deleteFile(os_file_prefix(backuppath + ".startup-del" + os_file_sep() + ".hashes" + os_file_sep() + sync_fn));
+				os_sync(backuppath + ".startup-del" + os_file_sep() + ".hashes");
+
+				if (!os_rename_file(backuppath + ".startup-del", backuppath))
 				{
-					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + ".startup-del to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (FileExists(backuppath_hashes + os_file_sep() + sync_fn))
+				{
+					ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
 					has_early_error = true;
 					return false;
 				}
 			}
-
-			Server->deleteFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn));
-			os_sync(backuppath_hashes);
-
-			if (FileExists(backuppath_hashes + os_file_sep() + sync_fn))
+			else
 			{
-				ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
-				has_early_error = true;
-				return false;
+				Server->deleteFile(os_file_prefix(backuppath + ".startup-del" + os_file_sep() + ".hashes" + os_file_sep() + sync_fn));
+				os_sync(backuppath + ".startup-del" + os_file_sep() + ".hashes");
+
+				if (FileExists(backuppath_hashes + ".startup-del" + os_file_sep() + sync_fn))
+				{
+					ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_rename_file(backuppath + ".startup-del",
+					backuppath))
+				{
+					ServerLogger::Log(logid, "Error renaming new backup subvolume from " + backuppath + ".startup-del to " + backuppath + ". "
+						+ os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
 			}
 		}
 	}
@@ -501,18 +523,16 @@ bool IncrFileBackup::doFileBackup()
 	bool backup_with_components;
 	_i64 files_size = getIncrementalSize(tmp_filelist, diffs, backup_with_components);
 
-	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
+	std::auto_ptr<ServerDownloadThreadGroup> server_download(new ServerDownloadThreadGroup(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components, filepath_corrections, max_file_id));
+		backup_with_components, server_settings->getSettings()->download_threads, server_settings.get(), 
+		intra_file_diffs, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
-
-	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
 
 	char buffer[4096];
 	_u32 read;
@@ -1098,7 +1118,8 @@ bool IncrFileBackup::doFileBackup()
 							&& extra_params.find("sym_target")==extra_params.end()
 							&& extra_params.find("special") == extra_params.end()
 							&& !phash_load_offline
-							&& extra_params.find("no_hash")==extra_params.end())
+							&& extra_params.find("no_hash")==extra_params.end()
+							&& cf.size >= link_file_min_size)
 						{
 							if (!phash_load->getHash(line, curr_sha2))
 							{
@@ -1348,7 +1369,7 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 
-	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
+	while(!server_download->join(1000))
 	{
 		if(files_size==0)
 		{
@@ -1409,9 +1430,15 @@ bool IncrFileBackup::doFileBackup()
 
 	waitForFileThreads();
 
-	if( bsh->hasError() || bsh_prepare->hasError() )
+	for (size_t i = 0; i < bsh.size(); ++i)
 	{
-		disk_error=true;
+		if (bsh[i]->hasError())
+			disk_error = true;
+	}
+	for (size_t i = 0; i < bsh_prepare.size(); ++i)
+	{
+		if (bsh_prepare[i]->hasError())
+			disk_error = true;
 	}
 
 	if (!r_offline && !c_has_error && !disk_error)

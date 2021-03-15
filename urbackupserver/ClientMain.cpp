@@ -64,6 +64,9 @@
 #include "../fileservplugin/IFileServ.h"
 #include "DataplanDb.h"
 #include "ImageMount.h"
+#include "../urbackupcommon/InternetServicePipe2.h"
+#include "../urbackupcommon/CompressedPipe2.h"
+#include "../urbackupcommon/CompressedPipeZstd.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -85,6 +88,8 @@ const unsigned int c_sleeptime_failed_filebackup=20*60;
 const unsigned int c_exponential_backoff_div=2;
 const unsigned int c_image_cowraw_bit=1024;
 
+const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
+
 
 int ClientMain::running_backups=0;
 int ClientMain::running_file_backups=0;
@@ -95,8 +100,10 @@ IMutex* ClientMain::cleanup_mutex = NULL;
 std::map<int, std::vector<SShareCleanup> > ClientMain::cleanup_shares;
 int ClientMain::restore_client_id = -1;
 bool ClientMain::running_backups_allowed=true;
-
-
+IMutex* ClientMain::ecdh_key_exchange_mutex = NULL;
+std::vector<std::pair<IECDHKeyExchange*, int64> > ClientMain::ecdh_key_exchange_buffer;
+IMutex* ClientMain::client_uid_reset_mutex = NULL;
+ICondition* ClientMain::client_uid_reset_cond = NULL;
 
 ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName,
 	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
@@ -129,6 +136,7 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	update_version=0;
 
 	tcpstack.setAddChecksum(internet_connection);
+	tcpstack_checksum.setAddChecksum(true);
 
 	last_backup_try = 0;
 
@@ -157,6 +165,7 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	session_identity_refreshtime = 0;
 	connection_metered = false;
 	do_reauthenticate = false;
+	update_capa = false;
 }
 
 ClientMain::~ClientMain(void)
@@ -180,6 +189,9 @@ void ClientMain::init_mutex(void)
 	running_backup_mutex=Server->createMutex();
 	tmpfile_mutex=Server->createMutex();
 	cleanup_mutex=Server->createMutex();
+	ecdh_key_exchange_mutex = Server->createMutex();
+	client_uid_reset_cond = Server->createCondition();
+	client_uid_reset_mutex = Server->createMutex();
 }
 
 void ClientMain::destroy_mutex(void)
@@ -187,6 +199,15 @@ void ClientMain::destroy_mutex(void)
 	Server->destroy(running_backup_mutex);
 	Server->destroy(tmpfile_mutex);
 	Server->destroy(cleanup_mutex);
+	Server->destroy(ecdh_key_exchange_mutex);
+	Server->destroy(client_uid_reset_cond);
+	Server->destroy(client_uid_reset_mutex);
+}
+
+void ClientMain::wakeupClientUidReset()
+{
+	IScopedLock lock(client_uid_reset_mutex);
+	client_uid_reset_cond->notify_all();
 }
 
 void ClientMain::unloadSQL(void)
@@ -266,6 +287,8 @@ void ClientMain::operator ()(void)
 			return;
 		}
 	}
+
+	ServerStatus::setStatusError(clientname, se_startup);
 
 	std::string identity = getIdentity();	
 
@@ -347,7 +370,8 @@ void ClientMain::operator ()(void)
 		{
 			Server->Log("Could not get client capabilities", LL_ERROR);
 
-			Server->wait(5 * 60 * 1000); //5min
+			IScopedLock lock(client_uid_reset_mutex);
+			client_uid_reset_cond->wait(&lock, 5 * 60 * 1000); //5min
 		}
 
 		pipe->Write("ok");
@@ -391,6 +415,7 @@ void ClientMain::operator ()(void)
 
 	bool received_client_settings=true;
 	ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
+	ServerStatus::setStatusError(clientname, se_settings);
 	bool settings_doesnt_exist=false;
 	if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_doesnt_exist))
 	{
@@ -419,6 +444,8 @@ void ClientMain::operator ()(void)
 		sendSettings();
 	}
 
+	ServerStatus::setStatusError(clientname, se_startup);
+
 	updateVirtualClients();
 
 	ServerLogger::Log(logid, "Sending backup incr interval...", LL_DEBUG);
@@ -438,6 +465,8 @@ void ClientMain::operator ()(void)
 	ServerStatus::setCommPipe(clientname, pipe);
 
 	bool skip_checking=false;
+
+	ServerStatus::setStatusError(clientname, se_none);
 
 	if( server_settings->getSettings()->startup_backup_delay>0
 		&& (!do_full_backup_now && !do_incr_backup_now
@@ -630,8 +659,11 @@ void ClientMain::operator ()(void)
 				bool settings_updated=false;
 				server_settings_updated.getSettings(&settings_updated);
 				bool settings_dont_exist=false;
+				SStatusError curr_status = se_unknown;
 				if(do_update_settings || settings_updated)
 				{
+					curr_status = ServerStatus::getStatus(clientname).status_error;
+					ServerStatus::setStatusError(clientname, se_settings);
 					ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
 					do_update_settings=false;
 					if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_dont_exist))
@@ -651,6 +683,8 @@ void ClientMain::operator ()(void)
 					}
 
 					updateVirtualClients();
+
+					ServerStatus::setStatusError(clientname, curr_status);
 				}
 
 				if(settings_updated && (received_client_settings || settings_dont_exist) )
@@ -661,6 +695,11 @@ void ClientMain::operator ()(void)
 				if(settings_updated)
 				{
 					sendClientBackupIncrIntervall();
+				}
+
+				if (curr_status != se_unknown)
+				{
+					ServerStatus::setStatusError(clientname, curr_status);
 				}
 			}
 
@@ -1078,9 +1117,9 @@ void ClientMain::operator ()(void)
 void ClientMain::prepareSQL(void)
 {
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
-	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value_client, clientid, use) VALUES (?,?,?, ?)", false);
-	q_get_setting = db->Prepare("SELECT value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=?, use_last_modified=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value_client, clientid, use, use_last_modified) VALUES (?,?,?,?,?)", false);
+	q_get_setting = db->Prepare("SELECT value_client, use, use_last_modified FROM settings_db.settings WHERE clientid=? AND key=?", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -1248,13 +1287,13 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 }
 
 std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout,
-	size_t retry, bool logerr, int max_loglevel, unsigned int timeout_after_first)
+	size_t retry, bool logerr, int max_loglevel, unsigned int timeout_after_first, bool do_encrypt)
 {
 	std::string res;
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel);
+		res = sendClientMessage(msg, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, NULL, do_encrypt);
 
 		if(res.empty())
 		{
@@ -1284,7 +1323,7 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 }
 
 std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg,
-	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn)
+	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn, bool do_encrypt)
 {
 	CTCPStack tcpstack(internet_connection);
 
@@ -1297,7 +1336,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(NULL, 10000));
+		cc.reset(getClientCommandConnection(NULL, 10000, NULL, do_encrypt));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1354,13 +1393,14 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	return "";
 }
 
-bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
+bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, 
+	size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str, bool do_encrypt)
 {
 	bool res;
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, retok_err, retok_str);
+		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, retok_err, retok_str, NULL, do_encrypt);
 
 		if(!res)
 		{
@@ -1387,7 +1427,7 @@ bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::strin
 
 bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok,
 	const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err,
-	std::string* retok_str, SConnection* conn)
+	std::string* retok_str, SConnection* conn, bool do_encrypt)
 {
 	CTCPStack tcpstack(internet_connection);
 
@@ -1400,7 +1440,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(NULL, 10000));
+		cc.reset(getClientCommandConnection(NULL, 10000, NULL, do_encrypt));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1701,16 +1741,49 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		it = params.find("clientuid");
 		if (it != params.end())
 		{
+			/*
+			Malicious client can impersonate a good client for a while and change its
+			settings (including disabling encryption). So prevent new clients until
+			confirmed.
+			*/
+			ServerBackupDao::CondString curr_uid = backup_dao->getClientUid(clientid);
+			if (curr_uid.exists &&
+				!curr_uid.value.empty() &&
+				it->second!=curr_uid.value &&
+				server_settings->getSettings()->local_encrypt )
+			{
+				ServerLogger::Log(logid, "Client UID changed from \"" + curr_uid.value + "\" to \"" + it->second + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
+				ServerStatus::setStatusError(clientname, se_uid_changed);
+				return false;
+			}
+
 			if (needs_restart!=NULL
 				&& renameClient(it->second))
 			{
 				*needs_restart = true;
 			}
 		}
+		else
+		{
+			ServerBackupDao::CondString curr_uid = backup_dao->getClientUid(clientid);
+			if (curr_uid.exists &&
+				!curr_uid.value.empty() &&
+				server_settings->getSettings()->local_encrypt)
+			{
+				ServerLogger::Log(logid, "Client UID not received from client. Expecting \"" + curr_uid.value + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
+				ServerStatus::setStatusError(clientname, se_uid_changed);
+				return false;
+			}
+		}
 		it = params.find("UPDATE_CAPA_INTERVAL");
 		if(it != params.end())
 		{
 			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
+		}
+		it = params.find("FILESRVTUNNEL");
+		if (it != params.end())
+		{
+			protocol_versions.filesrvtunnel = watoi(it->second);
 		}
 		it = params.find("BACKUP");
 		if (it != params.end())
@@ -1798,6 +1871,7 @@ void ClientMain::sendSettings(void)
 			if (settings_global_ptr->getValue(key, &value))
 			{
 				s_settings += key + "=" + value + "\n";
+				s_settings += key + "_def=" + value + "\n";
 			}
 		}
 		else
@@ -1836,9 +1910,13 @@ void ClientMain::sendSettings(void)
 				}
 				else
 				{
+					if (key == "update_freq_incr")
+						int abct = 5;
+
 					s_settings += key + ".home=" + setting.value + "\n";
 					s_settings += key + ".client=" + setting.value_client + "\n";
 					s_settings += key + ".use=" + convert(setting.use) + "\n";
+					s_settings += key + ".use_lm=" + convert(setting.use_last_modified) + "\n";
 				}
 				
 				if (setting.use == c_use_group)
@@ -1915,6 +1993,18 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	bool mod=false;
 
 	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
+
+	bool has_use = false;
+
+	for (size_t i = 0; i < setting_names.size(); ++i)
+	{
+		std::string value;
+		if (sr->getValue(setting_names[i] + ".use", &value))
+		{
+			has_use = true;
+			break;
+		}
+	}
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
@@ -1932,6 +2022,10 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		if (sr->getValue(key + ".use", &value))
 		{
 			use = watoi(value);
+			std::string use_lm_str;
+			int64 use_lm = 0;
+			if (sr->getValue(key + ".use_lm", &use_lm_str))
+				use_lm = watoi64(use_lm_str);
 
 			if ( (use & c_use_value_client)>0
 				&& sr->getValue(key + ".client", &value))
@@ -1941,10 +2035,22 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 					continue;
 				}
 
-				bool b = updateClientSetting(key, value, use);
+				bool b = updateClientSetting(key, value, use, use_lm);
 				if (b)
 					mod = true;
 			}
+		}
+		else if (!has_use
+			&& sr->getValue(key, &value))
+		{
+			if (internet_connection && key == "computername")
+			{
+				continue;
+			}
+
+			bool b = updateClientSetting(key, value, c_use_undefined, 0);
+			if (b)
+				mod = true;
 		}
 	}
 
@@ -1956,12 +2062,40 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	return true;
 }
 
-bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use)
+bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified)
 {
+	if (key == "update_freq_incr")
+		int abct = 45;
+
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
 	db_results res = q_get_setting->Read();
 	q_get_setting->Reset();
+
+	bool use_mod = false;
+
+	if (!res.empty())
+	{
+		int64 old_use_last_mod = watoi64(res[0]["use_last_modified"]);
+		int old_use = watoi(res[0]["use"]);
+
+		if (old_use_last_mod > use_last_modified)
+		{
+			use = old_use;
+			use_last_modified = old_use_last_mod;
+		}
+
+		if (use != c_use_undefined &&
+				old_use != use)
+		{
+			use_mod = true;
+		}
+		else if (use == c_use_undefined)
+		{
+			use = old_use;
+		}
+	}
+
 
 	if(res.empty())
 	{
@@ -1969,15 +2103,17 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		q_insert_setting->Bind(value);
 		q_insert_setting->Bind(clientid);
 		q_insert_setting->Bind(use);
+		q_insert_setting->Bind(use_last_modified);
 		q_insert_setting->Write();
 		q_insert_setting->Reset();
 		return true;
 	}
 	else if(res[0]["value_client"]!=value
-			|| watoi(res[0]["use"])!=use)
+		|| use_mod )
 	{
 		q_update_setting->Bind(value);
 		q_update_setting->Bind(use);
+		q_update_setting->Bind(use_last_modified);
 		q_update_setting->Bind(key);
 		q_update_setting->Bind(clientid);
 		q_update_setting->Write();
@@ -2480,7 +2616,7 @@ bool ClientMain::inBackupWindow(Backup * backup)
 	}
 }
 
-IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr)
+IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr, bool do_encrypt)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
@@ -2515,7 +2651,10 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 	else
 	{
 		IPipe *ret=Server->ConnectStream(getClientaddr().toString(), serviceport, timeoutms);
-		if(server_settings!=NULL && ret!=NULL)
+		if (ret == NULL)
+			return NULL;
+
+		if(server_settings!=NULL)
 		{
 			int local_speed=server_settings->getLocalSpeed();
 			if(local_speed!=0
@@ -2530,6 +2669,92 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 				ret->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
 			}
 		}
+
+		std::string secret_session_key = getSecretSessionKey();
+		int compression_level;
+		std::string compression = getSessionCompression(compression_level);
+		if (do_encrypt && (!secret_session_key.empty() || !compression.empty()))
+		{
+			CTCPStack tcpstack(internet_connection);
+			std::string identity = getIdentity();			
+			std::string server_keyadd;
+			if (!secret_session_key.empty())
+			{
+				server_keyadd.resize(16);
+				Server->randomFill(&server_keyadd[0], server_keyadd.size());
+			}
+			std::string tosend = identity + "ENC?keyadd="+ base64_encode_dash(server_keyadd)+"&compress="+EscapeParamString(compression)+"&compress_level="+convert(compression_level);
+			size_t rc = tcpstack.Send(ret, tosend);
+			if (rc != tosend.size())
+			{
+				Server->destroy(ret);
+				return NULL;
+			}
+
+			std::string msg;
+			int64 starttime = Server->getTimeMS();
+			bool ok = false;
+			bool herr = false;
+			str_map enc_response;
+			while (Server->getTimeMS() - starttime <= timeoutms)
+			{
+				size_t rc = ret->Read(&msg, timeoutms);
+				if (rc == 0)
+				{
+					Server->destroy(ret);
+					return NULL;
+				}
+				tcpstack.AddData(msg.data(), msg.size());
+
+				if (tcpstack.getPacket(msg))
+				{					
+					ParseParamStrHttp(msg, &enc_response);
+					break;
+				}
+			}
+
+			if (enc_response["ok"] != "1")
+			{
+				Server->destroy(ret);
+				return NULL;
+			}
+
+			if (!secret_session_key.empty())
+			{
+				std::string client_keyadd = base64_decode_dash(enc_response["keyadd"]);
+				if (client_keyadd.empty())
+				{
+					Server->destroy(ret);
+					return NULL;
+				}
+				Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + server_keyadd + client_keyadd) + " (server)");
+				InternetServicePipe2* isc = new InternetServicePipe2(ret, secret_session_key + server_keyadd + client_keyadd);
+				isc->destroyBackendPipeOnDelete(true);
+				ret = isc;
+			}
+
+			if (compression == "zlib")
+			{
+				CompressedPipe2* comp = new CompressedPipe2(ret, compression_level);
+				comp->destroyBackendPipeOnDelete(true);
+				ret = comp;
+			}
+#ifndef NO_ZSTD_COMPRESSION
+			else if (compression == "zstd")
+			{
+				CompressedPipeZstd* comp = new CompressedPipeZstd(ret, compression_level, -1);
+				comp->destroyBackendPipeOnDelete(true);
+				ret = comp;
+			}
+#endif
+			else if(!compression.empty())
+			{
+				ServerLogger::Log(logid, "Unknown compression method requested by client \"" + compression + "\"", LL_ERROR);
+				Server->destroy(ret);
+				return NULL;
+			}	
+		}
+
 		return ret;
 	}
 }
@@ -2571,7 +2796,20 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 	}
 	else
 	{
-		_u32 ret=fc->Connect(getClientaddr());
+		_u32 ret;
+		if (protocol_versions.filesrvtunnel > 0)
+		{
+			IPipe* pipe = new_fileclient_connection();
+			if (pipe == NULL)
+				return ERR_ERROR;
+
+			fc->setAddChecksum(true);
+			ret = fc->Connect(pipe);
+		}
+		else
+		{
+			ret = fc->Connect(getClientaddr());
+		}
 
 		if(server_settings!=NULL)
 		{
@@ -2621,15 +2859,23 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 	}
 	else
 	{
-		IPipe *pipe=Server->ConnectStream(getClientaddr().toString(), TCP_PORT, timeoutms);
-		if(pipe!=NULL)
+		IPipe* pipe;
+		if (protocol_versions.filesrvtunnel > 0)
 		{
-			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
+			pipe = new_fileclient_connection();
+			if (pipe == NULL)
+				return false;
 		}
 		else
 		{
-			return false;
+			pipe = Server->ConnectStream(getClientaddr().toString(), TCP_PORT, timeoutms);
+			if (pipe == NULL)
+			{
+				return false;
+			}
 		}
+		fc_chunked.reset(new FileClientChunked(pipe, false, protocol_versions.filesrvtunnel > 0 ? &tcpstack_checksum : &tcpstack, 
+			this, use_tmpfiles ? NULL : no_free_space_callback, identity, NULL));
 	}
 
 	fc_chunked->setProgressLogCallback(this);
@@ -2741,7 +2987,29 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	}
 	else
 	{
-		rp=Server->ConnectStream(getClientaddr().toString(), TCP_PORT, c_filesrv_connect_timeout);
+		if (protocol_versions.filesrvtunnel > 0)
+		{
+			rp = getClientCommandConnection(server_settings.get(), c_filesrv_connect_timeout);
+			if (rp == NULL)
+			{
+				return NULL;
+			}
+
+			CTCPStack tcpstack(internet_connection);
+			std::string identity = getIdentity();
+
+			std::string tosend = identity + "FILESRV";
+
+			if (tcpstack.Send(rp, tosend) != tosend.size())
+			{
+				Server->destroy(rp);
+				return NULL;
+			}
+		}
+		else
+		{
+			rp = Server->ConnectStream(getClientaddr().toString(), TCP_PORT, c_filesrv_connect_timeout);
+		}
 	}
 	return rp;
 }
@@ -2838,10 +3106,13 @@ bool ClientMain::sendServerIdentity(bool retry_exit)
 	bool c = true;
 	while (c)
 	{
+		ServerStatus::setStatusError(clientname, se_authenticating);
+
 		c = false;
 		bool retok_err = false;
 		std::string ret_str;
-		bool b = sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \"" + clientname + "\" failed. Retrying soon...", 10000, false, LL_DEBUG, &retok_err, &ret_str);
+		bool b = sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \"" + clientname + "\" failed. Retrying soon...", 
+			10000, false, LL_DEBUG, &retok_err, &ret_str, NULL, false);
 		if (!b)
 		{
 			if (retok_err)
@@ -2852,7 +3123,7 @@ bool ClientMain::sendServerIdentity(bool retry_exit)
 				}
 				else
 				{
-					ServerStatus::setStatusError(clientname, se_none);
+					ServerStatus::setStatusError(clientname, se_authenticating);
 					needs_authentification = true;
 					return true;
 				}
@@ -2911,20 +3182,68 @@ bool ClientMain::sendServerIdentity(bool retry_exit)
 
 bool ClientMain::authenticatePubKey()
 {
-	if(crypto_fak==NULL)
+	if (crypto_fak == NULL)
 	{
 		return false;
 	}
 
+	IECDHKeyExchange* ecdh_key_exchange = NULL;
+	int64 ecdh_key_exchange_age;
+	{
+		IScopedLock lock(ecdh_key_exchange_mutex);
+		if (!ecdh_key_exchange_buffer.empty())
+		{
+			ecdh_key_exchange = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size() - 1].first;
+			ecdh_key_exchange_age = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size() - 1].second;
+			ecdh_key_exchange_buffer.pop_back();
+		}
+	}
+	if (ecdh_key_exchange == NULL)
+	{
+		ecdh_key_exchange = crypto_fak->createECDHKeyExchange();
+		ecdh_key_exchange_age = Server->getTimeMS();
+	}
+
+	bool ret = authenticatePubKeyInt(ecdh_key_exchange);
+
+	if (ecdh_key_exchange != NULL
+		&& Server->getTimeMS() - ecdh_key_exchange_age < max_ecdh_key_age)
+	{
+		IScopedLock lock(ecdh_key_exchange_mutex);
+		ecdh_key_exchange_buffer.push_back(std::make_pair(ecdh_key_exchange, ecdh_key_exchange_age));
+	}
+	else
+	{
+		Server->destroy(ecdh_key_exchange);
+	}
+
+	return ret;
+}
+
+bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
+{
 	std::string params;
+
+	if (!internet_connection)
+	{
+		params = " with_enc=1";
+	}
 
 	if (!clientsubname.empty())
 	{
-		params = " clientsubname=" + EscapeParamString(clientsubname);
+		params = "&clientsubname=" + EscapeParamString(clientsubname);
+		params[0] = ' ';
 	}
 
-	std::string challenge = sendClientMessageRetry("GET CHALLENGE" + params, "Failed to get challenge from client", 10000, 10, false, LL_INFO);
+	std::string challenge = sendClientMessageRetry("GET CHALLENGE" + params, "Failed to get challenge from client", 10000, 10, 
+		false, LL_INFO, 0, false);
 
+	if (challenge == "ERR"
+		&& clientsubname.empty())
+	{
+		challenge = sendClientMessageRetry("GET CHALLENGE", "Failed to get challenge from client", 10000, 10, false, LL_INFO);
+	}
+	
 	if(challenge=="ERR")
 	{
 		return false;
@@ -2932,6 +3251,13 @@ bool ClientMain::authenticatePubKey()
 
 	if(!challenge.empty())
 	{
+		str_map challenge_params;
+		if (challenge.find("?") != std::string::npos)
+		{
+			ParseParamStrHttp(getafter("?", challenge), &challenge_params);
+			challenge = getuntil("?", challenge);
+		}
+
 		std::string signature;
 		std::string signature_ecdsa409k1;
 		std::string privkey = getFile("urbackup/server_ident.priv");
@@ -2942,19 +3268,19 @@ bool ClientMain::authenticatePubKey()
 			return false;
 		}
 
-		std::string privkey_ecdsa409k1 = getFile("urbackup/server_ident_ecdsa409k1.priv");
-
-		if(privkey_ecdsa409k1.empty())
-		{
-			Server->Log("Cannot read private key urbackup/server_ident_ecdsa409k1.priv", LL_ERROR);
-			return false;
-		}
-
 		bool rc = crypto_fak->signDataDSA(privkey, challenge, signature);
 
 		if(!rc)
 		{
 			Server->Log("Signing challenge failed", LL_ERROR);
+			return false;
+		}
+
+		std::string privkey_ecdsa409k1 = getFile("urbackup/server_ident_ecdsa409k1.priv");
+
+		if (privkey_ecdsa409k1.empty())
+		{
+			Server->Log("Cannot read private key urbackup/server_ident_ecdsa409k1.priv", LL_ERROR);
 			return false;
 		}
 
@@ -2976,7 +3302,7 @@ bool ClientMain::authenticatePubKey()
 
 		std::string pubkey_ecdsa = getFile("urbackup/server_ident_ecdsa409k1.pub");
 
-		if(pubkey.empty())
+		if (pubkey_ecdsa.empty())
 		{
 			Server->Log("Reading public key from urbackup/server_ident_ecdsa409k1.pub failed", LL_ERROR);
 			return false;
@@ -2984,18 +3310,66 @@ bool ClientMain::authenticatePubKey()
 
 		std::string identity = ServerSettings::generateRandomAuthKey(20);
 
+		std::string client_ecdh_pubkey = base64_decode_dash(challenge_params["pubkey_ecdh233k1"]);
+
+		std::string session_key;
+		std::string l_secret_session_key;
+		if (!client_ecdh_pubkey.empty())
+		{
+			l_secret_session_key = ServerSettings::generateRandomBinaryKey();
+
+			std::string ecdh_shared_key = ecdh_key_exchange->getSharedKey(client_ecdh_pubkey);
+			if (ecdh_shared_key.empty())
+			{
+				Server->Log("Getting ECDH shared key failed", LL_ERROR);
+				return false;
+			}
+
+			session_key = "&secret_session_key="+ base64_encode_dash(crypto_fak->encryptAuthenticatedAES(l_secret_session_key,
+				ecdh_shared_key, 1));
+
+			std::string ecdh_pubkey = ecdh_key_exchange->getPublicKey();
+			session_key += "&pubkey_ecdh233k1=" + base64_encode_dash(ecdh_pubkey);
+
+			std::string signature_ecdh233k1;
+			rc = crypto_fak->signData(privkey_ecdsa409k1, challenge + ecdh_pubkey, signature_ecdh233k1);
+
+			if (!rc)
+			{
+				Server->Log("Signing ecdh pubkey failed -2", LL_ERROR);
+				return false;
+			}
+
+			session_key += "&signature_ecdh233k1=" + base64_encode_dash(signature_ecdh233k1);
+		}
+
+		std::string l_session_compressed = challenge_params["compress"];
+		int l_session_compression_level = server_settings->getSettings()->internet_compression_level;
+
+#ifdef NO_ZSTD_COMPRESSION
+		if (l_session_compressed == "zstd")
+		{
+			l_session_compressed = "zlib";
+		}
+#endif
+
 		bool ret = sendClientMessageRetry("SIGNATURE#pubkey="+base64_encode_dash(pubkey)+
 			"&pubkey_ecdsa409k1="+base64_encode_dash(pubkey_ecdsa)+
 			"&signature="+base64_encode_dash(signature)+
 			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
 			"&session_identity="+identity +
-			(clientsubname.empty() ? "" : "&clientsubname="+ EscapeParamString(clientsubname)), "ok", "Error sending server signature to client", 10000, 10, true);
+			session_key +
+			(clientsubname.empty() ? "" : "&clientsubname="+ EscapeParamString(clientsubname)), "ok", "Error sending server signature to client",
+			10000, 10, true, LL_ERROR, NULL, NULL, false);
 
 		if(ret)
 		{
 			IScopedLock lock(clientaddr_mutex);
 			session_identity = "#I"+identity+"#";
 			session_identity_refreshtime = Server->getTimeMS();
+			secret_session_key = l_secret_session_key;
+			session_compressed = l_session_compressed;
+			session_compression_level = l_session_compression_level;
 		}
 
 		return ret;
@@ -3031,6 +3405,19 @@ std::string ClientMain::getIdentity()
 {
 	IScopedLock lock(clientaddr_mutex);
 	return session_identity.empty() ? server_identity : session_identity;
+}
+
+std::string ClientMain::getSecretSessionKey()
+{
+	IScopedLock lock(clientaddr_mutex);
+	return secret_session_key;
+}
+
+std::string ClientMain::getSessionCompression(int& level)
+{
+	IScopedLock lock(clientaddr_mutex);
+	level = session_compression_level;
+	return session_compressed;
 }
 
 bool ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
@@ -3470,13 +3857,15 @@ bool ClientMain::checkClientName(bool& continue_start_backups)
 	str_map msg_params;
 	ParseParamStrHttp(msg, &msg_params);
 
-	if (msg_params["name"] == clientname)
+	std::string curr_clientname = conv_filename(msg_params["name"]);
+
+	if (curr_clientname == clientname)
 	{
 		return true;
 	}
 	else
 	{
-		Server->Log("Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
+		ServerLogger::Log(logid, "Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
 		return false;
 	}
 }
@@ -3762,6 +4151,7 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 		session_identity.clear();
 	}
 
+	ServerStatus::setStatusError(clientname, se_authenticating);
 	bool c = false;
 	do
 	{			

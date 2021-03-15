@@ -1,0 +1,21 @@
+#!/bin/sh
+
+CDIR=`dirname $0`
+
+. "SYSCONFDIR/mariadbxtrabackup.conf"
+
+if [ "x$MARIADB_XTRABACKUP_ENABLED" != "x0" ]
+then
+	TIMESTAMP=`date "+%F-%H%M%S"`
+	CURR_BACKUP="incr_backup_$TIMESTAMP.xbstream"
+	echo "$CURR_BACKUP" > "$MARIADB_TEMP_INCRDIR/curr_name"
+	if [ -e "$MARIADB_TEMP_INCRDIR/last_names" ]
+	then
+		for BACKUP in $(cat $MARIADB_TEMP_INCRDIR/last_names)
+		do
+			echo "scriptname=mariadbxtrabackup_incr&outputname=${BACKUP}&orig_path=${MARIADB_TEMP_INCRDIR}/${BACKUP}&lastmod=1";
+		done
+	fi
+
+	echo "scriptname=mariadbxtrabackup_incr&outputname=${CURR_BACKUP}&orig_path=${MARIADB_TEMP_INCRDIR}/4{CURR_BACKUP}&lastmod=1";
+fi

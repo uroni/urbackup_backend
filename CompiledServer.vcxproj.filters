@@ -380,5 +380,8 @@
     <ClInclude Include="SChannelPipe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\WebSocket.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -3,12 +3,20 @@
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 
-
 struct SLogEntry
 {
 	std::string data;
 	int loglevel;
 	int64 time;
+};
+
+struct SLogData
+{
+	SLogData()
+		: memory_used(0) {}
+
+	size_t memory_used;
+	std::vector<SLogEntry> data;
 };
 
 typedef std::pair<int64, int> logid_t;
@@ -63,10 +71,11 @@ private:
 
 	static void logCircular(int clientid, logid_t logid, const std::string &pStr, int LogLevel);
 	static void logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel);
+	static size_t logEntrySize(const SLogEntry& entry);
 
 	static std::vector<SCircularLogEntry> stripLogIdFilter(const std::vector<SCircularLogEntryWithId>& data, logid_t logid);
 
-	static std::map<logid_t, std::vector<SLogEntry> > logdata;
+	static std::map<logid_t, SLogData> logdata;
 	static std::map<int, SCircularData> circular_logdata;
 	static std::map<logid_t, int> logid_client;
 	static IMutex *mutex;

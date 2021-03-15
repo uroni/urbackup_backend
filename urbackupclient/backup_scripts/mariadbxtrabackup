@@ -45,7 +45,13 @@ then
 	COMPACT="--compact"
 fi
 
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD" $COMPACT
+if [ -e "$MARIADB_TEMP_INCRDIR/blockalign.data" ]
+then
+	cp "$MARIADB_TEMP_INCRDIR/blockalign.data" "$MARIADB_TEMP_INCRDIR/blockalign.data.new"
+fi
+
+self=$$
+{ $XTRABACKUP_CMD --backup --stream=xbstream --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD" $COMPACT || kill $self; } | blockalign - - "$MARIADB_TEMP_INCRDIR/blockalign.data.new"
 
 TIME=`date`
 errcho "Backup of MariaDB finished at $TIME."

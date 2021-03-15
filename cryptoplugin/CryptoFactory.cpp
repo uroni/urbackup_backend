@@ -285,6 +285,12 @@ bool CryptoFactory::signDataDSA(const std::string &pubkey, const std::string &da
 
 bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &data, const std::string &signature )
 {
+	if (signature.empty())
+	{
+		Server->Log("Signature is empty in CryptoFactory::verifyData", LL_ERROR);
+		return false;
+	}
+
 	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey PublicKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
@@ -310,6 +316,12 @@ bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &da
 
 bool CryptoFactory::verifyDataDSA( const std::string &pubkey, const std::string &data, const std::string &signature )
 {
+	if (signature.empty())
+	{
+		Server->Log("Signature is empty in CryptoFactory::verifyDataDSA", LL_ERROR);
+		return false;
+	}
+
 	CryptoPP::DSA::PublicKey PublicKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
@@ -396,4 +408,18 @@ std::string CryptoFactory::decryptAuthenticatedAES(const std::string& data, cons
 IECDHKeyExchange* CryptoFactory::createECDHKeyExchange()
 {
 	return new ECDHKeyExchange();
+}
+
+std::string CryptoFactory::sha1Binary(const std::string& data)
+{
+	byte sha1_digest[CryptoPP::SHA1::DIGESTSIZE];
+	CryptoPP::SHA1().CalculateDigest(sha1_digest, reinterpret_cast<const byte*>(data.data()), data.size());
+	return std::string(reinterpret_cast<char*>(sha1_digest), sizeof(sha1_digest));
+}
+
+std::string CryptoFactory::sha256Binary(const std::string& data)
+{
+	byte sha256_digest[CryptoPP::SHA256::DIGESTSIZE];
+	CryptoPP::SHA256().CalculateDigest(sha256_digest, reinterpret_cast<const byte*>(data.data()), data.size());
+	return std::string(reinterpret_cast<char*>(sha256_digest), sizeof(sha256_digest));
 }

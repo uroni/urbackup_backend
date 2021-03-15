@@ -35,6 +35,7 @@
 #include "Interface/PluginMgr.h"
 #include "Interface/Thread.h"
 #include "Interface/DatabaseFactory.h"
+#include "Interface/WebSocket.h"
 
 #include "Server.h"
 #include "Template.h"
@@ -175,6 +176,7 @@ CServer::CServer()
 	
 	log_mutex=createMutex();
 	action_mutex=createMutex();
+	web_socket_mutex = createMutex();
 	requests_mutex=createMutex();
 	outputs_mutex=createMutex();
 	db_mutex=createMutex();
@@ -353,6 +355,7 @@ CServer::~CServer()
 	
 	destroy(log_mutex);
 	destroy(action_mutex);
+	destroy(web_socket_mutex);
 	destroy(requests_mutex);
 	destroy(outputs_mutex);
 	destroy(db_mutex);
@@ -2267,3 +2270,29 @@ int CServer::getRecvWindowSize()
 	return recv_window_size;
 }
 #endif
+
+void CServer::addWebSocket(IWebSocket* websocket)
+{
+	IScopedLock lock(web_socket_mutex);
+
+	web_sockets[websocket->getName()] = websocket;
+}
+
+THREAD_ID CServer::ExecuteWebSocket(const std::string& name, str_map& GET, str_map& PARAMS, IPipe* pipe, const std::string& endpoint_name)
+{
+	IWebSocket* ws;
+	{
+		IScopedLock lock(web_socket_mutex);
+		std::map<std::string, IWebSocket*>::iterator it = web_sockets.find(name);
+		if (it == web_sockets.end())
+			return ILLEGAL_THREAD_ID;
+
+		ws = it->second;
+	}
+
+	THREAD_ID tid = getThreadID();
+
+	ws->Execute(GET, tid, PARAMS, pipe, endpoint_name);
+
+	return tid;
+}

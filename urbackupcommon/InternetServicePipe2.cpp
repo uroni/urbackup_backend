@@ -242,6 +242,10 @@ void InternetServicePipe2::shutdown( void )
 	cs->shutdown();
 }
 
+size_t InternetServicePipe2::getNumWaiters() {
+	return cs->getNumWaiters();
+}
+
 size_t InternetServicePipe2::getNumElements( void )
 {
 	return cs->getNumElements();

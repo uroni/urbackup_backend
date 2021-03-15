@@ -448,6 +448,10 @@ void CompressedPipe2::shutdown(void)
 	cs->shutdown();
 }
 
+size_t CompressedPipe2::getNumWaiters() {
+	return cs->getNumWaiters();
+}
+
 size_t CompressedPipe2::getNumElements(void)
 {
 	return cs->getNumElements();

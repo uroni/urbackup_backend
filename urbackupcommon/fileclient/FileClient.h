@@ -73,7 +73,7 @@ public:
 		};
 
 
-		FileClient(bool enable_find_servers, std::string identity, int protocol_version=0, bool internet_connection=false,
+		FileClient(bool enable_find_servers, std::string identity, int protocol_version=0, bool add_request_checksums=false,
 			FileClient::ReconnectionCallback *reconnection_callback=NULL,
 			FileClient::NoFreeSpaceCallback *nofreespace_callback=NULL);
         ~FileClient(void);
@@ -183,6 +183,8 @@ public:
 		static bool writeFileRetry(IFile* f, const char* buf, _u32 bsize);
 
 		void setReconnectTries(int tries);
+		
+		void setAddChecksum(bool add_request_checksums);
 
 private:
 		int getReconnectTriesDecr();
@@ -241,7 +243,6 @@ private:
 	int connection_id;
 
 		int protocol_version;
-		bool internet_connection;
 
 		_i64 real_transferred_bytes;
 		_i64 transferred_bytes;

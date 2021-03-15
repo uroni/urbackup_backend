@@ -31,6 +31,7 @@
 #include <memory>
 
 extern ICryptoFactory *crypto_fak;
+extern std::string server_identity;
 
 namespace
 {
@@ -206,6 +207,56 @@ std::string ipAddrToStr(const std::string& ip_addr_binary)
 	return addr_hint.toString();
 }
 
+std::string server_pubkey;
+
+std::string getServerPubkey()
+{
+	return server_pubkey;
+}
+
+}
+
+void init_server_pubkey()
+{
+	if (crypto_fak == NULL)
+		return;
+
+	std::string pubkey_ecdsa = getFile("urbackup/server_ident_ecdsa409k1.pub");
+
+	if (pubkey_ecdsa.empty())
+	{
+		Server->Log("Reading public key from urbackup/server_ident_ecdsa409k1.pub failed", LL_ERROR);
+		server_pubkey = server_identity+"#fingerprint=DE:AD:BE:EF";
+		return;
+	}
+
+	std::string fingerprint = bytesToHex(crypto_fak->sha256Binary(pubkey_ecdsa));
+	strupper(&fingerprint);
+
+	std::string fingerprint_disp;
+	for (size_t i = 0; i < fingerprint.size(); i+=2)
+	{
+		fingerprint_disp += fingerprint.substr(i, 2);
+
+		if (i + 2 < fingerprint.size())
+			fingerprint_disp += ":";
+	}
+
+	server_pubkey = server_identity;
+	if (server_pubkey.size() > 3)
+	{
+		if (next(server_pubkey, 0, "#I"))
+		{
+			server_pubkey = server_pubkey.substr(2);
+		}
+
+		if (server_pubkey[server_pubkey.size() - 1] == '#')
+		{
+			server_pubkey = server_pubkey.substr(0, server_pubkey.size() - 1);
+		}
+	}
+
+	server_pubkey += "#fingerprint=" + fingerprint_disp;
 }
 
 ACTION_IMPL(status)
@@ -329,6 +380,13 @@ ACTION_IMPL(status)
 			BackupServer::updateDeletePending();
 		}
 
+		std::string reset_client_uid = POST["reset_client_uid"];
+		if (!reset_client_uid.empty() && helper.hasRights(watoi(reset_client_uid), rights, clientids))
+		{
+			db->Write("UPDATE clients SET uid='' WHERE id=" + convert(watoi(reset_client_uid)));
+			ClientMain::wakeupClientUidReset();
+		}
+
 		JSON::Array status;
 		IDatabase *db=helper.getDatabase();
 		std::string filter;
@@ -343,7 +401,7 @@ ACTION_IMPL(status)
 			}
 		}
 		db_results res=db->Read("SELECT c.id AS id, delete_pending, c.name AS name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok, capa FROM "
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok, capa, uid FROM "
 			" clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id "+filter+" ORDER BY name");
 
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
@@ -360,6 +418,7 @@ ACTION_IMPL(status)
 			stat.set("lastbackup", lastbackup);
 			stat.set("lastbackup_image", lastbackup_image);
 			stat.set("delete_pending", res[i]["delete_pending"] );
+			stat.set("uid", res[i]["uid"]);
 			int issues = watoi(res[i]["last_filebackup_issues"]);
 			if (issues == ServerBackupDao::num_issues_no_backuppaths)
 			{
@@ -427,6 +486,14 @@ ACTION_IMPL(status)
 						i_status=12; break;
 					case se_authentication_error:
 						i_status=13; break;
+					case se_uid_changed:
+						i_status = 14; break;
+					case se_authenticating:
+						i_status = 15; break;
+					case se_settings:
+						i_status = 16; break;
+					case se_startup:
+						i_status = 17; break;
 					default:
 						if(!client_status[j].processes.empty())
 						{
@@ -549,6 +616,7 @@ ACTION_IMPL(status)
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
 		ret.set("server_identity", helper.getStrippedServerIdentity());
+		ret.set("server_pubkey", getServerPubkey());
 
 		if(helper.getRights("remove_client")=="all")
 		{

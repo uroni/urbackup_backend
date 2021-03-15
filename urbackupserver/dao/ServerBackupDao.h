@@ -95,6 +95,7 @@ public:
 		std::string value;
 		std::string value_client;
 		int use;
+		int64 use_last_modified;
 	};
 
 
@@ -110,6 +111,7 @@ public:
 	CondString getClientSetting(const std::string& key, int clientid);
 	std::vector<int> getClientIds(void);
 	std::vector<int> getClientsByUid(const std::string& uid);
+	CondString getClientUid(int id);
 	void updateClientUid(const std::string& uid, int clientid);
 	void deleteClient(int clientid);
 	void changeClientName(const std::string& name, int id);
@@ -182,6 +184,8 @@ public:
 	std::vector<SMountedImage> getOldMountedImages(int64 times);
 	void setCapa(int capa, int clientid);
 	CondInt getCapa(int clientid);
+	CondInt getClientWithHashes(int clientid);
+	void updateClientWithHashes(int with_hashes, int clientid);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
@@ -206,6 +210,7 @@ private:
 	IQuery* q_getClientSetting;
 	IQuery* q_getClientIds;
 	IQuery* q_getClientsByUid;
+	IQuery* q_getClientUid;
 	IQuery* q_updateClientUid;
 	IQuery* q_deleteClient;
 	IQuery* q_changeClientName;
@@ -278,6 +283,8 @@ private:
 	IQuery* q_getOldMountedImages;
 	IQuery* q_setCapa;
 	IQuery* q_getCapa;
+	IQuery* q_getClientWithHashes;
+	IQuery* q_updateClientWithHashes;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

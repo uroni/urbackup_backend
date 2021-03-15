@@ -1,0 +1,15 @@
+
+case $1 in
+prereqs)
+	echo ""
+	exit 0
+	;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_exec /sbin/dmsetup
+copy_exec /usr/sbin/blockdev
+
+
+manual_add_modules dm_mod

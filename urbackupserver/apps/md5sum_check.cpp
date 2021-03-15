@@ -84,7 +84,7 @@ int md5sum_check()
 		if (hex_dig != md5sum)
 		{
 			std::cout << "FAILED" << std::endl;
-			check_failed_fns.push_back(fn);
+			check_failed_fns.push_back(fn+" (Content wrong)");
 			++failure_msgs["Content wrong"];
 		}
 		else

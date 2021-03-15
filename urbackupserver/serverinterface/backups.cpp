@@ -1736,7 +1736,31 @@ ACTION_IMPL(backups)
 						{
 							bool has_mount_timeout;
 							std::string mount_errmsg;
-							backuppath = ImageMount::get_mount_path(-1*backupid, t_clientid, 0, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
+							int partition = 0;
+							std::string path;
+							std::vector<IFSImageFactory::SPartition> partitions;
+							backupaccess::get_image_info(db, -1*backupid, t_clientid,
+								0, path, partitions);
+
+							if (partitions.size() > 1)
+							{
+								while (!u_path.empty()
+									&& u_path[0] == '/')
+								{
+									u_path.erase(0, 1);
+								}
+								if (next(u_path, 0, "partition "))
+								{
+									std::string part = getbetween("partition ", "/", u_path);
+									if (part.empty())
+									{
+										part = getafter("partition ", u_path);
+									}
+									partition = watoi(part) - 1;
+									u_path = u_path.substr(10 + part.size());
+								}
+							}
+							backuppath = ImageMount::get_mount_path(-1*backupid, t_clientid, partition, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
 							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
 						}
 

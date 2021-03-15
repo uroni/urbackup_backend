@@ -28,6 +28,9 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
+	virtual bool wantReceive(void);
+	virtual bool closeSocket(void);
+
 private:
 
 	inline void processCommand(char ch);

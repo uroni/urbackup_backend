@@ -1,0 +1,92 @@
+#!/bin/sh
+
+set -e
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_ORIG_PATH="$5"
+
+CDIR=`dirname $0`
+
+remove_overlay() {
+	if test -e "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
+	then
+		chattr -i "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
+		rm "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
+	fi
+	
+	if test -e "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap"
+	then
+		LODEV=`losetup -j "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap" | cut -d':' -f1`
+        if [ "x$LODEV" != x ]
+        then
+            losetup -d "$LODEV"
+        fi
+		rm "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap"
+	fi
+}
+
+if ! test -e $SNAP_MOUNTPOINT
+then
+    echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+    remove_overlay
+    exit 0
+fi
+
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+
+if [ "x$TYPE" = "x" ]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [ "x$TYPE" = "xbtrfs" ]
+then
+    $CDIR/btrfs_remove_filesystem_snapshot "$@"
+    exit $?
+fi
+
+if ! df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1
+then
+    echo "Snapshot is not mounted. Already removed"
+    remove_overlay
+    exit 0
+fi
+
+if ! [ -e "${SNAP_MOUNTPOINT}-name" ]
+then
+	echo "Could not find snapshot device name at ${SNAP_MOUNTPOINT}-name"
+	remove_overlay
+	exit 1
+fi
+
+DEVNAME=$(cat "${SNAP_MOUNTPOINT}-name")
+
+echo "Unmounting /dev/mapper/$DEVNAME-$SNAP_ID at /mnt/urbackup_snaps/$SNAP_ID..."
+
+if ! umount /mnt/urbackup_snaps/$SNAP_ID
+then
+    lsof | grep /mnt/urbackup_snaps/$SNAP_ID || true
+    echo "Unmounting /mnt/urbackup_snaps/$SNAP_ID failed. Retrying in 10s..."
+    sleep 10
+    umount /mnt/urbackup_snaps/$SNAP_ID
+fi
+
+rm "${SNAP_MOUNTPOINT}-name"
+rm "${SNAP_MOUNTPOINT}-dev"
+rmdir "${SNAP_MOUNTPOINT}"
+
+echo "Removing dm snapshot..."
+
+dmsetup remove "$DEVNAME-$SNAP_ID-wsnap"
+dmsetup remove "$DEVNAME-$SNAP_ID"
+
+echo "Removing snapshot cow storage..."
+dmsetup remove "$DEVNAME-$SNAP_ID-cow-storage"
+
+remove_overlay
+
+exit 0

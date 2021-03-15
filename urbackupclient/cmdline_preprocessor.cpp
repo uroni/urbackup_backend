@@ -227,6 +227,21 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	if (argc > 0 &&
+		std::string(argv[1]) == "--internal")
+	{
+		std::vector<std::string> real_args;
+
+		real_args.push_back(argv[0]);
+
+		for (size_t i = 2; i < argc; ++i)
+		{
+			real_args.push_back(argv[i]);
+		}
+
+		return run_real_main(real_args);
+	}
+
 	try
 	{
 		TCLAP::CmdLine cmd("Run UrBackup Client Backend", ' ', cmdline_version);
@@ -335,7 +350,13 @@ int main(int argc, char* argv[])
 		real_args.push_back("--workingdir");
 		real_args.push_back(VARDIR);
 		real_args.push_back("--script_path");
+#if defined(__APPLE__)
+		// ./UrBackup\ Client.app/Contents/MacOS/bin/urbackupclientctl../../share/urbackup/scripts
+		std::string datadir = ExtractFilePath(ExtractFilePath(argv[0])) + "/share/urbackup/scripts";
+		real_args.push_back( datadir + ":" SYSCONFDIR "/urbackup/scripts");
+#else
 		real_args.push_back( DATADIR "/urbackup/scripts:" SYSCONFDIR "/urbackup/scripts");
+#endif
 		real_args.push_back("--pidfile");
 		real_args.push_back(pidfile_arg.getValue());
 		if(std::find(real_args.begin(), real_args.end(), "--logfile")==real_args.end())

@@ -2,6 +2,9 @@
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace
 {
@@ -46,4 +49,28 @@ namespace
     {
         return getMountDevice("/");
     }
+
+	bool isDevice(const std::string& path)
+	{
+		struct stat stbuf;
+		if (stat(path.c_str(), &stbuf) == 0)
+		{
+			if (S_ISBLK(stbuf.st_mode))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	std::string mapLinuxDev(const std::string& path)
+	{
+		if (path == "C" || path == "C:")
+			return getRootVol();
+
+		if (isDevice(path))
+			return path;
+
+		return getMountDevice(path);
+	}
 }

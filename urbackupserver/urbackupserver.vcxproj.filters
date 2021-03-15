@@ -390,6 +390,15 @@
     <ClCompile Include="serverinterface\restore_image.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="WebSocketConnector.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\WebSocketPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ServerDownloadThreadGroup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -691,6 +700,15 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
       <Filter>sha2</Filter>
+    </ClInclude>
+    <ClInclude Include="WebSocketConnector.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\WebSocketPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerDownloadThreadGroup.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

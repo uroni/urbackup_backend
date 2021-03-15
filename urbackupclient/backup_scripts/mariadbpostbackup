@@ -24,7 +24,6 @@
 set -e
 
 . SYSCONFDIR/mariadbxtrabackup.conf
-exists() { [[ -e $1 ]]; }
 
 if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
 then
@@ -34,13 +33,14 @@ fi
 
 [ ! -e "$MARIADB_TEMP_INCRDIR/last" ] || rm -R "$MARIADB_TEMP_INCRDIR/last"
 mv $MARIADB_TEMP_INCRDIR/last.new $MARIADB_TEMP_INCRDIR/last
-if exists $MARIADB_TEMP_INCRDIR/incr_*
-then
-	rm -R $MARIADB_TEMP_INCRDIR/incr_*
-fi
 
 # Argument one null means main client
 if [ $1 = 0 ]
 then
-    urbackupclientctl reset-keep -v incr
+	! [ -e $MARIADB_TEMP_INCRDIR/last_names ] || rm $MARIADB_TEMP_INCRDIR/last_names
+	mv $MARIADB_TEMP_INCRDIR/blockalign.data.new $MARIADB_TEMP_INCRDIR/blockalign.data
+else
+	CURR_BACKUP=$(cat "$MARIADB_TEMP_INCRDIR/curr_name")
+	echo "$CURR_BACKUP" >> "$MARIADB_TEMP_INCRDIR/last_names"
+	rm "$MARIADB_TEMP_INCRDIR/curr_name"
 fi

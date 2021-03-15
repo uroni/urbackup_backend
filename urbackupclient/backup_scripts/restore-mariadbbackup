@@ -137,7 +137,7 @@ do
 	fi
 done
 
-echo "Stoping MariaDB/MySQL..."
+echo "Stopping MariaDB/MySQL..."
 if command -v systemctl >/dev/null 2>&1
 then
 	systemctl stop mysql.service || true
@@ -155,15 +155,34 @@ fi
 
 
 echo "Restoring full database backup..."
-urbackupclientctl restore-start -b $RESTORE_FULL_BACKUP -d urbackup_backup_scripts/mariadbxtrabackup
+urbackupclientctl restore-start -b $RESTORE_FULL_BACKUP -d urbackup_backup_scripts/mariadbxtrabackup.xbstream.blockalign
+
+if [ "x$MARIADB_DATADIR" = x ]
+then
+	echo "MARIADB_DATADIR not set"
+	exit 1
+fi
+
+if [ -e "$MARIADB_DATADIR.old" ]
+then
+	echo "Deleting $MARIADB_DATADIR.old..."
+	rm -Rf "$MARIADB_DATADIR.old"
+fi
+
+echo "Moving current database from $MARIADB_DATADIR to ${MARIADB_DATADIR%/}.old..."
+mv "$MARIADB_DATADIR" "${MARIADB_DATADIR%/}.old"
+mkdir -p "$MARIADB_DATADIR"
 
 if [ x$RESTORE_INCR_BACKUP != x ]
 then
+	echo "Extracting full backup..."
+	blockalign -r "$MARIADB_TEMP_INCRDIR/mariadbxtrabackup.xbstream.blockalign" - | $MBSTREAM_CMD -x - -C "$MARIADB_DATADIR"
+	rm "$MARIADB_TEMP_INCRDIR/mariadbxtrabackup.xbstream.blockalign"
 	echo "Preparing full backup..."
-	xtrabackup --prepare --apply-log-only --target-dir="$MARIADB_DATADIR"
+	$XTRABACKUP_CMD --prepare --apply-log-only --target-dir="$MARIADB_DATADIR"
 
 	echo "Restoring incremental database backups..."
-	INCR_BACKUP=`urbackupclientctl browse -v incr -b $RESTORE_INCR_BACKUP -d mariadbbackup | jq -r ".[].name | select(startswith(\"incr_\"))" | sort`
+	INCR_BACKUP=`urbackupclientctl browse -v incr -b $RESTORE_INCR_BACKUP -d urbackup_backup_scripts | jq -r ".[].name | select(startswith(\"incr_backup_\"))" | sort`
 
 	MAXNUM=0
 	for incr in $INCR_BACKUP
@@ -176,20 +195,27 @@ then
 	do
 		echo "Restoring incremental backup $incr..."
 		mkdir -p "$MARIADB_TEMP_INCRDIR/$incr"
-		urbackupclientctl restore-start -v incr -b $RESTORE_INCR_BACKUP -d mariadbbackup/$incr
+		urbackupclientctl restore-start -v incr -b $RESTORE_INCR_BACKUP -d "urbackup_backup_scripts/$incr"
 		NUM=$((NUM+1))
 		EXTRA_PARM="--apply-log-only"
 		if [ $NUM = $MAXNUM ]
 		then
 			EXTRA_PARM=$REBUILD_INDEXES
 		fi
+		echo "Extracting incremental backup $incr..."
+		mkdir -p "$MARIADB_TEMP_INCRDIR/$incr.x"
+		$MBSTREAM_CMD -x "$MARIADB_TEMP_INCRDIR/$incr" -C "$MARIADB_TEMP_INCRDIR/$incr.x"
 		echo "Merging incremental backup $incr..."
-		xtrabackup --prepare $EXTRA_PARM --target-dir="$MARIADB_DATADIR" --incremental-dir="$MARIADB_TEMP_INCRDIR/$incr"
-		rm -R "$MARIADB_TEMP_INCRDIR/$incr"
+		$XTRABACKUP_CMD --prepare $EXTRA_PARM --target-dir="$MARIADB_DATADIR" --incremental-dir="$MARIADB_TEMP_INCRDIR/$incr.x"
+		rm -R "$MARIADB_TEMP_INCRDIR/$incr.x"
+		rm "$MARIADB_TEMP_INCRDIR/$incr"
 	done
 else
+	echo "Extracting full backup..."
+	blockalign -r "$MARIADB_TEMP_INCRDIR/mariadbxtrabackup.xbstream.blockalign" - | $MBSTREAM_CMD -x - -C "$MARIADB_DATADIR"
+        rm "$MARIADB_TEMP_INCRDIR/mariadbxtrabackup.xbstream.blockalign"
 	echo "Preparing full backup..."
-	xtrabackup --prepare --target-dir="$MARIADB_DATADIR" $REBUILD_INDEXES
+	$XTRABACKUP_CMD --prepare --target-dir="$MARIADB_DATADIR" $REBUILD_INDEXES
 fi
 
 chown -R mysql:mysql "$MARIADB_DATADIR"

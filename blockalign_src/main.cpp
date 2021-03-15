@@ -1292,7 +1292,7 @@ int main(int argc, char* argv[])
 
     if (name.empty() && !restore)
     {
-        std::cerr << "Stream name not given as an argument" << std::endl;
+        std::cerr << "Hash output name not given as an argument" << std::endl;
 		show_help();
         return 1;
     }
@@ -1366,8 +1366,7 @@ int main(int argc, char* argv[])
 		ret = 2;
 	}
 
-	if (ret==0
-		&& output == &out_stream)
+	if (ret==0)
 	{
 		out_stream.close();
 

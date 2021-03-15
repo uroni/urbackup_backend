@@ -48,6 +48,11 @@ public:
 	virtual std::string getFilename(void)=0;
 };
 
+class IVdlVolCache : public IObject
+{
+
+};
+
 class IFsFile : public IFile
 {
 public:
@@ -78,19 +83,29 @@ public:
 
 	struct SFileExtent
 	{
+		enum FeFlags
+		{
+			FeFlag_None = 0,
+			FeFlag_Unwritten = 1
+		};
+
 		SFileExtent()
-			: offset(-1), size(-1), volume_offset(-1)
+			: offset(-1), size(-1), volume_offset(-1),
+			flags(0)
 		{}
 
 		int64 offset;
 		int64 size;
 		int64 volume_offset;
+		unsigned int flags;
 	};
 
 	virtual void resetSparseExtentIter() = 0;
 	virtual SSparseExtent nextSparseExtent() = 0;
 	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
 	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) = 0;
+	virtual IVdlVolCache* createVdlVolCache() = 0;
+	virtual int64 getValidDataLength(IVdlVolCache* vol_cache) = 0;
 
 #ifdef _WIN32
 	typedef void* os_file_handle;

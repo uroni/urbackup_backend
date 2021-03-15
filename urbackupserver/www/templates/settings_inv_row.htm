@@ -344,24 +344,14 @@
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="computername">{tComputer name}</label>
+				<label class="col-sm-4 control-label" for="computername">{tClient name}</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="computername" value="{computername}"/>
 				</div>
 				<div id="computername_sw" style="display: inline"></div>
 			</div>
 			{no_compname_end|s}
-			{/main_client}
-			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_speed">{tMax backup speed for local network}:</label>
-				<div class="col-sm-6">
-					<div class="input-group">
-						<input type="text" class="form-control" id="local_speed" value="{local_speed}"/>
-						<div class="input-group-addon">MBit/s</div>
-					</div>
-				</div>
-				<div id="local_speed_sw" style="display: inline"></div>
-			</div>
+			{/main_client}			
 			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="silent_update">{tPerform autoupdates silently}:</label>
@@ -381,7 +371,7 @@
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="virtual_clients">{tVirtual sub client names}</label>
+				<label class="col-sm-4 control-label" for="virtual_clients">{tAdditional virtual sub client names}</label>
 				<div class="col-sm-6" id="virtual_clients_div">
 					<input type="text" class="form-control" id="virtual_clients" value="{virtual_clients}"/>
 				</div>
@@ -478,6 +468,39 @@
 	</div>
 </div>
 
+<div class="tab-pane" id="passive">
+	<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="local_speed">{tMax backup speed for local/passive transfers}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="local_speed" value="{local_speed}"/>
+						<div class="input-group-addon">MBit/s</div>
+					</div>
+				</div>
+				<div id="local_speed_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="local_encrypt">{tEncrypt local/passive transfers}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="local_encrypt" value="false" {local_encrypt}/></label>
+				</div>
+				<div id="local_encrypt_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="local_compress">{tCompress local/passive transfers}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="local_compress" value="false" {local_compress}/></label>
+				</div>
+				<div id="local_compress_sw" style="display: inline"></div>
+			</div>
+		</form>
+	</div>
+	</div>
+</div>
+
 {internet_settings_start|s}
 <div class="tab-pane" id="internet">
 	<div class="panel panel-default">
@@ -485,21 +508,15 @@
 		<form class="form-horizontal" role="form">
 			{?global_settings}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode (requires server restart)}:</label>
+				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tClients try to connect via Internet/active client}:</label>
 				<div class="col-sm-6">
-					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+					<label><input type="checkbox" id="internet_mode_enabled" value="true" {internet_mode_enabled}/></label>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_server">{tInternet server name/IP}:</label>
+				<label class="col-sm-4 control-label" for="internet_server">{tServer URL clients connect to}:</label>
 				<div class="col-sm-6">
-					<input type="text" class="form-control" id="internet_server" value="{internet_server|s}"/>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_server_port">{tInternet server port}:</label>
-				<div class="col-sm-6">
-					<input type="text" class="form-control" id="internet_server_port" value="{internet_server_port}"/>
+					<input type="text" class="form-control" id="internet_server" value="{internet_server|s}" placeholder="ws://example.com:55414/socket"/>
 				</div>
 			</div>
 			<div class="form-group">
@@ -512,16 +529,16 @@
 			{?main_client}
 			{^global_settings}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tTry to to connect via Internet/active client}:</label>
 				<div class="col-sm-6">
-					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+					<label><input type="checkbox" id="internet_mode_enabled" value="true" {internet_mode_enabled}/></label>
 				</div>
 				<div id="internet_mode_enabled_sw" style="display: inline"></div>
 			</div>
 			{/global_settings}
 			{?with_authkey}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_authkey">{tInternet auth key}</label>
+				<label class="col-sm-4 control-label" for="internet_authkey">{tAuth key}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="internet_authkey" value="{internet_authkey|s}"/></label>
 				</div>
@@ -529,21 +546,21 @@
 			{/with_authkey}
 			{/main_client}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_image_backups">{tDo image backups over internet}:</label>
+				<label class="col-sm-4 control-label" for="internet_image_backups">{tDo image backups as Internet/active client}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_image_backups" value="false" {internet_image_backups}/></label>
 				</div>
 				<div id="internet_image_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_full_file_backups">{tDo full file backups over internet}:</label>
+				<label class="col-sm-4 control-label" for="internet_full_file_backups">{tDo full file backups as Internet/active client}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_full_file_backups" value="false" {internet_full_file_backups}/></label>
 				</div>
 				<div id="internet_full_file_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_speed">{tMax backup speed for internet connection}:</label>
+				<label class="col-sm-4 control-label" for="internet_speed">{tMax backup speed as Internet/active client}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="internet_speed" value="{internet_speed}"/>
@@ -554,7 +571,7 @@
 			</div>
 			{?global_settings}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="global_internet_speed">{tTotal max backup speed for internet connection}:</label>
+				<label class="col-sm-4 control-label" for="global_internet_speed">{tTotal max backup speed for Internet/active connection}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="global_internet_speed" value="{global_internet_speed}"/>
@@ -566,14 +583,14 @@
 			{/global_settings}
 			{?main_client}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_encrypt">{tEncrypted transfer}:</label>
+				<label class="col-sm-4 control-label" for="internet_encrypt">{tEncrypted Internet/active transfer}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_encrypt" value="false" {internet_encrypt}/></label>
 				</div>
 				<div id="internet_encrypt_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_compress">{tCompressed transfer}:</label>
+				<label class="col-sm-4 control-label" for="internet_compress">{tCompressed Internet/active transfer}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_compress" value="false" {internet_compress}/></label>
 				</div>
@@ -581,14 +598,14 @@
 			</div>
 			{/main_client}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_calculate_filehashes_on_client">{tCalculate file-hashes on the client}:</label>
+				<label class="col-sm-4 control-label" for="internet_calculate_filehashes_on_client">{tCalculate file-hashes on the client as Internet/active client}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></label>
 				</div>
 				<div id="internet_calculate_filehashes_on_client_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_parallel_file_hashing">Beta: Calculate file hashes on client in parallel:</label>
+				<label class="col-sm-4 control-label" for="internet_parallel_file_hashing">Beta: Calculate file hashes on client in parallel as Internet/active client:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_parallel_file_hashing" value="false" {internet_parallel_file_hashing}/></label>
 				</div>
@@ -596,7 +613,7 @@
 			</div>
 			{?main_client}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_connect_always">{tConnect to Internet backup server if connected to local backup server}:</label>
+				<label class="col-sm-4 control-label" for="internet_connect_always">{tConnect as Internet/active client if connected to as local/passive client}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></label>
 				</div>
@@ -631,7 +648,7 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="restore_authkey">{tInternet restore authentication key}:</label>
+				<label class="col-sm-4 control-label" for="restore_authkey">{tInternet/active restore authentication key}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="restore_authkey" value="{restore_authkey|s}"/>
 				</div>
@@ -661,72 +678,78 @@
 					<label><input type="checkbox" id="use_tmpfiles_images" value="false" {use_tmpfiles_images}/></label>
 				</div>
 			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_server_bind_port">{tNon-default UrBackup Internet protocol TCP port}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="internet_server_bind_port" value="{internet_server_bind_port}"/>
+				</div>
+			</div>
 			{global_settings_end|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_full_file_transfer_mode">{tLocal full file backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="local_full_file_transfer_mode">{tLocal/passive full file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_full_file_transfer_mode"><option value="raw" {local_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_full_file_transfer_mode_1}>{tHashed}</option></select>
 				</div>
 				<div id="local_full_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_full_file_transfer_mode">{tInternet full file backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_full_file_transfer_mode">{tInternet/active full file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_full_file_transfer_mode"><option value="raw" {internet_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_full_file_transfer_mode_1}>{tHashed}</option></select>
 				</div>
 				<div id="internet_full_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_incr_file_transfer_mode">{tLocal incremental file backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="local_incr_file_transfer_mode">{tLocal/passive incremental file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_incr_file_transfer_mode"><option value="raw" {local_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {local_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
 				</div>
 				<div id="local_incr_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_incr_file_transfer_mode">{tInternet incremental file backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_incr_file_transfer_mode">{tInternet/active incremental file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_incr_file_transfer_mode"><option value="raw" {internet_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {internet_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
 				</div>
 				<div id="internet_incr_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_image_transfer_mode">{tLocal image backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="local_image_transfer_mode">{tLocal/passive image backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_image_transfer_mode"><option value="raw" {local_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
 				<div id="local_image_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_image_transfer_mode">{tInternet image backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_image_transfer_mode">{tInternet/active image backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
 				<div id="internet_image_transfer_mode_sw" style="display: inline"></div>
 			</div>			
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_incr_image_style">{tLocal incremental image style}:</label>
+				<label class="col-sm-4 control-label" for="local_incr_image_style">{tLocal/passive incremental image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_incr_image_style"><option value="to-full" {local_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {local_incr_image_style_1}>{tBased on last image backup}</option></select>
 				</div>
 				<div id="local_incr_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_incr_image_style">{tInternet incremental image style}:</label>
+				<label class="col-sm-4 control-label" for="internet_incr_image_style">{tInternet/active incremental image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_incr_image_style"><option value="to-full" {internet_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {internet_incr_image_style_1}>{tBased on last image backup}</option></select>
 				</div>
 				<div id="internet_incr_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="local_full_image_style">{tLocal full image style}:</label>
+				<label class="col-sm-4 control-label" for="local_full_image_style">{tLocal/passive full image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_full_image_style"><option value="full" {local_full_image_style_0}>{tFull image backup #1}</option><option value="synthetic" {local_full_image_style_1}>{tSynthetic full image backup}</option></select>
 				</div>
 				<div id="local_full_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_full_image_style">{tInternet full image style}:</label>
+				<label class="col-sm-4 control-label" for="internet_full_image_style">{tInternet/active full image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_full_image_style"><option value="full" {internet_full_image_style_0}>{tFull image backup #1}</option><option value="synthetic" {internet_full_image_style_1}>{tSynthetic full image backup}</option></select>
 				</div>
@@ -749,7 +772,7 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_expect_endpoint">{tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet service (needs server restart)}</label>
+				<label class="col-sm-4 control-label" for="internet_expect_endpoint">{tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="internet_expect_endpoint" value="{internet_expect_endpoint}"/></label>
 				</div>
@@ -845,6 +868,34 @@
 					<label><input type="text" class="form-control" id="client_settings_tray_access_pw" value="{client_settings_tray_access_pw}"/></label>
 				</div>
 				<div id="client_settings_tray_access_pw_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="download_threads">Beta: {tNumber of parallel file download threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="download_threads" value="{download_threads}"/></label>
+				</div>
+				<div id="download_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="hash_threads">Beta: {tNumber of parallel server file hash threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="hash_threads" value="{hash_threads}"/></label>
+				</div>
+				<div id="hash_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="client_hash_threads">Beta: {tNumber of parallel client file hash threads per file backup}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="client_hash_threads" value="{client_hash_threads}"/></label>
+				</div>
+				<div id="client_hash_threads_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="image_compress_threads">Beta: {tNumber of threads to use for VHDZ compression (0: auto)}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="image_compress_threads" value="{image_compress_threads}"/></label>
+				</div>
+				<div id="image_compress_threads_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>

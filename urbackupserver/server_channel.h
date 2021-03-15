@@ -70,6 +70,7 @@ private:
 	void DOWNLOAD_FILES_TOKENS(str_map& params);
 	void RESTORE_PERCENT( str_map params );
 	void RESTORE_DONE( str_map params );
+	void STARTUP(str_map& params);
 
 	void reset();
 
@@ -125,4 +126,6 @@ private:
 	static IMutex* restore_token_mutex;
 	static std::map<std::string, SRestoreToken> restore_tokens;
 	static std::map<std::string, SRestoreToken> restore_tokens_used;
+
+	int64 startup_timestamp;
 };

@@ -39,6 +39,9 @@
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../urbackupcommon/CompressedPipe2.h"
+#include "../urbackupcommon/CompressedPipeZstd.h"
+#include "../urbackupcommon/InternetServicePipe2.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -89,7 +92,7 @@ int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
-std::map<std::pair<std::string, std::string>, std::string> ClientConnector::challenges;
+std::map<std::pair<std::string, std::string>, ClientConnector::SChallenge> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
 std::vector < ClientConnector::SFilesrvConnection > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
@@ -102,6 +105,7 @@ SRestoreToken ClientConnector::restore_token;
 std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
 std::deque<std::pair<std::string, std::string> > ClientConnector::finished_async_file_index;
 bool ClientConnector::last_metered = false;
+int64 ClientConnector::startup_timestamp = 0;
 
 
 #ifdef _WIN32
@@ -189,6 +193,30 @@ namespace
 			}
 		}
 	};
+
+	class FileservClientThread : public IThread
+	{
+	public:
+		FileservClientThread(IPipe* pipe, const char* p_extra_buffer, size_t extra_buffer_size)
+			: pipe(pipe)
+		{
+			if (extra_buffer_size > 0)
+			{
+				extra_buffer.assign(p_extra_buffer, p_extra_buffer + extra_buffer_size);
+			}
+		}
+
+		void operator()()
+		{
+			IndexThread::getFileSrv()->runClient(pipe, &extra_buffer);
+			delete pipe;
+			delete this;
+		}
+
+	private:
+		IPipe* pipe;
+		std::vector<char> extra_buffer;
+	};
 }
 
 void ClientConnector::init_mutex(void)
@@ -232,6 +260,8 @@ void ClientConnector::init_mutex(void)
 	}
 
 	service_starttime = Server->getTimeMS();
+
+	startup_timestamp = Server->getTimeSeconds();
 }
 
 void ClientConnector::destroy_mutex(void)
@@ -276,6 +306,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	retrieved_has_components=false;
 	status_has_components=false;
 	curr_result_id = 0;
+	is_encrypted = false;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -366,7 +397,6 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 			if(msg=="exit" || !has_result)
 			{
-				assert(false);
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -570,7 +600,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 					if(crypto_fak!=NULL)
 					{
-						if (crypto_fak->verifyFile(UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub",
+#if defined(__APPLE__)
+						// ./UrBackup\ Client.app/Contents/MacOS/sbin/../share/urbackup/urbackup_ecdsa409k1.pub
+						std::string pubkey = ExtractFilePath(Server->getServerWorkingDir()) + "/share/urbackup/urbackup_ecdsa409k1.pub";
+#else
+						std::string pubkey = UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub";
+#endif
+						if (crypto_fak->verifyFile(pubkey,
 							UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 						{
 							std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
@@ -913,10 +949,24 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		}
 	}
 
-	tcpstack.AddData((char*)cmd.c_str(), cmd.size());
+	tcpstack.AddData(cmd.data(), cmd.size());
 
-	while( tcpstack.getPacket(cmd) && !cmd.empty())
+	while(true)
 	{
+		if (!tcpstack.getPacket(cmd) || cmd.empty())
+		{
+			size_t rc = pipe->Read(&cmd, 0);
+			if (rc > 0)
+			{
+				tcpstack.AddData(cmd.data(), cmd.size());
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
@@ -954,13 +1004,14 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 		}
 
-		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity, endpoint_name))
+		std::string secret_session_key;
+		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity, endpoint_name, secret_session_key))
 		{
 			ident_ok=true;
 		}
 		else if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
 		{
-			if(!ServerIdentityMgr::hasPublicKey(identity) || crypto_fak==NULL)
+			if(!ServerIdentityMgr::hasPublicKey(identity, true) || crypto_fak==NULL)
 			{
 				ident_ok=true;
 			}
@@ -994,6 +1045,72 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 
 		if(ident_ok) //Commands from Server
 		{
+			if (next(cmd, 0, "ENC?"))
+			{
+				str_map params;
+				ParseParamStrHttp(cmd.substr(4), &params);
+
+				std::string resp = "ok=1";
+
+				std::string client_keyadd;
+				std::string server_keyadd;
+				if (!secret_session_key.empty())
+				{
+					server_keyadd = base64_decode_dash(params["keyadd"]);
+					if (server_keyadd.empty())
+					{
+						Server->Log("Server keyadd is empty", LL_WARNING);
+						return;
+					}
+					client_keyadd.resize(16);
+					Server->randomFill(&client_keyadd[0], client_keyadd.size());
+					resp += "&keyadd=" + base64_encode_dash(client_keyadd);
+				}
+
+				tcpstack.Send(pipe, resp);
+
+				if (!secret_session_key.empty())
+				{	
+					Server->Log("Encrypting with key " + base64_encode_dash(secret_session_key + server_keyadd + client_keyadd) + " (client)");
+					InternetServicePipe2* isp = new InternetServicePipe2(pipe, secret_session_key + server_keyadd + client_keyadd);
+					isp->destroyBackendPipeOnDelete(true);
+					pipe = isp;
+					is_encrypted = true;
+				}
+
+				std::string compress = params["compress"];
+				int compression_level = watoi(params["compress_level"]);
+
+				if (compress == "zlib")
+				{
+					CompressedPipe2* comp_pipe = new CompressedPipe2(pipe, compression_level);
+					comp_pipe->destroyBackendPipeOnDelete(true);
+					pipe = comp_pipe;
+				}
+#ifndef NO_ZSTD_COMPRESSION
+				else if (compress == "zstd")
+				{
+					CompressedPipeZstd* comp_pipe = new CompressedPipeZstd(pipe, compression_level, -1);
+					comp_pipe->destroyBackendPipeOnDelete(true);
+					pipe = comp_pipe;
+
+				}
+#endif
+				else
+				{
+					Server->Log("Unknown compression method from server: \"" + compress + "\"", LL_ERROR);
+				}
+
+				continue;
+			}
+
+			if (!secret_session_key.empty()
+				&& !is_encrypted)
+			{
+				tcpstack.Send(pipe, "ERR REQUIRE ENC");
+				return;
+			}
+
 			if( cmd=="START BACKUP" || cmd=="2START BACKUP" || next(cmd, 0, "3START BACKUP") )
 			{
 				CMD_START_INCR_FILEBACKUP(cmd); continue;
@@ -1001,6 +1118,16 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP" || next(cmd, 0, "3START FULL BACKUP") )
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
+			}
+			else if (cmd == "FILESRV")
+			{
+				Server->Log("Start FILESRV thread");
+				Server->getThreadPool()->execute(new FileservClientThread(pipe, 
+					tcpstack.getBuffer(), tcpstack.getBuffersize()), "tfileserver");
+				state = CCSTATE_FILESERV;
+				do_quit = true;
+				want_receive = false;
+				return;
 			}
 			else if (next(cmd, 0, "WAIT FOR INDEX "))
 			{
@@ -1284,13 +1411,27 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0");
+		if (!server_default)
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0");
+		}
+		else
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+		}
 	}
 	else
 	{
-		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		if (!server_default)
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		}
+		else
+		{
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		}
 	}
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert(server_default?1:0)+", ?, ?)");
+	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? , ?, ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1456,13 +1597,25 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 
 				new_watchdirs.push_back(new_dir);
 			}
+
+			int curr_server_default = 0;
+
+			if (server_default)
+			{
+				str_map::iterator server_default_arg = args.find("dir_" + convert(i) + "_server_default");
+				if (server_default_arg != args.end())
+				{
+					curr_server_default = watoi(server_default_arg->second);
+				}
+			}
 			
-			q->Bind(name);
-			q->Bind(dir);
-			q->Bind(flags);
-			q->Bind(group);
-			q->Write();
-			q->Reset();
+			q_insert_dir->Bind(name);
+			q_insert_dir->Bind(dir);
+			q_insert_dir->Bind(curr_server_default);
+			q_insert_dir->Bind(flags);
+			q_insert_dir->Bind(group);
+			q_insert_dir->Write();
+			q_insert_dir->Reset();
 		}
 		++i;
 	}
@@ -1600,7 +1753,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}	
 #endif
 
-	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset))
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end()))
 	{
 		IScopedLock lock(backup_mutex);
 		for (size_t o = 0; o<channel_pipes.size(); ++o)
@@ -1723,6 +1876,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	int default_dirs_use = new_settings->getValue("default_dirs.use", 0);
 	std::vector<std::string> default_dirs_toks;
+	size_t default_dirs_client_off = std::string::npos;
 
 	if (default_dirs_use & c_use_group)
 	{
@@ -1741,6 +1895,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 		std::string val;
 		std::vector<std::string> toks;
 		Tokenize(new_settings->getValue("default_dirs.client", ""), toks, ";");
+		default_dirs_client_off = default_dirs_toks.size();
 		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
 	}
 
@@ -1768,6 +1923,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 				args["dir_"+convert(i)+"_name"]=name;
 
 			args["dir_"+convert(i)+"_group"]=convert(group);
+			args["dir_" + convert(i) + "_server_default"] = convert(i>= default_dirs_client_off ? 0 : 1);
 		}
 
 		saveBackupDirs(args, true, group_offset);
@@ -2066,10 +2222,68 @@ namespace
 {
 	bool parseDevicePartNumber(const std::string& volfn, std::string& dev, int& DeviceNumber, int& PartNumber)
 	{
+		if (next(volfn, 0, "/dev/mapper/")
+			|| next(volfn, 0, "/dev/dm-") )
+		{
+			std::string dm_table;
+			//TODO: Use ioctl here
+			if (os_popen("dmsetup table \"" + greplace("\"", "_", volfn) + "\"", dm_table)==0)
+			{
+				std::vector<std::string> toks;
+				Tokenize(trim(dm_table), toks, " ");
+				std::string back_dev;
+				if (toks.size() > 2)
+				{
+					if (toks[2] == "linear"
+						&& toks.size()>3)
+					{
+						back_dev = toks[3];
+					}
+					else if (toks[2] == "era"
+						&& toks.size() > 4)
+					{
+						back_dev = toks[4];
+					}
+					else if (toks[2] == "snapshot-origin"
+						&& toks.size()>3)
+					{
+						back_dev = toks[3];
+					}
+					else
+					{
+						Server->Log("Cannot follow device mapping " + toks[2], LL_WARNING);
+					}
+				}
+				else
+				{
+					Server->Log("Cannot parse device mapper table \"" + dm_table + "\"", LL_WARNING);
+				}
+
+				if (!back_dev.empty())
+				{
+					Server->Log("Following device mapping ("+toks[2]+") to device "+back_dev, LL_DEBUG);
+
+					std::string uevent_info = getFile("/sys/dev/block/" + back_dev + "/uevent");
+					std::string dev_name = getbetween("DEVNAME=", "\n", uevent_info);
+
+					if (FileExists("/dev/" + dev_name))
+					{
+						Server->Log("Device name /dev/"+dev_name, LL_DEBUG);
+
+						return parseDevicePartNumber("/dev/" + dev_name, dev, DeviceNumber, PartNumber);
+					}
+					else
+					{
+						Server->Log("Could not find device name of device "+back_dev, LL_WARNING);
+					}
+				}
+			}
+		}
+
 		std::string dl_devnum;
 		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
 
-		for (const char* const * devname = devnames; devname != NULL; ++devname)
+		for (const char* const * devname = devnames; *devname != NULL; ++devname)
 		{
 			if (next(volfn, 0, std::string("/dev/") + *devname))
 			{
@@ -2552,23 +2766,23 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 			return false;
 		}
 
-		std::string gpt_header = dev->Read(logical_sector_size);
+		std::string primary_gpt_header = dev->Read(logical_sector_size);
 
-		if(gpt_header.size()!=logical_sector_size)
+		if(primary_gpt_header.size()!=logical_sector_size)
 		{
 			errmsg="Error reading GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		if(gpt_header.size()<sizeof(EfiHeader))
+		if(primary_gpt_header.size()<sizeof(EfiHeader))
 		{
 			errmsg="GPT header too small "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		const EfiHeader* gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+		const EfiHeader* gpt_header_s = reinterpret_cast<const EfiHeader*>(primary_gpt_header.data());
 
 		if(gpt_header_s->signature!=gpt_magic)
 		{
@@ -2578,10 +2792,10 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		}
 
 		mbr.addInt64(logical_sector_size);
-		mbr.addString(gpt_header);
+		mbr.addString(primary_gpt_header);
 
-		int64 paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
-		if(!dev->Seek(paritition_table_pos))
+		int64 primary_paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
+		if(!dev->Seek(primary_paritition_table_pos))
 		{
 			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_ERROR);
@@ -2589,83 +2803,93 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		}
 
 		_u32 toread = gpt_header_s->num_parition_entries*gpt_header_s->partition_entry_size;
-		std::string gpt_table = dev->Read(toread);
+		std::string primary_gpt_table = dev->Read(toread);
 
 		Server->Log("GUID partition table size is "+PrettyPrintBytes(toread), LL_DEBUG);
 
-		if(gpt_table.size()!=toread)
+		if(primary_gpt_table.size()!=toread)
 		{
 			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		mbr.addInt64(paritition_table_pos);
-		mbr.addString(gpt_table);
+		mbr.addInt64(primary_paritition_table_pos);
+		mbr.addString(primary_gpt_table);
 
 		// BACKUP HEADER
 		int64 backup_gpt_location = gpt_header_s->backup_lba*logical_sector_size;
+		std::string backup_gpt_header;
 		if(!dev->Seek(backup_gpt_location))
 		{
 			errmsg="Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber)+" at "+convert(backup_gpt_location)+". "+ os_last_error_str();
 			Server->Log(errmsg, LL_WARNING);
+
 			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
 		}
 		else
 		{
-			std::string backup_gpt_header = dev->Read(logical_sector_size);
+			backup_gpt_header = dev->Read(logical_sector_size);
 
 			if (backup_gpt_header.size() != logical_sector_size)
 			{
 				errmsg = "Error reading backup GPT header " + convert((int)dev_num.DeviceNumber) + " at " + convert(backup_gpt_location);
 				Server->Log(errmsg, LL_WARNING);
+
 				backup_gpt_location = logical_sector_size;
-			}
-			else
-			{
-				gpt_header = backup_gpt_header;
+				backup_gpt_header = primary_gpt_header;
 			}
 		}
 
-		if(gpt_header.size()<sizeof(EfiHeader))
+		if(backup_gpt_header.size()<sizeof(EfiHeader))
 		{
 			errmsg="Backup GPT header too small "+convert((int)dev_num.DeviceNumber);
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+
+			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
 		}
 
-		const EfiHeader* backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+		const EfiHeader* backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(backup_gpt_header.data());
 
 		if(backup_gpt_header_s->signature!=gpt_magic)
 		{
 			errmsg="Backup GPT magic wrong "+convert((int)dev_num.DeviceNumber);
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+
+			backup_gpt_location = logical_sector_size;
+			backup_gpt_header = primary_gpt_header;
+			backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(backup_gpt_header.data());
 		}
 
 		mbr.addInt64(backup_gpt_location);
-		mbr.addString(gpt_header);
+		mbr.addString(backup_gpt_header);
 
-		paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
-		if(!dev->Seek(paritition_table_pos))
+		int64 backup_paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
+		if(!dev->Seek(backup_paritition_table_pos))
 		{
 			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+			
+			backup_paritition_table_pos = primary_paritition_table_pos;
+			dev->Seek(backup_paritition_table_pos);
 		}
 
 		toread = backup_gpt_header_s->num_parition_entries*backup_gpt_header_s->partition_entry_size;
-		gpt_table = dev->Read(toread);
+		std::string backup_gpt_table = dev->Read(toread);
 
-		if(gpt_table.size()!=toread)
+		if(backup_gpt_table.size()!=toread)
 		{
 			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			Server->Log(errmsg, LL_WARNING);
+			
+			backup_paritition_table_pos = primary_paritition_table_pos;
+			backup_gpt_table = primary_gpt_table;
 		}
 
-		mbr.addInt64(paritition_table_pos);
-		mbr.addString(gpt_table);
+		mbr.addInt64(backup_paritition_table_pos);
+		mbr.addString(backup_gpt_table);
 	}
 	
 	mbr.addString(errmsg);
@@ -3115,6 +3339,9 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
 		}
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
+
+		if (curr_settings == NULL)
+			return false;
 
 		std::string val;
 		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)
@@ -3682,20 +3909,21 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 		{
 			if (!channel_pipes[i].server_identity.empty())
 			{
-				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
+				std::string secret_key;
+				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name, secret_key);
 			}
 			break;
 		}
 	}
 }
 
-bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset)
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use)
 {
 	db_results res_virtual_clients;
 	if(all_virtual_clients)
-		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
 	else
-		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
 
 	if (all_virtual_clients || group_offset == 0)
 	{
@@ -3715,6 +3943,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
 
 		int default_dirs_use = c_use_value_client;
+		bool has_client_path = false;
 		std::string default_dirs;
 		for (size_t j = 0; j < res_paths.size(); ++j)
 		{
@@ -3724,6 +3953,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			{
 				default_dirs_use |= c_use_group | c_use_value;
 				continue;
+			}
+			else
+			{
+				has_client_path = true;
 			}
 			
 			int optional = watoi(res_path["optional"]);
@@ -3756,7 +3989,9 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			else if (str_flags == str_flags_default)
 				str_flags.clear();
 
-			default_dirs += EscapePathParamString(res_path["path"])+"|"+EscapePathParamString(res_path["name"]) + str_flags;
+			std::string path = greplace("%2F", "/", EscapePathParamString(res_path["path"]));
+
+			default_dirs += path +"|"+EscapePathParamString(res_path["name"]) + str_flags;
 		}
 
 		std::string settings_fn = "urbackup/data/settings.cfg";
@@ -3770,11 +4005,30 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 		if (curr_settings.get() != NULL)
 		{
 			str_map settings_repl;
+
+			int64 default_dirs_use_lm_orig = curr_settings->getValue("default_dirs.use_lm", 0LL);
+
+			int64 ctime = Server->getTimeSeconds();
+			if (default_dirs_use_lm_orig > ctime)
+				ctime = default_dirs_use_lm_orig + 1;
+
 			if (curr_settings->getValue("default_dirs.use", 0) == 0)
 			{
-				settings_repl["default_dirs.use"] = convert(default_dirs_use);	
+				settings_repl["default_dirs.use"] = convert(default_dirs_use);
+				settings_repl["default_dirs.use_lm"] = convert(ctime);
 				mod = true;
 			}
+			else if (update_use)
+			{
+				int curr_use = curr_settings->getValue("default_dirs.use", 0);
+				if (has_client_path && !(curr_use & c_use_value_client))
+				{
+					settings_repl["default_dirs.use"] = convert(curr_use|c_use_value_client);
+					settings_repl["default_dirs.use_lm"] = convert(ctime);
+					mod = true;
+				}
+			}
+
 
 			if (curr_settings->getValue("default_dirs.client", "") != default_dirs)
 			{

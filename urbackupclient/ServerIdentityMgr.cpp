@@ -23,8 +23,11 @@
 #include <memory>
 #include "file_permissions.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
+
+extern ICryptoFactory* crypto_fak;
 
 std::vector<SIdentity> ServerIdentityMgr::identities;
 IMutex *ServerIdentityMgr::mutex=NULL;
@@ -59,12 +62,12 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SP
 	identities.push_back(SIdentity(pIdentity, pPublicKey));
 	if(pPublicKey.empty())
 	{
-		filesrv->addIdentity("#I"+pIdentity+"#");
+		filesrv->addIdentity("#I"+pIdentity+"#", false);
 	}
 	writeServerIdentities();
 }
 
-bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity, const std::string& endpoint)
+bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string& secret_key)
 {
 	IScopedLock lock(mutex);
 
@@ -78,6 +81,7 @@ bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity,
 			&& Server->getTimeMS()-time<ident_online_timeout)
 		{
 			session_identities[i].onlinetime=Server->getTimeMS();
+			secret_key = session_identities[i].secret_key;
 			return true;
 		}
 	}
@@ -118,11 +122,21 @@ void ServerIdentityMgr::loadServerIdentities(void)
 				pubkeys = SPublicKeys(base64_decode_dash(params["pubkey"]),
 					base64_decode_dash(params["pubkey_ecdsa409k1"]));
 
+				if (!pubkeys.empty() &&
+					!checkFingerprint(pubkeys, params["fingerprint"]))
+				{
+					Server->Log("Fingerprint of public key (" + params["pubkey_ecdsa409k1"] + ") on line " + convert(i) + " is wrong. "
+						"Expected " + calcFingerprint(pubkeys) + " got " + params["fingerprint"], LL_ERROR);
+					continue;
+				}
+
+				pubkeys.fingerprint = params["fingerprint"];
+
 				l = l.substr(0, hashpos);
 			}
 			else
 			{
-				filesrv->addIdentity("#I"+l+"#");
+				filesrv->addIdentity("#I"+l+"#", false);
 			}
 			identities.push_back(SIdentity(l, pubkeys));
 			std::vector<SIdentity>::iterator it=std::find(old_identities.begin(), old_identities.end(), SIdentity(l));
@@ -162,10 +176,11 @@ void ServerIdentityMgr::loadServerIdentities(void)
 
 			l = l.substr(0, hashpos);
 
-			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS());
+			std::string secret_key = base64_decode_dash(params["secret_key"]);
+			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key);
 			session_identities.push_back(session_ident);
 
-			filesrv->addIdentity("#I"+l+"#");
+			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
 
 			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), SSessionIdentity(session_ident));
 			if(it!=old_session_identities.end())
@@ -210,23 +225,22 @@ void ServerIdentityMgr::writeServerIdentities(void)
 	{
 		if(!idents.empty()) idents+="\r\n";
 		idents+=identities[i].ident;
-		bool has_pubkey=false;
+		if (!identities[i].publickeys.dsa_key.empty()
+			|| !identities[i].publickeys.ecdsa409k1_key.empty())
+		{
+			if (identities[i].publickeys.fingerprint.empty())
+			{
+				identities[i].publickeys.fingerprint = calcFingerprint(identities[i].publickeys);
+			}
+			idents += "#fingerprint=" + identities[i].publickeys.fingerprint;
+		}
 		if(!identities[i].publickeys.dsa_key.empty())
 		{
-			idents+="#pubkey="+base64_encode_dash(identities[i].publickeys.dsa_key);
-			has_pubkey=true;
+			idents+="&pubkey="+base64_encode_dash(identities[i].publickeys.dsa_key);
 		}
 		if(!identities[i].publickeys.ecdsa409k1_key.empty())
 		{
-			if(has_pubkey)
-			{
-				idents+="&";
-			}
-			else
-			{
-				idents+="#";
-			}
-			idents+="pubkey_ecdsa409k1="+base64_encode_dash(identities[i].publickeys.ecdsa409k1_key);
+			idents+="&pubkey_ecdsa409k1="+base64_encode_dash(identities[i].publickeys.ecdsa409k1_key);
 		}
 	}
 	write_file_admin_atomic(idents, server_ident_file);
@@ -283,7 +297,20 @@ bool ServerIdentityMgr::setPublicKeys( const std::string &pIdentity, const SPubl
 
 	if(it!=identities.end())
 	{
+		std::string new_fingerprint;
+		if (!it->publickeys.fingerprint.empty())
+		{
+			new_fingerprint = calcFingerprint(pPublicKeys);
+
+			if (new_fingerprint != it->publickeys.fingerprint)
+			{
+				Server->Log("Error while setting public keys. Expected public keys with fingerprint " + it->publickeys.fingerprint + " but got " + new_fingerprint, LL_ERROR);
+				return false;
+			}
+		}
+
 		it->publickeys = pPublicKeys;
+		it->publickeys.fingerprint = new_fingerprint;
 
 		if(!pPublicKeys.empty())
 		{
@@ -296,24 +323,24 @@ bool ServerIdentityMgr::setPublicKeys( const std::string &pIdentity, const SPubl
 	return false;
 }
 
-bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity )
+bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity, bool count_fingerprint )
 {
 	IScopedLock lock(mutex);
 	std::vector<SIdentity>::iterator it = std::find(identities.begin(), identities.end(), SIdentity(pIdentity));
 
 	if(it!=identities.end())
 	{
-		return !it->publickeys.empty();
+		return !it->publickeys.empty() || (count_fingerprint && !it->publickeys.fingerprint.empty());
 	}
 	return false;
 }
 
-void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint )
+void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key)
 {
 	IScopedLock lock(mutex);
-	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS());
+	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key);
 	session_identities.push_back(session_ident);
-	filesrv->addIdentity("#I"+pIdentity+"#");
+	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
 	writeSessionIdentities();
 }
 
@@ -341,6 +368,7 @@ void ServerIdentityMgr::writeSessionIdentities()
 			if(!idents.empty()) idents+="\r\n";
 			idents+=session_identities[i].ident;
 			idents+="#endpoint="+session_identities[i].endpoint;
+			idents += "&secret_key=" + base64_encode_dash(session_identities[i].secret_key);
 
 			++written;
 			if(written>=max_session_identities)
@@ -367,4 +395,40 @@ bool ServerIdentityMgr::write_file_admin_atomic(const std::string & data, const 
 	}
 
 	return os_rename_file(fn + ".new", fn);
+}
+
+bool ServerIdentityMgr::checkFingerprint(const SPublicKeys& pPublicKeys, const std::string& fingerprint)
+{
+	if (fingerprint.empty())
+		return true;
+
+	return calcFingerprint(pPublicKeys)==fingerprint;
+}
+
+std::string ServerIdentityMgr::calcFingerprint(const SPublicKeys& pPublicKeys)
+{
+	std::string pubkey;
+
+	if (!pPublicKeys.ecdsa409k1_key.empty())
+	{
+		pubkey = pPublicKeys.ecdsa409k1_key;
+	}
+	else
+	{
+		pubkey = pPublicKeys.dsa_key;
+	}
+
+	std::string fingerprint = bytesToHex(crypto_fak->sha256Binary(pubkey));
+	strupper(&fingerprint);
+
+	std::string fingerprint_disp;
+	for (size_t i = 0; i < fingerprint.size(); i += 2)
+	{
+		fingerprint_disp += fingerprint.substr(i, 2);
+
+		if (i + 2 < fingerprint.size())
+			fingerprint_disp += ":";
+	}
+
+	return fingerprint_disp;
 }

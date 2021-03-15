@@ -413,13 +413,19 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 
 								if(id==ID_ISC_AUTH2)
 								{
-									salt+=ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+									std::string shared_key = ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+									if (salt.empty())
+									{
+										errmsg = "Generating ECDH shared key failed";
+									}
+									salt+=shared_key;
 								}
 
 								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(iterations, client_iterations));
 
 								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
-								if(hmac_loc==hmac)
+								if(hmac_loc==hmac
+									&& errmsg.empty())
 								{
 									if(id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
 									{
@@ -440,7 +446,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 									state=ISS_CAPA;	
 									comm_pipe=is_pipe;
 								}
-								else
+								else if(errmsg.empty())
 								{
 									errmsg="Auth failed (Authkey/password wrong)";
 								}
@@ -487,8 +493,12 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 						CWData data;
 						if(!errmsg.empty())
 						{
-							logFailedAuth(clientname, endpoint_name);
-							Server->Log("Authentication failed in InternetServiceConnector::ReceivePackets: "+errmsg, LL_INFO);
+							if (!token_auth)
+							{
+								logFailedAuth(clientname, endpoint_name);
+							}
+							Server->Log("Authentication failed in InternetServiceConnector::ReceivePackets: "+errmsg 
+								+ (token_auth ? " (token authentication)" :""), LL_INFO);
 							data.addChar(ID_ISC_AUTH_FAILED);
 							data.addString(errmsg);
 						}
@@ -709,9 +719,22 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				IPipe *ret=isc->getISPipe();
 				isc->freeConnection(); //deletes ics
 
-				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-				CompressedPipe2 *comp_pipe2=dynamic_cast<CompressedPipe2*>(ret);
-				if(comp_pipe2!=NULL)
+				CompressedPipe *comp_pipe;
+				CompressedPipe2 *comp_pipe2;
+#ifndef NO_ZSTD_COMPRESSION
+				CompressedPipeZstd* comp_zstd;
+				if ((comp_zstd = dynamic_cast<CompressedPipeZstd*>(ret)) != NULL)
+				{
+					InternetServicePipe2 *isc_pipe2 = dynamic_cast<InternetServicePipe2*>(comp_zstd->getRealPipe());
+					if (isc_pipe2 != NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
+					comp_zstd->destroyBackendPipeOnDelete(true);
+				}
+				else
+#endif
+					if((comp_pipe2 = dynamic_cast<CompressedPipe2*>(ret))!=NULL)
 				{
 					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
 					if(isc_pipe2!=NULL)
@@ -720,7 +743,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					}
 					comp_pipe2->destroyBackendPipeOnDelete(true);
 				}
-				else if(comp_pipe!=NULL)
+				else if((comp_pipe = dynamic_cast<CompressedPipe*>(ret) )!=NULL)
 				{
 					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
 					if(isc_pipe!=NULL)
@@ -889,8 +912,8 @@ std::string InternetServiceConnector::generateOnetimeToken(const std::string &cl
 	std::string ret;
 	ret.resize(sizeof(unsigned int)+token.token.size());
 	token_id=little_endian(token_id);
-	memcpy((char*)ret.data(), &token_id, sizeof(unsigned int));
-	memcpy((char*)ret.data()+sizeof(unsigned int), token.token.data(), token.token.size());
+	memcpy(&ret[0], &token_id, sizeof(unsigned int));
+	memcpy(&ret[sizeof(unsigned int)], token.token.data(), token.token.size());
 	return ret;
 }
 

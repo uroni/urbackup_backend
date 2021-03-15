@@ -77,7 +77,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
-				if(ServerIdentityMgr::hasPublicKey(identity))
+				if(ServerIdentityMgr::hasPublicKey(identity, true))
 				{
 					tcpstack.Send(pipe, "needs certificate");
 				}
@@ -130,6 +130,8 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 	}
 
 	std::string clientsubname;
+	bool with_enc = false;
+	std::string ecies_pubkey;
 	if (cmd.size() > 14)
 	{
 		std::string s_params = cmd.substr(14);
@@ -137,13 +139,55 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 		ParseParamStrHttp(s_params, &params);
 
 		clientsubname = params["clientsubname"];
+		ecies_pubkey = base64_decode_dash(params["ecies_pubkey"]);
+		with_enc = params["with_enc"] == "1";
+	}
+
+	bool local_encrypted = false;
+	bool local_compressed = false;
+	IECDHKeyExchange* shared_key_exchange = NULL;
+	std::string ret_params;
+
+	if (!internet_conn)
+	{
+		std::auto_ptr<ISettingsReader> settings(
+			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+
+		local_encrypted = settings->getValue("local_encrypted", true);
+		local_compressed = settings->getValue("local_compressed", true);
+	}
+
+	if (with_enc)
+	{
+		if (local_compressed)
+		{
+#ifndef NO_ZSTD_COMPRESSION
+			ret_params += "&compress=zstd";
+#else
+			ret_params += "&compress=zlib";
+#endif
+		}
+
+		if (local_encrypted)
+		{
+			shared_key_exchange = crypto_fak->createECDHKeyExchange();
+			ret_params += "&pubkey_ecdh233k1=" + base64_encode_dash(shared_key_exchange->getPublicKey());
+		}
+
+		if (!ret_params.empty())
+			ret_params[0] = '?';
+	}
+	else if (local_encrypted)
+	{
+		Server->Log("Client requires encryption which server does not offer", LL_ERROR);
+		return;
 	}
 
 	IScopedLock lock(ident_mutex);
 	std::string challenge = Server->secureRandomString(30)+"-"+convert(Server->getTimeSeconds())+"-"+convert(Server->getTimeMS());
-	challenges[std::make_pair(identity, clientsubname)]=challenge;
+	challenges[std::make_pair(identity, clientsubname)]=SChallenge(challenge, shared_key_exchange, local_compressed);
 
-	tcpstack.Send(pipe, challenge);
+	tcpstack.Send(pipe, challenge + ret_params);
 }
 
 void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::string &cmd)
@@ -176,16 +220,16 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 
 	IScopedLock lock(ident_mutex);
 
-	std::map<std::pair<std::string, std::string>, std::string>::iterator challenge_it = challenges.find(std::make_pair(identity, clientsubname));
+	std::map<std::pair<std::string, std::string>, SChallenge>::iterator challenge_it = challenges.find(std::make_pair(identity, clientsubname));
 
-	if(challenge_it==challenges.end() || challenge_it->second.empty())
+	if(challenge_it==challenges.end() || challenge_it->second.challenge_str.empty())
 	{
 		Server->Log("Signature error: No challenge", LL_ERROR);
 		tcpstack.Send(pipe, "no challenge");
 		return;
 	}
 
-	const std::string& challenge = challenge_it->second;
+	const std::string& challenge = challenge_it->second.challenge_str;
 	
 
 	std::string pubkey = base64_decode_dash(params["pubkey"]);
@@ -193,10 +237,20 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	std::string signature = base64_decode_dash(params["signature"]);
 	std::string signature_ecdsa409k1 = base64_decode_dash(params["signature_ecdsa409k1"]);
 	std::string session_identity = params["session_identity"];
+	std::string pubkey_ecdh233k1 = base64_decode_dash(params["pubkey_ecdh233k1"]);
+	std::string signature_ecdh233k1 = base64_decode_dash(params["signature_ecdh233k1"]);
+	std::string secret_session_key = base64_decode_dash(params["secret_session_key"]);
+	std::string signature_ecies = base64_decode_dash(params["signature_ecies"]);
+	std::string ecdh_shared_key;
+	std::string secret_session_key_decrypted;
 
-	if(!ServerIdentityMgr::hasPublicKey(identity))
+	if(!ServerIdentityMgr::hasPublicKey(identity, false))
 	{
-		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
+		if (!ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1)))
+		{
+			tcpstack.Send(pipe, "pubkey fingerprint mismatch");
+			return;
+		}
 	}
 
 	SPublicKeys pubkeys = ServerIdentityMgr::getPublicKeys(identity);
@@ -204,10 +258,31 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	if( (!pubkeys.ecdsa409k1_key.empty() && crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge, signature_ecdsa409k1))
 		|| (pubkeys.ecdsa409k1_key.empty() && !pubkeys.dsa_key.empty() && crypto_fak->verifyDataDSA(pubkeys.dsa_key, challenge, signature)) )
 	{
-		ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name);
-		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
-		tcpstack.Send(pipe, "ok");
-		challenges.erase(challenge_it);
+		if (challenge_it->second.shared_key_exchange==NULL ||
+			(crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge + pubkey_ecdh233k1, signature_ecdh233k1) &&
+				!(ecdh_shared_key = challenge_it->second.shared_key_exchange->getSharedKey(pubkey_ecdh233k1)).empty() &&
+				!(secret_session_key_decrypted = crypto_fak->decryptAuthenticatedAES(secret_session_key,
+					ecdh_shared_key, 1)).empty()
+			) )
+		{
+			if (!ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1)))
+			{
+				tcpstack.Send(pipe, "pubkey fingerprint mismatch (2)");
+				return;
+			}
+
+			ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name,
+				secret_session_key_decrypted);
+			
+			tcpstack.Send(pipe, "ok");
+			Server->destroy(challenge_it->second.shared_key_exchange);
+			challenges.erase(challenge_it);
+		}
+		else
+		{
+			Server->Log("Encryption session key exchange failed", LL_ERROR);
+			tcpstack.Send(pipe, "encryption session key exchange failed");
+		}		
 	}
 	else
 	{
@@ -827,7 +902,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 		return;
 	}
 
-	if(saveBackupDirs(params))
+	if(saveBackupDirs(params, false, 0))
 	{
 		tcpstack.Send(pipe, "OK");
 	}
@@ -922,6 +997,8 @@ void ClientConnector::CMD_BACKUP_FAILED(const std::string & cmd)
 		lasttime = Server->getTimeMS();
 		status_updated = true;
 	}
+
+	IndexThread::execute_postbackup_hook("postfilebackup_failed", atoi(params["group"].c_str()), params["clientsubname"]);
 
 	exit_backup_immediate(1);
 }
@@ -1228,15 +1305,20 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		}
 #endif
 
-		g_lock->relock(backup_mutex);
-
 		std::string token;
 
-		std::string s_params=cmd.substr(9);
+		std::string s_params = cmd.substr(9);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
-		int capa=watoi(params["capa"]);
-		token=params["token"];
+		int capa = watoi(params["capa"]);
+		token = params["token"];
+
+		if (params["startup"] == "1")
+		{
+			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));
+		}
+
+		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
 			&make_fileserv, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
@@ -1453,10 +1535,9 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 		}
 #ifndef _WIN32
-		else if (image_inf.image_letter == "C"
-			|| image_inf.image_letter == "C:")
+		else
 		{
-			image_inf.image_letter = getRootVol();
+			image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
 		}
 #endif
 
@@ -1561,11 +1642,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.clientsubname = params["clientsubname"];
 
 #ifndef _WIN32
-			if (image_inf.image_letter == "C"
-				|| image_inf.image_letter == "C:")
-			{
-				image_inf.image_letter = getRootVol();
-			}
+			image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
 #endif
 
 			str_map::iterator f_cbitmapsize = params.find("cbitmapsize");
@@ -1699,7 +1776,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	}
 	else if(params.find("disk_path")!=params.end())
 	{
-		dl=params["disk_path"];
+		dl= mapLinuxDev(params["disk_path"]);
 	}
 #endif
 
@@ -2578,7 +2655,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
 		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
@@ -2600,7 +2677,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }

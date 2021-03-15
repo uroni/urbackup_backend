@@ -27,20 +27,6 @@ if [ $3 != 0 ]
 then
 	. SYSCONFDIR/mariadbxtrabackup.conf
 
-	TIMESTAMP=`date "+%F-%H%M%S"`
-	
 	[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
 	mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
-	
-	COMPACT=""
-	if [ "x$MARIADB_BACKUP_INDEXES" = x0 ]
-	then
-		COMPACT="--compact"
-	fi
-
-	TIME=`date`
-	echo "Starting incremental binary backup of MariaDB at $TIME..."
-	xtrabackup --backup --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --incremental-basedir="$MARIADB_TEMP_INCRDIR/last" --target-dir="$MARIADB_TEMP_INCRDIR/incr_$TIMESTAMP"  --user="$MARIADB_USERNAME" --password="$MARIADB_PASSWORD" $COMPACT
-	TIME=`date`
-	echo "Backup of MariaDB finished at $TIME."
 fi

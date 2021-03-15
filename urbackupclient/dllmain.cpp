@@ -23,6 +23,11 @@
 #define DLLEXPORT extern "C"
 #endif
 
+#ifdef __linux__
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+#endif
+
 #include <vector>
 
 #ifndef STATIC_PLUGIN
@@ -129,6 +134,106 @@ const std::string new_file="urbackup/new.txt";
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
 
+namespace
+{
+	int64 roundUp(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound + multiple - 1) / multiple) * multiple;
+	}
+
+	int64 roundDown(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound / multiple) * multiple);
+	}
+
+	const int64 dm_block_size = 1 * 1024 * 1024;
+
+	void print_ext(const IFsFile::SFileExtent& ext, const std::string& file_dm_block_dev, int64& lin_off)
+	{
+		int64 start = roundUp(ext.volume_offset, dm_block_size);
+		int64 end = roundDown(ext.volume_offset + ext.size, dm_block_size);
+
+		if (end - start >= dm_block_size)
+		{
+			int64 bcount = (end - start) / 512;
+			std::cout << lin_off << " " << bcount << " linear " << file_dm_block_dev << " " << (start / 512) << std::endl;
+			lin_off += bcount;
+		}
+	}
+
+	void do_print_dm_file_extents(const std::string& fn)
+	{
+		std::auto_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
+		if (f.get() == NULL)
+		{
+			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
+			exit(1);
+		}
+
+#ifdef FS_IOC_FSSETXATTR
+		fsxattr attr = {};
+#ifdef FS_XFLAG_IMMUTABLE
+		attr.fsx_xflags |= FS_XFLAG_IMMUTABLE;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#ifdef FS_XFLAG_NODUMP
+		attr.fsx_xflags |= FS_XFLAG_NODUMP;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#ifdef FS_XFLAG_NODEFRAG
+		attr.fsx_xflags |= FS_XFLAG_NODEFRAG;
+#endif
+		ioctl(f->getOsHandle(), FS_IOC_FSSETXATTR, &attr);
+#endif
+
+		std::string file_dm_block_dev = Server->getServerParameter("file-dm-block-dev");
+
+
+		int64 lin_off = 0;
+		int64 pos = 0;
+		bool more_data = true;
+		
+		IFsFile::SFileExtent last_ext;
+		while (more_data)
+		{
+			std::vector<IFsFile::SFileExtent> exts = f->getFileExtents(pos, 0, more_data);
+
+			for (size_t i = 0; i < exts.size(); ++i)
+			{
+				if (last_ext.offset == -1)
+				{
+					last_ext = exts[i];
+				}
+				else if (last_ext.offset + last_ext.size != exts[i].offset
+					|| last_ext.volume_offset + last_ext.size != exts[i].volume_offset)
+				{
+					print_ext(last_ext, file_dm_block_dev, lin_off);
+					last_ext = exts[i];
+				}
+				else
+				{
+					last_ext.size += exts[i].size;
+				}
+
+				pos = (std::max)(exts[i].offset + exts[i].size, pos);
+			}
+		}
+
+		if (last_ext.offset != -1)
+		{
+			print_ext(last_ext, file_dm_block_dev, lin_off);
+		}
+
+		if ((lin_off * 512) < (f->Size() * 3) / 4)
+		{
+			std::cerr << "ERROR: Only " << PrettyPrintBytes(lin_off * 512) << " of " << PrettyPrintBytes(f->Size()) << " was usable" << std::endl;
+			exit(2);
+		}
+
+		exit(0);
+	}
+}
+
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -157,6 +262,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("SSL_OUT: " + ret);
 		}
+		return;
+	}
+
+	std::string print_dm_file_extents = Server->getServerParameter("print-dm-file-extents");
+	if (!print_dm_file_extents.empty())
+	{
+		do_print_dm_file_extents(print_dm_file_extents);
 		return;
 	}
 
@@ -643,7 +755,7 @@ void update_client26_27(IDatabase* db)
 
 void update_client27_28(IDatabase* db)
 {
-	ClientConnector::updateDefaultDirsSetting(db, true, 0);
+	ClientConnector::updateDefaultDirsSetting(db, true, 0, false);
 }
 
 bool upgrade_client(void)

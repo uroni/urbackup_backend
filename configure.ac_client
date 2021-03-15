@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-client], [2.5.2.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-client], [2.5.11.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CANONICAL_SYSTEM
@@ -177,7 +177,7 @@ AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
 
 if test "x$with_openssl" != "xtrue"
 then
-        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (https proxy support)])
+        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (web socket/https proxy support)])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")

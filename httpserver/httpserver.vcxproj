@@ -170,6 +170,7 @@
     <ClCompile Include="HTTPFile.cpp" />
     <ClCompile Include="HTTPProxy.cpp" />
     <ClCompile Include="HTTPService.cpp" />
+    <ClCompile Include="HTTPSocket.cpp" />
     <ClCompile Include="IndexFiles.cpp" />
     <ClCompile Include="MIMEType.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="HTTPFile.h" />
     <ClInclude Include="HTTPProxy.h" />
     <ClInclude Include="HTTPService.h" />
+    <ClInclude Include="HTTPSocket.h" />
     <ClInclude Include="IndexFiles.h" />
     <ClInclude Include="MIMEType.h" />
     <ClInclude Include="..\stringtools.h" />

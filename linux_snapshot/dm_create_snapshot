@@ -1,0 +1,176 @@
+#!/bin/sh
+
+set -e
+
+mkdir -p /mnt/urbackup_snaps
+
+CDIR=`dirname $0`
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+
+CDIR=`dirname $0`
+. $CDIR/filesystem_snapshot_common
+exit_exclude_snapshot_mountpoints "$SNAP_MOUNTPOINT"
+
+DEVICE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
+set_filesystem_type "${SNAP_MOUNTPOINT}"
+
+if [ "x$TYPE" = "x" ]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [ "x$TYPE" = "xbtrfs" ]
+then
+    $CDIR/btrfs_create_filesystem_snapshot "$@"
+    exit $?
+fi
+
+if [ "x$DEVICE" = "x" ]
+then
+    echo "Cannot get device for filesystem $SNAP_MOUNTPOINT"
+    exit 1
+fi
+
+echo "Snapshotting device $DEVICE via dm..."
+
+if ! dmsetup table "$DEVICE" > /dev/null 2>&1
+then
+	echo "$DEVICE is not a device mapper device. Cannot snapshot via dm."
+	exit 1
+fi
+
+modprobe dm_snapshot
+
+DEV_SIZE=$(blockdev --getsz "$DEVICE")
+
+if [ "x$DEV_SIZE" = "x" ]
+then
+	echo "Cannot get device size of device $DEVICE"
+	exit 1
+fi
+
+DEVNAME=$(basename $DEVICE)
+
+RUUID="a31725acca86421d"
+
+ORIG_DEVICE="/dev/mapper/$DEVNAME-$RUUID-clone"
+ERA_META_FN=".era-meta_3d41c58e-6724-4d47-8981-11c766a08a24"
+
+ERA_RESET=0
+if ! command -v era_dump >/dev/null 2>&1
+then
+	echo "thin-provisioning-tools not installed. CBT not enabled."
+elif modprobe dm_era && ! dmsetup table "$DEVICE" | grep " era " > /dev/null 2>&1 && ! dmsetup table "$DEVICE" | grep " snapshot-origin " > /dev/null 2>&1
+then
+	echo "Layering in dm-era device..."
+	META_SIZE=$(( (((DEV_SIZE*4)/1024)/512)*512 + 1*1024*1024 ))
+	if [ $META_SIZE -lt $((2*1024*1024)) ]
+	then
+		META_SIZE=$((2*1024*1024))
+	fi
+
+	if [ -e "$SNAP_MOUNTPOINT/$ERA_META_FN" ]
+	then
+		chattr -i "$SNAP_MOUNTPOINT/$ERA_META_FN" || true
+		rm "$SNAP_MOUNTPOINT/$ERA_META_FN"
+	fi
+
+	fallocate -l $META_SIZE "$SNAP_MOUNTPOINT/$ERA_META_FN"
+
+	ORIG_DEVICE="/dev/mapper/$DEVNAME-$RUUID-clone-era"
+	dmsetup table "$DEVICE" | dmsetup create "$DEVNAME-$RUUID-clone-era"
+	urbackupclientbackend --internal --print-dm-file-extents "$SNAP_MOUNTPOINT/$ERA_META_FN" --file-dm-block-dev "$ORIG_DEVICE" | dmsetup create "$DEVNAME-$RUUID-era-metadata"
+	dmsetup table "$DEVNAME-$RUUID-era-metadata" | dmsetup create "$DEVNAME-$RUUID-era-metadata-access"
+	dd if=/dev/zero of=/dev/mapper/$DEVNAME-$RUUID-era-metadata bs=512 count=$((META_SIZE/512)) > /dev/null 2>&1
+	echo "0 $DEV_SIZE era /dev/mapper/$DEVNAME-$RUUID-era-metadata $ORIG_DEVICE 1024" | dmsetup create "$DEVNAME-$RUUID-clone"
+	echo "CBT=type=era&reset=1"
+	ERA_RESET=1
+fi
+
+OVERLAY_FN="$SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
+if [ -e "$OVERLAY_FN" ]
+then
+	chattr -i "$OVERLAY_FN" || true
+	rm "$OVERLAY_FN"
+fi
+
+fallocate -l 5G "$OVERLAY_FN"
+
+if ! [ -e "/dev/mapper/$DEVNAME-$RUUID-clone" ]
+then
+	dmsetup table "$DEVICE" | dmsetup create "$DEVNAME-$RUUID-clone"
+fi
+
+urbackupclientbackend --internal --print-dm-file-extents "$OVERLAY_FN" --file-dm-block-dev "$ORIG_DEVICE" | dmsetup create "$DEVNAME-$SNAP_ID-cow-storage"
+UDEVCOOKIE=$(dmsetup udevcreatecookie)
+dmsetup suspend "$DEVICE"
+
+if dmsetup table "$DEVNAME-$RUUID-clone" | grep " era " > /dev/null 2>&1
+then
+	echo "Checkpointing device for CBT..."
+	dmsetup message "$DEVNAME-$RUUID-clone" 0 checkpoint
+	if [ $ERA_RESET != 1 ]
+	then
+		echo "CBT=type=era"
+		echo "CBT_FILE=/dev/mapper/$DEVNAME-$RUUID-era-metadata-access"
+	fi
+fi
+
+echo "Creating snapshot device..."
+echo "0 $DEV_SIZE snapshot /dev/mapper/$DEVNAME-$RUUID-clone /dev/mapper/$DEVNAME-$SNAP_ID-cow-storage N 32" | dmsetup create -r --udevcookie "$UDEVCOOKIE" "$DEVNAME-$SNAP_ID"
+
+if ! [ -e "/dev/mapper/$DEVNAME-$RUUID-origin" ]
+then
+	echo "Creating snapshot origin device..."
+	echo "0 $DEV_SIZE snapshot-origin /dev/mapper/$DEVNAME-$RUUID-clone" | dmsetup create --udevcookie "$UDEVCOOKIE" "$DEVNAME-$RUUID-origin"
+fi
+
+if ! dmsetup table "$DEVICE" | grep " snapshot-origin " > /dev/null 2>&1
+then
+	dmsetup table "$DEVNAME-$RUUID-origin" | dmsetup load "$DEVICE"
+fi
+
+dmsetup resume "$DEVICE"
+dmsetup udevreleasecookie "$UDEVCOOKIE"
+
+truncate -s100M $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap
+
+LODEV=`losetup -f`
+
+if [ "x$LODEV" = x ]
+then
+        echo "TODO: Cleanup"
+        exit 1
+fi
+
+losetup $LODEV $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID-wsnap
+
+echo "0 $DEV_SIZE snapshot /dev/mapper/$DEVNAME-$SNAP_ID $LODEV N 8" | dmsetup create "$DEVNAME-$SNAP_ID-wsnap"
+
+echo "Mounting /dev/mapper/$DEVNAME-$SNAP_ID-wsnap..."
+
+MOUNTOPTS="ro"
+
+if [ $TYPE = "xfs" ]
+then
+	MOUNTOPTS="ro,nouuid"
+fi
+
+mkdir -p "$SNAP_DEST"
+
+if ! mount -o $MOUNTOPTS "/dev/mapper/$DEVNAME-$SNAP_ID-wsnap" "$SNAP_DEST"
+then
+	echo "Mounting filesystem failed"
+	#TODO: CLEANUP
+	exit 1
+fi
+
+echo "$DEVNAME" > ${SNAP_DEST}-name
+echo "/dev/mapper/$DEVNAME-$SNAP_ID" > ${SNAP_DEST}-dev
+echo "SNAPSHOT=$SNAP_DEST"

@@ -120,6 +120,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		const std::string &subject,	const std::string &message, std::string *errmsg)
 {
 	CURL *curl=curl_easy_init();
+	curl_slist* recpt = NULL;
 
 	std::string mailfrom=server.mailfrom;
 
@@ -128,29 +129,38 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		mailfrom="<"+mailfrom+">";
 	}
 
-	curl_easy_setopt(curl, CURLOPT_URL, ( (server.use_smtps ? "smtps://" : "smtp://")
-		+server.servername+":"+convert(server.port)).c_str());
-	curl_easy_setopt(curl, CURLOPT_USE_SSL, server.ssl_only?CURLUSESSL_ALL:CURLUSESSL_TRY);
+#define CHECK_SETOPT(x) { \
+	CURLcode rc = x; \
+	if (rc != CURLE_OK) { \
+		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
+		curl_easy_cleanup(curl); \
+		if(recpt!=NULL) \
+			curl_slist_free_all(recpt); \
+		return false; \
+	} }
+
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_URL, ( (server.use_smtps ? "smtps://" : "smtp://")
+		+server.servername+":"+convert(server.port)).c_str()));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)(server.ssl_only?CURLUSESSL_ALL:CURLUSESSL_TRY)));
 	if(!server.check_certificate)
 	{
-		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0));
 	}
 	if(!server.username.empty())
 	{
-	    curl_easy_setopt(curl, CURLOPT_USERNAME, server.username.c_str());
-	    curl_easy_setopt(curl, CURLOPT_PASSWORD, server.password.c_str());
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_USERNAME, server.username.c_str()));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_PASSWORD, server.password.c_str()));
 	}
-	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, mailfrom.c_str());
-	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_MAIL_FROM, mailfrom.c_str()));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_VERBOSE, 1));
 
-	curl_slist * recpt=NULL;
 	for(size_t i=0;i<to.size();++i)
 	{
 		recpt=curl_slist_append(recpt, trim(to[i]).c_str());
 	}
-	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recpt);
-	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recpt));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback));
 	RDUserS rd;
 	std::string header;
 	header+="From: "+mailfrom+"\r\n"
@@ -159,12 +169,12 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		"\r\n";
 
 	rd.text=header+message;
-	curl_easy_setopt(curl, CURLOPT_READDATA, &rd);
-	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_READDATA, &rd));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L));
 
 	std::string errbuf;
 	errbuf.resize(CURL_ERROR_SIZE*2);
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str()));
 	CURLcode res= curl_easy_perform(curl);
 	if(res!=CURLE_OK)
 	{
@@ -183,6 +193,8 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	}
 	curl_slist_free_all(recpt);
 	curl_easy_cleanup(curl);
+
+#undef CHECK_SETOPT
 	return true;
 }
 
@@ -195,22 +207,30 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 
 	CURL *curl=curl_easy_init();
 
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+#define CHECK_SETOPT(x) { \
+	CURLcode rc = x; \
+	if (rc != CURLE_OK) { \
+		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
+		curl_easy_cleanup(curl); \
+		return std::string(); \
+	} }
+
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1));
 	
 	if(!http_proxy.empty())
 	{
-		curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() );
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() ));
 	}
 
 	std::string output;
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &output);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &output));
 	
 	std::string errbuf;
 	errbuf.resize(CURL_ERROR_SIZE*2);
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str()));
 	CURLcode res = curl_easy_perform(curl);
 	if(res!=CURLE_OK)
 	{
@@ -227,8 +247,17 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 	}
 
 	curl_easy_cleanup(curl);
+#undef CHECK_SETOPT
 	return output;
 }
+
+#define CHECK_SETOPT(x) { \
+	CURLcode rc = x; \
+	if (rc != CURLE_OK) { \
+		Server->Log(std::string("Error setting cURL option ") + #x + " (" + curl_easy_strerror(rc) + ")", LL_ERROR); \
+		curl_easy_cleanup(curl); \
+		return false; \
+	} }
 
 bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::string& http_proxy, std::string *errmsg)
 {
@@ -239,21 +268,21 @@ bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::
 
 	CURL *curl=curl_easy_init();
 
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1));
 
 	if(!http_proxy.empty())
 	{
-		curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() );
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() ));
 	}
 
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file_callback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, output);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file_callback));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEDATA, output));
 
 	std::string errbuf;
 	errbuf.resize(CURL_ERROR_SIZE*2);
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str()));
 	CURLcode res = curl_easy_perform(curl);
 	if(res!=CURLE_OK)
 	{
@@ -283,13 +312,13 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 
 	CURL *curl = curl_easy_init();
 
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1));
 
 	if (!params["http_proxy"].empty())
 	{
-		curl_easy_setopt(curl, CURLOPT_PROXY, params["http_proxy"].c_str());
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_PROXY, params["http_proxy"].c_str()));
 	}
 
 	if (params.find("method") != params.end())
@@ -298,94 +327,76 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 
 		if (method == "post")
 		{
-			curl_easy_setopt(curl, CURLOPT_POST, 1);
+			CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_POST, 1));
 		}
 		else if (method == "put")
 		{
-			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+			CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_UPLOAD, 1));
 		}
 		else if (method == "delete")
 		{
-			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+			CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE"));
 		}
 	}
 
 	if (params.find("transfer_encoding") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_TRANSFER_ENCODING, params["transfer_encoding"].c_str());
-	}
-
-	struct curl_slist *headers = NULL;
-	if (params.find("content_type") != params.end())
-	{
-		headers = curl_slist_append(headers, ("content-type: "+params["content_type"]).c_str());
-	}
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_TRANSFER_ENCODING, params["transfer_encoding"].c_str()));
+	}	
 
 	if (params.find("postdata") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(params["postdata"].size()));
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params["postdata"].c_str());
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(params["postdata"].size())));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params["postdata"].c_str()));
 	}
 
 	if (params.find("putdata") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_string_callback);
-		curl_easy_setopt(curl, CURLOPT_READDATA, params["postdata"].size());
-		curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(params["putdata"].size()));
-	}
-
-	if (params.find("addheader") != params.end())
-	{
-		headers = curl_slist_append(headers, params["addheader"].c_str());
-	}
-
-	size_t idx = 0;
-	while (params.find("addheader"+convert(idx)) != params.end())
-	{
-		headers = curl_slist_append(headers, params["addheader" + convert(idx)].c_str());
-		++idx;
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_string_callback));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_READDATA, params["postdata"].size()));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(params["putdata"].size())));
 	}
 
 	if (params.find("cookie") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_COOKIE, params["cookie"].size());
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_COOKIE, params["cookie"].size()));
 	}
 
 #if (LIBCURL_VERSION_NUM >= ((7<<16) + (36<<8) + 0))
 	if (params.find("expect_100_timeout_ms") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_EXPECT_100_TIMEOUT_MS, static_cast<long>(watoi(params["expect_100_timeout_ms"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_EXPECT_100_TIMEOUT_MS, static_cast<long>(watoi(params["expect_100_timeout_ms"]))));
 	}
 #endif
 
 	if (params.find("timeout") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, static_cast<long>(watoi(params["timeout"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_TIMEOUT, static_cast<long>(watoi(params["timeout"]))));
 	}
 
 	if (params.find("timeout_ms") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(watoi(params["timeout_ms"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(watoi(params["timeout_ms"]))));
 	}
 
 	if (params.find("low_speed_limit") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, static_cast<long>(watoi(params["low_speed_limit"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, static_cast<long>(watoi(params["low_speed_limit"]))));
 	}
 	
 	if (params.find("low_speed_time") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, static_cast<long>(watoi(params["low_speed_time"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, static_cast<long>(watoi(params["low_speed_time"]))));
 	}
 
 	if (params.find("connecttimeout") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout"]))));
 	}
 
 	if (params.find("connecttimeout_ms") != params.end())
 	{
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout_ms"])));
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout_ms"]))));
 	}
 
 	if (params.find("use_ssl") != params.end())
@@ -410,7 +421,7 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 		{
 			level = CURLUSESSL_NONE;
 		}
-		curl_easy_setopt(curl, CURLOPT_USE_SSL, level);
+		CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_USE_SSL, level));
 	}
 
 	if (params.find("ssl_verifypeer") != params.end())
@@ -418,9 +429,34 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 		if (params["ssl_verifypeer"]=="0"
 			|| strlower(params["ssl_verify_peer"])=="false")
 		{
-			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+			CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0));
+			CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0));
 		}
+	}
+
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback));
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret));
+
+	std::string errbuf;
+	errbuf.resize(CURL_ERROR_SIZE * 2);
+	CHECK_SETOPT(curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str()));
+
+	struct curl_slist* headers = NULL;
+	if (params.find("content_type") != params.end())
+	{
+		headers = curl_slist_append(headers, ("content-type: " + params["content_type"]).c_str());
+	}
+
+	if (params.find("addheader") != params.end())
+	{
+		headers = curl_slist_append(headers, params["addheader"].c_str());
+	}
+
+	size_t idx = 0;
+	while (params.find("addheader" + convert(idx)) != params.end())
+	{
+		headers = curl_slist_append(headers, params["addheader" + convert(idx)].c_str());
+		++idx;
 	}
 
 	std::string basic_authorization;
@@ -434,15 +470,16 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 
 	if (headers != NULL)
 	{
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		CURLcode rc = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		if (rc != CURLE_OK)
+		{
+			Server->Log(std::string("Error setting cURL option CURLOPT_HTTPHEADER (") + curl_easy_strerror(rc) + ")", LL_ERROR); \
+			curl_easy_cleanup(curl);
+			curl_slist_free_all(headers);
+			return false;
+		}
 	}
-
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret);
-
-	std::string errbuf;
-	errbuf.resize(CURL_ERROR_SIZE * 2);
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	
 	CURLcode res = curl_easy_perform(curl);
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 	bool has_error = false;
