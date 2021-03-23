@@ -3415,20 +3415,22 @@ function show_settings2(data)
 			g.curr_settings = data.settings;
 			data.settings = getCurrentSettings(data.settings);
 			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
-			var internet_server = data.settings.internet_server;
+			var internet_server = unescapeHTML(data.settings.internet_server);
 			if(internet_server.indexOf("ws://")!=0 &&
 				internet_server.indexOf("wss://")!=0 &&
 				internet_server.indexOf("urbackup://")!=0 )
 			{
 				if(data.settings.internet_server_port==55415)
 				{
-					data.settings.internet_server = "urbackup://" + internet_server;
+					internet_server = "urbackup://" + internet_server;
 				}
 				else
 				{
-					data.settings.internet_server = "urbackup://" + internet_server + ":" + data.settings.internet_server_port;
+					internet_server = "urbackup://" + internet_server + ":" + data.settings.internet_server_port;
 				}
 			}
+
+			data.settings.internet_server = internet_server;
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
