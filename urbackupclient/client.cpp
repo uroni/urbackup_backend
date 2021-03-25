@@ -3515,6 +3515,24 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				|| only_own_tokens 
 				|| cannot_open_shadowcopy ) )
 			{
+#ifndef _WIN32
+				int64 wait_starttime = Server->getTimeMS();
+
+				while (filesrv != NULL
+					&& filesrv->hasActiveTransfers(dir->dir, starttoken)
+					&& Server->getTimeMS() - wait_starttime < 5000)
+				{
+					Server->wait(100);
+				}
+
+				if (filesrv != NULL
+					&& filesrv->hasActiveTransfers(dir->dir, starttoken))
+				{
+					VSSLog("Old shadow copy of " + sc_refs[i]->target + " still in use. Not deleting or using it.", LL_WARNING);
+					continue;
+				}
+#endif
+
 				if ( (sc_refs[i]->for_imagebackup == for_imagebackup)
 					|| !simultaneous_other )
 				{
