@@ -511,7 +511,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 					if (file_type_flags == 0)
 					{
-						Server->Log("Error getting file type of " + local_fn, LL_ERROR);
+						Server->Log("Error getting file type of " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
 						PipeSessions::fileMetadataDone(public_fn, server_token);
