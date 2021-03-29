@@ -90,7 +90,7 @@ enum CbtType
 
 struct SCRef
 {
-	SCRef(void): ok(false), dontincrement(false), cbt(false),
+	SCRef(void): ok(false), dontincrement(false), cleanup(false), cbt(false),
 		for_imagebackup(false), with_writers(false),
 		cbt_type(CbtType_None) {
 #ifdef _WIN32
@@ -109,6 +109,7 @@ struct SCRef
 	int save_id;
 	bool ok;
 	bool dontincrement;
+	bool cleanup;
 	std::vector<std::string> starttokens;
 	std::string clientsubname;
 	bool cbt;
@@ -643,6 +644,8 @@ private:
 
 	bool punchHoleOrZero(IFile* f, int64 pos, const char* zero_buf, char* zero_read_buf, size_t zero_size);
 
+	void run_sc_refs_cleanup();
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
@@ -677,6 +680,8 @@ private:
 
 	std::map<SCDirServerKey, std::map<std::string, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
+
+	bool sc_refs_cleanup;
 
 	int index_c_db;
 	int index_c_fs;
