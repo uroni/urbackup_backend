@@ -542,7 +542,7 @@ std::string add_trailing_slash(const std::string &strDirName)
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
 	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
-	index_backup_dirs_optional(false)
+	index_backup_dirs_optional(false), sc_refs_cleanup(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -697,11 +697,7 @@ void IndexThread::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
-#ifdef _WIN32
-#ifdef ENABLE_VSS
 	cleanup_saved_shadowcopies();
-#endif
-#endif
 	
 	updateDirs();
 	register_token_callback();
@@ -720,7 +716,13 @@ void IndexThread::operator()(void)
 		}
 
 		std::string msg;
-		msgpipe->Read(&msg);
+		msgpipe->Read(&msg, sc_refs_cleanup ? 60000 : -1);
+
+		if (msg.empty())
+		{
+			run_sc_refs_cleanup();
+			continue;
+		}
 
 		async_timeout = false;
 		CRData data(&msg);
@@ -3528,6 +3530,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				if (filesrv != NULL
 					&& filesrv->hasActiveTransfers(dir->dir, starttoken))
 				{
+					sc_refs[i]->cleanup = true;
+					sc_refs_cleanup = true;
 					VSSLog("Old shadow copy of " + sc_refs[i]->target + " still in use. Not deleting or using it.", LL_WARNING);
 					continue;
 				}
@@ -3597,6 +3601,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 			}
 			else if(!cannot_open_shadowcopy)
 			{
+				sc_refs[i]->cleanup = false;
 				dir->ref=sc_refs[i];
 				if(!dir->ref->dontincrement)
 				{
@@ -4026,6 +4031,9 @@ SCDirs* IndexThread::getSCDir(const std::string& path, const std::string& client
 	std::map<std::string, SCDirs*>::iterator it=scdirs_server.find(path);
 	if(it!=scdirs_server.end())
 	{
+		if (it->second->ref != NULL)
+			it->second->ref->cleanup = false;
+
 		return it->second;
 	}
 	else
@@ -6520,6 +6528,94 @@ bool  IndexThread::punchHoleOrZero(IFile* f, int64 pos, const char* zero_buf, ch
 	}
 
 	return true;
+}
+
+void IndexThread::run_sc_refs_cleanup()
+{
+	bool has_cleanup = false;
+	bool retry_all = true;
+	while(retry_all)
+	{
+		retry_all = false;
+		for (size_t i = 0; i < sc_refs.size(); ++i)
+		{
+			if (sc_refs[i]->cleanup)
+			{
+				has_cleanup = true;
+
+				bool in_use = false;
+
+				SCRef* curr = sc_refs[i];
+				for (std::map<SCDirServerKey, std::map<std::string, SCDirs*> >::iterator it_scdirs = scdirs.begin();
+					it_scdirs != scdirs.end(); ++it_scdirs)
+				{
+					std::map<std::string, SCDirs*>& scdirs_server = it_scdirs->second;
+
+					VSS_ID ssetid = curr->ssetid;
+
+					bool in_use = false;
+					std::vector<std::string> paths;
+					for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
+						it != scdirs_server.end(); ++it)
+					{
+						if (filesrv != NULL
+							&& filesrv->hasActiveTransfers(it->second->dir, it_scdirs->first.start_token))
+						{
+							VSSLog(it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " still in use. Not releasing.", LL_DEBUG);
+							in_use = true;
+							break;
+						}
+
+						paths.push_back(it->first);
+					}
+
+					if (in_use)
+						break;
+
+					for (size_t j = 0; j < paths.size(); ++j)
+					{
+						std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+						if (it != scdirs_server.end()
+							&& it->second->ref == curr)
+						{
+							VSSLog("Releasing " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
+							release_shadowcopy(it->second, false, -1);
+						}
+					}
+
+					bool retry = true;
+					while (retry)
+					{
+						retry = false;
+						for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
+							it != scdirs_server.end(); ++it)
+						{
+							if (it->second->ref != NULL
+								&& it->second->ref != curr
+								&& it->second->ref->ssetid == ssetid)
+							{
+								VSSLog("Releasing group shadow copy " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
+								release_shadowcopy(it->second, false, -1);
+								retry = true;
+								break;
+							}
+						}
+					}
+				}
+
+				if (in_use)
+					continue;
+
+				retry_all = true;
+				break;
+			}
+		}
+	}
+
+	if (!has_cleanup)
+	{
+		sc_refs_cleanup = false;
+	}
 }
 
 bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume,
