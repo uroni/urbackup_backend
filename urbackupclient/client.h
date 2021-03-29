@@ -82,7 +82,7 @@ private:
 
 struct SCRef
 {
-	SCRef(void): ok(false), dontincrement(false), cbt(false), for_imagebackup(false), with_writers(false) {
+	SCRef(void): ok(false), dontincrement(false), cleanup(false), cbt(false), for_imagebackup(false), with_writers(false) {
 #ifdef _WIN32
 		backupcom = NULL;
 #endif
@@ -99,6 +99,7 @@ struct SCRef
 	int save_id;
 	bool ok;
 	bool dontincrement;
+	bool cleanup;
 	std::vector<std::string> starttokens;
 	std::string clientsubname;
 	bool cbt;
@@ -610,6 +611,8 @@ private:
 
 	bool isAllSpecialDir(const SBackupDir& bdir);
 
+	void run_sc_refs_cleanup();
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
@@ -644,6 +647,8 @@ private:
 
 	std::map<SCDirServerKey, std::map<std::string, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
+
+	bool sc_refs_cleanup;
 
 	int index_c_db;
 	int index_c_fs;
