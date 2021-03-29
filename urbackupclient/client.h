@@ -357,6 +357,7 @@ public:
 	
 	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
+	static std::vector<std::string> buildExcludeList(const std::string& val);
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
@@ -526,6 +527,8 @@ private:
 	static void addFileExceptions(std::vector<std::string>& exclude_dirs);
 
 	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
+	static void addMacosExcludes(std::vector<std::string>& exclude_dirs);
+
 
 	void handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume);
 

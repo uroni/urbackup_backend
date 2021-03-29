@@ -568,7 +568,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 					if(crypto_fak!=NULL)
 					{
-						if (crypto_fak->verifyFile(UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub",
+#if defined(__APPLE__)
+						// ./UrBackup\ Client.app/Contents/MacOS/sbin/../share/urbackup/urbackup_ecdsa409k1.pub
+						std::string pubkey = ExtractFilePath(Server->getServerWorkingDir()) + "/share/urbackup/urbackup_ecdsa409k1.pub";
+#else
+						std::string pubkey = UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub";
+#endif
+						if (crypto_fak->verifyFile(pubkey,
 							UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 						{
 							std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));

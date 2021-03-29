@@ -155,3 +155,7 @@ private:
 	std::string identity;
 };
 
+
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+#undef stat64
+#endif
