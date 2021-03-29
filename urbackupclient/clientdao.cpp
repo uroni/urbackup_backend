@@ -479,6 +479,8 @@ std::vector<SShadowCopy> ClientDAO::getShadowcopies(void)
 
 int ClientDAO::addShadowcopy(const SShadowCopy &sc)
 {
+	DBScopedSynchronous sync_db(db);
+
 	q_insert_shadowcopy->Bind((char*)&sc.vssid, sizeof(GUID) );
 	q_insert_shadowcopy->Bind((char*)&sc.ssetid, sizeof(GUID) );
 	q_insert_shadowcopy->Bind(sc.target);
@@ -497,6 +499,8 @@ int ClientDAO::addShadowcopy(const SShadowCopy &sc)
 
 int ClientDAO::modShadowcopyRefCount(int id, int m)
 {
+	DBScopedSynchronous sync_db(db);
+
 	q_get_shadowcopy_refcount->Bind(id);
 	db_results res=q_get_shadowcopy_refcount->Read();
 	q_get_shadowcopy_refcount->Reset();
@@ -515,6 +519,8 @@ int ClientDAO::modShadowcopyRefCount(int id, int m)
 
 void ClientDAO::deleteShadowcopy(int id)
 {
+	DBScopedSynchronous sync_db(db);
+
 	q_remove_shadowcopies->Bind(id);
 	q_remove_shadowcopies->Write();
 	q_remove_shadowcopies->Reset();
