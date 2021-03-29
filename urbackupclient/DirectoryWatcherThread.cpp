@@ -398,6 +398,7 @@ bool DirectoryWatcherThread::is_stopped(void)
 
 void DirectoryWatcherThread::On_ResetAll(const std::string & vol)
 {
+	DBScopedSynchronous sync_db(db);
 	OnDirMod("##-GAP-##"+strlower(vol));
 }
 
