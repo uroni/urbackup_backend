@@ -6285,10 +6285,6 @@ bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize
 }
 #endif
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
-{
-}
-
 void IndexThread::run_sc_refs_cleanup()
 {
 	bool has_cleanup = false;
@@ -6375,6 +6371,10 @@ void IndexThread::run_sc_refs_cleanup()
 	{
 		sc_refs_cleanup = false;
 	}
+}
+
+bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
+{
 #ifdef _WIN32
 	ScopedUnlockCbtMutex unlock_cbt_mutex;
 
