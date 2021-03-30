@@ -73,9 +73,13 @@ public:
 	static void transmitFileMetadataAndFiledataWait(const std::string& public_fn, const std::string& metadata,
 		const std::string& server_token, const std::string& identity, IFile* file);
 
-	static void fileMetadataDone(const std::string& public_fn, const std::string& server_token);
+	static void fileMetadataDone(const std::string& public_fn, const std::string& server_token, size_t active_gen);
 
 	static bool isShareActive(const std::string& sharename, const std::string& server_token);
+
+	static bool isShareActiveGen(const std::string& sharename, const std::string& server_token, size_t gen);
+
+	static void setActiveSharesGen(size_t gen);
 
 	static void metadataStreamEnd(const std::string& server_token);
 
@@ -91,9 +95,11 @@ private:
 	static std::string getKey(const std::string& cmd, int& backupnum, int64& fn_random);
 
 	static IMutex* mutex;
+	static IMutex* active_shares_mutex;
 	static volatile bool do_stop;
 	static std::map<std::string, SPipeSession> pipe_files;
 	static std::map<std::string, SExitInformation> exit_information;
 	static std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> metadata_callbacks;
-	static std::map<std::string, size_t> active_shares;
+	static std::map<std::pair<std::string, size_t>, size_t> active_shares;
+	static size_t active_shares_gen;
 };

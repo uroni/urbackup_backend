@@ -92,7 +92,7 @@ void ChunkSendThread::operator()(void)
 				Server->Log("Closing file (free) " + file->getFilename(), LL_DEBUG);
 				Server->destroy(file);
 				assert(!s_filename.empty());
-				FileServ::decrShareActive(s_filename);
+				FileServ::decrShareActive(s_filename, share_active_gen);
 				file = NULL;
 			}
 			else if (pipe_file_user.get() != NULL)
@@ -125,7 +125,7 @@ void ChunkSendThread::operator()(void)
 				Server->Log("Closing file " + file->getFilename(), LL_DEBUG);
 				Server->destroy(file);
 				assert(!s_filename.empty());
-				FileServ::decrShareActive(s_filename);
+				FileServ::decrShareActive(s_filename, share_active_gen);
 			}
 			if (cbt_hash_file_info.cbt_hash_file != NULL
 				&& cbt_hash_file_info.metadata_offset != -1)
@@ -136,6 +136,7 @@ void ChunkSendThread::operator()(void)
 			file=chunk.update_file;
 			Server->Log("Retaining file " + file->getFilename(), LL_DEBUG);
 			s_filename = chunk.s_filename;
+			share_active_gen = chunk.share_active_gen;
 			curr_hash_size=chunk.hashsize;
 			curr_file_size =chunk.startpos;
 			curr_max_vdl = -1;
@@ -222,7 +223,7 @@ void ChunkSendThread::operator()(void)
 		Server->Log("Closing file (finish) " + file->getFilename(), LL_DEBUG);
 		Server->destroy(file);
 		assert(!s_filename.empty());
-		FileServ::decrShareActive(s_filename);
+		FileServ::decrShareActive(s_filename, share_active_gen);
 		file=NULL;
 	}
 

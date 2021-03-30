@@ -32,10 +32,12 @@
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;
+IMutex* PipeSessions::active_shares_mutex = NULL;
 std::map<std::string, SPipeSession> PipeSessions::pipe_files;
 std::map<std::string, SExitInformation> PipeSessions::exit_information;
 std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
-std::map<std::string, size_t> PipeSessions::active_shares;
+std::map<std::pair<std::string, size_t>, size_t> PipeSessions::active_shares;
+size_t PipeSessions::active_shares_gen = 0;
 
 const int64 pipe_file_timeout = 1*60*60*1000;
 const int64 pipe_file_read_timeout = 30 * 60 * 1000;
@@ -173,6 +175,7 @@ void PipeSessions::injectPipeSession(const std::string & session_key, int backup
 void PipeSessions::init()
 {
 	mutex = Server->createMutex();
+	active_shares_mutex = Server->createMutex();
 
 	Server->getThreadPool()->execute(new PipeSessions, "PipeSession: timeout");
 }
@@ -180,6 +183,7 @@ void PipeSessions::init()
 void PipeSessions::destroy()
 {
 	delete mutex;
+	delete active_shares_mutex;
 
 	do_stop=true;
 }
@@ -405,21 +409,26 @@ IFileServ::IMetadataCallback* PipeSessions::transmitFileMetadata( const std::str
 
 	IScopedLock lock(mutex);
 
-	std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter_cb = 
-		metadata_callbacks.find(std::make_pair(sharename, identity));
-
 	IFileServ::IMetadataCallback* ret = NULL;
-	if(iter_cb!=metadata_callbacks.end())
-	{
-		data.addVoidPtr(iter_cb->second);
-		ret = iter_cb->second;
-	}
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
 
 	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
 	{
-		++active_shares[sharename + "|" + server_token];
+		{
+			IScopedLock alock(active_shares_mutex);
+			++active_shares[std::make_pair(sharename + "|" + server_token, active_shares_gen)];
+			data.addUInt64(active_shares_gen);
+		}
+
+		std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter_cb =
+			metadata_callbacks.find(std::make_pair(sharename, identity));
+
+		if(iter_cb!=metadata_callbacks.end())
+		{
+			data.addVoidPtr(iter_cb->second);
+			ret = iter_cb->second;
+		}
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
@@ -456,7 +465,11 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 
 	if (it != pipe_files.end() && it->second.input_pipe != NULL)
 	{
-		++active_shares[sharename + "|" + server_token];
+		{
+			IScopedLock alock(active_shares_mutex);
+			++active_shares[std::make_pair(sharename + "|" + server_token, active_shares_gen)];
+			data.addUInt64(active_shares_gen);
+		}
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
@@ -499,11 +512,14 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 
 	if (it != pipe_files.end() && it->second.input_pipe != NULL)
 	{
-		++active_shares[sharename + "|" + server_token];
+		{
+			IScopedLock alock(active_shares_mutex);
+			active_shares[std::make_pair(sharename + "|" + server_token, active_shares_gen)]+=2;
+			metadatamsg.addUInt(active_shares_gen);
+			datamsg.addUInt(active_shares_gen);
+		}	
 
 		it->second.input_pipe->Write(datamsg.getDataPtr(), datamsg.getDataSize());
-
-		++active_shares[sharename + "|" + server_token];
 
 		it->second.input_pipe->Write(metadatamsg.getDataPtr(), metadatamsg.getDataSize());
 
@@ -519,7 +535,7 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 
 
 
-void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::string& server_token)
+void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::string& server_token, size_t active_gen)
 {
 	std::string sharename = getuntil("/", public_fn);
 	if (sharename.empty())
@@ -527,9 +543,9 @@ void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::st
 		sharename = public_fn;
 	}
 
-	IScopedLock lock(mutex);
+	IScopedLock lock(active_shares_mutex);
 
-	std::map<std::string, size_t>::iterator it = active_shares.find(sharename + "|" + server_token);
+	std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.find(std::make_pair(sharename + "|" + server_token, active_gen));
 
 	if (it != active_shares.end())
 	{
@@ -543,11 +559,37 @@ void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::st
 
 bool PipeSessions::isShareActive(const std::string & sharename, const std::string& server_token)
 {
-	IScopedLock lock(mutex);
+	IScopedLock lock(active_shares_mutex);
 
-	std::map<std::string, size_t>::iterator it = active_shares.find(sharename + "|" + server_token);
+	for (std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.begin();
+		it != active_shares.end(); ++it)
+	{
+		if (it->first.first == sharename + "|" + server_token)
+			return true;
+	}
 
-	return it != active_shares.end();
+	return false;
+}
+
+bool PipeSessions::isShareActiveGen(const std::string& sharename, const std::string& server_token, size_t gen)
+{
+	IScopedLock lock(active_shares_mutex);
+
+	for (std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.begin();
+		it != active_shares.end(); ++it)
+	{
+		if (it->first.first == sharename + "|" + server_token &&
+			it->first.second<=gen)
+			return true;
+	}
+
+	return false;
+}
+
+void PipeSessions::setActiveSharesGen(size_t gen)
+{
+	IScopedLock lock(active_shares_mutex);
+	active_shares_gen = gen;
 }
 
 void PipeSessions::metadataStreamEnd( const std::string& server_token )
