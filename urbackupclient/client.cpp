@@ -6572,9 +6572,6 @@ void IndexThread::run_sc_refs_cleanup()
 					}
 				}
 
-				if (in_use)
-					continue;
-
 				if (!found_ref)
 				{
 					VSSLog("Reference not found. Iterating over all start tokens and share names for deletion", LL_INFO);
@@ -6619,6 +6616,9 @@ void IndexThread::run_sc_refs_cleanup()
 						}
 					}
 				}
+
+				if (in_use)
+					continue;
 
 				retry_all = true;
 				break;
