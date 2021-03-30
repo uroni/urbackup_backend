@@ -212,7 +212,7 @@ void CClientThread::operator()(void)
 				{
 					if (next_chunks.front().pipe_file_user == NULL)
 					{
-						FileServ::decrShareActive(next_chunks.front().s_filename);
+						FileServ::decrShareActive(next_chunks.front().s_filename, next_chunks.front().share_active_gen);
 						Server->destroy(next_chunks.front().update_file);
 					}
 					delete next_chunks.front().pipe_file_user;
@@ -2008,7 +2008,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 	hFile=INVALID_HANDLE_VALUE;
 
-	scoped_share_active.release();
+	chunk.share_active_gen = scoped_share_active.release();
 
 	queueChunk(chunk);
 

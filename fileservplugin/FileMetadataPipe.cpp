@@ -175,7 +175,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 					read_bytes=0;
 					metadata_file.reset();
-					PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+					PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 					metadata_state = MetadataState_Wait;
 					return false;
 				}
@@ -288,7 +288,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(fn_off==sizeof(unsigned int))
 		{
-			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			metadata_state = MetadataState_Wait;
 		}
 
@@ -334,7 +334,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		if(fn_off==sizeof(unsigned int))
 		{
 			metadata_file.reset();
-			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			metadata_state = MetadataState_Wait;
 		}
 
@@ -350,7 +350,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		}
 		if (raw_metadata.size() - metadata_buffer_off == 0)
 		{
-			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			metadata_state = MetadataState_Wait;
 		}
 		return true;
@@ -465,7 +465,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			transmit_wait_pipe->Write(std::string());
 			transmit_wait_pipe = NULL;
 			transmit_file = NULL;
-			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			metadata_state = MetadataState_Wait;
 		}
 		return true;
@@ -503,13 +503,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					msg_data.getStr(&local_fn) &&
 					msg_data.getInt64(&folder_items) &&
 					msg_data.getInt64(&metadata_id) &&
-					msg_data.getStr(&server_token))
+					msg_data.getStr(&server_token) &&
+					msg_data.getInt64(&active_gen))
 				{
 					assert(!public_fn.empty() || !local_fn.empty());
 
 					if (std::find(last_public_fns.begin(), last_public_fns.end(), public_fn) != last_public_fns.end())
 					{
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn, server_token, active_gen);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
 						return true;
@@ -529,7 +530,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						Server->Log("Error getting file type of " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn, server_token, active_gen);
 						return true;
 					}
 
@@ -543,7 +544,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn, server_token, active_gen);
 						return true;
 					}
 
@@ -584,7 +585,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 							*buf = ID_METADATA_NOP;
 							read_bytes = 1;
 							metadata_state = MetadataState_Wait;
-							PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+							PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 							return true;
 						}
 
@@ -600,7 +601,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				else if (id == METADATA_PIPE_SEND_RAW
 					&& msg_data.getStr(&public_fn)
 					&& msg_data.getStr(&raw_metadata)
-					&& msg_data.getStr(&server_token))
+					&& msg_data.getStr(&server_token)
+					&& msg_data.getInt64(&active_gen))
 				{
 					metadata_state = MetadataState_Raw;
 					metadata_buffer_off = 0;
@@ -610,7 +612,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					&& msg_data.getStr(&public_fn)
 					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_file))
 					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe))
-					&& msg_data.getStr(&server_token))
+					&& msg_data.getStr(&server_token)
+					&& msg_data.getInt64(&active_gen) )
 				{
 					metadata_state = MetadataState_RawFileFnSize;
 					*buf = ID_RAW_FILE;
@@ -674,7 +677,7 @@ void FileMetadataPipe::cleanupOnForceShutdown()
 {
 	if (metadata_state != MetadataState_Wait)
 	{
-		PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+		PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 	}
 
 	metadata_file.reset();
@@ -713,24 +716,27 @@ void FileMetadataPipe::cleanupOnForceShutdown()
 				msg_data.getStr(&local_fn) &&
 				msg_data.getInt64(&folder_items) &&
 				msg_data.getInt64(&metadata_id) &&
-				msg_data.getStr(&server_token))
+				msg_data.getStr(&server_token) &&
+				msg_data.getInt64(&active_gen) )
 			{
-				PipeSessions::fileMetadataDone(public_fn, server_token);
+				PipeSessions::fileMetadataDone(public_fn, server_token, active_gen);
 			}
 			else if (id == METADATA_PIPE_SEND_RAW
 				&& msg_data.getStr(&public_fn)
 				&& msg_data.getStr(&raw_metadata)
-				&& msg_data.getStr(&server_token))
+				&& msg_data.getStr(&server_token)
+				&& msg_data.getInt64(&active_gen))
 			{
-				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			}
 			else if (id == METADATA_PIPE_SEND_RAW_FILEDATA
 				&& msg_data.getStr(&public_fn)
 				&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_file))
 				&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe))
-				&& msg_data.getStr(&server_token))
+				&& msg_data.getStr(&server_token)
+				&& msg_data.getInt64(&active_gen))
 			{
-				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			}
 		}
 	}

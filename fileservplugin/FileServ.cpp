@@ -34,7 +34,8 @@ bool FileServ::pause=false;
 std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 std::map<std::string, std::string> FileServ::fn_redirects;
-std::map<std::string, size_t> FileServ::active_shares;
+std::map<std::pair<std::string, size_t>, size_t> FileServ::active_shares;
+size_t FileServ::active_generation = 0;
 FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
 std::vector<std::string> FileServ::read_error_files;
 std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo> FileServ::cbt_hash_files;
@@ -264,7 +265,7 @@ IFileServ::ITokenCallback* FileServ::newTokenCallback()
 	return token_callback_factory->getTokenCallback();
 }
 
-void FileServ::incrShareActive(std::string sharename)
+size_t FileServ::incrShareActive(std::string sharename)
 {
 	if (sharename.find("/") != std::string::npos)
 	{
@@ -272,10 +273,11 @@ void FileServ::incrShareActive(std::string sharename)
 	}
 
 	IScopedLock lock(mutex);
-	++active_shares[sharename];
+	++active_shares[std::make_pair(sharename, active_generation)];
+	return active_generation;
 }
 
-void FileServ::decrShareActive(std::string sharename)
+void FileServ::decrShareActive(std::string sharename, size_t gen)
 {
 	if (sharename.find("/") != std::string::npos)
 	{
@@ -284,7 +286,7 @@ void FileServ::decrShareActive(std::string sharename)
 
 	IScopedLock lock(mutex);
 
-	std::map<std::string, size_t>::iterator it = active_shares.find(sharename);
+	std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.find(std::make_pair(sharename, gen));
 
 	if (it != active_shares.end())
 	{
@@ -305,9 +307,38 @@ bool FileServ::hasActiveTransfers(const std::string& sharename, const std::strin
 
 	IScopedLock lock(mutex);
 
-	std::map<std::string, size_t>::iterator it = active_shares.find(server_token + "|" + sharename);
+	for (std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.begin();
+		it != active_shares.end();++it)
+	{
+		if (it->first.first == server_token + "|" + sharename)
+		{
+			return true;
+		}
+	}
 
-	return it != active_shares.end();
+	return false;
+}
+
+bool FileServ::hasActiveTransfersGen(const std::string& sharename, const std::string& server_token, size_t gen)
+{
+	if (PipeSessions::isShareActiveGen(sharename, server_token, gen))
+	{
+		return true;
+	}
+
+	IScopedLock lock(mutex);
+
+	for (std::map<std::pair<std::string, size_t>, size_t>::iterator it = active_shares.begin();
+		it != active_shares.end(); ++it)
+	{
+		if (it->first.first == server_token + "|" + sharename &&
+			it->first.second<=gen)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool FileServ::registerFnRedirect(const std::string & source_fn, const std::string & target_fn)
@@ -427,4 +458,10 @@ void FileServ::deregisterScriptPipeFile(const std::string & script_fn)
 IFileMetadataPipe* FileServ::getFileMetadataPipe()
 {
 	return new FileMetadataPipe;
+}
+
+size_t FileServ::incrActiveGeneration()
+{
+	IScopedLock lock(mutex);
+	return active_generation++;
 }
