@@ -57,11 +57,13 @@ public:
 	virtual void removeMetadataCallback(const std::string &name, const std::string& identity) = 0;
 	virtual void registerTokenCallbackFactory(ITokenCallbackFactory* callback_factory) = 0;
 	virtual bool hasActiveTransfers(const std::string& sharename, const std::string& server_token) = 0;
+	virtual bool hasActiveTransfersGen(const std::string& sharename, const std::string& server_token, size_t gen) = 0;
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file) = 0;
 	virtual void deregisterScriptPipeFile(const std::string& script_fn) = 0;
 	virtual void clearReadErrors() = 0;
+	virtual size_t incrActiveGeneration() = 0;
 
 	struct CbtHashFileInfo
 	{

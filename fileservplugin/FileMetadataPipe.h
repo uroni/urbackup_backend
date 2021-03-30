@@ -107,6 +107,7 @@ private:
 	int64 metadata_file_off;
 	int64 metadata_file_size;
 	int64 metadata_id;
+	int64 active_gen;
 
 	MetadataState metadata_state;
 

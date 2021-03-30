@@ -43,11 +43,13 @@ public:
 
 	static IFileServ::ITokenCallback* newTokenCallback();
 
-	static void incrShareActive(std::string sharename);
+	static size_t incrShareActive(std::string sharename);
 
-	static void decrShareActive(std::string sharename);
+	static void decrShareActive(std::string sharename, size_t gen);
 
 	bool hasActiveTransfers(const std::string& sharename, const std::string& server_token);
+
+	bool hasActiveTransfersGen(const std::string& sharename, const std::string& server_token, size_t gen);
 
 	bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn);
 
@@ -70,6 +72,8 @@ public:
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file);
 
 	virtual void deregisterScriptPipeFile(const std::string& script_fn);
+
+	size_t incrActiveGeneration();
 
 private:
 	bool *dostop;
@@ -125,7 +129,9 @@ private:
 
 	static ITokenCallbackFactory* token_callback_factory;
 
-	static std::map<std::string, size_t> active_shares;
+	static std::map<std::pair<std::string, size_t>, size_t> active_shares;
+
+	static size_t active_generation;
 
 	static IReadErrorCallback* read_error_callback;
 
@@ -137,6 +143,7 @@ private:
 
 class ScopedShareActive
 {
+	size_t gen;
 public:
 	ScopedShareActive()
 	{
@@ -148,7 +155,7 @@ public:
 	{
 		if (!sharename.empty())
 		{
-			FileServ::incrShareActive(sharename);
+			gen = FileServ::incrShareActive(sharename);
 		}
 	}
 
@@ -156,7 +163,7 @@ public:
 	{
 		if (!sharename.empty())
 		{
-			FileServ::decrShareActive(sharename);
+			FileServ::decrShareActive(sharename, gen);
 		}
 	}
 
@@ -164,18 +171,19 @@ public:
 	{
 		if (!sharename.empty())
 		{
-			FileServ::decrShareActive(sharename);
+			FileServ::decrShareActive(sharename, gen);
 		}
 		sharename = new_sharename;
 		if (!sharename.empty())
 		{
-			FileServ::incrShareActive(sharename);
+			gen = FileServ::incrShareActive(sharename);
 		}
 	}
 
-	void release()
+	size_t release()
 	{
 		sharename.clear();
+		return gen;
 	}
 
 private:
