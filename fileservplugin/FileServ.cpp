@@ -450,9 +450,8 @@ void FileServ::deregisterScriptPipeFile(const std::string & script_fn)
 	}
 }
 
-}
-
 size_t FileServ::incrActiveGeneration()
 {
 	IScopedLock lock(mutex);
 	return active_generation++;
+}
