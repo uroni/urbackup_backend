@@ -3372,6 +3372,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					&& filesrv->hasActiveTransfers(dir->dir, starttoken))
 				{
 					sc_refs[i]->cleanup = true;
+					sc_refs[i]->cleanup_gen = filesrv->incrActiveGeneration();
 					sc_refs_cleanup = true;
 					VSSLog("Old shadow copy of " + sc_refs[i]->target + " still in use. Not deleting or using it.", LL_WARNING);
 					continue;
@@ -3452,6 +3453,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				{
 					dir->ref->dontincrement=false;
 				}
+
+				dir->ref->sharenames.push_back(dir->dir);
 
 				VSSLog("orig_target="+dir->orig_target+" volpath="+dir->ref->volpath, LL_DEBUG);
 
@@ -3565,6 +3568,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	dir->ref->starttime=Server->getTimeSeconds();
 	dir->ref->target=wpath;
 	dir->ref->starttokens.push_back(starttoken);
+	dir->ref->sharenames.push_back(dir->dir);
 	dir->ref->clientsubname = index_clientsubname;
 	dir->ref->for_imagebackup = for_imagebackup;
 	sc_refs.push_back(dir->ref);
@@ -6300,59 +6304,71 @@ void IndexThread::run_sc_refs_cleanup()
 
 				bool in_use = false;
 
+				bool found_ref = false;
+				
+				starttoken.clear();
+
 				SCRef* curr = sc_refs[i];
-				for (std::map<SCDirServerKey, std::map<std::string, SCDirs*> >::iterator it_scdirs = scdirs.begin();
-					it_scdirs != scdirs.end(); ++it_scdirs)
+
+				for (size_t k = 0; k < curr->starttokens.size(); ++k)
 				{
-					std::map<std::string, SCDirs*>& scdirs_server = it_scdirs->second;
+					starttoken = curr->starttokens[k];
 
-					VSS_ID ssetid = curr->ssetid;
-
-					bool in_use = false;
-					std::vector<std::string> paths;
-					for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
-						it != scdirs_server.end(); ++it)
+					for (std::map<SCDirServerKey, std::map<std::string, SCDirs*> >::iterator it_scdirs = scdirs.begin();
+						it_scdirs != scdirs.end(); ++it_scdirs)
 					{
-						if (filesrv != NULL
-							&& filesrv->hasActiveTransfers(it->second->dir, it_scdirs->first.start_token))
-						{
-							VSSLog(it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " still in use. Not releasing.", LL_DEBUG);
-							in_use = true;
-							break;
-						}
+						std::map<std::string, SCDirs*>& scdirs_server = it_scdirs->second;
 
-						paths.push_back(it->first);
-					}
+						VSS_ID ssetid = curr->ssetid;
 
-					if (in_use)
-						break;
-
-					for (size_t j = 0; j < paths.size(); ++j)
-					{
-						std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
-						if (it != scdirs_server.end()
-							&& it->second->ref == curr)
-						{
-							VSSLog("Releasing " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
-							release_shadowcopy(it->second, false, -1);
-						}
-					}
-
-					bool retry = true;
-					while (retry)
-					{
-						retry = false;
+						bool in_use = false;
+						std::vector<std::string> paths;
 						for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
 							it != scdirs_server.end(); ++it)
 						{
-							if (it->second->ref != NULL
-								&& it->second->ref != curr
-								&& it->second->ref->ssetid == ssetid)
+							if (filesrv != NULL
+								&& filesrv->hasActiveTransfersGen(it->second->dir, it_scdirs->first.start_token, curr->cleanup_gen))
 							{
-								VSSLog("Releasing group shadow copy " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
-								release_shadowcopy(it->second, false, -1);
-								retry = true;
+								VSSLog(it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " gen="+convert(curr->cleanup_gen)+" still in use. Not releasing.", LL_DEBUG);
+								in_use = true;
 								break;
+							}
+
+							paths.push_back(it->first);
+						}
+
+						if (in_use)
+							break;
+
+						for (size_t j = 0; j < paths.size(); ++j)
+						{
+							std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+							if (it != scdirs_server.end()
+								&& it->second->ref == curr)
+							{
+								VSSLog("Releasing " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
+								found_ref = true;
+								release_shadowcopy(it->second, false, -1);
+							}
+						}
+
+						bool retry = true;
+						while (retry)
+						{
+							retry = false;
+							for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
+								it != scdirs_server.end(); ++it)
+							{
+								if (it->second->ref != NULL
+									&& it->second->ref != curr
+									&& it->second->ref->ssetid == ssetid)
+								{
+									VSSLog("Releasing group shadow copy " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " (run_sc_refs_cleanup)", LL_DEBUG);
+									release_shadowcopy(it->second, false, -1);
+									found_ref = true;
+									retry = true;
+									break;
+								}
 							}
 						}
 					}
@@ -6360,6 +6376,51 @@ void IndexThread::run_sc_refs_cleanup()
 
 				if (in_use)
 					continue;
+
+				if (!found_ref)
+				{
+					VSSLog("Reference not found. Iterating over all start tokens and share names for deletion", LL_INFO);
+					for (size_t k = 0; k < curr->starttokens.size() && !retry_all; ++k)
+					{
+						starttoken = curr->starttokens[k];
+						SCDirs scd;
+						scd.running = true;
+
+						for (size_t j = 0; j < curr->sharenames.size() && !retry_all; ++j)
+						{
+							scd.dir = curr->sharenames[j];
+							scd.starttime = Server->getTimeSeconds();
+							if (sc_refs[i]->for_imagebackup)
+							{
+								scd.target = scd.dir;
+								scd.fileserv = false;
+							}
+							else
+							{
+								scd.target = getShareDir(scd.dir);
+								scd.fileserv = true;
+							}
+
+							if (filesrv != NULL
+								&& filesrv->hasActiveTransfersGen(scd.dir, starttoken, curr->cleanup_gen))
+							{
+								VSSLog(scd.dir + " orig_target=" + scd.orig_target + " target=" + scd.target + " starttoken="+ starttoken+ " gen="+convert(curr->cleanup_gen)+" still in use. Not releasing. (2)", LL_DEBUG);
+								in_use = true;
+								break;
+							}
+
+							size_t orig_size = sc_refs.size();
+
+							release_shadowcopy(&scd, false, -1, &scd);
+
+							if (sc_refs.size() != orig_size)
+							{
+								retry_all = true;
+								break;
+							}
+						}
+					}
+				}
 
 				retry_all = true;
 				break;

@@ -100,7 +100,9 @@ struct SCRef
 	bool ok;
 	bool dontincrement;
 	bool cleanup;
+	size_t cleanup_gen;
 	std::vector<std::string> starttokens;
+	std::vector<std::string> sharenames;
 	std::string clientsubname;
 	bool cbt;
 	bool for_imagebackup;
