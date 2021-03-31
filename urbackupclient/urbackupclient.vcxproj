@@ -45,6 +45,9 @@
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp" />
     <ClCompile Include="..\urbackupcommon\WebSocketPipe.cpp" />
+    <ClCompile Include="..\urbackupserver\treediff\TreeDiff.cpp" />
+    <ClCompile Include="..\urbackupserver\treediff\TreeNode.cpp" />
+    <ClCompile Include="..\urbackupserver\treediff\TreeReader.cpp" />
     <ClCompile Include="ChangeJournalWatcher.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientdao.cpp" />

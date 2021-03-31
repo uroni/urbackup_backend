@@ -20,11 +20,38 @@
 #include "TreeReader.h"
 #include <algorithm>
 #include <memory.h>
+#include <memory>
+#include "../../Interface/Server.h"
+#include "../../Interface/File.h"
 
-std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
-	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
-	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
-	std::vector<size_t> *deleted_inplace_ids, bool has_symbit, bool is_windows)
+std::vector<size_t> TreeDiff::diffTrees(const std::string& t1, const std::string& t2, bool& error,
+	std::vector<size_t>* deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
+	std::vector<size_t>* modified_inplace_ids, std::vector<size_t>& dir_diffs,
+	std::vector<size_t>* deleted_inplace_ids, bool has_symbit, bool is_windows)
+{
+	std::unique_ptr<IFile> tf1(Server->openFile(t1, MODE_READ));
+	if (tf1.get() == nullptr)
+	{
+		error = true;
+		return std::vector<size_t>();
+	}
+
+	std::unique_ptr<IFile> tf2(Server->openFile(t2, MODE_READ));
+	if (tf2.get() == nullptr)
+	{
+		error = true;
+		return std::vector<size_t>();
+	}
+
+	return diffTrees(tf1.get(), tf2.get(), error, deleted_ids, large_unchanged_subtrees,
+		modified_inplace_ids, dir_diffs, deleted_inplace_ids, has_symbit,
+		is_windows);
+}
+
+std::vector<size_t> TreeDiff::diffTrees(IFile* t1, IFile* t2, bool& error,
+	std::vector<size_t>* deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
+	std::vector<size_t>* modified_inplace_ids, std::vector<size_t>& dir_diffs,
+	std::vector<size_t>* deleted_inplace_ids, bool has_symbit, bool is_windows)
 {
 	std::vector<size_t> ret;
 

@@ -120,7 +120,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	}
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
-	char buf[c_small_hash_dist];
+	std::vector<char> buf(c_checkpoint_dist);
 	char copy_buf[c_small_hash_dist];
 	_i64 copy_write_pos=0;
 	bool copy_read_eof=false;
@@ -379,118 +379,126 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 		_u32 buf_read = 0;
 		bool all_zeros = true;
 		_i64 start_pos = pos;
+		size_t buf_off = 0;
+
+		bool has_read_error = false;
+		_u32 cread = f->Read(buf.data(), c_chunk_size, &has_read_error);
+
+		if (has_read_error)
+		{
+			Server->Log("Error while reading from file \"" + f->getFilename() + "\"", LL_DEBUG);
+			return false;
+		}
+
+		int64 copy_off = pos;
+		int64 copy_size = 0;
+
 		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist,++chunkidx)
 		{
 			bool has_read_error = false;
-			_u32 r=f->Read(buf, c_small_hash_dist, &has_read_error);
 
-			if (has_read_error)
-			{
-				Server->Log("Error while reading from file \"" + f->getFilename() + "\"", LL_DEBUG);
-				return false;
-			}
+			_u32 r = (std::min)(static_cast<_u32>(c_small_hash_dist), static_cast<_u32>(cread - buf_off));
+			char* cbuf = &buf[buf_off];
+			buf_off += c_small_hash_dist;			
 
-			if (treehash!=NULL && !buf_is_zero(buf, r))
+			if (treehash!=NULL && !buf_is_zero(cbuf, r))
 			{
 				all_zeros = false;
 			}
 
-			*reinterpret_cast<unsigned int*>(&new_chunk.small_hash[chunkidx*small_hash_size]) = urb_adler32(urb_adler32(0, NULL, 0), buf, r);
-			big_hash.update((unsigned char*)buf, r);
+			*reinterpret_cast<unsigned int*>(&new_chunk.small_hash[chunkidx*small_hash_size]) = urb_adler32(urb_adler32(0, NULL, 0), cbuf, r);
+			big_hash.update((unsigned char*)cbuf, r);
 			buf_read += r;
 
 			if(hashf!=NULL && treehash==NULL)
 			{
 				int64 buf_offset = pos%sha_buf.size();
-				memcpy(sha_buf.data() + buf_offset, buf, r);
+				memcpy(sha_buf.data() + buf_offset, cbuf, r);
 			}
-			if(copy!=NULL)
+			if(copy!=nullptr && modify_inplace)
 			{
-				if(modify_inplace)
+				if(chunk_hashes.get())
 				{
-					if(chunk_hashes.get())
+					if(memcmp(&new_chunk.small_hash[chunkidx*small_hash_size], &chunk_hashes->small_hash[chunkidx*small_hash_size], small_hash_size)==0)
 					{
-						if(memcmp(&new_chunk.small_hash[chunkidx*small_hash_size], &chunk_hashes->small_hash[chunkidx*small_hash_size], small_hash_size)==0)
-						{
-							big_hash_copy_control.update((unsigned char*)buf, r);
-						}
-						else
-						{
-							//read old data
-							copy->Seek(copy_write_pos);
-							_u32 copy_r=copy->Read(copy_buf, c_small_hash_dist);
-
-							if(copy_r < c_small_hash_dist)
-							{
-								copy_read_eof=true;
-							}
-
-							big_hash_copy_control.update((unsigned char*)copy_buf, copy_r);
-
-							//write new data
-							copy->Seek(copy_write_pos);
-							if (!writeRepeatFreeSpace(copy, buf, r, cb))
-							{
-								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -2", LL_DEBUG);
-								return false;
-							}
-
-							if(inplace_written!=NULL)
-							{
-								*inplace_written+=r;
-							}
-						}
-
-						copy_write_pos+=r;
+						big_hash_copy_control.update((unsigned char*)cbuf, r);
 					}
 					else
 					{
-						_u32 copy_r;
-						if(copy_read_eof)
-						{
-							copy_r=0;
-						}
-						else
-						{
-							copy->Seek(copy_write_pos);
-							copy_r=copy->Read(copy_buf, c_small_hash_dist);
+						//read old data
+						copy->Seek(copy_write_pos);
+						_u32 copy_r=copy->Read(copy_buf, c_small_hash_dist);
 
-							if(copy_r < c_small_hash_dist)
-							{
-								copy_read_eof=true;
-							}
+						if(copy_r < c_small_hash_dist)
+						{
+							copy_read_eof=true;
 						}
 
-						if(copy_read_eof || copy_r!=r || memcmp(copy_buf, buf, r)!=0)
-						{
-							copy->Seek(copy_write_pos);
-							if (!writeRepeatFreeSpace(copy, buf, r, cb))
-							{
-								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -3", LL_DEBUG);
-								return false;
-							}
+						big_hash_copy_control.update((unsigned char*)copy_buf, copy_r);
 
-							if(inplace_written!=NULL)
-							{
-								*inplace_written+=r;
-							}
+						//write new data
+						copy->Seek(copy_write_pos);
+						if (!writeRepeatFreeSpace(copy, cbuf, r, cb))
+						{
+							Server->Log("Error writing to copy file (" + copy->getFilename() + ") -2", LL_DEBUG);
+							return false;
 						}
 
-						copy_write_pos+=r;
+						if(inplace_written!=NULL)
+						{
+							*inplace_written+=r;
+						}
 					}
-					
+
+					copy_write_pos+=r;
 				}
 				else
 				{
-					if (!writeRepeatFreeSpace(copy, buf, r, cb))
+					_u32 copy_r;
+					if(copy_read_eof)
 					{
-						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -4", LL_DEBUG);
-						return false;
+						copy_r=0;
+					}
+					else
+					{
+						copy->Seek(copy_write_pos);
+						copy_r=copy->Read(copy_buf, c_small_hash_dist);
+
+						if(copy_r < c_small_hash_dist)
+						{
+							copy_read_eof=true;
+						}
 					}
 
-					copy_write_pos += r;
+					if(copy_read_eof || copy_r!=r || memcmp(copy_buf, cbuf, r)!=0)
+					{
+						copy->Seek(copy_write_pos);
+						if (!writeRepeatFreeSpace(copy, cbuf, r, cb))
+						{
+							Server->Log("Error writing to copy file (" + copy->getFilename() + ") -3", LL_DEBUG);
+							return false;
+						}
+
+						if(inplace_written!=NULL)
+						{
+							*inplace_written+=r;
+						}
+					}
+
+					copy_write_pos+=r;
 				}
 			}
+		}
+
+		if (copy != nullptr && !modify_inplace)
+		{
+			if (!writeRepeatFreeSpace(copy, buf.data(), cread, cb))
+			{
+				Server->Log("Error writing to copy file (" + copy->getFilename() + ") -4", LL_DEBUG);
+				return false;
+			}
+
+			copy_write_pos += cread;
 		}
 
 		big_hash.finalize();
@@ -575,24 +583,26 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				copy_write_pos = copy_write_pos_start;
 				pos = epos - c_checkpoint_dist;
 				f->Seek(pos);
-				for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
+				bool has_read_error = false;
+				_u32 r = f->Read(buf.data(), c_checkpoint_dist, &has_read_error);
+				if (has_read_error)
 				{
-					_u32 r=f->Read(buf, c_small_hash_dist);
-
-					copy->Seek(copy_write_pos);
-					if (!writeRepeatFreeSpace(copy, buf, r, cb))
-					{
-						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -5", LL_DEBUG);
-						return false;
-					}
-
-					if(inplace_written!=NULL)
-					{
-						*inplace_written+=r;
-					}
-
-					copy_write_pos+=r;
+					Server->Log("Error while reading from file \"" + f->getFilename() + "\" (col)", LL_DEBUG);
+					return false;
 				}
+
+				copy->Seek(copy_write_pos);
+				if (!writeRepeatFreeSpace(copy, buf.data(), r, cb))
+				{
+					Server->Log("Error writing to copy file (" + copy->getFilename() + ") -5", LL_DEBUG);
+					return false;
+				}
+				if (inplace_written != NULL)
+				{
+					*inplace_written += r;
+				}
+
+				copy_write_pos += r;
 			}
 		}
 	}

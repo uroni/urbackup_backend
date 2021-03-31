@@ -94,8 +94,6 @@ bool LocalFullFileBackup::run()
 		}
 	}
 
-	file_metadata_pipe.reset(IndexThread::getFileSrv()->getFileMetadataPipe());
-
 	if (!prepareBackuppath())
 		return false;
 
@@ -180,6 +178,23 @@ bool LocalFullFileBackup::run()
 							return false;
 						}
 
+						std::string sourcepath = IndexThread::getFileSrv()->getShareDir(curr_path, std::string());
+						std::string metadatapath = ".hashes\\" + curr_os_path + "\\"+ metadata_dir_fn;
+
+						std::auto_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
+
+						if (metadataf.get() == NULL)
+						{
+							//Log
+							return false;
+						}
+
+						if (!backupMetadata(metadataf.get(), sourcepath, &metadata))
+						{
+							//Log
+							return false;
+						}
+
 						if (depth == 0)
 						{
 							referenceShadowcopy(cf.name, server_token, clientsubname);
@@ -238,46 +253,7 @@ bool LocalFullFileBackup::run()
 						return false;
 					}
 
-					SFile file_meta = getFileMetadata(os_file_prefix(sourcepath));
-					if (file_meta.name.empty())
-					{
-						Server->Log("Error getting metadata (created and last modified time) of " + sourcepath, LL_ERROR);
-						return false;
-					}
-					metadata.accessed = file_meta.accessed;
-					metadata.created = file_meta.created;
-					metadata.last_modified = file_meta.last_modified;
-
-					int64 truncate_to_bytes;
-					if (!write_file_metadata(metadataf.get(), NULL, metadata, true, truncate_to_bytes))
-					{
-						//Log
-						return false;
-					}
-					else
-					{
-						if (!metadataf->Resize(truncate_to_bytes))
-						{
-							//Log
-							return false;
-						}
-					}
-
-					int64 osm_offset = os_metadata_offset(metadataf.get());
-
-					if (osm_offset == -1)
-					{
-						Server->Log("Error saving metadata. Metadata offset cannot be calculated at \"" + metadatapath + "\"", LL_ERROR);
-						return false;
-					}
-
-					if (!metadataf->Seek(osm_offset))
-					{
-						Server->Log("Error saving metadata. Could not seek to end of file \"" + metadatapath + "\"", LL_ERROR);
-						return false;
-					}
-
-					if (!writeOsMetadata(sourcepath, osm_offset, metadataf.get()))
+					if (!backupMetadata(metadataf.get(), sourcepath, &metadata))
 					{
 						//Log
 						return false;
@@ -313,61 +289,12 @@ bool LocalFullFileBackup::run()
 		}
 	}
 
+	filelist_out.reset();
+
 	if (!backup_files->renameToFinal())
 		return false;
 
 	return true;
 }
 
-namespace
-{
-	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4AULL);
-	const int64 unix_meta_magic = little_endian(0xFE4378A3467647F0ULL);
-}
 
-bool LocalFullFileBackup::writeOsMetadata(const std::string& sourcefn, int64 dest_start_offset, IFile* dest)
-{
-	int64 win32_magic_and_size[2];
-	win32_magic_and_size[1] = win32_meta_magic;
-	win32_magic_and_size[0] = 0;
-
-	if (dest->Write(reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size)) != sizeof(win32_magic_and_size))
-	{
-		//Log
-		return false;
-	}
-
-	if (!file_metadata_pipe->openOsMetadataFile(sourcefn))
-	{
-		//Log
-		return false;
-	}
-
-	char buf[4096];
-
-	size_t read;
-	while (file_metadata_pipe->readCurrOsMetadata(buf, sizeof(buf), read))
-	{
-		if (dest->Write(buf, read) != read)
-		{
-			//Log
-			return false;
-		}
-
-		win32_magic_and_size[0] += read;
-	}
-
-	if (!dest->Seek(dest_start_offset))
-	{
-		//Log
-		return false;
-	}
-
-	if (dest->Write(reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size[0])) != sizeof(win32_magic_and_size[0]))
-	{
-		//Log
-		return false;
-	}
-
-	return true;
-}

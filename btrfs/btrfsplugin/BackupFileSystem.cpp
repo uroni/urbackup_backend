@@ -71,3 +71,98 @@ bool BtrfsBackupFileSystem::rename(const std::string& src_name, const std::strin
 {
 	return btrfs->rename(src_name, dest_name);
 }
+
+bool BtrfsBackupFileSystem::removeDirRecursive(const std::string& path)
+{
+	std::vector<SBtrfsFile> files = btrfs->listFiles(path);
+
+	for (SBtrfsFile& file : files)
+	{
+		if (file.isdir)
+		{
+			if (!removeDirRecursive(path + "\\" + file.name))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			if (!deleteFile(path + "\\" + file.name))
+			{
+				return false;
+			}
+		}
+	}
+	return deleteFile(path);
+}
+
+bool BtrfsBackupFileSystem::directoryExists(const std::string& path)
+{
+	return (getFileType(path) & EFileType_Directory)>0;
+}
+
+bool BtrfsBackupFileSystem::linkSymbolic(const std::string& target, const std::string& lname)
+{
+	return false;
+}
+
+bool BtrfsBackupFileSystem::copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str)
+{
+	std::unique_ptr<IFile> fsrc(openFile(src, MODE_READ));
+	if (fsrc.get()==nullptr)
+	{
+		return false;
+	}
+	std::unique_ptr<IFile> fdst(openFile(dst, MODE_WRITE));
+	if (fdst.get() == nullptr)
+	{
+		return false;
+	}
+
+	if (!fsrc->Seek(0))
+	{
+		return false;
+	}
+
+	if (!fdst->Seek(0))
+	{
+		return false;
+	}
+
+	std::vector<char> buf(512 * 1024);
+	size_t rc;
+	bool has_error = false;
+	while ((rc = (_u32)fsrc->Read(buf.data(), buf.size(), &has_error)) > 0)
+	{
+		if (has_error)
+		{
+			break;
+		}
+
+		if (rc > 0)
+		{
+			fdst->Write(buf.data(), (_u32)rc, &has_error);
+
+			if (has_error)
+			{
+				break;
+			}
+		}
+	}
+
+	if (has_error)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+
+	if (!has_error && flush)
+	{
+		has_error = !fdst->Sync();
+	}
+
+	return !has_error;
+}

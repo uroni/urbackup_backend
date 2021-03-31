@@ -1,14 +1,14 @@
 #pragma once
 #include "../Interface/File.h"
 #include "LocalBackup.h"
+#include "../fileservplugin/IFileMetadataPipe.h"
+#include "../urbackupcommon/file_metadata.h"
 #include <vector>
 
 class LocalFileBackup : public LocalBackup
 {
 public:
-	LocalFileBackup(IBackupFileSystem* backup_files, int64 local_process_id, int64 server_log_id, int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id)
-		: LocalBackup(backup_files, local_process_id, server_log_id, server_status_id, backupid, std::move(server_token), std::move(server_identity), facet_id)
-	{}
+	LocalFileBackup(IBackupFileSystem* backup_files, int64 local_process_id, int64 server_log_id, int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id);
 
 protected:
 	_i64 getIncrementalSize(IFile* f, const std::vector<size_t>& diffs, bool& backup_with_components, bool all);
@@ -26,6 +26,14 @@ protected:
 	std::string getBackupInternalDataDir() {
 		return ".hashes\\d42992c8-f07f-46e0-bba3-2c44913f91aa";
 	}
+
+	std::string permissionsAllowAll();
+
+	bool backupMetadata(IFsFile* metadataf, const std::string& sourcepath, FileMetadata* metadata);
+
+	bool writeOsMetadata(const std::string& sourcefn, int64 dest_start_offset, IFile* dest);
+
+	std::auto_ptr<IFileMetadataPipe> file_metadata_pipe;
 
 private:
 };

@@ -50,6 +50,8 @@ public:
 
 	bool rename(const std::string& orig_name, const std::string& new_name);
 
+	bool link_symbolic(const std::string& target, const std::string& lname);
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);

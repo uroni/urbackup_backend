@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include "os.h"
+#include <random>
 
 size_t os_get_num_cpus()
 {
@@ -51,4 +52,25 @@ bool os_wait_on_address(volatile void* address, void* compare_address, size_t ad
 void os_wake_by_address_single(void* address)
 {
 	WakeByAddressSingle(address);
+}
+
+long long os_perf_counter(long long* p_freq)
+{
+	LARGE_INTEGER ret;
+	QueryPerformanceCounter(&ret);
+
+	if (p_freq != NULL)
+	{
+		LARGE_INTEGER freq;
+		QueryPerformanceFrequency(&freq);
+		*p_freq = freq.QuadPart;
+	}
+
+	return ret.QuadPart;
+}
+
+unsigned long os_rand_next(unsigned long curr)
+{
+	std::mt19937 mr(curr);
+	return mr();
 }

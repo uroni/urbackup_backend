@@ -1,9 +1,11 @@
 #include "TreeNode.h"
 
+class IFile;
+
 class TreeReader
 {
 public:
-	bool readTree(const std::string &fn);
+	bool readTree(IFile* f);
 
 	std::vector<TreeNode> * getNodes(void);
 private:

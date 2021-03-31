@@ -5,7 +5,6 @@
 #include "../Interface/Thread.h"
 #include "../urbackupcommon/os_functions.h"
 #include "LocalFileBackup.h"
-#include "../fileservplugin/IFileMetadataPipe.h"
 
 class IBackupFileSystem;
 
@@ -35,10 +34,7 @@ public:
 
 private:
 
-	bool writeOsMetadata(const std::string& sourcefn, int64 dest_start_offset, IFile* dest);
-
 	std::string backuppath;
 	int backupgroup;
 	std::string clientsubname;
-	std::auto_ptr<IFileMetadataPipe> file_metadata_pipe;
 };

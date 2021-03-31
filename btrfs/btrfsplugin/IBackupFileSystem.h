@@ -32,4 +32,12 @@ public:
 
 	virtual bool rename(const std::string& src_name,
 		const std::string& dest_name) = 0;
+
+	virtual bool removeDirRecursive(const std::string& path) = 0;
+
+	virtual bool directoryExists(const std::string& path) = 0;
+
+	virtual bool linkSymbolic(const std::string& target, const std::string& lname) = 0;
+
+	virtual bool copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str) = 0;
 };

@@ -2436,7 +2436,7 @@ NTSTATUS SeAssignSecurity(PSECURITY_DESCRIPTOR SecurityDescriptor,
 NTSTATUS RtlGetOwnerSecurityDescriptor(PSECURITY_DESCRIPTOR SecurityDescriptor,
     PSID* Owner, BOOLEAN* defaulted);
 
-LARGE_INTEGER KeQueryPerformanceCounter(PVOID arg1);
+LARGE_INTEGER KeQueryPerformanceCounter(PLARGE_INTEGER arg1);
 
 ULONG RtlRandomEx(PULONG Prev);
 

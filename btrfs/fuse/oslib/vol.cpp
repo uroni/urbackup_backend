@@ -69,6 +69,12 @@ vol::vol(const std::string& path)
 			FILE_ATTRIBUTE_NORMAL| FILE_FLAG_OVERLAPPED,
 			NULL);
 
+	if (hvol->hvol == INVALID_HANDLE_VALUE)
+	{
+		//TODO:HANDLE
+		abort();
+	}
+
 
 	completion_port = CreateIoCompletionPort(hvol->hvol,
 		NULL, reinterpret_cast<ULONG_PTR>(hvol->hvol), 0);

@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <memory>
+#include <algorithm>
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
 #include "../urbackupcommon/os_functions.h"
@@ -36,7 +37,16 @@ private:
 
 	bool writeOsMetadata(const std::string& sourcefn, int64 dest_start_offset, IFile* dest);
 
+	bool deleteFilesInSnapshot(IFile* curr_file_list, const std::vector<size_t>& deleted_ids,
+		std::string snapshot_path, bool no_error, bool hash_dir);
+
+	bool hasChange(size_t line, const std::vector<size_t>& diffs)
+	{
+		return std::binary_search(diffs.begin(), diffs.end(), line);
+	}
+
 	std::string backuppath;
+	std::string last_backuppath;
 	int backupgroup;
 	std::string clientsubname;
 	std::auto_ptr<IFileMetadataPipe> file_metadata_pipe;

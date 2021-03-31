@@ -1356,6 +1356,8 @@ void SeLockSubjectContext(PSECURITY_SUBJECT_CONTEXT SecSubjContext)
 
 BOOLEAN SeAccessCheck(PSECURITY_DESCRIPTOR Sd, PSECURITY_SUBJECT_CONTEXT SecSubjContext, BOOLEAN b, ULONG FileOption, ULONG arg1, PVOID arg2, PGENERIC_MAPPING GenMap, REQMODE Reqmode, ACCESS_MASK* Access, NTSTATUS* status)
 {
+	*Access = FileOption;
+	*status = STATUS_SUCCESS;
 	return TRUE;
 }
 
@@ -1462,7 +1464,8 @@ void SeReleaseSubjectContext(PSECURITY_SUBJECT_CONTEXT SecurityContext)
 
 NTSTATUS SeAssignSecurity(PSECURITY_DESCRIPTOR SecurityDescriptor, PVOID arg1, PVOID* SdLink, BOOLEAN arg2, PSECURITY_SUBJECT_CONTEXT SecurityContext, PGENERIC_MAPPING Mapping, POOL_TYPE PoolType)
 {
-	return NTSTATUS();
+	*SdLink = reinterpret_cast<void*>(0x1);
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS RtlGetOwnerSecurityDescriptor(PSECURITY_DESCRIPTOR SecurityDescriptor, PSID* Owner, BOOLEAN* defaulted)
@@ -1472,14 +1475,22 @@ NTSTATUS RtlGetOwnerSecurityDescriptor(PSECURITY_DESCRIPTOR SecurityDescriptor, 
 	return STATUS_SUCCESS;
 }
 
-LARGE_INTEGER KeQueryPerformanceCounter(PVOID arg1)
+LARGE_INTEGER KeQueryPerformanceCounter(PLARGE_INTEGER arg1)
 {
-	return LARGE_INTEGER();
+	LARGE_INTEGER ret;
+	if (arg1 != NULL)
+		ret.QuadPart = os_perf_counter(&arg1->QuadPart);
+	else
+		ret.QuadPart = os_perf_counter(NULL);
+
+	return ret;
 }
 
 ULONG RtlRandomEx(PULONG Prev)
 {
-	return 0;
+	ULONG ret = os_rand_next(*Prev);
+	*Prev = ret;
+	return ret;
 }
 
 BOOLEAN IoIs32bitProcess(PIRP Irp)

@@ -32,6 +32,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "file_permissions.h"
 #include "LocalFullFileBackup.h"
+#include "LocalIncrFileBackup.h"
 #include "FilesystemManager.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
@@ -385,7 +386,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 
 		IBackupFileSystem* file_system = FilesystemManager::getFileSystem(imgpath);
 
-		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system,
+		LocalIncrFileBackup* fb = new LocalIncrFileBackup(file_system,
 			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
 			server_identity, facet_id);
 

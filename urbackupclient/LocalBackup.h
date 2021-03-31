@@ -32,12 +32,24 @@ class LocalBackup : public IThread
 		virtual bool createSubvol(const std::string& path) override;
 		virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override;
 		virtual bool rename(const std::string& src_name, const std::string& dest_name) override;
+		virtual bool removeDirRecursive(const std::string& path) override;
+		virtual bool directoryExists(const std::string& path) override;
+		virtual bool linkSymbolic(const std::string& target, const std::string& lname) override;
+		virtual bool copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str) override;
 		
 		bool renameToFinal();
 
+		std::string getPrefix() {
+			return prefix;
+		}
+
+		IBackupFileSystem* root() {
+			return backup_files;
+		}
+
 	private:
 		std::string prefix;
-		IBackupFileSystem* backup_files;
+		IBackupFileSystem* backup_files;		
 	};
 
 public:
@@ -54,6 +66,12 @@ protected:
 	void updateProgressSpeed(double n_speed_bpms);
 
 	void prepareBackupFiles(const std::string& prefix);
+
+	bool createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir);
+
+	std::string fixFilenameForOS(std::string fn) {
+		return fn;
+	}
 
 	std::unique_ptr<PrefixedBackupFiles> backup_files;
 	std::unique_ptr<IBackupFileSystem> orig_backup_files;

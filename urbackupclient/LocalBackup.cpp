@@ -1,8 +1,10 @@
 #include "LocalBackup.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
+#include "../stringtools.h"
 #include "ClientService.h"
 #include <memory>
+#include <set>
 
 namespace
 {
@@ -145,6 +147,51 @@ void LocalBackup::prepareBackupFiles(const std::string& prefix)
 	backup_files = std::make_unique<PrefixedBackupFiles>(orig_backup_files.release(), prefix + "\\");
 }
 
+bool LocalBackup::createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir)
+{
+	std::vector<std::string> toks;
+	Tokenize(symlink_target, toks, dir_sep);
+
+	std::string target;
+
+	for (size_t i = 0; i < depth; ++i)
+	{
+		target += ".." + os_file_sep();
+	}
+
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		std::set<std::string> emptyset;
+		std::string emptypath;
+		std::string component = fixFilenameForOS(toks[i]);
+
+		if (component == ".." || component == ".")
+			continue;
+
+		target += component;
+
+		if (i + 1 < toks.size())
+		{
+			target += os_file_sep();
+		}
+	}
+
+	if (toks.empty()
+		&& isdir)
+	{
+		target += ".symlink_void_dir";
+	}
+
+	if (toks.empty()
+		&& !isdir)
+	{
+		target += ".symlink_void_file";
+	}
+
+	//return backup_files->createSymlink(target, os_file_prefix(name), NULL, &isdir);
+	return false;
+}
+
 bool LocalBackup::PrefixedBackupFiles::hasError()
 {
 	return backup_files->hasError();
@@ -184,6 +231,26 @@ bool LocalBackup::PrefixedBackupFiles::renameToFinal()
 {
 	return backup_files->rename(prefix.substr(0, prefix.size() - 1),
 		prefix.substr(0, prefix.size() - 5));
+}
+
+bool LocalBackup::PrefixedBackupFiles::copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str)
+{
+	return backup_files->copyFile(prefix+src, prefix+dst, flush, error_str);
+}
+
+bool LocalBackup::PrefixedBackupFiles::removeDirRecursive(const std::string& path)
+{
+	return backup_files->removeDirRecursive(prefix+path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::directoryExists(const std::string& path)
+{
+	return backup_files->directoryExists(prefix+path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::linkSymbolic(const std::string& target, const std::string& lname)
+{
+	return backup_files->linkSymbolic(prefix+target, prefix+lname);
 }
 
 std::vector<SBtrfsFile> LocalBackup::PrefixedBackupFiles::listFiles(const std::string& path)

@@ -19,3 +19,7 @@ long os_interlocked_compare_exchange(long volatile* dest, long change, long comp
 bool os_wait_on_address(volatile void* address, void* compare_address, size_t address_size, unsigned int waitms);
 
 void os_wake_by_address_single(void* address);
+
+long long os_perf_counter(long long* freq);
+
+unsigned long os_rand_next(unsigned long curr);

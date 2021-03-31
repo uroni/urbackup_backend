@@ -2,6 +2,7 @@
 #include <vector>
 
 class TreeNode;
+class IFile;
 
 class TreeDiff
 {
@@ -10,6 +11,11 @@ public:
 		std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
 		std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
 		std::vector<size_t> *deleted_inplace_ids, bool has_symbit, bool is_windows);
+
+	static std::vector<size_t> diffTrees(IFile* t1, IFile* t2, bool& error,
+		std::vector<size_t>* deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
+		std::vector<size_t>* modified_inplace_ids, std::vector<size_t>& dir_diffs,
+		std::vector<size_t>* deleted_inplace_ids, bool has_symbit, bool is_windows);
 
 private:
 	static void gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector<size_t> &diffs,
