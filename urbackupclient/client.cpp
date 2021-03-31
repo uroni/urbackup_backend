@@ -6651,6 +6651,8 @@ void IndexThread::run_sc_refs_cleanup()
 								break;
 							}
 
+							scd.ref = sc_refs[i];
+
 							size_t orig_size = sc_refs.size();
 
 							release_shadowcopy(&scd, false, -1, &scd);
