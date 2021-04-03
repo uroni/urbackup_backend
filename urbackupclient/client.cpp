@@ -3534,6 +3534,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					sc_refs[i]->cleanup_gen = filesrv->incrActiveGeneration();
 					sc_refs_cleanup = true;
 					VSSLog("Old shadow copy of " + sc_refs[i]->target + " still in use. Not deleting or using it.", LL_WARNING);
+					dir->target = dir->orig_target;
 					continue;
 				}
 #endif
