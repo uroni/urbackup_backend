@@ -50,11 +50,8 @@ make install DESTDIR=$PWD/osx-pkg2
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
-if !($development); then
-	cp osx_installer/info.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
-else
-	cp osx_installer/info_development.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
-fi
+cp osx_installer/info.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
+
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions"
 mv "osx-pkg2/Library/Application Support" "osx-pkg/Library"
@@ -83,13 +80,26 @@ echo "OK=true" >> "$UNINSTALLER"
 
 chmod +x "$UNINSTALLER"
 
+GIT_REV="$(git rev-parse --short HEAD)"
+if [ $? -ne 0 ]; then
+	GIT_REV="N/A"
+fi
+
 if !($development); then
-	VERSION_SHORT_NUM="$version_num_short$"
+	VERSION_SHORT_NUM="$version_num_short$ ($GIT_REV)"
 	VERSION_SHORT="$version_short$"
 else
-	VERSION_SHORT_NUM="0.1"
+	VERSION_SHORT_NUM="0.1 ($GIT_REV)"
 	VERSION_SHORT="0.1"
 fi
+
+if ($development); then
+	gsed  -i 's/\$version_num_short\$/0.1/g' "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
+	gsed  -i 's/\$version_maj\$/0/g' "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
+	gsed  -i 's/\$version_min\$/1/g' "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
+fi
+gsed  -i 's/\$git_rev\$/'"$GIT_REV"'/g' "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
+
 
 function notarization_info {
 	echo "$UPLOAD_INFO_PLIST" > tmp.plist
@@ -137,9 +147,9 @@ fi
 
 rm -R pkg1 || true
 mkdir pkg1 || true
-pkgbuild --root osx-pkg --identifier org.urbackup.client.service --version $VERSION_SHORT_NUM --ownership recommended pkg1/output.pkg
-pkgbuild --root "osx-pkg2/Applications/UrBackup Client.app" --identifier "org.urbackup.client" --version $VERSION_SHORT_NUM --scripts osx_installer/scripts2 --ownership recommended pkg1/output2.pkg --install-location "/Applications/UrBackup Client.app"
-productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version $VERSION_SHORT_NUM final.pkg
+pkgbuild --root osx-pkg --identifier org.urbackup.client.service --version "$VERSION_SHORT_NUM" --ownership recommended pkg1/output.pkg
+pkgbuild --root "osx-pkg2/Applications/UrBackup Client.app" --identifier "org.urbackup.client" --version "$VERSION_SHORT_NUM" --scripts osx_installer/scripts2 --ownership recommended pkg1/output2.pkg --install-location "/Applications/UrBackup Client.app"
+productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version "$VERSION_SHORT_NUM" final.pkg
 
 if !($development); then
 	productsign --keychain /Users/martin/Library/Keychains/dev.keychain --sign 3Y4WACCWC5 final.pkg final-signed.pkg
