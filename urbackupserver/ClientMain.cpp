@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -352,6 +352,11 @@ void ClientMain::operator ()(void)
 	{
 		curr_image_version = 0;
 	}
+	else if (server_settings->getImageFileFormat() == image_file_format_vhdx
+		|| server_settings->getImageFileFormat() == image_file_format_vhdxz)
+	{
+		curr_image_version = 2;
+	}
 	else
 	{
 		curr_image_version = 1;
@@ -675,6 +680,11 @@ void ClientMain::operator ()(void)
 					if(server_settings->getImageFileFormat()==image_file_format_cowraw)
 					{
 						curr_image_version = 0;
+					}
+					else if (server_settings->getImageFileFormat() == image_file_format_vhdxz
+						|| server_settings->getImageFileFormat() == image_file_format_vhdx)
+					{
+						curr_image_version = 2;
 					}
 					else
 					{

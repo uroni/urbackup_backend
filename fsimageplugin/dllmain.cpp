@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -54,6 +54,7 @@ extern IServer* Server;
 #include <stdlib.h>
 
 #include "vhdfile.h"
+#include "vhdxfile.h"
 #ifndef _WIN32
 #include "cowfile.h"
 #endif
@@ -189,17 +190,28 @@ namespace
 	}
 
 
-	IVHDFile* open_device_file(std::string device_verify)
+	IVHDFile* open_device_file(std::string device_verify, bool read_only=true, int64 dst_size = 0,
+		std::string parent_fn=std::string())
 	{
 		std::string ext = strlower(findextension(device_verify));
 		if(ext=="vhd" || ext=="vhdz")
 		{
-			return new VHDFile(device_verify, true,0);
+			if(parent_fn.empty())
+				return new VHDFile(device_verify, read_only, dst_size);
+			else
+				return new VHDFile(device_verify, parent_fn, read_only);
+		}
+		else if (ext == "vhdx" || ext == "vhdxz")
+		{
+			if (parent_fn.empty())
+				return new VHDXFile(device_verify, read_only, dst_size);
+			else
+				return new VHDXFile(device_verify, parent_fn, read_only);
 		}
 #if !defined(_WIN32) && !defined(__APPLE__)
 		else if(ext=="raw")
 		{
-			return new CowFile(device_verify, true,0);
+			return new CowFile(device_verify, read_only, dst_size);
 		}
 #endif
 		else
@@ -864,6 +876,135 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				exit(0);
 			}
 		}
+	}
+
+	std::string vhdmake_in = Server->getServerParameter("vhdmake_in");
+	if (!vhdmake_in.empty())
+	{
+		Server->Log("VHDMake.");
+
+		std::unique_ptr<IFsFile> inFile(Server->openFile(vhdmake_in, MODE_READ));
+
+		if (inFile.get() == nullptr)
+		{
+			Server->Log("Error opening " + vhdmake_in + ". ", LL_ERROR);
+			exit(1);
+		}
+
+		std::string vhd_out = Server->getServerParameter("vhd_out");
+		IVHDFile* vhdfile = open_device_file(vhd_out, false, inFile->Size());
+		if (vhdfile == nullptr)
+		{
+			Server->Log("Error opening " + vhd_out + ". ", LL_ERROR);
+			exit(1);
+		}
+
+		std::vector<char> buf(512 * 1024);
+
+		for (int64 pos = 0, size = inFile->Size(); pos < size; pos += buf.size())
+		{
+			_u32 towrite = static_cast<_u32>((std::min)(static_cast<int64>(buf.size()), size - pos));
+			if (inFile->Read(pos, buf.data(), towrite) != towrite)
+			{
+				Server->Log("Error reading from in file", LL_ERROR);
+				exit(2);
+			}
+
+			if (vhdfile->Write(buf.data(), towrite) != towrite)
+			{
+				Server->Log("Error writing to vhd file", LL_ERROR);
+				exit(2);
+			}
+		}
+
+		delete vhdfile;
+		Server->Log("VHDMake complete", LL_INFO);
+		exit(0);
+	}
+
+	std::string vhdmake_diff_in = Server->getServerParameter("vhdmake_diff_in");
+	if (!vhdmake_diff_in.empty())
+	{
+		Server->Log("VHDMake Diff.");
+
+		std::unique_ptr<IFsFile> inFile(Server->openFile(vhdmake_diff_in, MODE_READ));
+
+		if (inFile.get() == nullptr)
+		{
+			Server->Log("Error opening " + vhdmake_diff_in + ". ", LL_ERROR);
+			exit(1);
+		}
+
+		std::string vhd_out_parent = Server->getServerParameter("vhd_out_parent");
+
+		if (vhd_out_parent.empty() || !FileExists(vhd_out_parent))
+		{
+			Server->Log("Error finding vhd_out_parent \"" + vhd_out_parent + "\"", LL_ERROR);
+			exit(2);
+		}
+
+		std::string vhdmake_in_parent = Server->getServerParameter("vhdmake_in_parent");
+
+		if (vhdmake_in_parent.empty() || !FileExists(vhdmake_in_parent))
+		{
+			Server->Log("Error finding vhdmake_in_parent \"" + vhdmake_in_parent + "\"", LL_ERROR);
+			exit(2);
+		}
+
+		std::unique_ptr<IFsFile> inParentFile(Server->openFile(vhdmake_in_parent, MODE_READ));
+
+		if (inParentFile.get() == nullptr)
+		{
+			Server->Log("Error opening " + vhdmake_in_parent + ". ", LL_ERROR);
+			exit(1);
+		}
+
+		std::string vhd_out = Server->getServerParameter("vhd_out");
+		Server->deleteFile(vhd_out); //TODO: rm
+		IVHDFile* vhdfile = open_device_file(vhd_out, false, inFile->Size(), vhd_out_parent);
+		if (vhdfile == nullptr)
+		{
+			Server->Log("Error opening " + vhd_out + ". ", LL_ERROR);
+			exit(1);
+		}
+
+		std::vector<char> buf(512);
+		std::vector<char> buf_prev(512);
+
+		int64 written = 0;
+		for (int64 pos = 0, size = inFile->Size(); pos < size; pos += buf.size())
+		{
+			_u32 towrite = static_cast<_u32>((std::min)(static_cast<int64>(buf.size()), size - pos));
+			if (inFile->Read(pos, buf.data(), towrite) != towrite)
+			{
+				Server->Log("Error reading from in file", LL_ERROR);
+				exit(2);
+			}
+
+			if (inParentFile->Read(pos, buf_prev.data(), towrite) != towrite)
+			{
+				Server->Log("Error reading from in parent file", LL_ERROR);
+				exit(2);
+			}
+
+			if (memcmp(buf.data(), buf_prev.data(), towrite) == 0)
+			{
+				continue;
+			}
+
+			vhdfile->Seek(pos);
+			if (vhdfile->Write(buf.data(), towrite) != towrite)
+			{
+				Server->Log("Error writing to vhd file", LL_ERROR);
+				exit(2);
+			}
+
+			written += towrite;
+		}
+
+		delete vhdfile;
+		Server->Log("VHDMakeDiff complete. "+PrettyPrintBytes(written)+" written.", LL_INFO);
+		exit(0);
 	}
 	
 	std::string hashfilecomp_1=Server->getServerParameter("hashfilecomp_1");

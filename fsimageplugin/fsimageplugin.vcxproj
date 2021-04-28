@@ -204,6 +204,7 @@
     <ClCompile Include="vhdfile.cpp" />
     <ClCompile Include="fs\ntfs.cpp" />
     <ClCompile Include="fs\unknown.cpp" />
+    <ClCompile Include="vhdxfile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\data.h" />
@@ -226,6 +227,7 @@
     <ClInclude Include="vhdfile.h" />
     <ClInclude Include="fs\ntfs.h" />
     <ClInclude Include="fs\unknown.h" />
+    <ClInclude Include="vhdxfile.h" />
     <ClInclude Include="win_dialog.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
