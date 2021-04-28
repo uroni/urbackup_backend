@@ -3450,7 +3450,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(full_image_style_params, "local_full_image_style", data.settings);
 			data.settings=addSelectSelected(full_image_style_params, "internet_full_image_style", data.settings);
 			
-			var image_file_format_params = ["vhdz", "vhd"];
+			var image_file_format_params = ["vhdz", "vhd", "vhdxz", "vhdx"];
 			if(data.cowraw_available)
 			{
 				data.settings.cowraw_available=true;
@@ -3546,7 +3546,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
-			var image_file_format_params = ["vhdz", "vhd"];
+			var image_file_format_params = ["vhdz", "vhd", "vhdxz", "vhdx"];
 			if(data.cowraw_available)
 			{
 				data.settings.cowraw_available=true;

@@ -35,7 +35,9 @@ public:
 	{
 		ImageFormat_VHD=0,
 		ImageFormat_CompressedVHD=1,
-		ImageFormat_RawCowFile=2
+		ImageFormat_RawCowFile=2,
+		ImageFormat_VHDX = 3,
+		ImageFormat_CompressedVHDX = 4
 	};
 
 	virtual IVHDFile *createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,

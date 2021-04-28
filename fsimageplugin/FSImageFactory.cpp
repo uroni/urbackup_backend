@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,7 @@
 #endif
 #include "fs/unknown.h"
 #include "vhdfile.h"
+#include "vhdxfile.h"
 #include "../stringtools.h"
 #ifdef _WIN32
 #include <Windows.h>
@@ -545,6 +546,9 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, 
 	case ImageFormat_VHD:
 	case ImageFormat_CompressedVHD:
 		return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, format!=ImageFormat_VHD);
+	case ImageFormat_VHDX:
+	case ImageFormat_CompressedVHDX:
+		return new VHDXFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, format != ImageFormat_VHDX);
 	case ImageFormat_RawCowFile:
 #if !defined(__APPLE__)
 		return new CowFile(fn, pRead_only, pDstsize);
@@ -563,6 +567,9 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string
 	case ImageFormat_VHD:
 	case ImageFormat_CompressedVHD:
 		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD, pDstsize);
+	case ImageFormat_VHDX:
+	case ImageFormat_CompressedVHDX:
+		return new VHDXFile(fn, parent_fn, pRead_only, fast_mode, format != ImageFormat_VHDX, pDstsize);
 	case ImageFormat_RawCowFile:
 #if !defined(__APPLE__)
 		return new CowFile(fn, parent_fn, pRead_only, pDstsize);

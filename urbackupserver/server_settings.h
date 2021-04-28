@@ -12,6 +12,8 @@ namespace
 	const char* image_file_format_vhd = "vhd";
 	const char* image_file_format_vhdz = "vhdz";
 	const char* image_file_format_cowraw = "cowraw";
+	const char* image_file_format_vhdx = "vhdx";
+	const char* image_file_format_vhdxz = "vhdxz";
 
 	const char* full_image_style_full = "full";
 	const char* full_image_style_synthetic = "synthetic";

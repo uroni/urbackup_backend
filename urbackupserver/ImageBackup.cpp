@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -1053,9 +1053,26 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						image_format = IFSImageFactory::ImageFormat_RawCowFile;
 					}
+					else if (image_file_format == image_file_format_vhdx)
+					{
+						image_format = IFSImageFactory::ImageFormat_VHDX;
+					}
+					else if (image_file_format == image_file_format_vhdxz)
+					{
+						image_format = IFSImageFactory::ImageFormat_CompressedVHDX;
+					}
 					else //default
 					{
 						image_format = IFSImageFactory::ImageFormat_CompressedVHD;
+					}
+
+					if ((image_format == IFSImageFactory::ImageFormat_VHDX ||
+						image_format == IFSImageFactory::ImageFormat_CompressedVHDX) &&
+						drivesize + mbr_size > 64LL * 1024 * 1024 * 1024 * 1024)
+					{
+						ServerLogger::Log(logid, "Volume is too large for VHDX files with " + PrettyPrintBytes(drivesize + mbr_size) +
+							". VHDX files have a maximum size of 64TiB. Please use another image file format.", LL_ERROR);
+						goto do_image_cleanup;
 					}
 
 					if(!has_parent)
@@ -1159,7 +1176,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 
 						if (vhd_size>0 && vhd_size >= 2040LL * 1024 * 1024 * 1024
-							&& image_file_format != image_file_format_cowraw)
+							&& (image_file_format == image_file_format_vhd
+								|| image_file_format == image_file_format_vhdz) )
 						{
 							ServerLogger::Log(logid, "Data on volume is too large for VHD files with " + PrettyPrintBytes(vhd_size) +
 								". VHD files have a maximum size of 2040GB. Please use another image file format.", LL_ERROR);
@@ -2106,6 +2124,14 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	if(image_file_format==image_file_format_vhd)
 	{
 		imgpath+=".vhd";
+	}
+	else if (image_file_format == image_file_format_vhdx)
+	{
+		imgpath += ".vhdx";
+	}
+	else if (image_file_format == image_file_format_vhdxz)
+	{
+		imgpath += ".vhdxz";
 	}
 	else if(image_file_format==image_file_format_cowraw)
 	{
