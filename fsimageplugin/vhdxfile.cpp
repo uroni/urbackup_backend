@@ -1204,7 +1204,7 @@ bool VHDXFile::setBackingFileSize(_i64 fsize)
 
 	if (fsize > backing_file->Size())
 	{
-		return backing_file->Resize(fsize);
+		return backing_file->Resize(fsize, false);
 	}	
 
 	return false;
@@ -1747,6 +1747,10 @@ void VHDXFile::getDataWriteGUID(VhdxGUID& g)
 	copyGUID(curr_header.DataWriteGuid, g);
 }
 
+bool VHDXFile::isCompressed() {
+	return file == compressed_file.get();
+}
+
 bool VHDXFile::createNew()
 {
 	memset(&curr_header, 0, sizeof(curr_header));
@@ -1889,6 +1893,8 @@ bool VHDXFile::createNew()
 
 bool VHDXFile::updateHeader()
 {
+	assert(!read_only);
+
 	++curr_header.SequenceNumber;
 
 	curr_header.Checksum = 0;
@@ -2569,11 +2575,12 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 
 		allocated_size = backing_file->Size();
 
-		secureRandomGuid(curr_header.FileWriteGuid);
+		if(!read_only)
+			secureRandomGuid(curr_header.FileWriteGuid);
 
 		flushed_vhdx_size = allocated_size;
 
-		if (!fast_mode && !updateHeader())
+		if (!read_only && !fast_mode && !updateHeader())
 		{
 			return false;
 		}

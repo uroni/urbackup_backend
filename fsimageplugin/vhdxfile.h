@@ -93,6 +93,12 @@ public:
 
 	void getDataWriteGUID(VhdxGUID& g);
 
+	VHDXFile* getParent() {
+		return parent.get();
+	}
+
+	bool isCompressed();
+
 private:
 	bool createNew();
 	bool updateHeader();
