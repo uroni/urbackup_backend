@@ -19,6 +19,7 @@
 #include "vhdxfile.h"
 #include "../stringtools.h"
 #include <assert.h>
+#include <memory.h>
 #include "CompressedFile.h"
 #include "../urbackupcommon/os_functions.h"
 #include "FileWrapper.h"
