@@ -797,7 +797,10 @@ namespace
 }
 
 VHDXFile::VHDXFile(const std::string& fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress, size_t compress_n_threads)
-	: dst_size(pDstsize), fast_mode(fast_mode), read_only(pRead_only)
+	: dst_size(pDstsize), fast_mode(fast_mode), read_only(pRead_only), sector_bitmap_mutex(Server->createMutex()),
+	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
+	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
+	is_open(false)
 {
 	is_open = open(fn, compress, compress_n_threads);
 }
@@ -805,12 +808,15 @@ VHDXFile::VHDXFile(const std::string& fn, bool pRead_only, uint64 pDstsize, unsi
 VHDXFile::VHDXFile(const std::string& fn, const std::string& parent_fn, bool pRead_only,
 	bool fast_mode, bool compress, uint64 pDstsize, size_t compress_n_threads)
 	: fast_mode(fast_mode), read_only(pRead_only), dst_size(pDstsize),
-	parent_fn(parent_fn)
+	parent_fn(parent_fn), sector_bitmap_mutex(Server->createMutex()),
+	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
+	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
+	is_open(false)
 {
 	if (!FileExists(fn))
 	{
-		parent = std::make_unique<VHDXFile>(parent_fn, true,
-			0);
+		parent.reset(new VHDXFile(parent_fn, true,
+			0));
 
 		if (!parent->isOpen())
 		{
@@ -1587,7 +1593,7 @@ bool VHDXFile::Sync()
 bool VHDXFile::syncInt(bool full)
 {
 	{
-		std::lock_guard<std::mutex> lock(pending_sector_bitmaps_mutex);
+		IScopedLock lock(pending_sector_bitmaps_mutex.get());
 
 		for (_u32 sector_block : pending_sector_bitmaps)
 		{
@@ -2493,8 +2499,8 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 
 		if (compress)
 		{
-			compressed_file = std::make_unique<CompressedFile>(backing_file.get(),
-				false, read_only, compress_n_threads);
+			compressed_file.reset(new CompressedFile(backing_file.get(),
+				false, read_only, compress_n_threads));
 
 			if (compressed_file->hasError())
 			{
@@ -2515,8 +2521,8 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 	{
 		if (check_if_compressed())
 		{
-			compressed_file = std::make_unique<CompressedFile>(backing_file.get(),
-				true, read_only, compress_n_threads);
+			compressed_file.reset(new CompressedFile(backing_file.get(),
+				true, read_only, compress_n_threads));
 
 			if (compressed_file->hasError())
 			{
@@ -2576,7 +2582,7 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 		allocated_size = backing_file->Size();
 
 		if(!read_only)
-			secureRandomGuid(curr_header.FileWriteGuid);
+		secureRandomGuid(curr_header.FileWriteGuid);
 
 		flushed_vhdx_size = allocated_size;
 
@@ -2759,11 +2765,11 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 
 char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 {
-	std::unique_lock<std::mutex> lock(sector_bitmap_mutex);
+	IScopedLock lock(sector_bitmap_mutex.get());
 	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
-		lock.unlock();
+		lock.relock(NULL);
 
 		std::vector<char> sector_bitmap_buf(block_size);
 
@@ -2776,7 +2782,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 			return nullptr;
 		}
 
-		lock.lock();
+		lock.relock(sector_bitmap_mutex.get());
 
 		if (sector_bitmap_bufs.find(sector_block) == sector_bitmap_bufs.end())
 		{
@@ -2785,7 +2791,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 
 		it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 
-		lock.unlock();
+		lock.relock(NULL);
 	}
 
 	return it_sector_bitmap->second.data();
@@ -2793,7 +2799,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 
 char* VHDXFile::addZeroBitmap(_u32 sector_block)
 {
-	std::unique_lock<std::mutex> lock(sector_bitmap_mutex);
+	IScopedLock lock(sector_bitmap_mutex.get());
 	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
@@ -2865,7 +2871,7 @@ bool VHDXFile::setSector(int64 start, int64 end)
 
 	setSectorInt(sector_bitmap, start, end, block_size, sector_size);
 
-	std::lock_guard<std::mutex> lock(pending_sector_bitmaps_mutex);
+	IScopedLock lock(pending_sector_bitmaps_mutex.get());
 
 	pending_sector_bitmaps.insert(sector_block);
 

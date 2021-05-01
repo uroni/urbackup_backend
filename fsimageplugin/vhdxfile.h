@@ -150,14 +150,14 @@ private:
 	std::vector<char> bat_buf;
 	std::set<int64> pending_bat_entries;
 
-	std::unique_ptr<IFsFile> backing_file;
+	std::auto_ptr<IFsFile> backing_file;
 	IFile* file;
-	std::unique_ptr<CompressedFile> compressed_file;
+	std::auto_ptr<CompressedFile> compressed_file;
 	int64 allocated_size;
-	bool is_open = false;
+	bool is_open;
 	int64 dst_size;
 	int64 flushed_vhdx_size;
-	bool data_write_uuid_updated = false;
+	bool data_write_uuid_updated;
 
 	std::mutex log_mutex;
 
@@ -169,20 +169,20 @@ private:
 
 	int64 log_start_pos;
 	int64 log_pos;
-	int64 log_sequence_num = 1;
+	int64 log_sequence_num;
 
-	int64 spos = 0;
+	int64 spos;
 
 	bool fast_mode;
 	bool read_only;
-	bool finished = false;
+	bool finished;
 
-	std::unique_ptr<VHDXFile> parent;
+	std::auto_ptr<VHDXFile> parent;
 	std::string parent_fn;
 
-	std::mutex sector_bitmap_mutex;
+	std::auto_ptr<IMutex> sector_bitmap_mutex;
 	std::map<_u32, std::vector<char> > sector_bitmap_bufs;
 
-	std::mutex pending_sector_bitmaps_mutex;
+	std::auto_ptr<IMutex> pending_sector_bitmaps_mutex;
 	std::set<_u32> pending_sector_bitmaps;
 };
