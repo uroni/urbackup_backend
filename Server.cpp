@@ -1664,7 +1664,18 @@ void CServer::wait(unsigned int ms)
 #ifdef _WIN32
 	Sleep(ms);
 #else
-	usleep(ms*1000);
+	if (ms > 1000)
+	{
+		sleep(ms / 1000);
+		if (ms % 1000 != 0)
+		{
+			usleep((ms % 1000) * 1000);
+		}
+	}
+	else
+	{
+		usleep(ms * 1000);
+	}
 #endif
 }
 
