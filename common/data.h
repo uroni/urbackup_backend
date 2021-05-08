@@ -30,8 +30,12 @@ public:
 
 	void clear();
 
-private:
-	std::vector<char> data;
+	void reserve(size_t count);
+	void resize(size_t count);
+
+	size_t capacity();
+protected:
+	std::string data;
 };
 
 class CRData

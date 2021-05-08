@@ -420,6 +420,21 @@ void CWData::clear()
 	data.clear();
 }
 
+void CWData::reserve(size_t count)
+{
+	data.reserve(count);
+}
+
+void CWData::resize(size_t count)
+{
+	data.resize(count);
+}
+
+size_t CWData::capacity()
+{
+	return data.capacity();
+}
+
 void CWData::addVarInt( int64 ta )
 {
 	size_t cpos=data.size();
@@ -588,7 +603,8 @@ bool CRData::getStr2(std::string *ret)
 		return false;
 	}
 
-	if (strlen>10 * 1024 * 1024)
+	if (strlen>10 * 1024 * 1024
+		|| strlen<0)
 	{
 		return false;
 	}
