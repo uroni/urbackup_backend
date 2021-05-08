@@ -21,6 +21,8 @@
 #include <map>
 #include <stddef.h>
 
+#include "../Interface/Mutex.h"
+
 namespace common
 {
 
@@ -30,6 +32,9 @@ class lrucache
 public:
 	typedef std::list<std::pair<K const *, V> > list_t;
 	typedef std::map<K, typename list_t::iterator> map_t;
+
+	lrucache()
+	{}
 
 	void put(const K& key, const V& v)
 	{
@@ -48,6 +53,29 @@ public:
 		}
 	}
 
+	void put_after(const K& key, const K& put_key, const V& v)
+	{
+		typename map_t::iterator it_after = lru_access.find(key);
+
+		if (it_after != lru_access.end())
+		{
+			typename map_t::iterator it = lru_access.find(put_key);
+			if (it != lru_access.end())
+			{
+				lru_list.splice(it_after->second, lru_list, it->second);
+			}
+			else
+			{
+				typename map_t::iterator it_ins = lru_access.insert(std::make_pair(put_key, lru_list.begin())).first;
+				it_ins->second = lru_list.insert(it_after->second, std::make_pair(&it_ins->first, v));
+			}
+		}
+		else
+		{
+			put(put_key, v);
+		}
+	}
+
 	void put_back(const K& key, const V& v)
 	{
 		typename map_t::iterator it=lru_access.find(key);
@@ -63,6 +91,44 @@ public:
 			it_ins->second = lru_list.end();
 			--it_ins->second;
 		}
+	}
+
+	bool change_key(const K& old_key, const K& new_key)
+	{
+		typename map_t::iterator it = lru_access.find(old_key);
+
+		if (it != lru_access.end())
+		{
+			typename list_t::iterator it_list = it->second;
+			lru_access.erase(it);
+			typename map_t::iterator it_ins = lru_access.insert(std::make_pair(new_key, it_list)).first;
+			it_list->first = &it_ins->first;
+			return true;
+		}
+		return false;
+	}
+
+	bool check()
+	{
+		for (typename list_t::iterator it_list = lru_list.begin();
+			it_list != lru_list.end(); ++it_list)
+		{
+			typename map_t::iterator it_map = lru_access.find(*it_list->first);
+			if (it_map == lru_access.end())
+				return false;
+
+			if (it_map->second != it_list)
+				return false;
+		}
+
+		for (typename map_t::iterator it_map = lru_access.begin();
+			it_map != lru_access.end(); ++it_map)
+		{
+			if (*it_map->second->first != it_map->first)
+				return false;
+		}
+
+		return true;
 	}
 
 	size_t size() const
@@ -85,6 +151,10 @@ public:
 			{
 				bring_to_front(it);
 			}
+
+			if (it->first != key)
+				abort();
+
 			return &((*(it->second)).second);
 		}
 		else
@@ -117,6 +187,16 @@ public:
 		{
 			return std::pair<K, V>();
 		}
+	}
+
+	typename list_t::iterator eviction_iterator_start()
+	{
+		return lru_list.end();
+	}
+
+	typename list_t::iterator eviction_iterator_finish()
+	{
+		return lru_list.begin();
 	}
 
 	std::pair<K, V> eviction_candidate(size_t skip=0)
@@ -165,6 +245,11 @@ public:
 	{
 		lru_list.clear();
 		lru_access.clear();
+	}
+
+	void bring_to_front(typename list_t::iterator it)
+	{
+		lru_list.splice(lru_list.begin(), lru_list, it);
 	}
 
 private:
