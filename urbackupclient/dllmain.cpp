@@ -75,6 +75,7 @@ extern IServer* Server;
 #include "InternetClient.h"
 #include <stdlib.h>
 #include "file_permissions.h"
+#include "FilesystemManager.h"
 
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/WalCheckpointThread.h"
@@ -348,6 +349,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		restore_wizard();
 		exit(10);
+		return;
+	}
+
+	if (!Server->getServerParameter("mount").empty())
+	{
+		bool ret = FilesystemManager::mountFileSystem(Server->getServerParameter("mount"),
+			Server->getServerParameter("mount_path"));
+
+		exit(ret ? 1 : 0);
 		return;
 	}
 

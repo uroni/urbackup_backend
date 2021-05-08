@@ -355,7 +355,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 	std::string dest;
 	getBackupDest(clientsubname, dest, facet_id);
 
-	if (next(dest, 0, "raw-file://"))
+	if (next(dest, 0, "file://"))
 	{
 		std::string async_id;
 		async_id.resize(16);
@@ -374,7 +374,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 
 		running_processes.push_back(new_proc);
 
-		std::string imgpath = getafter("raw-file://", dest);
+		std::string imgpath = getafter("file://", dest);
 
 		if (!FilesystemManager::openFilesystemImage(imgpath))
 		{
@@ -580,7 +580,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 	std::string dest;
 	getBackupDest(clientsubname, dest, facet_id);
 
-	if (next(dest, 0, "raw-file://"))
+	if (next(dest, 0, "file://"))
 	{
 		std::string async_id;
 		async_id.resize(16);
@@ -599,7 +599,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 
 		running_processes.push_back(new_proc);
 
-		std::string imgpath = getafter("raw-file://", dest);
+		std::string imgpath = getafter("file://", dest);
 
 		if (!FilesystemManager::openFilesystemImage(imgpath))
 		{
