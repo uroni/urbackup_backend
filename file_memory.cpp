@@ -16,67 +16,77 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
+#include "Server.h"
 #include "file_memory.h"
 
+#include <algorithm>
+#include <assert.h>
 #ifndef _WIN32
+#include <unistd.h>
 #include <memory.h>
+#include <sys/mman.h>
+#include <pthread.h>
 #endif
+#include "stringtools.h"
 
-CMemoryFile::CMemoryFile()
+int CMemoryFile::page_size = 0;
+
+CMemoryFile::CMemoryFile(const std::string& name, bool mlock_mem)
+	:mutex(Server->createSharedMutex()),
+	mlock_mem(mlock_mem), name(name), mprotect_mutex(Server->createMutex()), memory_protected(0)
 {
 	pos=0;
+
+#ifndef _WIN32
+	if (page_size == 0)
+	{
+		page_size = sysconf(_SC_PAGE_SIZE);
+
+		if (page_size <= 0)
+		{
+			Server->Log("Invalid page size " + convert(page_size) + " errno " + convert((int64)errno), LL_ERROR);
+			page_size = 4096;
+		}
+	}
+#endif
 }
 
-std::string CMemoryFile::Read(_u32 tr)
+CMemoryFile::~CMemoryFile()
 {
-	if(pos>=data.size() )
-		return "";
+#ifndef _WIN32
+	if (mlock_mem && !data.empty())
+		munlock(data.data(), data.size());
+#endif
+}
 
-	size_t rtr=(std::min)((size_t)tr, data.size()-pos);
-	std::string ret;
-	ret.resize(rtr);
-	memcpy(&ret[0], &data[pos], rtr);
-	pos+=rtr;
-
+std::string CMemoryFile::Read(_u32 tr, bool *has_error)
+{
+	std::string ret = Read(pos, tr, has_error);
+	pos += ret.size();
 	return ret;
 }
 
-_u32 CMemoryFile::Read(char* buffer, _u32 bsize)
+_u32 CMemoryFile::Read(char* buffer, _u32 bsize, bool *has_error)
 {
-	if(pos>=data.size() )
-		return 0;
-
-	size_t rtr=(std::min)((size_t)bsize, data.size()-pos);
-	memcpy(buffer, &data[pos], rtr);
-	pos+=rtr;
-
-	return (_u32)rtr;
+	_u32 read = Read(pos, buffer, bsize, has_error);
+	pos += read;
+	return read;
 }
 
-_u32 CMemoryFile::Write(const std::string &tw)
+_u32 CMemoryFile::Write(const std::string &tw, bool *has_error)
 {
-	return Write(tw.c_str(), (_u32)tw.size());
+	return Write(tw.c_str(), (_u32)tw.size(), has_error);
 }
 
-_u32 CMemoryFile::Write(const char* buffer, _u32 bsize)
+_u32 CMemoryFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
-	if(pos+bsize>data.size())
-	{
-		data.resize(pos+bsize);
-		memcpy(&data[pos], buffer, bsize);
-		pos+=bsize;
-		return bsize;
-	}
-	else
-	{
-		memcpy(&data[pos], buffer, bsize);
-		pos+=bsize;
-		return bsize;
-	}
+	_u32 written = Write(pos, buffer, bsize, has_error);
+	pos += written;
+	return written;
 }
 bool CMemoryFile::Seek(_i64 spos)
 {
-	if((size_t)spos<data.size() && spos>=0)
+	if(spos>=0)
 	{
 		pos=(size_t)spos;
 		return true;
@@ -89,6 +99,7 @@ bool CMemoryFile::Seek(_i64 spos)
 
 _i64 CMemoryFile::Size(void)
 {
+	IScopedReadLock lock(mutex.get());
 	return data.size();
 }
 
@@ -99,7 +110,166 @@ _i64 CMemoryFile::RealSize()
 
 std::string CMemoryFile::getFilename()
 {
-	return "_MEMORY_";
+	return name;
+}
+
+void CMemoryFile::resetSparseExtentIter()
+{
+}
+
+IFsFile::SSparseExtent CMemoryFile::nextSparseExtent()
+{
+	return SSparseExtent();
+}
+
+bool CMemoryFile::Resize(int64 new_size, bool set_sparse)
+{
+	if (new_size < 0)
+	{
+		return false;
+	}
+	IScopedWriteLock lock(mutex.get());
+	unprotect_mem();
+	data.resize(new_size);
+#ifndef _WIN32
+	if(mlock_mem)
+		mlock(data.data(), data.size());
+#endif
+	protect_mem();
+	return true;
+}
+
+std::vector<IFsFile::SFileExtent> CMemoryFile::getFileExtents(int64 starting_offset, int64 block_size, bool & more_data, unsigned int flags)
+{
+	return std::vector<IFsFile::SFileExtent>();
+}
+
+IFsFile::os_file_handle CMemoryFile::getOsHandle(bool release_handle)
+{
+	return os_file_handle();
+}
+
+char * CMemoryFile::getDataPtr()
+{
+	return data.data();
+}
+
+void CMemoryFile::protect_mem()
+{
+#ifndef _WIN32
+	IScopedLock lock(mprotect_mutex.get());
+	if (memory_protected<=1)
+	{
+		if (!data.empty() 
+			&& mprotect(data.data(), data.size(), PROT_READ) != 0)
+		{
+			Server->Log("mprotect(r) failed at " + convert((int64)data.data()) + " size " + convert(data.size()) + " errno " + convert((int64)errno), LL_WARNING);
+		}
+
+		--memory_protected;
+	}
+	else
+	{
+		--memory_protected;
+	}
+#endif
+}
+
+void CMemoryFile::unprotect_mem()
+{
+#ifndef _WIN32
+	IScopedLock lock(mprotect_mutex.get());
+	if (memory_protected==0)
+	{
+		if (!data.empty()
+			&& mprotect(data.data(), data.size(), PROT_READ|PROT_WRITE) != 0)
+		{
+			Server->Log("mprotect(w) failed at " + convert((int64)data.data()) + " size " + convert(data.size()) + " errno " + convert((int64)errno), LL_WARNING);
+		}
+
+		++memory_protected;
+	}
+	else
+	{
+		++memory_protected;
+	}
+#endif
+}
+
+IVdlVolCache* CMemoryFile::createVdlVolCache()
+{
+	return nullptr;
+}
+
+int64 CMemoryFile::getValidDataLength(IVdlVolCache* vol_cache)
+{
+	return -1;
+}
+
+std::string CMemoryFile::Read(int64 spos, _u32 tr, bool * has_error)
+{
+	IScopedReadLock lock(mutex.get());
+
+	if (spos >= static_cast<int64>(data.size()))
+		return "";
+
+	size_t rtr = static_cast<size_t>((std::min)(static_cast<int64>(tr), static_cast<int64>(data.size()) - spos));
+	std::string ret;
+	ret.assign(&data[spos], rtr);
+
+	return ret;
+}
+
+_u32 CMemoryFile::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
+{
+	IScopedReadLock lock(mutex.get());
+
+	if (spos >= static_cast<int64>(data.size()))
+		return 0;
+
+
+	size_t rtr = static_cast<size_t>((std::min)(static_cast<int64>(bsize), static_cast<int64>(data.size()) - spos));
+	memcpy(buffer, &data[spos], rtr);
+
+	return (_u32)rtr;
+}
+
+_u32 CMemoryFile::Write(int64 spos, const std::string & tw, bool * has_error)
+{
+	return Write(spos, tw.data(), static_cast<_u32>(tw.size()), has_error);
+}
+
+_u32 CMemoryFile::Write(int64 spos, const char * buffer, _u32 bsize, bool * has_error)
+{
+	IScopedReadLock lock(mutex.get());
+	if (spos + bsize>static_cast<int64>(data.size()))
+	{
+		lock.relock(NULL);
+		IScopedWriteLock wrlock(mutex.get());
+		unprotect_mem();
+		if (spos + bsize > static_cast<int64>(data.size()))
+		{
+#ifndef _WIN32
+			if (mlock_mem && !data.empty())
+				munlock(data.data(), data.size());
+#endif
+			data.resize(spos + bsize);
+#ifndef _WIN32
+			if (mlock_mem)
+				mlock(data.data(), data.size());
+#endif
+		}
+		memcpy(&data[spos], buffer, bsize);
+		protect_mem();
+		return bsize;
+	}
+	else
+	{
+		unprotect_mem();
+		memcpy(&data[spos], buffer, bsize);
+		protect_mem();
+		return bsize;
+	}
 }
 
 bool CMemoryFile::PunchHole( _i64 spos, _i64 size )

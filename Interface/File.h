@@ -103,7 +103,7 @@ public:
 	virtual void resetSparseExtentIter() = 0;
 	virtual SSparseExtent nextSparseExtent() = 0;
 	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
-	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) = 0;
+	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data, unsigned int flags=0) = 0;
 	virtual IVdlVolCache* createVdlVolCache() = 0;
 	virtual int64 getValidDataLength(IVdlVolCache* vol_cache) = 0;
 
@@ -114,6 +114,14 @@ public:
 #endif
 
 	virtual os_file_handle getOsHandle(bool release_handle = false) = 0;
+};
+
+class IMemFile : public IFsFile
+{
+public:
+	virtual char* getDataPtr() = 0;
+	virtual void protect_mem() = 0;
+	virtual void unprotect_mem() = 0;
 };
 
 class ScopedDeleteFn

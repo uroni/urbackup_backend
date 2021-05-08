@@ -73,6 +73,7 @@ public:
 	virtual void setLogCircularBufferSize(size_t size);
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid);
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
+	virtual void setLogRotationFiles(size_t n);
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true);
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true);
 
@@ -159,7 +160,7 @@ public:
 	virtual IFsFile* openFile(std::string pFilename, int pMode=0);
 	virtual IFsFile* openFileFromHandle(void *handle, const std::string& pFilename);
 	virtual IFsFile* openTemporaryFile(void);
-	virtual IFile* openMemoryFile(void);
+	virtual IMemFile* openMemoryFile(const std::string& name, bool mlock_mem);
 	virtual bool deleteFile(std::string pFilename);
 	virtual bool fileExists(std::string pFilename);
 
@@ -217,6 +218,8 @@ public:
 
 	virtual int getRecvWindowSize();
 #endif
+
+	void mallocFlushTcache();
 
 private:
 

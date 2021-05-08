@@ -61,7 +61,7 @@ public:
 	bool Resize(int64 new_size, bool set_sparse=true);
 	void resetSparseExtentIter();
 	SSparseExtent nextSparseExtent();
-	std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data);
+	std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data, unsigned int flags);
 	IFsFile::os_file_handle getOsHandle(bool release_handle = false);
 	IVdlVolCache* createVdlVolCache();
 	int64 getValidDataLength(IVdlVolCache* vol_cache);

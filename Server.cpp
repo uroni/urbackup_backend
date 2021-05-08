@@ -49,6 +49,7 @@
 #include "StreamPipe.h"
 #include "ThreadPool.h"
 #include "file.h"
+#include "file_memory.h"
 #include "utf8/utf8.h"
 #include "MemoryPipe.h"
 #include "MemorySettingsReader.h"
@@ -469,6 +470,11 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 
 		logToCircularBuffer(pStr, LogLevel);
 	}
+}
+
+void CServer::setLogRotationFiles(size_t n)
+{
+	log_rotation_files = n;
 }
 
 void CServer::rotateLogfile()
@@ -1727,10 +1733,9 @@ IFsFile* CServer::openTemporaryFile(void)
 	return file;
 }
 
-IFile* CServer::openMemoryFile(void)
+IMemFile* CServer::openMemoryFile(const std::string& name, bool mlock_mem)
 {
-	//return new CMemoryFile();
-	return openTemporaryFile();
+	return new CMemoryFile(name, mlock_mem);
 }
 
 bool CServer::deleteFile(std::string pFilename)
@@ -2264,6 +2269,10 @@ int CServer::getRecvWindowSize()
 	return recv_window_size;
 }
 #endif
+
+void CServer::mallocFlushTcache()
+{
+}
 
 void CServer::addWebSocket(IWebSocket* websocket)
 {

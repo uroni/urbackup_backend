@@ -499,7 +499,7 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 #endif 
 }
 
-std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data, unsigned int flags)
 {
 #ifdef __linux__
 	std::vector<char> buf;

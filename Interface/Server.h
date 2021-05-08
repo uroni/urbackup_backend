@@ -24,6 +24,7 @@ class ISettingsReader;
 class IPipe;
 class IFile;
 class IFsFile;
+class IMemFile;
 class IOutputStream;
 class IThreadPool;
 class ICondition;
@@ -63,6 +64,7 @@ public:
 	virtual void setLogCircularBufferSize(size_t size)=0;
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
+	virtual void setLogRotationFiles(size_t n) = 0;
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true)=0;
 
@@ -165,7 +167,7 @@ public:
 	virtual IFsFile* openFile(std::string pFilename, int pMode=0)=0;
 	virtual IFsFile* openFileFromHandle(void *handle, const std::string& pFilename)=0;
 	virtual IFsFile* openTemporaryFile(void)=0;
-	virtual IFile* openMemoryFile(void)=0;
+	virtual IMemFile* openMemoryFile(const std::string& name, bool mlock_mem)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
 	virtual bool fileExists(std::string pFilename)=0;
 
@@ -212,6 +214,8 @@ public:
 
 	virtual int getRecvWindowSize() = 0;
 #endif
+
+	virtual void mallocFlushTcache() = 0;
 };
 
 #ifndef NO_INTERFACE
