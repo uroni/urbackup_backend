@@ -54,7 +54,7 @@ struct VhdxBatEntry
 };
 #pragma pack()
 
-class VHDXFile : public IVHDFile, public IFile
+class VHDXFile : public IVHDFile
 {
 public:
 

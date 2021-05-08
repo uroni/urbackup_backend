@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Interface/Types.h"
+#include "../Interface/File.h"
 
 #include <string>
 
@@ -17,7 +18,7 @@ public:
 	virtual bool emptyVHDBlock(int64 empty_start, int64 empty_end) = 0;
 };
 
-class IVHDFile
+class IVHDFile : public IFile
 {
 public:
 	virtual ~IVHDFile() {}

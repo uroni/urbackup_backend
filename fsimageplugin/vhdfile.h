@@ -61,7 +61,7 @@ struct VHDDynamicHeader
 
 class CompressedFile;
 
-class VHDFile : public IVHDFile, public IFile
+class VHDFile : public IVHDFile
 {
 public:
 	VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false, size_t compress_n_threads=0);

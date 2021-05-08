@@ -32,6 +32,19 @@ public:
 	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
 	virtual bool setBackingFileSize(_i64 fsize);
 
+	// IFile
+	virtual std::string Read(_u32 tr, bool* has_error = NULL) override;
+	virtual std::string Read(int64 spos, _u32 tr, bool* has_error = NULL) override;
+	virtual _u32 Read(char* buffer, _u32 bsize, bool* has_error = NULL) override;
+	virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool* has_error = NULL) override;
+	virtual _u32 Write(const std::string& tw, bool* has_error = NULL) override;
+	virtual _u32 Write(int64 spos, const std::string& tw, bool* has_error = NULL) override;
+	virtual _u32 Write(int64 spos, const char* buffer, _u32 bsiz, bool* has_error = NULL) override;
+	virtual _i64 Size(void) override;
+	virtual _i64 RealSize() override;
+	virtual bool PunchHole(_i64 spos, _i64 size) override;
+	virtual bool Sync() override;
+
 private:
 	void setupBitmap();
 	bool isBitmapSet(uint64 offset);

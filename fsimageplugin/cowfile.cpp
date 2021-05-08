@@ -541,6 +541,72 @@ void CowFile::resizeBitmap()
 	}
 }
 
+std::string CowFile::Read(_u32 tr, bool* has_error)
+{
+	assert(false);
+	return std::string();
+}
+
+std::string CowFile::Read(int64 spos, _u32 tr, bool* has_error)
+{
+	assert(false);
+	return std::string();
+}
+
+_u32 CowFile::Read(char* buffer, _u32 bsize, bool* has_error)
+{
+	assert(false);
+	return _u32();
+}
+
+_u32 CowFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
+{
+	assert(false);
+	return _u32();
+}
+
+_u32 CowFile::Write(const std::string& tw, bool* has_error)
+{
+	assert(false);
+	return _u32();
+}
+
+_u32 CowFile::Write(int64 spos, const std::string& tw, bool* has_error)
+{
+	assert(false);
+	return _u32();
+}
+
+_u32 CowFile::Write(int64 spos, const char* buffer, _u32 bsiz, bool* has_error)
+{
+	assert(false);
+	return _u32();
+}
+
+_i64 CowFile::Size(void)
+{
+	return getSize();
+}
+
+_i64 CowFile::RealSize()
+{
+	return usedSize();
+}
+
+bool CowFile::PunchHole(_i64 spos, _i64 size)
+{
+	return setUnused(spos, spos + size);
+}
+
+bool CowFile::Sync()
+{
+#ifndef _WIN32
+	return fsync(fd) == 0;
+#else
+	return FlushFileBuffers(fd)!=FALSE;
+#endif
+}
+
 bool CowFile::isBitmapSet(uint64 offset)
 {
 	uint64 block=offset/blocksize;
