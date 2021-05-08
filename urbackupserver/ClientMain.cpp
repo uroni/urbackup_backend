@@ -1760,9 +1760,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			if (curr_uid.exists &&
 				!curr_uid.value.empty() &&
 				it->second!=curr_uid.value &&
-				server_settings->getSettings()->local_encrypt )
+				server_settings->getSettings()->local_encrypt &&
+				!internet_connection)
 			{
-				ServerLogger::Log(logid, "Client UID changed from \"" + curr_uid.value + "\" to \"" + it->second + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
+				ServerLogger::Log(logid, "Client UID changed from \"" + curr_uid.value + "\" to \"" + it->second + "\". "
+					"Disallowing client because connection to local/passive client is encrypted.", LL_WARNING);
 				ServerStatus::setStatusError(clientname, se_uid_changed);
 				return false;
 			}
