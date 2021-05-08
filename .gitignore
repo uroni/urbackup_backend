@@ -224,7 +224,6 @@ access_backups_shell_mui.txt
 sha2.Plo
 *.Plo
 osx-pkg
-clouddrive/*
 transaction_helper/*
 urbackup/new2_db/*
 urbackup/server_ident_ecdsa409k1.priv
@@ -274,3 +273,4 @@ blockalign/x64/*
 /btrfs/fuse/x64/*
 /luaplugin/Release/*
 /urbackup/data_*
+/clouddrive/x64/*
