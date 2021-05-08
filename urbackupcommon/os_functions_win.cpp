@@ -928,6 +928,8 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 
 bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname, void* transaction)
 {
+	size_t bsize;
+	REPARSE_MOUNTPOINT_DATA_BUFFER* rb;
 	bool ret = false;
 	HANDLE hJunc = INVALID_HANDLE_VALUE;
 	char* buf = NULL;
@@ -962,11 +964,11 @@ bool os_link_symbolic_junctions_raw(const std::string &target, const std::string
 	if(hJunc==INVALID_HANDLE_VALUE)
 		goto cleanup;
 
-	size_t bsize=sizeof(REPARSE_MOUNTPOINT_DATA_BUFFER) + (wtarget.size()+1) * sizeof(wchar_t)+30;
+	bsize=sizeof(REPARSE_MOUNTPOINT_DATA_BUFFER) + (wtarget.size()+1) * sizeof(wchar_t)+30;
 	buf=new char[bsize];
 	memset(buf, 0, bsize);
 
-	REPARSE_MOUNTPOINT_DATA_BUFFER *rb=(REPARSE_MOUNTPOINT_DATA_BUFFER*)buf;
+	rb=(REPARSE_MOUNTPOINT_DATA_BUFFER*)buf;
 	rb->ReparseTag=IO_REPARSE_TAG_MOUNT_POINT;
 	rb->ReparseTargetMaximumLength=(WORD)((wtarget.size()+1)*sizeof(wchar_t));
 	rb->ReparseTargetLength=rb->ReparseTargetMaximumLength-1*sizeof(wchar_t);
