@@ -382,7 +382,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 		size_t buf_off = 0;
 
 		bool has_read_error = false;
-		_u32 cread = f->Read(buf.data(), c_chunk_size, &has_read_error);
+		_u32 cread = f->Read(buf.data(), c_checkpoint_dist, &has_read_error);
 
 		if (has_read_error)
 		{
