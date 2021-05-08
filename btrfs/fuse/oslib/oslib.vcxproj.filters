@@ -15,12 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="os.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="vol.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="event.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -33,14 +27,11 @@
     <ClCompile Include="utf8.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="os.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="os.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
-    <ClInclude Include="vol.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="event.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
@@ -48,6 +39,9 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="utf8.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="os.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>

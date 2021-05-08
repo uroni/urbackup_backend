@@ -2,9 +2,10 @@
 
 #include "IBackupFileSystem.h"
 #include "../../Interface/Plugin.h"
+#include "../../Interface/File.h"
 
 class IBtrfsFactory : public IPlugin
 {
 public:
-	virtual IBackupFileSystem* openBtrfsImage(const std::string& path) = 0;
+	virtual IBackupFileSystem* openBtrfsImage(IFile* img) = 0;
 };

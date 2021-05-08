@@ -6,7 +6,7 @@
 class BtrfsBackupFileSystem : public IBackupFileSystem
 {
 public:
-	BtrfsBackupFileSystem(const std::string& backing_path);
+	BtrfsBackupFileSystem(IFile* img);
 	virtual IFsFile* openFile(const std::string& path, int mode) override;
 	virtual bool reflinkFile(const std::string& source, const std::string& dest) override;
 	virtual bool createDir(const std::string& path) override;

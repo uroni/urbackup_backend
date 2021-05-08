@@ -24,14 +24,12 @@
     <ClCompile Include="file_win.cpp" />
     <ClCompile Include="os.cpp" />
     <ClCompile Include="utf8.cpp" />
-    <ClCompile Include="vol.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="event.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="os.h" />
     <ClInclude Include="utf8.h" />
-    <ClInclude Include="vol.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

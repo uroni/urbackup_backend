@@ -20,7 +20,7 @@ struct FsData;
 class BtrfsFuse
 {
 public:
-	BtrfsFuse(const std::string& path);
+	BtrfsFuse(IFile* img);
 	~BtrfsFuse();
 	bool createDir(const std::string& path);
 	bool deleteFile(const std::string& path);
@@ -63,4 +63,4 @@ private:
 
 void btrfs_fuse_init();
 
-BtrfsFuse* btrfs_fuse_open_disk_image(const std::string& path);
+BtrfsFuse* btrfs_fuse_open_disk_image(IFile* img);

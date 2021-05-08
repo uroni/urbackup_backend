@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -66,7 +66,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		str_map params;
 		IBtrfsFactory* fak = reinterpret_cast<IBtrfsFactory*>(btrfspluginmgr->createPluginInstance(params));
-		IBackupFileSystem* fs = fak->openBtrfsImage("D:\\tmp\\btrfs.img");
+		IBackupFileSystem* fs = fak->openBtrfsImage(Server->openFile("D:\\tmp\\btrfs.img", MODE_RW));
 		bool b = fs->deleteFile("test_dir2");
 		assert(b);
 		b = fs->createDir("test_dir2");

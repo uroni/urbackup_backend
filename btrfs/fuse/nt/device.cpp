@@ -2,27 +2,20 @@ extern "C"
 {
 #include "device.h"
 }
-#include "vol.h"
+#include "../../Interface/File.h"
+#include <string>
 
 namespace
 {
-	NTSTATUS __stdcall vol_completion(PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID conptr,
-		DWORD errorCode, DWORD bytesTransferred)
-	{
-		Irp->IoStatus.Status = errorCode;
-		Irp->IoStatus.Information = bytesTransferred;
-		return Irp->CompletionRoutine(DeviceObject, Irp, conptr);
-	}
-
 	class DiskDevice
 	{
 	public:
 		DiskDevice() {}
 
-		void Init(const char* path, ULONGLONG DiskLength, ULONG DiskNumber)
+		void Init(IFile* p_img, ULONGLONG DiskLength, ULONG DiskNumber)
 		{
+			img = p_img;
 			disk_length = DiskLength;
-			disk_vol = std::make_unique<vol>(path);
 		}
 
 		NTSTATUS InternalDeviceControl(PIRP Irp)
@@ -66,7 +59,7 @@ namespace
 			{
 				PMOUNTDEV_NAME mountdev_name = reinterpret_cast<PMOUNTDEV_NAME>(Irp->AssociatedIrp.SystemBuffer);
 				std::wstring name = L"\\Device\\Btrfs{foobar}";
-				mountdev_name->NameLength = (name.size() + 1)*sizeof(wchar_t);
+				mountdev_name->NameLength = static_cast<ULONG>((name.size() + 1)*sizeof(wchar_t));
 
 				if (Irp->StackLocation.Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG) + (name.size() + 1) * sizeof(wchar_t))
 				{
@@ -85,28 +78,38 @@ namespace
 
 		NTSTATUS Read(PIRP Irp, PDEVICE_OBJECT DeviceObject)
 		{
-			vol::completion_args completion;
-			completion.CompletionRoutine = vol_completion;
-			completion.Context = Irp->CompletionRoutineContext;
-			completion.DeviceObject = DeviceObject;
-			completion.Irp = Irp;
-			disk_vol->read(Irp->StackLocation.Parameters.Read.ByteOffset.QuadPart,
+			bool has_read_err = false;
+			_u32 rc = img->Read(static_cast<int64>(Irp->StackLocation.Parameters.Read.ByteOffset.QuadPart),
 				reinterpret_cast<char*>(Irp->UserBuffer), Irp->StackLocation.Parameters.Read.Length,
-				completion);
-			return STATUS_PENDING;
+				&has_read_err);
+
+			if (has_read_err)
+			{
+				return STATUS_CRC_ERROR;
+			}
+
+			Irp->IoStatus.Status = STATUS_SUCCESS;
+			Irp->IoStatus.Information = rc;
+
+			return STATUS_SUCCESS;
 		}
 
 		NTSTATUS Write(PIRP Irp, PDEVICE_OBJECT DeviceObject)
 		{
-			vol::completion_args completion;
-			completion.CompletionRoutine = vol_completion;
-			completion.Context = Irp->CompletionRoutineContext;
-			completion.DeviceObject = DeviceObject;
-			completion.Irp = Irp;
-			disk_vol->write(Irp->StackLocation.Parameters.Write.ByteOffset.QuadPart,
+			bool has_read_err = false;
+			_u32 rc = img->Write(static_cast<int64>(Irp->StackLocation.Parameters.Write.ByteOffset.QuadPart),
 				reinterpret_cast<char*>(Irp->UserBuffer), Irp->StackLocation.Parameters.Write.Length,
-				completion);
-			return STATUS_PENDING;
+				&has_read_err);
+
+			if (has_read_err)
+			{
+				return STATUS_CRC_ERROR;
+			}
+
+			Irp->IoStatus.Status = STATUS_SUCCESS;
+			Irp->IoStatus.Information = rc;
+
+			return STATUS_SUCCESS;
 		}
 
 		NTSTATUS DeviceControl(PIRP Irp, PDEVICE_OBJECT DeviceObject)
@@ -123,7 +126,7 @@ namespace
 
 			if (ata->CurrentTaskFile[6] == IDE_COMMAND_FLUSH_CACHE)
 			{
-				bool b = disk_vol->flush();
+				bool b = img->Sync();
 				Irp->IoStatus.Status = b ? STATUS_SUCCESS : STATUS_UNEXPECTED_IO_ERROR;
 				Irp->CompletionRoutine(DeviceObject, Irp, Irp->CompletionRoutineContext);
 				return STATUS_SUCCESS;
@@ -150,14 +153,14 @@ namespace
 
 		bool Flush()
 		{
-			return disk_vol->flush();
+			return img->Sync();
 		}
 
 	private:
 		ULONGLONG disk_length;
 		ULONG disk_number;
 
-		std::unique_ptr<vol> disk_vol;
+		IFile* img;
 	};
 }
 
@@ -171,10 +174,10 @@ NTSTATUS DiskDeviceCall(PDISK_DEVICE DiskDevice, PIRP Irp, PDEVICE_OBJECT Device
 	return DiskDevice->disk_device.Call(Irp, DeviceObject);
 }
 
-PDISK_DEVICE InitDiskDevice(const char* path, ULONGLONG Length, ULONG Number)
+PDISK_DEVICE InitDiskDevice(void* img, ULONGLONG Length, ULONG Number)
 {
 	PDISK_DEVICE ret = new _DISK_DEVICE;
-	ret->disk_device.Init(path, Length, Number);
+	ret->disk_device.Init(static_cast<IFile*>(img), Length, Number);
 	return ret;
 }
 

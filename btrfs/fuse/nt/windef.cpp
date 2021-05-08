@@ -1201,6 +1201,8 @@ ULONG RtlFindNextForwardRunClear(PRTL_BITMAP Bitmap, ULONG Off, PULONG Start)
 		{
 			*Start = i;
 			len = 1;
+			++i;
+			break;
 		}
 	}
 

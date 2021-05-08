@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2021 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include <iostream>
 #include <vector>
 #include <assert.h>
@@ -109,111 +127,6 @@ private:
     UNICODE_STRING str;
 };
 
-int main()
-{
-    btrfs_fuse_init();
-
-    std::unique_ptr<DEVICE_OBJECT> device_object = std::make_unique<DEVICE_OBJECT>();
-    std::unique_ptr<FILE_OBJECT> file_object = std::make_unique<FILE_OBJECT>();
-
-    device_object->DiskDevice = InitDiskDevice("D:\\tmp\\btrfs.img", 1LL * 1024 * 1024 * 1024, 1);
-
-    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
-    std::vector<char> moundev_name_buf;
-    std::wstring volname = L"VOL1";
-    IoRegisterDeviceObjectPointer(UStr(volname).getUstr(), file_object.get(), device_object.get());
-    moundev_name_buf.resize(sizeof(ULONG) + sizeof(WCHAR) * (volname.size()+1));
-    PMOUNTDEV_NAME mountdev_name = reinterpret_cast<PMOUNTDEV_NAME>(moundev_name_buf.data());
-    mountdev_name->NameLength = volname.size()*sizeof(WCHAR);
-    memcpy(mountdev_name->Name, volname.data(), volname.size() * sizeof(WCHAR));
-    irp->AssociatedIrp.SystemBuffer = mountdev_name;
-    irp->StackLocation.Parameters.DeviceIoControl.IoControlCode = IOCTL_BTRFS_PROBE_VOLUME;
-    irp->StackLocation.Parameters.DeviceIoControl.InputBufferLength = moundev_name_buf.size();
-    driver_object->MajorFunction[IRP_MJ_DEVICE_CONTROL](master_devobj, irp.get());
-
-    PDEVICE_OBJECT btrfs_disk = new_disks[new_disks.size() - 1];
-    for (PDEVICE_OBJECT disk : new_disks)
-    {
-        driver_object->DriverExtension->AddDevice(driver_object.get(), disk);
-    }    
-    new_disks.clear();
-
-    irp->StackLocation.MinorFunction = IRP_MN_MOUNT_VOLUME;
-    irp->StackLocation.Parameters.MountVolume.DeviceObject = btrfs_disk;
-    PVPB vpb = new VPB;
-    irp->StackLocation.Parameters.MountVolume.Vpb = vpb;
-    vpb->DeviceObject = btrfs_disk;
-    vpb->RealDevice = device_object.get();
-    driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](master_devobj, irp.get());
-
-    PFILE_OBJECT root_file = FsRtlNotifyGetLastVolumeEventsubject();
-    root_file->RelatedFileObject = NULL;
-    UStr root_path(L"\\");
-    root_file->FileName = *root_path.getUstr();
-    PDEVICE_OBJECT fs = vpb->DeviceObject;
-
-    irp = std::make_unique<IRP>();
-    std::unique_ptr<SECURITY_CONTEXT> security_context = std::make_unique<SECURITY_CONTEXT>();
-    std::unique_ptr<ACCESS_STATE> access_state = std::make_unique< ACCESS_STATE>();
-    security_context->AccessState = access_state.get();
-    irp->StackLocation.MajorFunction = IRP_MJ_CREATE;
-    irp->StackLocation.MinorFunction = IRP_MN_NORMAL;
-    irp->StackLocation.FileObject = root_file;
-    irp->StackLocation.Parameters.Create.Options = FILE_OPEN<<24;
-    irp->StackLocation.Parameters.Create.SecurityContext = security_context.get();
-    driver_object->MajorFunction[IRP_MJ_CREATE](fs, irp.get());
-    
-
-    irp = std::make_unique<IRP>();
-    irp->StackLocation.MajorFunction = IRP_MJ_DIRECTORY_CONTROL;
-    irp->StackLocation.MinorFunction = IRP_MN_QUERY_DIRECTORY;
-    irp->StackLocation.FileObject = root_file;
-    irp->StackLocation.Flags = SL_RESTART_SCAN;
-    std::vector<char> out_buf;
-    out_buf.resize(1024);
-    irp->UserBuffer = out_buf.data();
-    irp->StackLocation.Parameters.QueryDirectory.Length = out_buf.size();
-    irp->StackLocation.Parameters.QueryDirectory.FileInformationClass = FileBothDirectoryInformation;
-    driver_object->MajorFunction[IRP_MJ_DIRECTORY_CONTROL](fs, irp.get());
-    for (size_t i = 0; i +sizeof(FILE_BOTH_DIR_INFORMATION )-sizeof(WCHAR)< irp->IoStatus.Information;)
-    {
-        FILE_BOTH_DIR_INFORMATION* fni = reinterpret_cast<FILE_BOTH_DIR_INFORMATION*>(out_buf.data()+i);
-
-        std::wcout << std::wstring(fni->FileName, fni->FileNameLength/sizeof(WCHAR)) << std::endl;
-
-        if (fni->NextEntryOffset == 0)
-            break;
-
-        i += fni->NextEntryOffset;
-    }
-
-    irp = std::make_unique<IRP>();
-    security_context = std::make_unique<SECURITY_CONTEXT>();
-    access_state = std::make_unique< ACCESS_STATE>();
-    security_context->AccessState = access_state.get();
-    irp->StackLocation.MajorFunction = IRP_MJ_CREATE;
-    irp->StackLocation.MinorFunction = IRP_MN_NORMAL;
-    irp->StackLocation.Parameters.Create.Options = FILE_OPEN << 24;
-    irp->StackLocation.Parameters.Create.SecurityContext = security_context.get();
-    std::unique_ptr<FILE_OBJECT> test_file_obj = std::make_unique<FILE_OBJECT>();
-    test_file_obj->RelatedFileObject = root_file;
-    UStr test_file_path(L"test.file");
-    test_file_obj->FileName = *test_file_path.getUstr();
-    irp->StackLocation.FileObject = test_file_obj.get();
-    driver_object->MajorFunction[IRP_MJ_CREATE](fs, irp.get());
-
-    irp = std::make_unique<IRP>();
-    irp->Flags = IRP_NOCACHE;
-    irp->StackLocation.MajorFunction = IRP_MJ_READ;
-    irp->StackLocation.Parameters.Read.ByteOffset.QuadPart = 0;
-    irp->StackLocation.Parameters.Read.Length = 4096;
-    irp->StackLocation.FileObject = test_file_obj.get();
-    out_buf.resize(5000);
-    irp->UserBuffer = out_buf.data();
-    driver_object->MajorFunction[IRP_MJ_READ](fs, irp.get());
-    int abct = 5;
-}
-
 BtrfsFuse* open_disk_image(const std::string& path)
 {
     return nullptr;
@@ -222,6 +135,7 @@ BtrfsFuse* open_disk_image(const std::string& path)
 struct FsData
 {
     std::string device_path;
+    IFile* img;
     std::unique_ptr<DEVICE_OBJECT> device_object;
     std::unique_ptr<FILE_OBJECT> file_object;
     PDEVICE_OBJECT btrfs_device;
@@ -240,20 +154,21 @@ void btrfs_fuse_init()
     DriverEntry(driver_object.get(), reg_path.getUstr());
 }
 
-BtrfsFuse* btrfs_fuse_open_disk_image(const std::string& path)
+BtrfsFuse* btrfs_fuse_open_disk_image(IFile* img)
 {
-    return new BtrfsFuse(path);
+    return new BtrfsFuse(img);
 }
 
-BtrfsFuse::BtrfsFuse(const std::string& path)
+BtrfsFuse::BtrfsFuse(IFile* img)
     : fs_data(new FsData)
 {
-    fs_data->device_path = path;
+    fs_data->device_path = img->getFilename();
+    fs_data->img = img;
 
     fs_data->device_object = std::make_unique<DEVICE_OBJECT>();
     fs_data->file_object = std::make_unique<FILE_OBJECT>();
 
-    fs_data->device_object->DiskDevice = InitDiskDevice(path.c_str(), 1LL * 1024 * 1024 * 1024, 1);
+    fs_data->device_object->DiskDevice = InitDiskDevice(img, 1LL * 1024 * 1024 * 1024, 1);
 
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     std::vector<char> moundev_name_buf;
@@ -310,6 +225,7 @@ BtrfsFuse::BtrfsFuse(const std::string& path)
 
 BtrfsFuse::~BtrfsFuse()
 {
+    Server->destroy(fs_data->img);
 }
 
 bool BtrfsFuse::createDir(const std::string& path)
@@ -518,7 +434,7 @@ public:
         
         return true;
     }
-    virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) override
+    virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data, unsigned int flags) override
     {
         return std::vector<SFileExtent>();
     }
@@ -686,7 +602,7 @@ std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
     irp->StackLocation.Parameters.QueryDirectory.FileInformationClass = FileBothDirectoryInformation;
     NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_DIRECTORY_CONTROL](fs_data->fs, irp.get());
 
-    if (rc != 0)
+    if (rc != STATUS_SUCCESS)
     {
         closeFile(std::move(file_obj));
         errno = rc;
@@ -710,7 +626,26 @@ std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
         ret.push_back(cf);
 
         if (fni->NextEntryOffset == 0)
-            break;
+        {
+            irp->StackLocation.Flags = 0;
+            
+            rc = driver_object->MajorFunction[IRP_MJ_DIRECTORY_CONTROL](fs_data->fs, irp.get());
+
+            if (rc == STATUS_NO_MORE_FILES)
+            {
+                break;
+            }
+
+            if (rc != STATUS_SUCCESS)
+            {
+                closeFile(std::move(file_obj));
+                errno = rc;
+                return std::vector<SBtrfsFile>();
+            }
+
+            i = 0;
+            continue;
+        }
 
         i += fni->NextEntryOffset;
     }

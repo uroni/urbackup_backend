@@ -5,6 +5,5 @@
 class BtrfsFactory : public IBtrfsFactory
 {
 public:
-
-	virtual IBackupFileSystem* openBtrfsImage(const std::string& path) override;
+	virtual IBackupFileSystem* openBtrfsImage(IFile* img) override;
 };
