@@ -41,7 +41,7 @@ void WalCheckpointThread::checkpoint(bool init)
 #ifdef _WIN32
 	mode=MODE_READ_DEVICE;
 #endif
-	std::auto_ptr<IFile> wal_file(Server->openFile(db_fn+"-wal", mode));
+	std::unique_ptr<IFile> wal_file(Server->openFile(db_fn+"-wal", mode));
 
 	if(wal_file.get()!=NULL)
 	{
@@ -200,7 +200,7 @@ void WalCheckpointThread::sync_database()
 	Server->Log("Syncing wal file " + db_fn + "-wal...", LL_DEBUG);
 
 	{
-		std::auto_ptr<IFile> rw_wal_file(Server->openFile(db_fn + "-wal", rw_mode));
+		std::unique_ptr<IFile> rw_wal_file(Server->openFile(db_fn + "-wal", rw_mode));
 		if (rw_wal_file.get() != NULL)
 		{
 			rw_wal_file->Sync();
