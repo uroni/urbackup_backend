@@ -18,7 +18,8 @@ public:
 		zlib_5 = 1,
 		zstd_3 = 2,
 		zstd_19 = 3,
-		zstd_9 = 4
+		zstd_9 = 4,
+		none = 5
 	};
 
 	struct CloudSettingsS3
@@ -42,7 +43,7 @@ public:
 		std::string encryption_key;
 		float resubmit_compressed_ratio = 0.8f;
 		bool verify_cache = false;
-		CompressionMethod submit_compression = CompressionMethod::zstd_9;
+		CompressionMethod submit_compression = CompressionMethod::none;
 		CompressionMethod background_compression = CompressionMethod::lzma_5;
 		bool multi_trans_delete = true;
 		int64 reserved_cache_device_space = 100 * 1024 * 1024;

@@ -32,6 +32,7 @@ namespace
 	const unsigned int CompressionZstd3 = 2;
 	const unsigned int CompressionZstd19 = 3;
 	const unsigned int CompressionZstd9 = 4;
+	const unsigned int CompressionNone = 5;
 }
 
 unsigned int CompressionMethodFromString(const std::string& str);

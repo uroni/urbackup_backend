@@ -46,6 +46,8 @@ unsigned int CompressionMethodFromString(const std::string & str)
 		return CompressionZstd19;
 	else if (str == "zstd_9")
 		return CompressionZstd9;
+	else if (str == "none")
+		return CompressionNone;
 	else
 		return CompressionZstd3;
 }
@@ -114,6 +116,8 @@ ICompressAndEncrypt* CompressEncryptFactory::createCompressAndEncrypt(const std:
 		}
 		compressor = new CdZstdCompressor(level, CompressionZstd3);
 	} break;
+	case CompressionNone:
+		compressor = nullptr;
 	default: 
 		return NULL;
 	}
@@ -155,8 +159,13 @@ CompressAndEncrypt::CompressAndEncrypt( const std::string& encryption_key, IFile
 		reinterpret_cast<const CryptoPP::byte*>(iv), sizeof(iv));
 
 	unsigned int version=2;
+	unsigned int compression_id;
+	if (!compressor)
+		compression_id = CompressionNone;
+	else
+		compression_id = compressor->getId();
 
-	version = version | (compressor->getId() << 16);
+	version = version | (compression_id << 16);
 
 	output_buffer.resize(sizeof(version) + sizeof(iv));
 
@@ -165,12 +174,15 @@ CompressAndEncrypt::CompressAndEncrypt( const std::string& encryption_key, IFile
 
 	output_buffer_pos = 0;
 
-	const size_t enc_buffer_size = 128 * 1024;
-	const size_t read_buffer_size = 128 * 1024;
-	read_buffer.resize(read_buffer_size);
-	compressed_buffer.resize(enc_buffer_size);
+	if (compressor)
+	{
+		const size_t enc_buffer_size = 128 * 1024;
+		const size_t read_buffer_size = 128 * 1024;
+		read_buffer.resize(read_buffer_size);
+		compressed_buffer.resize(enc_buffer_size);
 
-	compressor->setOut(compressed_buffer.data(), compressed_buffer.size());
+		compressor->setOut(compressed_buffer.data(), compressed_buffer.size());
+	}
 }
 
 size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
@@ -216,10 +228,12 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 	{	
 		do
 		{
-			if(compressor->getAvailIn()==0 && file!=NULL)
+			_u32 file_read;
+			if( (!compressor || compressor->getAvailIn()==0 )
+				&& file!=NULL)
 			{
 				bool has_read_error = false;
-				_u32 read = file->Read(file_pos, read_buffer.data(), 
+				file_read = file->Read(file_pos, read_buffer.data(),
 					static_cast<_u32>(buffer_size), &has_read_error);
 
 				if (has_read_error)
@@ -234,10 +248,13 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 					return std::string::npos;
 				}
 
-				if(read>0)
+				if(file_read >0)
 				{
-					compressor->setIn(read_buffer.data(), read);
-					file_pos += read;
+					if(compressor)
+					{
+						compressor->setIn(read_buffer.data(), file_read);
+					}
+					file_pos += file_read;
 				}
 				else
 				{
@@ -256,11 +273,17 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 			}
 
 			int code;
-			CompressResult ret = compressor->compress(file == NULL, code);
+			CompressResult ret;
+			if(!compressor)
+				ret = compressor->compress(file == NULL, code);
 
-			if(compressor->getAvailOut()==0 || ret == CompressResult_End)
+			if(!compressor || compressor->getAvailOut()==0 || ret == CompressResult_End)
 			{
-				size_t write_size = compressed_buffer.size() - compressor->getAvailOut();
+				size_t write_size;
+				if (!compressor)
+					write_size = file_read;
+				else
+					write_size = compressed_buffer.size() - compressor->getAvailOut();
 
 				if(write_size>0)
 				{
@@ -274,7 +297,8 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 					ret_size+=ret_add;
 				}				
 
-				compressor->setOut(compressed_buffer.data(), compressed_buffer.size());
+				if(compressor)
+					compressor->setOut(compressed_buffer.data(), compressed_buffer.size());
 			}
 
 			if(ret != CompressResult_Ok)
@@ -333,8 +357,7 @@ std::string CompressAndEncrypt::md5sum()
 DecryptAndDecompress::DecryptAndDecompress( const std::string& encryption_key, IFile* output_file ) : read_state(EReadState_Version), header_buf_pos(0), decryption(), decryption_filter(decryption),
 	encryption_key(encryption_key), output_file(output_file), file_pos(0)
 {
-	const size_t buffer_size = 128*1024;
-	output_buf.resize(buffer_size);
+	const size_t buffer_size = 128 * 1024;
 	decrypted_buffer.resize(buffer_size);
 }
 
@@ -376,6 +399,12 @@ bool DecryptAndDecompress::put( char* buffer, size_t buffer_size )
 			{
 				Server->Log("Error during decompression init. Decompressor id " + convert((version & 0xFFFF0000) >> 16), LL_ERROR);
 				return false;
+			}
+
+			if (decompressor)
+			{
+				const size_t buffer_size = 128 * 1024;
+				output_buf.resize(buffer_size);
 			}
 
 			if(buffer_size>toread)
@@ -457,6 +486,17 @@ bool DecryptAndDecompress::decrypt()
 {
 	size_t decrypted_size = decryption_filter.Get(reinterpret_cast<CryptoPP::byte*>(decrypted_buffer.data()), decrypted_buffer.size());
 
+	if (!decompressor)
+	{
+		if (output_file->Write(file_pos, decrypted_buffer.data(), static_cast<_u32>(decrypted_size)) != decrypted_size)
+		{
+			Server->Log("Error writing data to output file. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+		file_pos += decrypted_size;
+		return true;
+	}
+
 	decompressor->setIn(decrypted_buffer.data(), decrypted_size);
 
 	while (decompressor->getAvailIn()>0)
@@ -512,6 +552,9 @@ bool DecryptAndDecompress::init_decompression(unsigned int decompressor_id)
 	case CompressionZstd3:
 		decompressor.reset(new CdZstdDecompressor);
 		break;
+	case CompressionNone:
+		decompressor.reset();
+		return true;
 	default:
 		return false;
 	}
