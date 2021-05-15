@@ -49,7 +49,6 @@ extern IServer* Server;
 
 #include "pluginmgr.h"
 #include "../fuse/fuse.h"
-#include "IBackupFileSystem.h"
 #include "IBtrfsFactory.h"
 
 BtrfsPluginMgr* btrfspluginmgr;
@@ -79,7 +78,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		f->Read(4096);
 		f->Resize(4096);
 		assert(f->Size() == 4096);
-		b = fs->Flush();
+		b = fs->sync(std::string());
 		assert(b);
 		exit(0);
 	}

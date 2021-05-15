@@ -41,8 +41,5 @@
     <ClInclude Include="IBtrfsFactory.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="IBackupFileSystem.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

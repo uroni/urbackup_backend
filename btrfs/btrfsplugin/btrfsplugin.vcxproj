@@ -27,7 +27,6 @@
   <ItemGroup>
     <ClInclude Include="BackupFileSystem.h" />
     <ClInclude Include="BtrfsFactory.h" />
-    <ClInclude Include="IBackupFileSystem.h" />
     <ClInclude Include="IBtrfsFactory.h" />
     <ClInclude Include="pluginmgr.h" />
   </ItemGroup>

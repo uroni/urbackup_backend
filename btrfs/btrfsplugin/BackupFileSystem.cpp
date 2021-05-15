@@ -19,82 +19,66 @@
 #include "BackupFileSystem.h"
 
 BtrfsBackupFileSystem::BtrfsBackupFileSystem(IFile* img)
-	: btrfs(btrfs_fuse_open_disk_image(img))
+	: btrfs(img)
 {
 
 }
 
 IFsFile* BtrfsBackupFileSystem::openFile(const std::string& path, int mode)
 {
-	return btrfs->openFile(path, mode);
+	return btrfs.openFile(path, mode);
 }
 
 bool BtrfsBackupFileSystem::reflinkFile(const std::string& source, const std::string& dest)
 {
-	return btrfs->reflink(source, dest);
+	return btrfs.reflink(source, dest);
 }
 
 bool BtrfsBackupFileSystem::createDir(const std::string& path)
 {
-	return btrfs->createDir(path);
+	return btrfs.createDir(path);
 }
 
-EFileType BtrfsBackupFileSystem::getFileType(const std::string& path)
+int BtrfsBackupFileSystem::getFileType(const std::string& path)
 {
-	int ft = static_cast<unsigned int>(btrfs->getFileType(path));
-	int ret = 0;
-	if (ft & static_cast<unsigned int>(BtrfsFuse::FileType::Directory))
-	{
-		ret |= EFileType_Directory;
-	}
-	else if (ft & static_cast<unsigned int>(BtrfsFuse::FileType::File))
-	{
-		ret |= EFileType_File;
-	}
-
-	return static_cast<EFileType>(ret);
+	return btrfs.getFileType(path);
 }
 
 bool BtrfsBackupFileSystem::hasError()
 {
-	return btrfs.get()==nullptr;
-}
-
-bool BtrfsBackupFileSystem::Flush()
-{
-	return btrfs->flush();
+	return btrfs.get_has_error();
 }
 
 bool BtrfsBackupFileSystem::deleteFile(const std::string& path)
 {
-	return btrfs->deleteFile(path);
+	return btrfs.deleteFile(path);
 }
 
-std::vector<SBtrfsFile> BtrfsBackupFileSystem::listFiles(const std::string& path)
+std::vector<SFile> BtrfsBackupFileSystem::listFiles(const std::string& path)
 {
-	return btrfs->listFiles(path);
+	return btrfs.listFiles(path);
 }
 
 bool BtrfsBackupFileSystem::createSubvol(const std::string& path)
 {
-	return btrfs->create_subvol(path);
+	return btrfs.create_subvol(path);
 }
 
 bool BtrfsBackupFileSystem::createSnapshot(const std::string& src_path, const std::string& dest_path)
 {
-	return btrfs->create_snapshot(src_path, dest_path);
+	return btrfs.create_snapshot(src_path, dest_path);
 }
 
 bool BtrfsBackupFileSystem::rename(const std::string& src_name, const std::string& dest_name)
 {
-	return btrfs->rename(src_name, dest_name);
+	return btrfs.rename(src_name, dest_name);
 }
 
 bool BtrfsBackupFileSystem::removeDirRecursive(const std::string& path)
 {
-	std::vector<SBtrfsFile> files = btrfs->listFiles(path);
+	std::vector<SFile> files = btrfs.listFiles(path);
 
-	for (SBtrfsFile& file : files)
+	for (SFile& file : files)
 	{
 		if (file.isdir)
 		{
@@ -183,4 +167,59 @@ bool BtrfsBackupFileSystem::copyFile(const std::string& src, const std::string& 
 	}
 
 	return !has_error;
+}
+
+bool BtrfsBackupFileSystem::sync(const std::string& path)
+{
+	return btrfs.flush();
+}
+
+bool BtrfsBackupFileSystem::deleteSubvol(const std::string& path)
+{
+	return btrfs.deleteFile(path);
+}
+
+int64 BtrfsBackupFileSystem::totalSpace()
+{
+	return int64();
+}
+
+int64 BtrfsBackupFileSystem::freeSpace()
+{
+	return int64();
+}
+
+int64 BtrfsBackupFileSystem::freeMetadataSpace()
+{
+	return int64();
+}
+
+int64 BtrfsBackupFileSystem::unallocatedSpace()
+{
+	return int64();
+}
+
+std::string BtrfsBackupFileSystem::fileSep()
+{
+	return std::string();
+}
+
+std::string BtrfsBackupFileSystem::filePath(IFile* f)
+{
+	return std::string();
+}
+
+bool BtrfsBackupFileSystem::getXAttr(const std::string& path, const std::string& key, std::string& value)
+{
+	return false;
+}
+
+bool BtrfsBackupFileSystem::setXAttr(const std::string& path, const std::string& key, const std::string& val)
+{
+	return false;
+}
+
+std::string BtrfsBackupFileSystem::getName()
+{
+	return std::string();
 }

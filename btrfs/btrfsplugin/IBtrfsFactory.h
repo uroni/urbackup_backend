@@ -1,6 +1,5 @@
 #pragma once
-
-#include "IBackupFileSystem.h"
+#include "../../Interface/BackupFileSystem.h"
 #include "../../Interface/Plugin.h"
 #include "../../Interface/File.h"
 

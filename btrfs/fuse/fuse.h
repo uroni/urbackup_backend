@@ -22,26 +22,22 @@ class BtrfsFuse
 public:
 	BtrfsFuse(IFile* img);
 	~BtrfsFuse();
+
+	BtrfsFuse(const BtrfsFuse&) = delete;
+	void operator=(const BtrfsFuse&) = delete;
+
 	bool createDir(const std::string& path);
 	bool deleteFile(const std::string& path);
 	IFsFile* openFile(const std::string& path, int mode);
 
-	enum class FileType
-	{
-		None = 0,
-		File = 1,
-		Directory = 2,
-		Symlink = 4
-	};
-
-	FileType getFileType(const std::string& path);
+	int getFileType(const std::string& path);
 
 	bool reflink(const std::string& src_path,
 		const std::string& dest_path);
 
 	bool flush();
 
-	std::vector<SBtrfsFile> listFiles(const std::string& path);
+	std::vector<SFile> listFiles(const std::string& path);
 
 	bool create_subvol(const std::string& path);
 
@@ -52,6 +48,8 @@ public:
 
 	bool link_symbolic(const std::string& target, const std::string& lname);
 
+	bool get_has_error();
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);
@@ -59,8 +57,8 @@ private:
 	int64 fileSize(PFILE_OBJECT file_object);
 
 	std::unique_ptr<FsData> fs_data;
+	bool has_error = false;
 };
 
 void btrfs_fuse_init();
 
-BtrfsFuse* btrfs_fuse_open_disk_image(IFile* img);

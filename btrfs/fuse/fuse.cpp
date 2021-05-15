@@ -154,11 +154,6 @@ void btrfs_fuse_init()
     DriverEntry(driver_object.get(), reg_path.getUstr());
 }
 
-BtrfsFuse* btrfs_fuse_open_disk_image(IFile* img)
-{
-    return new BtrfsFuse(img);
-}
-
 BtrfsFuse::BtrfsFuse(IFile* img)
     : fs_data(new FsData)
 {
@@ -468,14 +463,14 @@ IFsFile* BtrfsFuse::openFile(const std::string& path, int mode)
     return new BtrfsFuseFile(fs_data.get(), std::move(file_obj), path);
 }
 
-BtrfsFuse::FileType BtrfsFuse::getFileType(const std::string& path)
+int BtrfsFuse::getFileType(const std::string& path)
 {
     std::unique_ptr<_FILE_OBJECT> file_obj = openFileInt(path, MODE_READ, false, false);
 
     if (file_obj.get() == nullptr)
-        return FileType::None;
+        return 0;
 
-    BtrfsFuse::FileType ret = FileType::None;
+    int ret = 0;
 
     FILE_STANDARD_INFORMATION fsi;
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
@@ -490,11 +485,11 @@ BtrfsFuse::FileType BtrfsFuse::getFileType(const std::string& path)
     {
         if (fsi.Directory)
         {
-            ret = FileType::Directory;
+            ret = EFileType_Directory;
         }
         else
         {
-            ret = FileType::File;
+            ret = EFileType_File;
         }
     }
 
@@ -573,7 +568,7 @@ bool BtrfsFuse::flush()
     return true;
 }
 
-std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
+std::vector<SFile> BtrfsFuse::listFiles(const std::string& path)
 {
     std::unique_ptr<_FILE_OBJECT> file_obj;
     
@@ -582,7 +577,7 @@ std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
         file_obj = openFileInt(path, MODE_READ, true, false);
 
         if (file_obj.get() == nullptr)
-            return std::vector<SBtrfsFile>();
+            return std::vector<SFile>();
     }
 
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
@@ -606,15 +601,15 @@ std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
     {
         closeFile(std::move(file_obj));
         errno = rc;
-        return std::vector<SBtrfsFile>();
+        return std::vector<SFile>();
     }
 
-    std::vector<SBtrfsFile> ret;
+    std::vector<SFile> ret;
     for (size_t i = 0; i + sizeof(FILE_BOTH_DIR_INFORMATION) - sizeof(WCHAR) < irp->IoStatus.Information;)
     {
         FILE_BOTH_DIR_INFORMATION* fni = reinterpret_cast<FILE_BOTH_DIR_INFORMATION*>(out_buf.data() + i);
 
-        SBtrfsFile cf;
+        SFile cf;
         cf.name = ConvertFromWchar(std::wstring(fni->FileName, fni->FileNameLength / sizeof(WCHAR)));
         cf.size = fni->EndOfFile.QuadPart;
         cf.created = fni->CreationTime.QuadPart;
@@ -640,7 +635,7 @@ std::vector<SBtrfsFile> BtrfsFuse::listFiles(const std::string& path)
             {
                 closeFile(std::move(file_obj));
                 errno = rc;
-                return std::vector<SBtrfsFile>();
+                return std::vector<SFile>();
             }
 
             i = 0;
@@ -824,6 +819,11 @@ bool BtrfsFuse::link_symbolic(const std::string& target, const std::string& lnam
     closeFile(std::move(lname_obj));
 
     return ret;    
+}
+
+bool BtrfsFuse::get_has_error()
+{
+    return has_error;
 }
 
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)

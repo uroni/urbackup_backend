@@ -129,6 +129,8 @@ NTSTATUS KeWaitForSingleObject(PVOID Object, KWAIT_REASON WaitReason, REQMODE Wa
 	{
 		os_wait_on_address(&(Event->eword), &curr_eword, sizeof(curr_eword), INFINITE);
 	} while (std::atomic_load_explicit(reinterpret_cast<std::atomic<LONG>*>(&(Event->eword)), std::memory_order_acquire) == 0);
+
+	return STATUS_SUCCESS;
 }
 
 BOOLEAN KeReadStateEvent(PKEVENT Event)
