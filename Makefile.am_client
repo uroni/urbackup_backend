@@ -25,6 +25,84 @@ urbackupclientbackend_SOURCES += urbackupclient/dllmain.cpp urbackupclient/clien
 
 urbackupclientbackend_SOURCES += fileservplugin/dllmain.cpp fileservplugin/bufmgr.cpp fileservplugin/CClientThread.cpp fileservplugin/CriticalSection.cpp fileservplugin/CTCPFileServ.cpp fileservplugin/CUDPThread.cpp fileservplugin/FileServ.cpp fileservplugin/FileServFactory.cpp fileservplugin/log.cpp fileservplugin/main.cpp fileservplugin/map_buffer.cpp fileservplugin/pluginmgr.cpp fileservplugin/ChunkSendThread.cpp fileservplugin/PipeFile.cpp fileservplugin/PipeSessions.cpp fileservplugin/PipeFileUnix.cpp fileservplugin/PipeFileBase.cpp fileservplugin/FileMetadataPipe.cpp fileservplugin/PipeFileTar.cpp fileservplugin/PipeFileExt.cpp
 
+urbackupclientbackend_SOURCES += btrfs/btrfsplugin/BackupFileSystem.cpp \
+	btrfs/btrfsplugin/BtrfsFactory.cpp \
+	btrfs/btrfsplugin/dllmain.cpp \
+	btrfs/btrfsplugin/pluginmgr.cpp
+
+urbackupclientbackend_SOURCES += btrfs/fuse/fuse.cpp \
+	btrfs/fuse/nt/device.cpp \
+	btrfs/fuse/nt/windef.cpp \
+	btrfs/fuse/nt/resource.cpp \
+	btrfs/fuse/nt/workqueue.cpp
+	
+urbackupclientbackend_SOURCES += external/btrfs/balance.c \
+	external/btrfs/blake2b-ref.c \
+	external/btrfs/boot.c \
+	external/btrfs/btrfs.c \
+	external/btrfs/cache.c \
+	external/btrfs/calcthread.c \
+	external/btrfs/compress.c \
+	external/btrfs/crc32c.c \
+	external/btrfs/create.c \
+	external/btrfs/devctrl.c \
+	external/btrfs/dirctrl.c \
+	external/btrfs/extent-tree.c \
+	external/btrfs/fastio.c \
+	external/btrfs/fileinfo.c \
+	external/btrfs/flushthread.c \
+	external/btrfs/free-space.c \
+	external/btrfs/fsctl.c \
+	external/btrfs/fsrtl.c \
+	external/btrfs/galois.c \
+	external/btrfs/mkbtrfs/mkbtrfs.c \
+	external/btrfs/pnp.c \
+	external/btrfs/read.c \
+	external/btrfs/registry.c \
+	external/btrfs/reparse.c \
+	external/btrfs/scrub.c \
+	external/btrfs/search.c \
+	external/btrfs/security.c \
+	external/btrfs/send.c \
+	external/btrfs/sha256.c \
+	external/btrfs/treefuncs.c \
+	external/btrfs/ubtrfs/ubtrfs.c \
+	external/btrfs/volume.c \
+	external/btrfs/worker-thread.c \
+	external/btrfs/write.c \
+	external/btrfs/xxhash.c
+	
+if WITH_BTRFS_ZLIB
+urbackupclientbackend_SOURCES += \
+	external/btrfs/zlib/adler32.c \
+	external/btrfs/zlib/deflate.c \
+	external/btrfs/zlib/inffast.c \
+	external/btrfs/zlib/inflate.c \
+	external/btrfs/zlib/inftrees.c \
+	external/btrfs/zlib/trees.c \
+	external/btrfs/zlib/zutil.c
+endif
+	
+if !WITH_ZSTD
+urbackupclientbackend_SOURCES += \
+	external/btrfs/zstd/entropy_common.c \
+	external/btrfs/zstd/error_private.c \
+	external/btrfs/zstd/fse_compress.c \
+	external/btrfs/zstd/fse_decompress.c \
+	external/btrfs/zstd/hist.c \
+	external/btrfs/zstd/huf_compress.c \
+	external/btrfs/zstd/huf_decompress.c \
+	external/btrfs/zstd/zstd_common.c \
+	external/btrfs/zstd/zstd_compress.c \
+	external/btrfs/zstd/zstd_decompress.c \
+	external/btrfs/zstd/zstd_double_fast.c \
+	external/btrfs/zstd/zstd_fast.c \
+	external/btrfs/zstd/zstd_lazy.c \
+	external/btrfs/zstd/zstd_ldm.c \
+	external/btrfs/zstd/zstd_opt.c
+endif
+
+
 if WITH_FORTIFY
 FORTIFY_FLAGS = -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fPIE
 FORTIFY_ldflags = -Wl,-z,relro
@@ -80,7 +158,8 @@ urbackupclientbackend_LDFLAGS += $(OPENSSL_LDFLAGS)
 endif
 
 if EMBEDDED_ZSTD
-urbackupclientbackend_SOURCES += external/zstd/common/debug.c \
+urbackupclientbackend_SOURCES += \
+	external/zstd/common/debug.c \
 	external/zstd/common/entropy_common.c \
 	external/zstd/common/error_private.c \
 	external/zstd/common/fse_decompress.c \
@@ -342,10 +421,112 @@ zstd_headers = \
 		external/zstd/dictBuilder/divsufsort.h \
 		external/zstd/dictBuilder/zdict.h \
 		external/zstd/zstd.h
+		
+btrfsplugin_headers = \
+	btrfs/btrfsplugin/BackupFileSystem.h \
+	btrfs/btrfsplugin/BtrfsFactory.h \
+	btrfs/btrfsplugin/pluginmgr.h \
+	btrfs/btrfsplugin/IBtrfsFactory.h \
+
+btrfsfuse_headers = \
+	btrfs/fuse/fuse.h \
+	btrfs/fuse/nt/device.h \
+	btrfs/fuse/nt/ata.h \
+	btrfs/fuse/nt/guiddef.h \
+	btrfs/fuse/nt/ndddisk.h \
+	btrfs/fuse/nt/ntddstor.h \
+	btrfs/fuse/nt/ntifs.h \
+	btrfs/fuse/nt/winnt.h \
+	btrfs/fuse/nt/mountdev.h \
+	btrfs/fuse/nt/ntddk.h \
+	btrfs/fuse/nt/ntddvol.h \
+	btrfs/fuse/nt/ntstatus.h \
+	btrfs/fuse/nt/resource.h \
+	btrfs/fuse/nt/windef.h \
+	btrfs/fuse/nt/device.h \
+	btrfs/fuse/nt/mountmgr.h \
+	btrfs/fuse/nt/ntddscsi.h \
+	btrfs/fuse/nt/ntdef.h \
+	btrfs/fuse/nt/ntstrsafe.h \
+	btrfs/fuse/nt/wdm.h \
+	btrfs/fuse/nt/Windows.h \
+	btrfs/fuse/nt/workqueue.h
+
+btrfs_headers = \
+	external/btrfs/blake2-impl.h \
+	external/btrfs/btrfs.h \
+	external/btrfs/btrfsioctl.h \
+	external/btrfs/btrfs_drv.h \
+	external/btrfs/crc32c.h \
+	external/btrfs/mkbtrfs/resource.h \
+	external/btrfs/resource.h \
+	external/btrfs/shellext/balance.h \
+	external/btrfs/shellext/contextmenu.h \
+	external/btrfs/shellext/devices.h \
+	external/btrfs/shellext/factory.h \
+	external/btrfs/shellext/iconoverlay.h \
+	external/btrfs/shellext/mountmgr.h \
+	external/btrfs/shellext/propsheet.h \
+	external/btrfs/shellext/recv.h \
+	external/btrfs/shellext/resource.h \
+	external/btrfs/shellext/scrub.h \
+	external/btrfs/shellext/send.h \
+	external/btrfs/shellext/shellext.h \
+	external/btrfs/shellext/volpropsheet.h \
+	external/btrfs/ubtrfs/resource.h \
+	external/btrfs/xxhash.h \
+	external/btrfs/zlib/deflate.h \
+	external/btrfs/zlib/inffast.h \
+	external/btrfs/zlib/inffixed.h \
+	external/btrfs/zlib/inflate.h \
+	external/btrfs/zlib/inftrees.h \
+	external/btrfs/zlib/trees.h \
+	external/btrfs/zlib/zconf.h \
+	external/btrfs/zlib/zlib.h \
+	external/btrfs/zlib/zutil.h \
+	external/btrfs/zstd/bitstream.h \
+	external/btrfs/zstd/compiler.h \
+	external/btrfs/zstd/cpu.h \
+	external/btrfs/zstd/debug.h \
+	external/btrfs/zstd/error_private.h \
+	external/btrfs/zstd/fse.h \
+	external/btrfs/zstd/hist.h \
+	external/btrfs/zstd/huf.h \
+	external/btrfs/zstd/mem.h \
+	external/btrfs/zstd/zstd.h \
+	external/btrfs/zstd/zstd_compress_internal.h \
+	external/btrfs/zstd/zstd_double_fast.h \
+	external/btrfs/zstd/zstd_errors.h \
+	external/btrfs/zstd/zstd_fast.h \
+	external/btrfs/zstd/zstd_internal.h \
+	external/btrfs/zstd/zstd_lazy.h \
+	external/btrfs/zstd/zstd_ldm.h \
+	external/btrfs/zstd/zstd_opt.h
 			 
-noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h sqlite/shell.h SQLiteFactory.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h Interface/WebSocket.h client_version.h Interface/SharedMutex.h SharedMutex_lin.h StaticPluginRegistration.h  common/bitmap.h OpenSSLPipe.h $(cryptoplugin_headers) $(fileservplugin_headers) $(fsimageplugin_headers) $(urbackupclientctl_headers) $(client_headers) $(tclap_headers) $(urbackupclient_headers) $(cryptopp_headers) $(blockalign_headers) $(zstd_headers)
+noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h \
+	file.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h \
+	stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h \
+	SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h \
+	Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h \
+	Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h \
+	Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h \
+	Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h \
+	utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h \
+	cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h sqlite/shell.h SQLiteFactory.h PipeThrottler.h \
+	Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h Interface/WebSocket.h client_version.h \
+	Interface/SharedMutex.h SharedMutex_lin.h StaticPluginRegistration.h  common/bitmap.h OpenSSLPipe.h $(cryptoplugin_headers) \
+	$(fileservplugin_headers) $(fsimageplugin_headers) $(urbackupclientctl_headers) $(client_headers) $(tclap_headers) \
+	$(urbackupclient_headers) $(cryptopp_headers) $(blockalign_headers) $(zstd_headers) \
+	$(btrfsplugin_headers) \
+	$(btrfsfuse_headers) \
+	$(btrfs_headers)
 
 
-EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h
+EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm \
+	client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo \
+	client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo \
+	client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo \
+	client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo \
+	client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h
 
 EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client init.d_client_rh defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackupclientbackend-debian.service urbackupclientbackend-redhat.service urbackupclient/backup_scripts/list urbackupclient/backup_scripts/list_incr urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump urbackupclient/backup_scripts/postgresbase urbackupclient/backup_scripts/postgresqlprebackup urbackupclient/backup_scripts/postgresqlpostbackup urbackupclient/backup_scripts/setup-postgresbackup urbackupclient/backup_scripts/postgresbase.conf urbackupclient/backup_scripts/mariadbxtrabackup.conf urbackupclient/backup_scripts/mariadbxtrabackup urbackupclient/backup_scripts/mariadbxtrabackup_incr urbackupclient/backup_scripts/mariadbprebackup urbackupclient/backup_scripts/mariadbpostbackup urbackupclient/backup_scripts/setup-mariadbbackup urbackupclient/backup_scripts/restore-mariadbbackup client/version.txt client/data/urbackup_ecdsa409k1.pub linux_snapshot/btrfs_create_filesystem_snapshot linux_snapshot/btrfs_remove_filesystem_snapshot linux_snapshot/dattobd_create_snapshot linux_snapshot/dattobd_remove_snapshot linux_snapshot/lvm_create_filesystem_snapshot linux_snapshot/lvm_remove_filesystem_snapshot client/data/updates_h.dat
