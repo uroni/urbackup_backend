@@ -61,6 +61,7 @@
     <ClCompile Include="common_tokens.cpp" />
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="DocanyMount.cpp" />
     <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="FilesystemManager.cpp" />
     <ClCompile Include="file_permissions.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="ClientService.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
+    <ClInclude Include="DocanyMount.h" />
     <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="FilesystemManager.h" />
     <ClInclude Include="file_permissions.h" />
@@ -254,14 +256,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd;C:\Program Files\Dokan\Dokan Library-1.4.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib;dokan1.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir);C:\Program Files\Dokan\Dokan Library-1.4.1\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

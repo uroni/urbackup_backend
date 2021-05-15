@@ -59,6 +59,7 @@ extern IServer* Server;
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../btrfs/btrfsplugin/IBtrfsFactory.h"
+#include "../clouddrive/IClouddriveFactory.h"
 
 #include "database.h"
 #include "tokens.h"
@@ -108,6 +109,7 @@ PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IBtrfsFactory* btrfs_fak;
+IClouddriveFactory* clouddrive_fak;
 std::string server_identity;
 std::string server_token;
 
@@ -317,13 +319,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	crypto_fak = (ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
 	if (crypto_fak == NULL)
 	{
-		Server->Log("Error loading Cryptoplugin", LL_ERROR);
+		Server->Log("Error loading cryptoplugin", LL_ERROR);
 	}
 
-	btrfs_fak = (IBtrfsFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("btrfsplugin", params));
+	btrfs_fak = reinterpret_cast<IBtrfsFactory*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("btrfsplugin", params)));
 	if (btrfs_fak == nullptr)
 	{
-		Server->Log("Error loading Btrfsplugin", LL_ERROR);
+		Server->Log("Error loading btrfsplugin", LL_ERROR);
+	}
+
+	clouddrive_fak = reinterpret_cast<IClouddriveFactory*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("clouddriveplugin", params)));
+	if (clouddrive_fak == nullptr)
+	{
+		Server->Log("Error loading clouddriveplugin", LL_ERROR);
 	}
 
 	{

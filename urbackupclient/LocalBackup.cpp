@@ -235,7 +235,7 @@ bool LocalBackup::PrefixedBackupFiles::deleteFile(const std::string& path)
 	return backup_files->deleteFile(prefix + path);
 }
 
-EFileType LocalBackup::PrefixedBackupFiles::getFileType(const std::string& path)
+unsigned int LocalBackup::PrefixedBackupFiles::getFileType(const std::string& path)
 {
 	return backup_files->getFileType(prefix+path);
 }

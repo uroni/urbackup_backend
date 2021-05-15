@@ -31,9 +31,6 @@
 #include "../urbackupcommon/json.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "file_permissions.h"
-#include "LocalFullFileBackup.h"
-#include "LocalIncrFileBackup.h"
-#include "FilesystemManager.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -355,53 +352,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 	std::string dest;
 	getBackupDest(clientsubname, dest, facet_id);
 
-	if (next(dest, 0, "file://"))
+	if (localBackup(dest, false, server_identity, params))
 	{
-		std::string async_id;
-		async_id.resize(16);
-		Server->randomFill(&async_id[0], async_id.size());
-
-		SRunningProcess new_proc;
-
-		new_proc.action = RUNNING_INCR_FILE;
-		new_proc.server_id = server_id;
-		new_proc.id = ++curr_backup_running_id;
-		new_proc.server_token = server_token;
-
-		IScopedLock process_lock(process_mutex);
-
-		removeTimedOutProcesses(server_token, true);
-
-		running_processes.push_back(new_proc);
-
-		std::string imgpath = getafter("file://", dest);
-
-		if (!FilesystemManager::openFilesystemImage(imgpath))
-		{
-			tcpstack.Send(pipe, "ERR-Opening destination file system");
-			return;
-		}
-
-		int64 log_id = watoi64(params["log_id"]);
-
-		IBackupFileSystem* file_system = FilesystemManager::getFileSystem(imgpath);
-
-		LocalIncrFileBackup* fb = new LocalIncrFileBackup(file_system,
-			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
-			server_identity, facet_id);
-
-		THREADPOOL_TICKET backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
-
-		SAsyncFileList new_async_backup = {
-			Server->getTimeMS(),
-			0,
-			0,
-			backup_ticket
-		};
-
-		async_file_index[async_id] = new_async_backup;
-
-		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
 		return;
 	}
 
@@ -580,53 +532,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 	std::string dest;
 	getBackupDest(clientsubname, dest, facet_id);
 
-	if (next(dest, 0, "file://"))
+	if (localBackup(dest, true, server_identity, params))
 	{
-		std::string async_id;
-		async_id.resize(16);
-		Server->randomFill(&async_id[0], async_id.size());
-
-		SRunningProcess new_proc;
-
-		new_proc.action = RUNNING_FULL_FILE;
-		new_proc.server_id = server_id;
-		new_proc.id = ++curr_backup_running_id;
-		new_proc.server_token = server_token;
-
-		IScopedLock process_lock(process_mutex);
-
-		removeTimedOutProcesses(server_token, true);
-
-		running_processes.push_back(new_proc);
-
-		std::string imgpath = getafter("file://", dest);
-
-		if (!FilesystemManager::openFilesystemImage(imgpath))
-		{
-			tcpstack.Send(pipe, "ERR-Opening destination file system");
-			return;
-		}
-
-		int64 log_id = watoi64(params["log_id"]);
-
-		IBackupFileSystem* file_system = FilesystemManager::getFileSystem(imgpath);
-
-		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system,
-			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
-			server_identity, facet_id);
-
-		THREADPOOL_TICKET backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
-
-		SAsyncFileList new_async_backup = {
-			Server->getTimeMS(),
-			0,
-			0,
-			backup_ticket
-		};
-
-		async_file_index[async_id] = new_async_backup;
-
-		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
 		return;
 	}
 

@@ -277,6 +277,8 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_INT(client_hash_threads);
 	SET_SETTING_INT(image_compress_threads);
 	SET_SETTING_STR(ransomware_canary_paths);
+	SET_SETTING_STR(backup_dest_url);
+	SET_SETTING_STR(backup_dest_params);
 #undef SET_SETTING
 	return ret;
 }

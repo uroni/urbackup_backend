@@ -153,6 +153,8 @@ struct SSettings
 	int client_hash_threads;
 	int image_compress_threads;
 	std::string ransomware_canary_paths;
+	std::string backup_dest_url;
+	std::string backup_dest_params;
 };
 
 struct SLDAPSettings

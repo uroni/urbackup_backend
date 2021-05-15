@@ -222,6 +222,9 @@
     <ClCompile Include="..\urbackupserver\treediff\TreeReader.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="DocanyMount.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -402,6 +405,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="LocalFullFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="DocanyMount.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

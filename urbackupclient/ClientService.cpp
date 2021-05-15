@@ -43,6 +43,9 @@
 #include "../urbackupcommon/CompressedPipeZstd.h"
 #include "../urbackupcommon/InternetServicePipe2.h"
 #include "RansomwareCanary.h"
+#include "FilesystemManager.h"
+#include "LocalFullFileBackup.h"
+#include "LocalIncrFileBackup.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -3409,9 +3412,6 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 
 bool ClientConnector::getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id)
 {
-	dest = "raw-file://C:\\tmp\\btrfs.img";
-	return true;
-
 	if (facet_id == 0)
 		return false;
 
@@ -3426,8 +3426,8 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, std::strin
 		return false;
 
 	std::string val;
-	if (curr_settings->getValue("dest_url", &val)
-		|| curr_settings->getValue("dest_url", &val))
+	if (curr_settings->getValue("backup_dest_url", &val)
+		|| curr_settings->getValue("backup_dest_url_def", &val))
 	{
 		dest = val;
 	}
@@ -4080,6 +4080,92 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 			break;
 		}
 	}
+}
+
+bool ClientConnector::localBackup(const std::string& dest, bool full, const std::string& server_identity, str_map& params)
+{
+	int64 server_id = watoi64(params["status_id"]);
+
+	int group = c_group_default;
+
+	str_map::iterator it_group = params.find("group");
+	if (it_group != params.end())
+	{
+		group = watoi(it_group->second);
+	}
+
+	std::string clientsubname;
+
+	str_map::iterator it_clientsubname = params.find("clientsubname");
+	if (it_clientsubname != params.end())
+	{
+		clientsubname = conv_filename(it_clientsubname->second);
+	}
+
+	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
+
+	std::string async_id;
+	async_id.resize(16);
+	Server->randomFill(&async_id[0], async_id.size());
+
+	SRunningProcess new_proc;
+
+	new_proc.action = full ? RUNNING_FULL_FILE : RUNNING_INCR_FILE;
+	new_proc.server_id = server_id;
+	new_proc.id = ++curr_backup_running_id;
+	new_proc.server_token = server_token;
+
+	IScopedLock process_lock(process_mutex);
+
+	removeTimedOutProcesses(server_token, true);
+
+	running_processes.push_back(new_proc);
+
+	if (!FilesystemManager::openFilesystemImage(dest))
+	{
+		tcpstack.Send(pipe, "ERR-Opening destination file system");
+		return;
+	}
+
+	int64 log_id = watoi64(params["log_id"]);
+
+	IBackupFileSystem* file_system = FilesystemManager::getFileSystem(dest);
+
+	if (file_system == nullptr)
+	{
+		tcpstack.Send(pipe, "ERR-Destination file system is NULL");
+		return;
+	}
+
+	THREADPOOL_TICKET backup_ticket;
+	if (full)
+	{
+		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system, group,
+			clientsubname, new_proc.id, log_id, server_id, new_proc.id,
+			server_token, server_identity, facet_id);
+
+		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
+	}
+	else
+	{
+		LocalIncrFileBackup* fb = new LocalIncrFileBackup(file_system,
+			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
+			server_identity, facet_id);
+
+		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup incr");
+	}
+
+	SAsyncFileList new_async_backup = {
+		Server->getTimeMS(),
+		0,
+		0,
+		backup_ticket
+	};
+
+	async_file_index[async_id] = new_async_backup;
+
+	tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+
 }
 
 bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id)

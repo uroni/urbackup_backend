@@ -580,6 +580,9 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 
 	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", std::string(";"), &settings->ransomware_canary_paths, false);
+
+	readStringClientSetting(q_get_client_setting, "backup_dest_url", std::string(), &settings->backup_dest_url, false);
+	readStringClientSetting(q_get_client_setting, "backup_dest_params", "&", &settings->backup_dest_params, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -653,25 +656,25 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "local_image_transfer_mode", std::string(), &settings->local_image_transfer_mode, false);
 	readStringClientSetting(q_get_client_setting, "internet_image_transfer_mode", std::string(), &settings->internet_image_transfer_mode, false);
 	
-	readBoolClientSetting(q_get_client_setting, "end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
-	readBoolClientSetting(q_get_client_setting, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
-	readBoolClientSetting(q_get_client_setting, "internet_parallel_file_hashing", &settings->internet_parallel_file_hashing);
-	readBoolClientSetting(q_get_client_setting, "silent_update", &settings->silent_update);
+	readBoolClientSetting(q_get_client_setting, "end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification, false);
+	readBoolClientSetting(q_get_client_setting, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client, false);
+	readBoolClientSetting(q_get_client_setting, "internet_parallel_file_hashing", &settings->internet_parallel_file_hashing, false);
+	readBoolClientSetting(q_get_client_setting, "silent_update", &settings->silent_update, false);
 
-	readBoolClientSetting(q_get_client_setting, "allow_overwrite", &settings->allow_overwrite);
-	readBoolClientSetting(q_get_client_setting, "allow_config_paths", &settings->allow_config_paths);
-	readBoolClientSetting(q_get_client_setting, "allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);
-	readBoolClientSetting(q_get_client_setting, "allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups);
-	readBoolClientSetting(q_get_client_setting, "allow_starting_full_image_backups", &settings->allow_starting_full_image_backups);
-	readBoolClientSetting(q_get_client_setting, "allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
-	readBoolClientSetting(q_get_client_setting, "allow_pause", &settings->allow_pause);
-	readBoolClientSetting(q_get_client_setting, "allow_log_view", &settings->allow_log_view);
-	readBoolClientSetting(q_get_client_setting, "allow_tray_exit", &settings->allow_tray_exit);
-	readBoolClientSetting(q_get_client_setting, "verify_using_client_hashes", &settings->verify_using_client_hashes);
-	readBoolClientSetting(q_get_client_setting, "internet_readd_file_entries", &settings->internet_readd_file_entries);
-	readBoolClientSetting(q_get_client_setting, "background_backups", &settings->background_backups);
-	readIntClientSetting(q_get_client_setting, "max_running_jobs_per_client", &settings->max_running_jobs_per_client);
-	readBoolClientSetting(q_get_client_setting, "create_linked_user_views", &settings->create_linked_user_views);
+	readBoolClientSetting(q_get_client_setting, "allow_overwrite", &settings->allow_overwrite, false);
+	readBoolClientSetting(q_get_client_setting, "allow_config_paths", &settings->allow_config_paths, false);
+	readBoolClientSetting(q_get_client_setting, "allow_starting_full_file_backups", &settings->allow_starting_full_file_backups, false);
+	readBoolClientSetting(q_get_client_setting, "allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups, false);
+	readBoolClientSetting(q_get_client_setting, "allow_starting_full_image_backups", &settings->allow_starting_full_image_backups, false);
+	readBoolClientSetting(q_get_client_setting, "allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups, false);
+	readBoolClientSetting(q_get_client_setting, "allow_pause", &settings->allow_pause, false);
+	readBoolClientSetting(q_get_client_setting, "allow_log_view", &settings->allow_log_view, false);
+	readBoolClientSetting(q_get_client_setting, "allow_tray_exit", &settings->allow_tray_exit, false);
+	readBoolClientSetting(q_get_client_setting, "verify_using_client_hashes", &settings->verify_using_client_hashes, false);
+	readBoolClientSetting(q_get_client_setting, "internet_readd_file_entries", &settings->internet_readd_file_entries, false);
+	readBoolClientSetting(q_get_client_setting, "background_backups", &settings->background_backups, false);
+	readIntClientSetting(q_get_client_setting, "max_running_jobs_per_client", &settings->max_running_jobs_per_client, false);
+	readBoolClientSetting(q_get_client_setting, "create_linked_user_views", &settings->create_linked_user_views, false);
 
 	readStringClientSetting(q_get_client_setting, "local_incr_image_style", std::string(), &settings->local_incr_image_style, false);
 	readStringClientSetting(q_get_client_setting, "local_full_image_style", std::string(), &settings->local_full_image_style, false);
@@ -683,17 +686,17 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 
 	readBoolClientSetting(q_get_client_setting, "ignore_disk_errors", &settings->ignore_disk_errors);
 
-	readBoolClientSetting(q_get_client_setting, "allow_file_restore", &settings->allow_file_restore);
-	readBoolClientSetting(q_get_client_setting, "allow_component_config", &settings->allow_component_config);
-	readBoolClientSetting(q_get_client_setting, "allow_component_restore", &settings->allow_component_restore);
+	readBoolClientSetting(q_get_client_setting, "allow_file_restore", &settings->allow_file_restore, false);
+	readBoolClientSetting(q_get_client_setting, "allow_component_config", &settings->allow_component_config, false);
+	readBoolClientSetting(q_get_client_setting, "allow_component_restore", &settings->allow_component_restore, false);
 
 	readStringClientSetting(q_get_client_setting, "image_snapshot_groups", std::string(), &settings->image_snapshot_groups, false);
 	readStringClientSetting(q_get_client_setting, "file_snapshot_groups", std::string(), &settings->file_snapshot_groups, false);
 
-	readInt64ClientSetting(q_get_client_setting, "internet_file_dataplan_limit", &settings->internet_file_dataplan_limit);
-	readInt64ClientSetting(q_get_client_setting, "internet_image_dataplan_limit", &settings->internet_image_dataplan_limit);
+	readInt64ClientSetting(q_get_client_setting, "internet_file_dataplan_limit", &settings->internet_file_dataplan_limit, false);
+	readInt64ClientSetting(q_get_client_setting, "internet_image_dataplan_limit", &settings->internet_image_dataplan_limit, false);
 
-	readIntClientSetting(q_get_client_setting, "alert_script", &settings->alert_script);
+	readIntClientSetting(q_get_client_setting, "alert_script", &settings->alert_script, false);
 	readStringClientSetting(q_get_client_setting, "alert_params", std::string(), &settings->alert_params, false);
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 
@@ -705,6 +708,9 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 
 	readStringClientSetting(q_get_client_setting, "ransomware_canary_paths", ";", &settings->ransomware_canary_paths, false);
+
+	readStringClientSetting(q_get_client_setting, "backup_dest_url", std::string(), &settings->backup_dest_url);
+	readStringClientSetting(q_get_client_setting, "backup_dest_params", "&", &settings->backup_dest_params);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)

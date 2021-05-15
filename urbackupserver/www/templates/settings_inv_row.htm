@@ -95,7 +95,7 @@
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="ransomware_canary_paths">{tRansomware canary paths:}</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="ransomware_canary_paths_div">
 					<div class="input-group">
 						<input type="text" class="form-control" id="ransomware_canary_paths" value="{ransomware_canary_paths|s}"/>
 						<div class="input-group-addon"><a href="help.htm#ransomware_canary_paths" target="_blank">?</a></div>
@@ -383,7 +383,7 @@
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="virtual_clients">{tAdditional virtual sub client names}</label>
+				<label class="col-sm-4 control-label" for="virtual_clients">{tAdditional virtual sub client names}:</label>
 				<div class="col-sm-6" id="virtual_clients_div">
 					<input type="text" class="form-control" id="virtual_clients" value="{virtual_clients}"/>
 				</div>
@@ -391,6 +391,20 @@
 			</div>
 			{no_compname_end|s}
 			{/main_client}
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="backup_dest_url">{tBackup destination URL}:</label>
+				<div class="col-sm-6" id="backup_dest_url_div">
+					<input type="text" class="form-control" id="backup_dest_url" value="{backup_dest_url}"/>
+				</div>
+				<div id="backup_dest_url_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="backup_dest_params">{tLocal backup parameters}:</label>
+				<div class="col-sm-6" id="backup_dest_params_div">
+					<input type="text" class="form-control" id="backup_dest_params" value="{backup_dest_params}"/>
+				</div>
+				<div id="backup_dest_params_sw" style="display: inline"></div>
+			</div>
 		</form>
 	</div>
 	</div>

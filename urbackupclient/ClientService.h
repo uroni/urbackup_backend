@@ -362,6 +362,8 @@ private:
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
+	bool localBackup(const std::string& dest, bool full, const std::string& server_identity, str_map& params);
+
 	static void timeoutAsyncFileIndex();
 
 	static SRunningProcess* getRunningProcess(RunningAction action, std::string server_token);
