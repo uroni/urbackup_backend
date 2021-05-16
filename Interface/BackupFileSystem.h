@@ -5,7 +5,7 @@
 #include "../urbackupcommon/os_functions.h"
 
 #ifdef HAS_ASYNC
-#include "fuse_io_context.h"
+#include "../clouddrive/fuse_io_context.h"
 #endif
 
 
@@ -64,6 +64,10 @@ public:
 	virtual int64 freeMetadataSpace() = 0;
 
 	virtual int64 unallocatedSpace() = 0;
+
+	virtual bool forceAllocMetadata() = 0;
+
+	virtual bool balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated) = 0;
 
 	virtual std::string fileSep() = 0;
 
