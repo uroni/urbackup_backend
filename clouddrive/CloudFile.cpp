@@ -45,7 +45,7 @@
 #endif
 #include "../urbackupcommon/os_functions.h"
 #ifdef WITH_SLOG
-#include "../common/crc.h
+#include "../common/crc.h"
 #endif
 #include "../urbackupcommon/json.h"
 #ifdef HAS_ASYNC
@@ -5643,7 +5643,7 @@ fuse_io_context::io_uring_task<int> CloudFile::complete_read_tasks(fuse_io_conte
 				need_fuse_write += task.size;
 				++i;
 			}
-			else if (rc > 0 && rc < task.size)
+			else if (rc >= 0 && rc < task.size)
 			{
 				struct stat stbuf;
 				fstat(task.fd, &stbuf);

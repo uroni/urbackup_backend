@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <math.h>
 #include <memory.h>
+#include <limits.h>
 #include <chrono>
 #include "ICompressEncrypt.h"
 #include "CloudFile.h"
@@ -42,6 +43,7 @@
 #include <sys/xattr.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <sys/file.h>
 #endif
 #include "../urbackupcommon/events.h"
 
@@ -989,7 +991,7 @@ fuse_io_context::io_uring_task<IFsFile*> TransactionalKvStore::get_async(fuse_io
 
 				if (cachefs->filePath(res->fd) != keypath2(key, transid))
 				{
-					Server->Log("Filename of file from fd cache: " + res->fd->getFilename() +
+					Server->Log("Filename of file from fd cache: " + cachefs->filePath(res->fd) +
 						" Expected: " + keypath2(key, transid), LL_ERROR);
 					abort();
 				}
@@ -1915,7 +1917,8 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 
 	if (retrieve_file)
 	{
-		lock_evict.unlock();
+		if(lock_evict.owns_lock())
+			lock_evict.unlock();
 
 		bool not_found = false;
 		IFsFile* online_file = NULL;
@@ -3076,7 +3079,7 @@ TransactionalKvStore::TransactionalKvStore(IBackupFileSystem* cachefs, int64 min
 	g_cache_mutex = &cache_mutex;
 
 	cache_lock_file.reset(cachefs->openFile("lock", MODE_RW_CREATE));
-
+	
 	if (cache_lock_file.get() == nullptr)
 	{
 		std::string msg = "Error opening cache lock file at " + cachefs->getName() + "/lock . " + os_last_error_str();
@@ -3637,10 +3640,10 @@ void TransactionalKvStore::release( const std::string& key )
 		abort();
 	}
 
-	if (it->second.fd->getFilename() != keypath2(key, transid)
+	if (cachefs->filePath(it->second.fd) != keypath2(key, transid)
 		&& it->second.fd->getFilename() != key)
 	{
-		Server->Log("Unexpected fn in release. Expected " + keypath2(key, transid) + " Got " + it->second.fd->getFilename(), LL_ERROR);
+		Server->Log("Unexpected fn in release. Expected " + keypath2(key, transid) + " Got " + cachefs->filePath(it->second.fd), LL_ERROR);
 		abort();
 	}
 
@@ -3718,7 +3721,8 @@ void TransactionalKvStore::release( const std::string& key )
 		}
 
 		if (memfile_nf==nullptr
-			|| memfile_nf->file.get() != it->second.fd)
+			|| (memfile_nf->file.get() != it->second.fd &&
+				memfile_nf->old_file.get()!=it->second.fd) )
 		{
 			assert(dynamic_cast<IMemFile*>(it->second.fd) == nullptr);
 			close_fd = it->second.fd;
@@ -3831,11 +3835,15 @@ fuse_io_context::io_uring_task<void> TransactionalKvStore::release_async(fuse_io
 		if (memfile_nf != nullptr
 			&& memfile_nf->file.get() != it->second.fd)
 		{
-			Server->Log("Memfile fd differs from open_files fd " + it->second.fd->getFilename(), LL_WARNING);
+			if(memfile_nf->old_file.get() == it->second.fd)
+				Server->Log("Memfile fd differs from open_files fd " + it->second.fd->getFilename()+" (is old_file)", LL_WARNING);
+			else
+				Server->Log("Memfile fd differs from open_files fd " + it->second.fd->getFilename(), LL_WARNING);
 		}
 
 		if (memfile_nf == nullptr
-			|| memfile_nf->file.get() != it->second.fd)
+			|| (memfile_nf->file.get() != it->second.fd &&
+				memfile_nf->old_file.get()!= it->second.fd ) )
 		{
 			assert(dynamic_cast<IMemFile*>(it->second.fd) == nullptr);
 			close_fd = it->second.fd;
@@ -3863,7 +3871,8 @@ fuse_io_context::io_uring_task<void> TransactionalKvStore::release_async(fuse_io
 		Server->destroy(close_fd);
 	}
 
-	if (close_shared_fd.get() != nullptr)
+	if (close_shared_fd.get() != nullptr &&
+		close_shared_fd.use_count() <= 1)
 	{
 		cachefs->closeAsync(io, close_shared_fd.get());
 	}
@@ -5580,7 +5589,7 @@ bool TransactionalKvStore::checkpoint(bool do_submit, size_t checkpoint_retry_n)
 
 std::string TransactionalKvStore::keypath2( const std::string& key, int64 transaction_id )
 {
-	return "trans_" + convert(transaction_id)
+	return "trans_" + std::to_string(transaction_id)
 		+ cachefs->fileSep() + hexpath(key);
 }
 
@@ -6156,7 +6165,7 @@ bool TransactionalKvStore::read_from_deleted_file( const std::string& fn, int64 
 
 bool TransactionalKvStore::write_to_deleted_file(const std::string& fn, bool do_submit)
 {
-	std::unique_ptr<IFsFile> file(Server->openFile(fn, MODE_WRITE));
+	std::unique_ptr<IFsFile> file(cachefs->openFile(fn, MODE_WRITE));
 	int64 file_pos=0;
 
 	if(file.get()==NULL)
@@ -7038,7 +7047,7 @@ int64 TransactionalKvStore::set_active_transactions(std::unique_lock<cache_mutex
 		{
 			int64 ctransid = watoi64(getafter("trans_", files[i].name));
 
-			std::unique_ptr<IFsFile> dirty_mem(Server->openFile(files[i].name + cachefs->fileSep() + "dirty.mem", MODE_READ));
+			std::unique_ptr<IFsFile> dirty_mem(cachefs->openFile(files[i].name + cachefs->fileSep() + "dirty.mem", MODE_READ));
 			if (dirty_mem.get() != nullptr
 				&& (mintrans == -1 || ctransid < mintrans) )
 			{
@@ -7400,7 +7409,7 @@ bool TransactionalKvStore::decompress_item( const std::string& key, int64 transa
 	IFsFile* dst;
 	if (tmpl_file == nullptr)
 	{
-		dst = Server->openFile(keypath2(key, transaction_id), MODE_WRITE);
+		dst = cachefs->openFile(keypath2(key, transaction_id), MODE_WRITE);
 	}
 	else
 	{
@@ -8844,12 +8853,88 @@ void TransactionalKvStore::set_disable_write_memfiles(bool b)
 	disable_write_memfiles = b;
 }
 
+namespace
+{
+	relaxed_atomic<int64> last_metadata_balance_enospc(0);
+	relaxed_atomic<int64> last_data_balance_enospc(0);
+
+	relaxed_atomic<int64> last_metadata_balance_enospc_cnt(0);
+	relaxed_atomic<int64> last_data_balance_enospc_cnt(0);
+
+	class RebalanceThread : public IThread
+	{
+		bool metadata;
+		IBackupFileSystem* cachefs;
+	public:
+		RebalanceThread(IBackupFileSystem* cachefs, bool metadata)
+			: cachefs(cachefs), metadata(metadata) {}
+		void operator()()
+		{
+			if (metadata && cachefs->forceAllocMetadata())
+			{
+				delete this;
+				return;
+			}
+
+			for (int i = 1; i < 50; ++i)
+			{
+				bool enospc;
+				size_t relocated;
+				if (!cachefs->balance(i, 1, metadata, enospc, relocated))
+				{
+					if (enospc)
+					{
+						if (metadata)
+						{
+							last_metadata_balance_enospc = Server->getTimeMS();
+							++last_metadata_balance_enospc_cnt;
+						}
+						else
+						{
+							last_data_balance_enospc = Server->getTimeMS();
+							++last_data_balance_enospc_cnt;
+						}
+					}
+					break;
+				}
+
+				if (relocated==0)
+					continue;
+
+				if (metadata)
+				{
+					last_metadata_balance_enospc = 0;
+					last_metadata_balance_enospc_cnt = 0;
+				}
+				else
+				{
+					last_data_balance_enospc = 0;
+					last_data_balance_enospc_cnt = 0;
+				}
+
+				if (metadata && !cachefs->forceAllocMetadata())
+				{
+					--i;
+					continue;
+				}
+				else
+				{
+					break;
+				}
+			}
+			delete this;
+		}
+	};
+}
+
 
 void TransactionalKvStore::MetadataUpdateThread::operator()()
 {
 	task_set_less_throttle();
 
 	bool throttle_warn = false;
+
+	THREADPOOL_TICKET rebalance_tt = ILLEGAL_THREADPOOL_TICKET;
 
 	std::unique_lock lock(kv_store->cache_mutex);
 	while (!do_quit)
@@ -8860,6 +8945,8 @@ void TransactionalKvStore::MetadataUpdateThread::operator()()
 			break;
 
 		lock.unlock();
+
+		int64 unallocated_space = kv_store->cachefs->unallocatedSpace();
 
 		int64 free_space = kv_store->cachefs->freeMetadataSpace();
 		if (free_space < 0)
@@ -8872,6 +8959,13 @@ void TransactionalKvStore::MetadataUpdateThread::operator()()
 
 		if (free_space < kv_store->min_metadata_cache_free)
 		{
+			if (rebalance_tt == ILLEGAL_THREADPOOL_TICKET ||
+				Server->getThreadPool()->waitFor(rebalance_tt, 0))
+			{
+				rebalance_tt = Server->getThreadPool()->execute(new RebalanceThread(kv_store->cachefs, true),
+					"ch dat rebalance");
+			}
+
 			if (!throttle_warn)
 			{
 				Server->Log(PrettyPrintBytes(free_space) + " free metdata space on " 
@@ -8881,6 +8975,24 @@ void TransactionalKvStore::MetadataUpdateThread::operator()()
 		}
 		else
 		{
+			if (free_space < kv_store->min_metadata_cache_free +
+				(std::min)(kv_store->min_metadata_cache_free / 4, 500LL * 1024 * 1024) &&
+				(rebalance_tt == ILLEGAL_THREADPOOL_TICKET ||
+					Server->getThreadPool()->waitFor(rebalance_tt, 0)) &&
+				Server->getTimeMS()-last_metadata_balance_enospc > last_metadata_balance_enospc_cnt * 60*60*1000)
+			{
+				rebalance_tt = Server->getThreadPool()->execute(new RebalanceThread(kv_store->cachefs, true),
+					"chp dat rebalance");
+			}
+			else if(unallocated_space>=0 && 
+				free_space-unallocated_space >(std::max)(kv_store->min_metadata_cache_free*4,
+					1LL * 1024 * 1024 * 1024) &&
+				Server->getTimeMS() - last_data_balance_enospc > last_data_balance_enospc_cnt * 60 * 60 * 1000)
+			{
+				rebalance_tt = Server->getThreadPool()->execute(new RebalanceThread(kv_store->cachefs, false),
+					"chp met rebalance");
+			}
+
 			throttle_warn = false;
 		}
 
