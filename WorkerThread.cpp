@@ -367,7 +367,7 @@ POSTFILE_KEY CWorkerThread::ParseMultipartData(const std::string &data, const st
 		case 4:
 			if(next(data,i,rboundary)==true)
 			{
-            	IFile *memfile=Server->openMemoryFile();
+            	IFile *memfile=Server->openTemporaryFile();
 				memfile->Write(data.substr(start,i-start-2) );
 				memfile->Seek(0);
 				Server->addPostFile(pfilekey, name, SPostfile(memfile, filename, contenttype) );
