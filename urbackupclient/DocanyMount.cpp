@@ -17,7 +17,7 @@
 **************************************************************************/
 
 #include "DocanyMount.h"
-#include "../btrfs/btrfsplugin/IBackupFileSystem.h"
+#include "../Interface/BackupFileSystem.h"
 #include "../Interface/Server.h"
 #include <dokan/dokan.h>
 #include <sddl.h>
@@ -139,7 +139,7 @@ static NTSTATUS DOKAN_CALLBACK DokanGetFileInformation(
     if (*FileName == '\\')
         offs = 1;
 
-    EFileType ftype = fs->getFileType(Server->ConvertFromWchar(FileName + offs));
+    int ftype = fs->getFileType(Server->ConvertFromWchar(FileName + offs));
 
     if (ftype & EFileType_Directory)
         HandleFileInformation->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
@@ -158,8 +158,8 @@ DokanFindFiles(LPCWSTR FileName,
     if (*FileName == '\\')
         offs = 1;
 
-    std::vector<SBtrfsFile> files = fs->listFiles(Server->ConvertFromWchar(FileName + offs));
-    for (SBtrfsFile& file : files)
+    std::vector<SFile> files = fs->listFiles(Server->ConvertFromWchar(FileName + offs));
+    for (SFile& file : files)
     {
         WIN32_FIND_DATAW find_data = {};
         std::wstring wfilename = Server->ConvertToWchar(file.name);

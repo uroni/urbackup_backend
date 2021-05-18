@@ -22,7 +22,7 @@
 #include "../urbackupcommon/file_metadata.h"
 #include "../fileservplugin/IFileMetadataPipe.h"
 #include "client.h"
-#include "../btrfs/btrfsplugin/IBackupFileSystem.h"
+#include "../Interface/BackupFileSystem.h"
 #include <ctime>
 
 bool LocalFullFileBackup::prepareBackuppath() {
@@ -311,13 +311,13 @@ bool LocalFullFileBackup::run()
 
 	filelist_out.reset();
 
-	if (!backup_files->Flush())
+	if (!backup_files->sync(std::string()))
 		return false;
 
 	if (!backup_files->renameToFinal())
 		return false;
 
-	return backup_files->Flush();
+	return backup_files->sync(std::string());
 }
 
 

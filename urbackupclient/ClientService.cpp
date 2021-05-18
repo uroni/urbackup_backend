@@ -4132,6 +4132,12 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	const str_map& dest_secret_params, const std::string& computername,
 	bool full, const std::string& server_identity, str_map& params)
 {
+	if (dest_url.empty())
+		return false;
+
+	if (next(dest_url, 0, "urbackup://"))
+		return false;
+
 	dest_url = greplace("$CLIENTNAME$", computername, dest_url);
 
 	int64 server_id = watoi64(params["status_id"]);
@@ -4176,7 +4182,7 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	if (!FilesystemManager::openFilesystemImage(dest_url, dest_params, dest_secret_params))
 	{
 		tcpstack.Send(pipe, "ERR-Opening destination file system");
-		return;
+		return true;
 	}
 
 	int64 log_id = watoi64(params["log_id"]);
@@ -4186,7 +4192,7 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	if (file_system == nullptr)
 	{
 		tcpstack.Send(pipe, "ERR-Destination file system is NULL");
-		return;
+		return true;
 	}
 
 	THREADPOOL_TICKET backup_ticket;
@@ -4217,6 +4223,8 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	async_file_index[async_id] = new_async_backup;
 
 	tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+
+	return true;
 
 }
 

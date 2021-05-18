@@ -235,3 +235,13 @@ std::string BtrfsBackupFileSystem::getName()
 {
 	return std::string();
 }
+
+bool BtrfsBackupFileSystem::forceAllocMetadata()
+{
+	return false;
+}
+
+bool BtrfsBackupFileSystem::balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated)
+{
+	return false;
+}

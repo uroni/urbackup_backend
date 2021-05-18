@@ -32,7 +32,8 @@ public:
 	virtual bool getXAttr(const std::string& path, const std::string& key, std::string& value) override;
 	virtual bool setXAttr(const std::string& path, const std::string& key, const std::string& val) override;
 	virtual std::string getName() override;
-
+	virtual bool forceAllocMetadata() override;
+	virtual bool balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated) override;
 private:
 	BtrfsFuse btrfs;
 };

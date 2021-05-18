@@ -2,7 +2,7 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Types.h"
 #include <memory>
-#include "../btrfs/btrfsplugin/IBackupFileSystem.h"
+#include "../Interface/BackupFileSystem.h"
 namespace
 {
 	class BackupUpdaterThread;
@@ -26,9 +26,8 @@ class LocalBackup : public IThread
 		virtual bool reflinkFile(const std::string& source, const std::string& dest) override;
 		virtual bool createDir(const std::string& path) override;
 		virtual bool deleteFile(const std::string& path) override;
-		virtual EFileType getFileType(const std::string& path) override;
-		virtual bool Flush() override;
-		virtual std::vector<SBtrfsFile> listFiles(const std::string& path) override;
+		virtual int getFileType(const std::string& path) override;
+		virtual std::vector<SFile> listFiles(const std::string& path) override;
 		virtual bool createSubvol(const std::string& path) override;
 		virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override;
 		virtual bool rename(const std::string& src_name, const std::string& dest_name) override;
@@ -47,6 +46,19 @@ class LocalBackup : public IThread
 			return backup_files;
 		}
 
+		virtual bool sync(const std::string& path) override;
+		virtual bool deleteSubvol(const std::string& path) override;
+		virtual int64 totalSpace() override;
+		virtual int64 freeSpace() override;
+		virtual int64 freeMetadataSpace() override;
+		virtual int64 unallocatedSpace() override;
+		virtual bool forceAllocMetadata() override;
+		virtual bool balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated) override;
+		virtual std::string fileSep() override;
+		virtual std::string filePath(IFile* f) override;
+		virtual bool getXAttr(const std::string& path, const std::string& key, std::string& value) override;
+		virtual bool setXAttr(const std::string& path, const std::string& key, const std::string& val) override;
+		virtual std::string getName() override;
 	private:
 		std::string prefix;
 		IBackupFileSystem* backup_files;		

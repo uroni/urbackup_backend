@@ -33,12 +33,12 @@ bool LocalIncrFileBackup::prepareBackuppath()
 
 	std::string prefix = std::string(mbstr);
 
-	std::vector<SBtrfsFile> existing_backups = orig_backup_files->listFiles("");
+	std::vector<SFile> existing_backups = orig_backup_files->listFiles("");
 
 	if (existing_backups.empty())
 		return false;
 
-	for (std::vector<SBtrfsFile>::reverse_iterator it = existing_backups.rbegin();it!=existing_backups.rend();++it)
+	for (std::vector<SFile>::reverse_iterator it = existing_backups.rbegin();it!=existing_backups.rend();++it)
 	{
 		if (it->name.find(".new") == std::string::npos)
 		{
@@ -817,13 +817,13 @@ bool LocalIncrFileBackup::run()
 	if (c_has_error)
 		return false;
 
-	if (!backup_files->Flush())
+	if (!backup_files->sync(std::string()))
 		return false;
 
 	if (!backup_files->renameToFinal())
 		return false;
 
-	return backup_files->Flush();
+	return backup_files->sync(std::string());
 }
 
 bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std::vector<size_t>& deleted_ids,

@@ -235,20 +235,80 @@ bool LocalBackup::PrefixedBackupFiles::deleteFile(const std::string& path)
 	return backup_files->deleteFile(prefix + path);
 }
 
-unsigned int LocalBackup::PrefixedBackupFiles::getFileType(const std::string& path)
+int LocalBackup::PrefixedBackupFiles::getFileType(const std::string& path)
 {
 	return backup_files->getFileType(prefix+path);
-}
-
-bool LocalBackup::PrefixedBackupFiles::Flush()
-{
-	return backup_files->Flush();
 }
 
 bool LocalBackup::PrefixedBackupFiles::renameToFinal()
 {
 	return backup_files->rename(prefix.substr(0, prefix.size() - 1),
 		prefix.substr(0, prefix.size() - 5));
+}
+
+bool LocalBackup::PrefixedBackupFiles::sync(const std::string& path)
+{
+	return backup_files->sync(prefix+path);
+}
+
+bool LocalBackup::PrefixedBackupFiles::deleteSubvol(const std::string& path)
+{
+	return backup_files->deleteSubvol(prefix+path);
+}
+
+int64 LocalBackup::PrefixedBackupFiles::totalSpace()
+{
+	return backup_files->totalSpace();
+}
+
+int64 LocalBackup::PrefixedBackupFiles::freeSpace()
+{
+	return backup_files->freeSpace();
+}
+
+int64 LocalBackup::PrefixedBackupFiles::freeMetadataSpace()
+{
+	return backup_files->freeMetadataSpace();
+}
+
+int64 LocalBackup::PrefixedBackupFiles::unallocatedSpace()
+{
+	return backup_files->unallocatedSpace();
+}
+
+bool LocalBackup::PrefixedBackupFiles::forceAllocMetadata()
+{
+	return backup_files->forceAllocMetadata();
+}
+
+bool LocalBackup::PrefixedBackupFiles::balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated)
+{
+	return backup_files->balance(usage, limit, metadata, enospc, relocated);
+}
+
+std::string LocalBackup::PrefixedBackupFiles::fileSep()
+{
+	return backup_files->fileSep();
+}
+
+std::string LocalBackup::PrefixedBackupFiles::filePath(IFile* f)
+{
+	return backup_files->filePath(f);
+}
+
+bool LocalBackup::PrefixedBackupFiles::getXAttr(const std::string& path, const std::string& key, std::string& value)
+{
+	return backup_files->getXAttr(prefix + path, key, value);
+}
+
+bool LocalBackup::PrefixedBackupFiles::setXAttr(const std::string& path, const std::string& key, const std::string& val)
+{
+	return backup_files->setXAttr(prefix + path, key, val);
+}
+
+std::string LocalBackup::PrefixedBackupFiles::getName()
+{
+	return prefix + backup_files->getName();
 }
 
 bool LocalBackup::PrefixedBackupFiles::copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str)
@@ -271,7 +331,7 @@ bool LocalBackup::PrefixedBackupFiles::linkSymbolic(const std::string& target, c
 	return backup_files->linkSymbolic(prefix+target, prefix+lname);
 }
 
-std::vector<SBtrfsFile> LocalBackup::PrefixedBackupFiles::listFiles(const std::string& path)
+std::vector<SFile> LocalBackup::PrefixedBackupFiles::listFiles(const std::string& path)
 {
 	return backup_files->listFiles(prefix + path);
 }

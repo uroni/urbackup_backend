@@ -220,5 +220,5 @@ IFile* CFileBufMgr::openFileRetry(void)
 		return r;
 	}
 	else
-		return Server->openMemoryFile();
+		return Server->openMemoryFile("_FileBufMgr_", false);
 }

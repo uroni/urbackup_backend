@@ -362,7 +362,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if (!Server->getServerParameter("mount").empty())
 	{
+		str_map secret_params;
+		ParseParamStrHttp(Server->getServerParameter("mount_secret_params"), &secret_params);
 		bool ret = FilesystemManager::mountFileSystem(Server->getServerParameter("mount"),
+			Server->getServerParameter("mount_params"), secret_params,
 			Server->getServerParameter("mount_path"));
 
 		exit(ret ? 1 : 0);
