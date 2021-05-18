@@ -155,7 +155,7 @@ void btrfs_fuse_init()
 }
 
 BtrfsFuse::BtrfsFuse(IFile* img)
-    : fs_data(new FsData)
+    : fs_data(new FsData), img(img)
 {
     fs_data->device_path = img->getFilename();
     fs_data->img = img;
@@ -824,6 +824,174 @@ bool BtrfsFuse::link_symbolic(const std::string& target, const std::string& lnam
 bool BtrfsFuse::get_has_error()
 {
     return has_error;
+}
+
+bool BtrfsFuse::resize_max()
+{
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.Flags = SL_CASE_SENSITIVE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_RESIZE;
+    std::vector<char> bcs_buf(sizeof(btrfs_resize));
+    btrfs_resize* bcs = reinterpret_cast<btrfs_resize*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = bcs_buf.size();
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = fs_data->root_file;
+    irp->AssociatedIrp.SystemBuffer = bcs;
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+
+    if (!NT_SUCCESS(rc))
+    {
+        return false;
+    }
+    
+    return true;
+}
+
+BtrfsFuse::SpaceInfo BtrfsFuse::get_space_info()
+{
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.Flags = SL_CASE_SENSITIVE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_GET_USAGE;
+    std::vector<char> bcs_buf(sizeof(btrfs_usage)*20);
+    btrfs_usage* bcs = reinterpret_cast<btrfs_usage*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = bcs_buf.size();
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = fs_data->root_file;
+    irp->AssociatedIrp.SystemBuffer = bcs;
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+
+    if (!NT_SUCCESS(rc))
+    {
+        return BtrfsFuse::SpaceInfo();
+    }
+
+    BtrfsFuse::SpaceInfo ret = {};
+
+    size_t coffset = 0;
+    while (bcs != nullptr &&
+        coffset<irp->IoStatus.Information)
+    {
+        bcs = reinterpret_cast<btrfs_usage*>(bcs_buf.data() + coffset);
+
+        if (bcs->type & BLOCK_FLAG_METADATA)
+        {
+            ret.metadata_allocated += bcs->size;
+            ret.metadata_used += bcs->used;
+        }
+        if (bcs->type & BLOCK_FLAG_DATA)
+        {
+            ret.data_allocated += bcs->size;
+            ret.data_used += bcs->used;
+        }
+        
+        ret.used += bcs->used;
+        ret.allocated += bcs->size;
+
+        if (bcs->next_entry == 0)
+            break;
+
+        coffset += bcs->next_entry;
+    }
+
+    ret.unallocated = img->Size() - ret.allocated;
+
+    return ret;    
+}
+
+int64 BtrfsFuse::get_total_space()
+{
+    return img->Size();
+}
+
+str_map BtrfsFuse::get_xattrs(const std::string& path)
+{
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(path, MODE_READ, false, false);
+
+    if (src_file_obj.get() == nullptr)
+        return str_map();
+
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.Flags = SL_CASE_SENSITIVE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_GET_XATTRS;
+    std::vector<char> bcs_buf(1024);
+    btrfs_set_xattr* bcs = reinterpret_cast<btrfs_set_xattr*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = bcs_buf.size();
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = src_file_obj.get();
+    irp->AssociatedIrp.SystemBuffer = bcs;
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+
+    if (!NT_SUCCESS(rc))
+    {
+        return str_map();
+    }
+
+    str_map ret;
+    for (size_t coffset = 0; coffset < irp->IoStatus.Information;)
+    {
+        bcs = reinterpret_cast<btrfs_set_xattr*>(bcs_buf.data() + coffset);
+
+        std::string k(bcs->data, bcs->namelen);
+        std::string v(bcs->data + bcs->namelen, bcs->valuelen);
+        ret[k] = v;
+    }
+    return ret;
+}
+
+bool BtrfsFuse::set_xattr(const std::string& path, const std::string& tkey, const std::string& tval)
+{
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(path, MODE_RW, false, false);
+
+    if (src_file_obj.get() == nullptr)
+        return false;
+
+    std::unique_ptr<IRP> irp = std::make_unique<IRP>();
+    irp->Flags = IRP_NOCACHE;
+    irp->StackLocation.Flags = SL_CASE_SENSITIVE;
+    irp->StackLocation.MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    irp->StackLocation.MinorFunction = IRP_MN_USER_FS_REQUEST;
+    irp->StackLocation.Parameters.FileSystemControl.FsControlCode = FSCTL_BTRFS_SET_XATTR;
+    std::vector<char> bcs_buf(sizeof(btrfs_set_xattr)+tkey.size()+tval.size());
+    btrfs_set_xattr* bcs = reinterpret_cast<btrfs_set_xattr*>(bcs_buf.data());
+    irp->AssociatedIRP = irp.get();
+    irp->UserBuffer = bcs;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = bcs_buf.size();
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.FileObject = src_file_obj.get();
+    irp->AssociatedIrp.SystemBuffer = bcs;
+
+
+    bcs->namelen = tkey.size();
+    bcs->valuelen = tval.size();
+    memcpy(bcs->data, tkey.data(), tkey.size());
+    memcpy(bcs->data + tkey.size(), tval.data(), tval.size());
+
+    NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL](fs_data->fs, irp.get());
+
+    if (!NT_SUCCESS(rc))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)

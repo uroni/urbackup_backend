@@ -21,7 +21,7 @@
 BtrfsBackupFileSystem::BtrfsBackupFileSystem(IFile* img)
 	: btrfs(img)
 {
-
+	btrfs.resize_max();
 }
 
 IFsFile* BtrfsBackupFileSystem::openFile(const std::string& path, int mode)
@@ -181,42 +181,54 @@ bool BtrfsBackupFileSystem::deleteSubvol(const std::string& path)
 
 int64 BtrfsBackupFileSystem::totalSpace()
 {
-	return int64();
+	return btrfs.get_total_space();
 }
 
 int64 BtrfsBackupFileSystem::freeSpace()
 {
-	return int64();
+	BtrfsFuse::SpaceInfo space_info = btrfs.get_space_info();
+	return (space_info.allocated + space_info.unallocated) - space_info.used;
 }
 
 int64 BtrfsBackupFileSystem::freeMetadataSpace()
 {
-	return int64();
+	BtrfsFuse::SpaceInfo space_info = btrfs.get_space_info();
+	return (space_info.metadata_allocated - space_info.metadata_used) + space_info.unallocated;
 }
 
 int64 BtrfsBackupFileSystem::unallocatedSpace()
 {
-	return int64();
+	BtrfsFuse::SpaceInfo space_info = btrfs.get_space_info();
+	return space_info.unallocated;
 }
 
 std::string BtrfsBackupFileSystem::fileSep()
 {
-	return std::string();
+	return "\\";
 }
 
 std::string BtrfsBackupFileSystem::filePath(IFile* f)
 {
-	return std::string();
+	return f->getFilename();
 }
 
 bool BtrfsBackupFileSystem::getXAttr(const std::string& path, const std::string& key, std::string& value)
 {
-	return false;
+	str_map xattrs = btrfs.get_xattrs(path);
+	if (xattrs == str_map())
+		return false;
+
+	auto it = xattrs.find(key);
+	if (it == xattrs.end())
+		return false;
+
+	value = it->second;
+	return true;
 }
 
 bool BtrfsBackupFileSystem::setXAttr(const std::string& path, const std::string& key, const std::string& val)
 {
-	return false;
+	return btrfs.set_xattr(path, key, val);
 }
 
 std::string BtrfsBackupFileSystem::getName()

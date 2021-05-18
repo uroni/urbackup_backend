@@ -50,6 +50,28 @@ public:
 
 	bool get_has_error();
 
+	bool resize_max();
+
+	struct SpaceInfo
+	{
+		int64 metadata_allocated;
+		int64 metadata_used;
+		int64 data_allocated;
+		int64 data_used;
+
+		int64 unallocated;
+		int64 used;
+		int64 allocated;
+	};
+
+	SpaceInfo get_space_info();
+
+	int64 get_total_space();
+
+	str_map get_xattrs(const std::string& path);
+
+	bool set_xattr(const std::string& path, const std::string& tkey, const std::string& tval);
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);
@@ -58,6 +80,7 @@ private:
 
 	std::unique_ptr<FsData> fs_data;
 	bool has_error = false;
+	IFile* img;
 };
 
 void btrfs_fuse_init();
