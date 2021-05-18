@@ -24,6 +24,8 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../urbackupcommon/events.h"
 
+using namespace CryptoPPCompat;
+
 namespace
 {
 	ICompressEncryptFactory* compress_encrypt_factory;
@@ -138,7 +140,7 @@ CompressAndEncrypt::CompressAndEncrypt( const std::string& encryption_key, IFile
 {
 	char iv[12];
 	CryptoPP::AutoSeededRandomPool prng;
-	prng.GenerateBlock(reinterpret_cast<CryptoPP::byte*>(iv), 6);
+	prng.GenerateBlock(reinterpret_cast<byte*>(iv), 6);
 
 	generation = online_kv_store->generation_inc(1);
 
@@ -155,8 +157,8 @@ CompressAndEncrypt::CompressAndEncrypt( const std::string& encryption_key, IFile
 
 	memcpy(&iv[6], &ugen, 6);			
 
-	encryption.SetKeyWithIV(reinterpret_cast<const CryptoPP::byte*>(encryption_key.data()), encryption_key.size(),
-		reinterpret_cast<const CryptoPP::byte*>(iv), sizeof(iv));
+	encryption.SetKeyWithIV(reinterpret_cast<const byte*>(encryption_key.data()), encryption_key.size(),
+		reinterpret_cast<const byte*>(iv), sizeof(iv));
 
 	unsigned int version=2;
 	unsigned int compression_id;
@@ -215,7 +217,7 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 
 	if(compression_ended)
 	{
-		size_t ret_add = encryption_filter.Get(reinterpret_cast<CryptoPP::byte*>(buffer), buffer_size);
+		size_t ret_add = encryption_filter.Get(reinterpret_cast<byte*>(buffer), buffer_size);
 		if(ret_add>0)
 		{
 			md5.update(reinterpret_cast<unsigned char*>(buffer), static_cast<unsigned int>(ret_add));
@@ -287,9 +289,9 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 
 				if(write_size>0)
 				{
-					encryption_filter.Put(reinterpret_cast<const CryptoPP::byte*>(compressed_buffer.data()), write_size);
+					encryption_filter.Put(reinterpret_cast<const byte*>(compressed_buffer.data()), write_size);
 
-					size_t ret_add = encryption_filter.Get(reinterpret_cast<CryptoPP::byte*>(buffer), buffer_size);
+					size_t ret_add = encryption_filter.Get(reinterpret_cast<byte*>(buffer), buffer_size);
 					md5.update(reinterpret_cast<unsigned char*>(buffer), static_cast<unsigned int>(ret_add));
 
 					buffer+=ret_add;
@@ -427,8 +429,8 @@ bool DecryptAndDecompress::put( char* buffer, size_t buffer_size )
 		{
 			read_state = EReadState_Data;
 
-			decryption.SetKeyWithIV(reinterpret_cast<const CryptoPP::byte*>(encryption_key.data()), encryption_key.size(),
-				reinterpret_cast<const CryptoPP::byte*>(header_buf), iv_size);
+			decryption.SetKeyWithIV(reinterpret_cast<const byte*>(encryption_key.data()), encryption_key.size(),
+				reinterpret_cast<const byte*>(header_buf), iv_size);
 
 			if(buffer_size>toread)
 			{
@@ -443,7 +445,7 @@ bool DecryptAndDecompress::put( char* buffer, size_t buffer_size )
 
 	try
 	{
-		decryption_filter.Put(reinterpret_cast<CryptoPP::byte*>(buffer), buffer_size);
+		decryption_filter.Put(reinterpret_cast<byte*>(buffer), buffer_size);
 
 		return decrypt();
 	}
@@ -484,7 +486,7 @@ std::string DecryptAndDecompress::md5sum()
 
 bool DecryptAndDecompress::decrypt()
 {
-	size_t decrypted_size = decryption_filter.Get(reinterpret_cast<CryptoPP::byte*>(decrypted_buffer.data()), decrypted_buffer.size());
+	size_t decrypted_size = decryption_filter.Get(reinterpret_cast<byte*>(decrypted_buffer.data()), decrypted_buffer.size());
 
 	if (!decompressor)
 	{
