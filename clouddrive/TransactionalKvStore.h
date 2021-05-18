@@ -798,4 +798,6 @@ private:
 	size_t retrieval_waiters_sync;
 
 	std::string memcache_path;
+
+	std::unique_ptr<IFsFile> cache_lock_file;
 };

@@ -3075,6 +3075,40 @@ TransactionalKvStore::TransactionalKvStore(IBackupFileSystem* cachefs, int64 min
 {
 	g_cache_mutex = &cache_mutex;
 
+	cache_lock_file.reset(cachefs->openFile("lock", MODE_RW_CREATE));
+
+	if (cache_lock_file.get() == nullptr)
+	{
+		std::string msg = "Error opening cache lock file at " + cachefs->getName() + "/lock . " + os_last_error_str();
+		Server->Log(msg, LL_ERROR);
+		throw std::runtime_error(msg);
+	}
+
+#ifndef _WIN32
+	{
+		IFsFile::os_file_handle cache_lock_fd = cache_lock_file->getOsHandle();
+		if (cache_lock_fd != IFsFile::os_file_handle())
+		{
+			int rc = flock(cache_lock_fd, LOCK_EX | LOCK_NB);
+
+			if (rc != 0)
+			{
+				std::string msg;
+				if (errno == EWOULDBLOCK)
+				{
+					msg = "Error locking cache lock file at " + cachefs->getName() + "/lock . Another cloud drive may already be active using the same location. " + os_last_error_str();
+				}
+				else
+				{
+					msg = "Error locking cache lock file at " + cachefs->getName() + "/lock . " + os_last_error_str();
+				}
+				Server->Log(msg, LL_ERROR);
+				throw std::runtime_error(msg);
+			}
+		}
+	}
+#endif
+
 	std::string log_level_override = trim(readCacheFile("log_level_override"));
 	if (!log_level_override.empty())
 	{
