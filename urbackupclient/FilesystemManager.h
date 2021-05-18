@@ -1,15 +1,17 @@
 #pragma once
 #include <mutex>
-#include "../btrfs/btrfsplugin/IBackupFileSystem.h"
+#include "../Interface/BackupFileSystem.h"
 
 class FilesystemManager
 {
 public:
-	static bool openFilesystemImage(const std::string& path);
+	static bool openFilesystemImage(const std::string& url, const std::string& url_params, 
+		const str_map& secret_params);
 
-	static bool mountFileSystem(const std::string& path, const std::string& mount_path);
+	static bool mountFileSystem(const std::string& url, const std::string& url_params,
+		const str_map& secret_params, const std::string& mount_path);
 
-	static IBackupFileSystem* getFileSystem(const std::string& path);
+	static IBackupFileSystem* getFileSystem(const std::string& url);
 
 private:
 

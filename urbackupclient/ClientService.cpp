@@ -46,6 +46,7 @@
 #include "FilesystemManager.h"
 #include "LocalFullFileBackup.h"
 #include "LocalIncrFileBackup.h"
+#include "file_permissions.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -3410,7 +3411,9 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 	return false;
 }
 
-bool ClientConnector::getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id)
+bool ClientConnector::getBackupDest(const std::string& clientsubname, int facet_id,
+	std::string& dest, std::string& dest_params, str_map& dest_secret_params,
+	std::string& computername)
 {
 	if (facet_id == 0)
 		return false;
@@ -3420,9 +3423,16 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, std::strin
 	{
 		settings_fn = "urbackup/data_"+convert(facet_id )+"/settings_" + clientsubname + ".cfg";
 	}
-	ISettingsReader* curr_settings = Server->createFileSettingsReader(settings_fn);
 
-	if (curr_settings == NULL)
+	std::string secrets_fn = "urbackup/secrets_"+std::to_string(facet_id)+".cfg";
+	if (!clientsubname.empty())
+	{
+		secrets_fn = "urbackup/secrets_" + std::to_string(facet_id) + "_"+clientsubname+".cfg";
+	}
+
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+
+	if (!curr_settings)
 		return false;
 
 	std::string val;
@@ -3432,7 +3442,43 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, std::strin
 		dest = val;
 	}
 
-	Server->destroy(curr_settings);
+	if (curr_settings->getValue("backup_dest_params", &val)
+		|| curr_settings->getValue("backup_dest_params_def", &val))
+	{
+		dest_params = val;
+	}
+
+	if (curr_settings->getValue("computername", &val)
+		|| curr_settings->getValue("computername_def", &val))
+	{
+		computername = val;
+	}
+
+	if (computername.empty())
+	{
+		computername = IndexThread::getFileSrv()->getServerName();
+	}
+
+	std::unique_ptr<ISettingsReader> curr_secrets(Server->createFileSettingsReader(secrets_fn));
+
+	if (!curr_secrets)
+	{
+		std::string encryption_key;
+		encryption_key.resize(16);
+		Server->secureRandomFill(&encryption_key[0], encryption_key.size());
+
+		write_file_only_admin("encryption_key=" + bytesToHex(encryption_key) + "\n", secrets_fn);
+
+		curr_secrets.reset(Server->createFileSettingsReader(secrets_fn));
+	}
+
+	if (curr_secrets)
+	{
+		for (auto key : curr_settings->getKeys())
+		{
+			dest_secret_params[key] = curr_settings->getValue(key);
+		}
+	}
 
 	return true;
 }
@@ -4082,8 +4128,12 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 	}
 }
 
-bool ClientConnector::localBackup(const std::string& dest, bool full, const std::string& server_identity, str_map& params)
+bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_params,
+	const str_map& dest_secret_params, const std::string& computername,
+	bool full, const std::string& server_identity, str_map& params)
 {
+	dest_url = greplace("$CLIENTNAME$", computername, dest_url);
+
 	int64 server_id = watoi64(params["status_id"]);
 
 	int group = c_group_default;
@@ -4101,6 +4151,8 @@ bool ClientConnector::localBackup(const std::string& dest, bool full, const std:
 	{
 		clientsubname = conv_filename(it_clientsubname->second);
 	}
+
+	dest_url = greplace("$CLIENTSUBNAME$", clientsubname, dest_url);
 
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
 
@@ -4121,7 +4173,7 @@ bool ClientConnector::localBackup(const std::string& dest, bool full, const std:
 
 	running_processes.push_back(new_proc);
 
-	if (!FilesystemManager::openFilesystemImage(dest))
+	if (!FilesystemManager::openFilesystemImage(dest_url, dest_params, dest_secret_params))
 	{
 		tcpstack.Send(pipe, "ERR-Opening destination file system");
 		return;
@@ -4129,7 +4181,7 @@ bool ClientConnector::localBackup(const std::string& dest, bool full, const std:
 
 	int64 log_id = watoi64(params["log_id"]);
 
-	IBackupFileSystem* file_system = FilesystemManager::getFileSystem(dest);
+	IBackupFileSystem* file_system = FilesystemManager::getFileSystem(dest_url);
 
 	if (file_system == nullptr)
 	{

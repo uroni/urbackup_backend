@@ -349,10 +349,12 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 	}
 
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
-	std::string dest;
-	getBackupDest(clientsubname, dest, facet_id);
+	std::string dest, dest_params, computername;
+	str_map dest_secret_params;
+	getBackupDest(clientsubname, facet_id, dest, dest_params, dest_secret_params, computername);
 
-	if (localBackup(dest, false, server_identity, params))
+	if (localBackup(dest, dest_params, dest_secret_params, computername,
+		false, server_identity, params))
 	{
 		return;
 	}
@@ -529,10 +531,11 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 	}
 
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
-	std::string dest;
-	getBackupDest(clientsubname, dest, facet_id);
+	std::string dest, dest_params, computername;
+	str_map dest_secret_params;
+	getBackupDest(clientsubname, facet_id, dest, dest_params, dest_secret_params, computername);
 
-	if (localBackup(dest, true, server_identity, params))
+	if (localBackup(dest, dest_params, dest_secret_params, computername, true, server_identity, params))
 	{
 		return;
 	}

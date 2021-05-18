@@ -272,7 +272,8 @@ private:
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
-	bool getBackupDest(const std::string& clientsubname, std::string& dest, int facet_id);
+	bool getBackupDest(const std::string& clientsubname, int facet_id, std::string& dest,
+		std::string& dest_params, str_map& dest_secret_params, std::string& computername);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
@@ -362,7 +363,11 @@ private:
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
-	bool localBackup(const std::string& dest, bool full, const std::string& server_identity, str_map& params);
+	bool localBackup(std::string dest_url, 
+		const std::string& dest_params,
+		const str_map& dest_secret_params,
+		const std::string& computername,
+		bool full, const std::string& server_identity, str_map& params);
 
 	static void timeoutAsyncFileIndex();
 
