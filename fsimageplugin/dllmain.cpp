@@ -899,6 +899,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(1);
 		}
 
+		bool skip_zeroes = Server->getServerParameter("skip_zeroes") == "1";
+
 		std::vector<char> buf(512 * 1024);
 
 		for (int64 pos = 0, size = inFile->Size(); pos < size; pos += buf.size())
@@ -908,6 +910,25 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				Server->Log("Error reading from in file", LL_ERROR);
 				exit(2);
+			}
+
+			if (skip_zeroes)
+			{
+				bool is_zero = true;
+				for (_u32 i = 0; i < towrite; ++i)
+				{
+					if (buf[i] != 0)
+					{
+						is_zero = false;
+						break;
+					}
+				}
+
+				if (is_zero)
+				{
+					vhdfile->Seek(pos + towrite);
+					continue;
+				}
 			}
 
 			if (vhdfile->Write(buf.data(), towrite) != towrite)
