@@ -2029,12 +2029,14 @@ bool VHDXFile::readHeader()
 	if (checkHeader(file, header1))
 	{
 		sel_header = &header1;
+		curr_header_pos = 128LL * 1024;
 	}
 
 	if (checkHeader(file, header2) &&
 		header2.SequenceNumber > header1.SequenceNumber)
 	{
 		sel_header = &header2;
+		curr_header_pos = 64LL * 1024;
 	}
 
 	if (sel_header == nullptr)
@@ -2573,7 +2575,9 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 
 		flushed_vhdx_size = allocated_size;
 
-		if (!fast_mode && !updateHeader())
+		if (!fast_mode && 
+			!read_only &&
+			!updateHeader())
 		{
 			return false;
 		}
