@@ -20,6 +20,22 @@
 #include "CloudFile.h"
 #include "KvStoreFrontend.h"
 #include "KvStoreBackendS3.h"
+#include "../cryptoplugin/cryptopp_inc.h"
+
+using namespace CryptoPPCompat;
+
+static std::string pbkdf2_sha256(const std::string& key)
+{
+	std::string ret;
+	ret.resize(CryptoPP::SHA256::DIGESTSIZE);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pkcs;
+	pkcs.DeriveKey(reinterpret_cast<byte*>(&ret[0]), CryptoPP::SHA256::DIGESTSIZE, 0,
+		(byte*)key.c_str(), key.size(),
+		NULL, 0, 100000, 0);
+
+	return ret;
+}
 
 bool ClouddriveFactory::checkConnectivity(CloudSettings settings, int64 timeoutms)
 {
@@ -35,9 +51,11 @@ IFile* ClouddriveFactory::createCloudFile(IBackupFileSystem* cachefs, CloudSetti
 {
 	IOnlineKvStore* online_kv_store;
 
+	std::string aes_key = pbkdf2_sha256(settings.encryption_key);
+
 	if (settings.endpoint == CloudEndpoint::S3)
 	{
-		IKvStoreBackend* s3_backend = new KvStoreBackendS3(settings.encryption_key,
+		IKvStoreBackend* s3_backend = new KvStoreBackendS3(aes_key,
 			settings.s3_settings.access_key, settings.s3_settings.secret_access_key,
 			settings.s3_settings.bucket_name,
 			get_compress_encrypt_factory(),
@@ -56,7 +74,7 @@ IFile* ClouddriveFactory::createCloudFile(IBackupFileSystem* cachefs, CloudSetti
 	}
 
 	return new CloudFile(std::string(), cachefs,
-		settings.size, settings.size, online_kv_store, settings.encryption_key,
+		settings.size, settings.size, online_kv_store, aes_key,
 		get_compress_encrypt_factory(), settings.verify_cache, settings.cpu_multiplier,
 		settings.background_compress, settings.no_compress_cpu_mult,
 		settings.reserved_cache_device_space, settings.min_metadata_cache_free,
