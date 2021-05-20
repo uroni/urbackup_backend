@@ -120,6 +120,7 @@ ICompressAndEncrypt* CompressEncryptFactory::createCompressAndEncrypt(const std:
 	} break;
 	case CompressionNone:
 		compressor = nullptr;
+		break;
 	default: 
 		return NULL;
 	}
@@ -176,11 +177,12 @@ CompressAndEncrypt::CompressAndEncrypt( const std::string& encryption_key, IFile
 
 	output_buffer_pos = 0;
 
+	const size_t read_buffer_size = 128 * 1024;
+	read_buffer.resize(read_buffer_size);
+
 	if (compressor)
 	{
 		const size_t enc_buffer_size = 128 * 1024;
-		const size_t read_buffer_size = 128 * 1024;
-		read_buffer.resize(read_buffer_size);
 		compressed_buffer.resize(enc_buffer_size);
 
 		compressor->setOut(compressed_buffer.data(), compressed_buffer.size());
@@ -235,8 +237,12 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 				&& file!=NULL)
 			{
 				bool has_read_error = false;
-				file_read = file->Read(file_pos, read_buffer.data(),
-					static_cast<_u32>(buffer_size), &has_read_error);
+				size_t toread = (std::min)(static_cast<size_t>(input_file_size - file_pos), buffer_size);
+				if (toread > 0)
+					file_read = file->Read(file_pos, read_buffer.data(),
+						static_cast<_u32>(toread), &has_read_error);
+				else
+					file_read = 0;
 
 				if (has_read_error)
 				{
@@ -276,10 +282,13 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 
 			int code;
 			CompressResult ret;
-			if(!compressor)
+			if (compressor)
 				ret = compressor->compress(file == NULL, code);
+			else
+				ret = file==nullptr ? CompressResult_End : CompressResult_Ok;
 
-			if(!compressor || compressor->getAvailOut()==0 || ret == CompressResult_End)
+			if(ret == CompressResult_End || 
+				compressor==nullptr || compressor->getAvailOut()==0 )
 			{
 				size_t write_size;
 				if (!compressor)
@@ -289,7 +298,10 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 
 				if(write_size>0)
 				{
-					encryption_filter.Put(reinterpret_cast<const byte*>(compressed_buffer.data()), write_size);
+					if (compressor)
+						encryption_filter.Put(reinterpret_cast<const byte*>(compressed_buffer.data()), write_size);
+					else
+						encryption_filter.Put(reinterpret_cast<const byte*>(read_buffer.data()), write_size);
 
 					size_t ret_add = encryption_filter.Get(reinterpret_cast<byte*>(buffer), buffer_size);
 					md5.update(reinterpret_cast<unsigned char*>(buffer), static_cast<unsigned int>(ret_add));
