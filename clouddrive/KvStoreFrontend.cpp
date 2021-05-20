@@ -371,7 +371,12 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 
 	dao.getDb()->Write("INSERT OR IGNORE INTO misc (key, value) VALUES ('initial_val', '1')");
 
-	db_wal_file.reset(Server->openFile(db_path + "-wal", MODE_RW));
+	int wal_mode = MODE_READ;
+#ifdef _WIN32
+	wal_mode = MODE_RW_DEVICE;
+#endif
+
+	db_wal_file.reset(Server->openFile(db_path + "-wal", wal_mode));
 
 	if (db_wal_file.get() == nullptr)
 	{

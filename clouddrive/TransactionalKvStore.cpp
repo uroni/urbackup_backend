@@ -3649,9 +3649,9 @@ void TransactionalKvStore::release( const std::string& key )
 
 	if (dynamic_cast<IMemFile*>(it->second.fd) == nullptr)
 	{
-		if ((os_get_file_type(it->second.fd->getFilename()) & EFileType_File) == 0)
+		if ((cachefs->getFileType(cachefs->filePath(it->second.fd)) & EFileType_File) == 0)
 		{
-			Server->Log("File does not exist (was deleted) in ::release: " + it->second.fd->getFilename(), LL_ERROR);
+			Server->Log("File does not exist (was deleted) in ::release: " + cachefs->filePath(it->second.fd), LL_ERROR);
 			abort();
 		}
 #ifndef NDEBUG
@@ -8430,11 +8430,12 @@ std::list<SSubmissionItem>::iterator TransactionalKvStore::submission_queue_inse
 
 void TransactionalKvStore::submission_queue_rm(std::list<SSubmissionItem>::iterator it)
 {
-	submission_queue.erase(it);
-	if (it == submission_queue_memfile_first)
+	if (submission_queue_memfile_first != submission_queue.end() &&
+		it == submission_queue_memfile_first)
 	{
 		submission_queue_memfile_first = submission_queue.end();
 	}
+	submission_queue.erase(it);
 }
 
 int64 TransactionalKvStore::cache_free_space()

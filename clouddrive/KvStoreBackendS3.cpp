@@ -152,7 +152,8 @@ class offset_buf : public std::streambuf
 {
 public:
 	offset_buf(int64 offset, IFile* f, KvStoreBackendS3* backend, bool own_f)
-		: offset(offset), pos(offset), f(f), has_error(false), backend(backend), own_f(own_f)
+		: offset(offset), pos(offset), f(f), has_error(false), backend(backend), own_f(own_f),
+		size(f->Size())
 	{
 		buffer.resize(32768);
 		char *end = buffer.data() + buffer.size();
@@ -181,7 +182,8 @@ protected:
 		}
 
 		bool has_read_error=false;
-		_u32 read = f->Read(pos, buffer.data(), buffer.size(), &has_read_error);
+		size_t toread = (std::min)(static_cast<size_t>(size - pos), buffer.size());
+		_u32 read = f->Read(pos, buffer.data(), toread, &has_read_error);
 		
 		if(has_read_error)
 		{
@@ -249,6 +251,7 @@ private:
 	
 	int64 offset;
 	int64 pos;
+	int64 size;
 	IFile* f;
 	bool own_f;
 	KvStoreBackendS3* backend;
@@ -372,7 +375,12 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		Server->Log("Retrieving object "+ key, LL_INFO);
 	}
 
-	getObjectRequest.SetResponseStreamFactory([&tmpfile_path](){ return Aws::New<Aws::FStream>( ALLOCATION_TAG, tmpfile_path, std::ios_base::out | std::ios_base::in | std::ios_base::trunc ); });
+	getObjectRequest.SetResponseStreamFactory([&tmpfile_path](){ return Aws::New<Aws::FStream>( ALLOCATION_TAG, tmpfile_path, 
+		std::ios_base::out | std::ios_base::in | std::ios_base::trunc
+#ifdef _WIN32
+		, _SH_DENYNO
+#endif
+		); });
 
 	int64 starttime = Server->getTimeMS();
 	auto s3_client = getS3Client(idx0);
@@ -464,7 +472,12 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 			Server->Log("Locally stored md5sum of object "+key+" empty. Using online md5sum from now ("+etag+")", LL_WARNING);
 		}
 
-		tmpfile = Server->openFile(tmpfile_path, MODE_RW);
+		int mode = MODE_RW;
+#ifdef _WIN32
+		mode = MODE_RW_DEVICE;
+#endif // _WIN32
+
+		tmpfile = Server->openFile(tmpfile_path, mode);
 		if(tmpfile==NULL)
 		{
 			std::string syserr = os_last_error_str();
