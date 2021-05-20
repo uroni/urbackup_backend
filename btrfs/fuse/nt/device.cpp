@@ -91,6 +91,8 @@ namespace
 			Irp->IoStatus.Status = STATUS_SUCCESS;
 			Irp->IoStatus.Information = rc;
 
+			Irp->CompletionRoutine(DeviceObject, Irp, Irp->CompletionRoutineContext);
+
 			return STATUS_SUCCESS;
 		}
 
@@ -108,6 +110,8 @@ namespace
 
 			Irp->IoStatus.Status = STATUS_SUCCESS;
 			Irp->IoStatus.Information = rc;
+
+			Irp->CompletionRoutine(DeviceObject, Irp, Irp->CompletionRoutineContext);
 
 			return STATUS_SUCCESS;
 		}
