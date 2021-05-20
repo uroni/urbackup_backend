@@ -1381,6 +1381,8 @@ CloudFile::CloudFile(const std::string& cache_path,
 		throw std::runtime_error("Cannot open cloudfile_size");
 	}
 
+
+#ifdef HAS_ASYNC
 	zero_file.reset(Server->openTemporaryFile());
 	if (zero_file.get() == nullptr)
 	{
@@ -1390,6 +1392,7 @@ CloudFile::CloudFile(const std::string& cache_path,
 	{
 		throw std::runtime_error("Error resizing /dev/zero. " + os_last_error_str());
 	}
+#endif //HAS_ASYNC
 
 	/*zero_file.reset(Server->openFile("/dev/zero", MODE_RW));
 	if (zero_file.get() == nullptr)
@@ -1397,6 +1400,7 @@ CloudFile::CloudFile(const std::string& cache_path,
 		throw std::runtime_error("Error opening /dev/zero. " + os_last_error_str());
 	}*/
 
+#ifdef HAS_ASYNC
 	null_file.reset(Server->openFile("/dev/null", MODE_RW));
 	if (null_file.get()==nullptr)
 	{
@@ -1414,6 +1418,7 @@ CloudFile::CloudFile(const std::string& cache_path,
 	{
 		throw std::runtime_error("Error creating update_fs_chunks_eventfd. " + os_last_error_str());
 	}
+#endif
 
 	int64 read_cloudfile_size;
 	bool write_new = false;
@@ -4530,7 +4535,7 @@ fuse_io_context::io_uring_task<_i64> CloudFile::SizeAsync(void)
 
 _i64 CloudFile::RealSize(void)
 {
-	return Size();
+	return getUsedBytes();
 }
 
 bool CloudFile::PunchHole( _i64 spos, _i64 size )
