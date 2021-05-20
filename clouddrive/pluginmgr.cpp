@@ -19,11 +19,12 @@
 #include "pluginmgr.h"
 #include "ClouddriveFactory.h"
 
-IPlugin* ImagePluginMgr::createPluginInstance(str_map& params)
+IPlugin* ClouddrivePluginMgr::createPluginInstance(str_map& params)
 {
-	return nullptr;
+	return new ClouddriveFactory;
 }
 
-void ImagePluginMgr::destroyPluginInstance(IPlugin* plugin)
+void ClouddrivePluginMgr::destroyPluginInstance(IPlugin* plugin)
 {
+	delete reinterpret_cast<ClouddriveFactory*>(plugin);
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "../Interface/PluginMgr.h"
 
-class ImagePluginMgr : public IPluginMgr
+class ClouddrivePluginMgr : public IPluginMgr
 {
 public:
 	virtual IPlugin* createPluginInstance(str_map& params) override;
