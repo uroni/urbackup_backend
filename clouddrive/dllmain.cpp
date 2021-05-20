@@ -27,6 +27,15 @@
 #endif
 
 #include "../Interface/Server.h"
+#include "pluginmgr.h"
+#include "../stringtools.h"
+#include "../urbackupcommon/WalCheckpointThread.h"
+
+#include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/FormattedLogSystem.h>
+#include <aws/core/Aws.h>
+
+#include "../urbackupcommon/os_functions.h"
 
 #ifndef STATIC_PLUGIN
 IServer* Server;
@@ -39,6 +48,8 @@ extern IServer* Server;
 #define UnloadActions UnloadActions_clouddrive
 #endif
 
+void init_compress_encrypt_factory();
+
 bool is_automount_finished()
 {
     return false;
@@ -46,19 +57,55 @@ bool is_automount_finished()
 
 std::string getCdInterfacePath()
 {
-    return "_UNDEF_";
+    os_create_dir("urbackup/cd");
+    return "urbackup/cd";
 }
+
+class ServerLogging : public Aws::Utils::Logging::FormattedLogSystem
+{
+public:
+    ServerLogging(Aws::Utils::Logging::LogLevel loglevel)
+        : Aws::Utils::Logging::FormattedLogSystem(loglevel)
+    {}
+
+    void Flush() {}
+protected:
+    virtual void ProcessFormattedStatement(Aws::String&& statement)
+    {
+        Server->Log(trim(statement.c_str()), LL_INFO);
+    }
+};
+
+ClouddrivePluginMgr* clouddrivepluginmgr;
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
     Server = pServer;
+
+    WalCheckpointThread::init_mutex();
+
+    clouddrivepluginmgr = new ClouddrivePluginMgr;
+
+    init_compress_encrypt_factory();
+
+    Aws::SDKOptions options;
+    Aws::InitAPI(options);
+
+    Aws::Utils::Logging::InitializeAWSLogging(Aws::MakeShared<ServerLogging>("KvStoreBackend", Aws::Utils::Logging::LogLevel::Warn));
+
+    Server->RegisterPluginThreadsafeModel(clouddrivepluginmgr, "clouddriveplugin");
+
+#ifndef STATIC_PLUGIN
+    Server->Log("Loaded -btrfsplugin- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)
 {
     if (Server->getServerParameter("leak_check") == "true")
     {
-        //destroy globals
+        Aws::SDKOptions options;
+        Aws::ShutdownAPI(options);
     }
 }
 
