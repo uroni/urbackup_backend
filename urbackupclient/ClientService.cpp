@@ -3415,9 +3415,6 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, int facet_
 	std::string& dest, std::string& dest_params, str_map& dest_secret_params,
 	std::string& computername)
 {
-	if (facet_id == 0)
-		return false;
-
 	std::string settings_fn = "urbackup/data_"+convert(facet_id )+"/settings.cfg";
 	if (!clientsubname.empty())
 	{
@@ -3459,24 +3456,22 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, int facet_
 		computername = IndexThread::getFileSrv()->getServerName();
 	}
 
-	std::unique_ptr<ISettingsReader> curr_secrets(Server->createFileSettingsReader(secrets_fn));
-
-	if (!curr_secrets)
+	if (!FileExists(secrets_fn))
 	{
 		std::string encryption_key;
 		encryption_key.resize(16);
 		Server->secureRandomFill(&encryption_key[0], encryption_key.size());
 
 		write_file_only_admin("encryption_key=" + bytesToHex(encryption_key) + "\n", secrets_fn);
-
-		curr_secrets.reset(Server->createFileSettingsReader(secrets_fn));
 	}
+
+	std::unique_ptr<ISettingsReader> curr_secrets(Server->createFileSettingsReader(secrets_fn));
 
 	if (curr_secrets)
 	{
-		for (auto key : curr_settings->getKeys())
+		for (auto key : curr_secrets->getKeys())
 		{
-			dest_secret_params[key] = curr_settings->getValue(key);
+			dest_secret_params[key] = curr_secrets->getValue(key);
 		}
 	}
 
