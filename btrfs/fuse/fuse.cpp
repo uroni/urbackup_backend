@@ -865,8 +865,8 @@ BtrfsFuse::SpaceInfo BtrfsFuse::get_space_info()
     btrfs_usage* bcs = reinterpret_cast<btrfs_usage*>(bcs_buf.data());
     irp->AssociatedIRP = irp.get();
     irp->UserBuffer = bcs;
-    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = bcs_buf.size();
-    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = 0;
+    irp->StackLocation.Parameters.FileSystemControl.InputBufferLength = 0;
+    irp->StackLocation.Parameters.FileSystemControl.OutputBufferLength = bcs_buf.size();
     irp->StackLocation.FileObject = fs_data->root_file;
     irp->AssociatedIrp.SystemBuffer = bcs;
 
@@ -881,7 +881,7 @@ BtrfsFuse::SpaceInfo BtrfsFuse::get_space_info()
 
     size_t coffset = 0;
     while (bcs != nullptr &&
-        coffset<irp->IoStatus.Information)
+        coffset + sizeof(btrfs_usage )<= bcs_buf.size())
     {
         bcs = reinterpret_cast<btrfs_usage*>(bcs_buf.data() + coffset);
 
@@ -996,6 +996,10 @@ bool BtrfsFuse::set_xattr(const std::string& path, const std::string& tkey, cons
 
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)
 {
+    if (mode == MODE_WRITE || mode== MODE_RW_CREATE)
+    {
+        this->deleteFile(path);
+    }
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     std::unique_ptr<SECURITY_CONTEXT> security_context = std::make_unique<SECURITY_CONTEXT>();
     std::unique_ptr<ACCESS_STATE> access_state = std::make_unique< ACCESS_STATE>();
@@ -1004,7 +1008,7 @@ std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, in
     irp->StackLocation.MinorFunction = IRP_MN_NORMAL;
     irp->StackLocation.Flags = SL_CASE_SENSITIVE;
     irp->StackLocation.Parameters.Create.Options = FILE_OPEN << 24;
-    if (mode == MODE_WRITE)
+    if (mode == MODE_WRITE || mode==MODE_RW_CREATE)
     {
         irp->StackLocation.Parameters.Create.Options |= (FILE_CREATE << 24);
     }
