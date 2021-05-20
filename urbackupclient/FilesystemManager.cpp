@@ -29,22 +29,8 @@ namespace
 		return ret;
 	}
 
-	bool copy_vhdx(const std::string& src_fn, const std::string& dst_fn, int64 dst_size)
+	bool copy_vhdx(IVHDFile* src_vhdx, IFile* dst)
 	{
-		std::unique_ptr<IVHDFile> src_vhdx(image_fak->createVHDFile(src_fn, true, 0,
-			2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX));
-
-		if (!src_vhdx ||
-			!src_vhdx->isOpen())
-			return false;
-
-		std::unique_ptr<IVHDFile> dst_vhdx(image_fak->createVHDFile(dst_fn + ".new", false, dst_size,
-			2 * 1024 * 1024, true, IFSImageFactory::ImageFormat_VHDX));
-
-		if (!dst_vhdx ||
-			!dst_vhdx->isOpen())
-			return false;
-
 		std::vector<char> buf(512 * 1024);
 		unsigned int blocksize = src_vhdx->getBlocksize();
 		for (int64 pos = 0; pos < src_vhdx->Size();)
@@ -53,7 +39,6 @@ namespace
 			{
 				pos += blocksize;
 				src_vhdx->Seek(pos);
-				dst_vhdx->Seek(pos);
 				continue;
 			}
 
@@ -65,17 +50,68 @@ namespace
 				if (!src_vhdx->Read(buf.data(), toread, read))
 					return false;
 
-				if (!dst_vhdx->Write(buf.data(), static_cast<_u32>(read)) != read)
+				if (dst->Write(pos, buf.data(), static_cast<_u32>(read)) != read)
 					return false;
 
 				pos += read;
 			}
 		}
 
-		src_vhdx.reset();
+		return true;
+	}
+
+	bool copy_vhdx(const std::string& src_fn, IFile* dst)
+	{
+		std::unique_ptr<IVHDFile> src_vhdx(image_fak->createVHDFile(src_fn, true, 0,
+			2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX));
+
+		if (!src_vhdx ||
+			!src_vhdx->isOpen())
+			return false;
+
+		return copy_vhdx(src_vhdx.get(), dst);
+	}
+
+	bool copy_vhdx(const std::string& src_fn, const std::string& dst_fn, int64 dst_size)
+	{
+		std::unique_ptr<IVHDFile> dst_vhdx(image_fak->createVHDFile(dst_fn + ".new", false, dst_size,
+			2 * 1024 * 1024, true, IFSImageFactory::ImageFormat_VHDX));
+
+		if (!dst_vhdx ||
+			!dst_vhdx->isOpen())
+			return false;
+
+		if (!copy_vhdx(src_fn, dst_vhdx.get()))
+			return false;
+
 		dst_vhdx.reset();
 
 		return os_rename_file(dst_fn + ".new", dst_fn);
+	}
+
+	bool create_cache_init_vhdx()
+	{
+		if (!FileExists("urbackup/cache_init.vhdx"))
+		{
+			std::unique_ptr<IFile> f(Server->openFile("urbackup/cache_init.vhdx.new", MODE_WRITE));
+			if (!f)
+				return false;
+
+			std::string data = get_cache_init_vhdx();
+
+			if (f->Write(data) != data.size())
+				return false;
+
+			if (!f->Sync())
+				return false;
+
+			f.reset();
+
+			if (!os_rename_file("urbackup/cache_init.vhdx.new", "urbackup/cache_init.vhdx"))
+				return false;
+		}
+
+		return true;
 	}
 }
 
@@ -90,7 +126,7 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 	if (filesystems.find(url) != filesystems.end())
 		return true;
 
-	IFile* img;
+	IFile* img = nullptr;
 
 	if (next(url, 0, "file://"))
 	{
@@ -111,12 +147,14 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 			img = vhdfile;
 		}
 	}
-	else if (next(url, 0, "s3://"))
+	else if (next(url, 0, "s3://") ||
+		next(url, 0, "ss3://") )
 	{
+		bool ssl = next(url, 0, "ss3://");
 		IClouddriveFactory::CloudSettings settings;
 		settings.endpoint = IClouddriveFactory::CloudEndpoint::S3;
 
-		std::string authorization = getbetween("s3://", "@", url);
+		std::string authorization = getbetween(ssl ? "ss3://" : "s3://", "@", url);
 		std::string server = getafter("@", url);
 		if (server.empty())
 		{
@@ -126,7 +164,7 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 		settings.s3_settings.access_key = getuntil(":", authorization);
 		settings.s3_settings.secret_access_key = getafter(":", authorization);
 
-		settings.s3_settings.endpoint = getuntil("/", server);
+		settings.s3_settings.endpoint = (ssl ? "https://" : "http://" ) + getuntil("/", server);
 		settings.s3_settings.bucket_name = getafter("/", server);
 
 		auto encryption_key_it = secret_params.find("encryption_key");
@@ -147,34 +185,17 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 				settings.s3_settings.secret_access_key = secret_access_key_it->second;
 		}
 
-		std::string nurl = "s3://" + server;
+		std::string nurl = (ssl ? "ss3://" : "s3://") + server;
 		std::string cacheid = Server->GenerateHexMD5(nurl);
 		std::string cache_img_path = "urbackup/" + cacheid + ".vhdx";
 		settings.s3_settings.cache_db_path = "urbackup/" + cacheid + ".db";
 
 		if (!FileExists(cache_img_path))
 		{
-			if (!FileExists("urbackup/cache_init.vhdx"))
-			{
-				std::unique_ptr<IFile> f(Server->openFile("urbackup/cache_init.vhdx.new", MODE_WRITE));
-				if (!f)
-					return false;
+			if (!create_cache_init_vhdx())
+				return false;
 
-				std::string data = get_cache_init_vhdx();
-
-				if (f->Write(data) != data.size())
-					return false;
-
-				if (!f->Sync())
-					return false;
-
-				f.reset();
-
-				if (!os_rename_file("urbackup/cache_init.vhdx.new", "urbackup/cache_init.vhdx"))
-					return false;
-			}
-
-			if (!copy_vhdx("urbackup/cache_init.vhdx", cache_img_path, 1LL*1024*1024*1024))
+			if (!copy_vhdx("urbackup/cache_init.vhdx", cache_img_path, 1LL * 1024 * 1024 * 1024))
 			{
 				Server->Log("Could not copy urbackup/cache_init.vhdx to " + cache_img_path + ". " + os_last_error_str(),
 					LL_ERROR);
@@ -205,6 +226,15 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 
 	if (img == nullptr)
 		return false;
+
+	if (img->RealSize() == 0)
+	{
+		if (!create_cache_init_vhdx())
+			return false;
+
+		if (!copy_vhdx("urbackup/cache_init.vhdx", img))
+			return false;
+	}
 
 	IBackupFileSystem* fs = btrfs_fak->openBtrfsImage(img);
 	if (fs == nullptr)
