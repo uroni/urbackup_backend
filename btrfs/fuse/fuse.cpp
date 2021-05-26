@@ -29,6 +29,7 @@ extern "C"
 #include <ntifs.h>
 #include <device.h>
 #include "src/btrfsioctl.h"
+#include "get_chunks.h"
 
     NTSTATUS __stdcall DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath);
     extern PDEVICE_OBJECT master_devobj;
@@ -992,6 +993,50 @@ bool BtrfsFuse::set_xattr(const std::string& path, const std::string& tkey, cons
     }
 
     return true;
+}
+
+std::string BtrfsFuse::errno_to_str(int rc)
+{
+    switch (rc)
+    {
+    case STATUS_SUCCESS:
+        return "Success";
+    case STATUS_INVALID_PARAMETER:
+        return "Invalid parameter";
+    case STATUS_ACCESS_DENIED:
+        return "Access denied";
+    case STATUS_NOT_FOUND:
+        return "Not found";
+    case STATUS_CRC_ERROR:
+        return "Crc error";
+    case STATUS_UNEXPECTED_IO_ERROR:
+        return "Unexpected IO error";
+    case STATUS_END_OF_FILE:
+        return "End of file";
+    case STATUS_OBJECT_NAME_COLLISION:
+        return "Object name collision";
+    case STATUS_FILE_IS_A_DIRECTORY:
+        return "File is a directory";
+    case STATUS_NOT_A_DIRECTORY:
+        return "Not a directory";
+    case STATUS_DIRECTORY_NOT_EMPTY:
+        return "Directory not empty";
+    case STATUS_NO_MORE_ENTRIES:
+        return "No more entries";
+    case STATUS_NOT_A_REPARSE_POINT:
+        return "Not a reparse point";
+    default:
+        return "Untrans - " + std::to_string(rc);
+    }
+}
+
+std::pair<BtrfsFuse::SBtrfsChunk*, size_t> BtrfsFuse::get_chunks()
+{
+    size_t nchunks;
+    SBtrfsChunk* chunks = reinterpret_cast<SBtrfsChunk*>(
+        get_btrfs_chunks(reinterpret_cast<device_extension*>(fs_data->fs->DeviceExtension), &nchunks));
+
+    return std::make_pair(chunks, nchunks);
 }
 
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)

@@ -208,6 +208,7 @@
     <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_ldm.c" />
     <ClCompile Include="..\..\external\btrfs\src\zstd\zstd_opt.c" />
     <ClCompile Include="fuse.cpp" />
+    <ClCompile Include="get_chunks.c" />
     <ClCompile Include="nt\device.cpp" />
     <ClCompile Include="nt\resource.cpp" />
     <ClCompile Include="nt\windef.cpp" />
@@ -215,6 +216,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fuse.h" />
+    <ClInclude Include="get_chunks.h" />
     <ClInclude Include="nt\ata.h" />
     <ClInclude Include="nt\device.h" />
     <ClInclude Include="nt\guiddef.h" />

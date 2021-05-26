@@ -34,6 +34,10 @@ public:
 	virtual std::string getName() override;
 	virtual bool forceAllocMetadata() override;
 	virtual bool balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated) override;
+	virtual IFile* getBackingFile() override;
+	virtual std::string lastError() override;
+	virtual std::vector<SChunk> getChunks() override;
 private:
 	BtrfsFuse btrfs;
+	IFile* backing_file;	
 };

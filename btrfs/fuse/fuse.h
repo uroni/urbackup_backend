@@ -72,6 +72,17 @@ public:
 
 	bool set_xattr(const std::string& path, const std::string& tkey, const std::string& tval);
 
+	std::string errno_to_str(int rc);
+
+	struct SBtrfsChunk
+	{
+		uint64_t offset;
+		uint64_t len;
+		int metadata;
+	};
+
+	std::pair<SBtrfsChunk*, size_t> get_chunks();
+
 private:
 	std::unique_ptr<_FILE_OBJECT> openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile);
 	bool closeFile(std::unique_ptr<_FILE_OBJECT> file_object);

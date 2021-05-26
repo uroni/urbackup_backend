@@ -207,6 +207,9 @@
     <ClCompile Include="..\..\external\btrfs\src\zlib\zutil.c">
       <Filter>btrfs\zlib</Filter>
     </ClCompile>
+    <ClCompile Include="get_chunks.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nt\ntifs.h">
@@ -274,6 +277,9 @@
     </ClInclude>
     <ClInclude Include="nt\Windows.h">
       <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="get_chunks.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

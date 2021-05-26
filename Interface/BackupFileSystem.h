@@ -78,4 +78,28 @@ public:
 	virtual bool setXAttr(const std::string& path, const std::string& key, const std::string& val) = 0;
 
 	virtual std::string getName() = 0;
+
+	virtual IFile* getBackingFile() = 0;
+
+	virtual std::string lastError() = 0;
+
+	struct SChunk
+	{
+		SChunk()
+			: offset(-1), len(0), metadata(false) {}
+
+		SChunk(int64 offset, int64 len, bool metadata)
+			: offset(offset), len(len), metadata(metadata) {}
+
+		bool operator<(const SChunk& other) const
+		{
+			return offset < other.offset;
+		}
+
+		int64 offset;
+		int64 len;
+		int metadata;
+	};
+
+	virtual std::vector<SChunk> getChunks() = 0;
 };

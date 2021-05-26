@@ -19,7 +19,7 @@
 #include "BackupFileSystem.h"
 
 BtrfsBackupFileSystem::BtrfsBackupFileSystem(IFile* img)
-	: btrfs(img)
+	: btrfs(img), backing_file(img)
 {
 	btrfs.resize_max();
 }
@@ -134,7 +134,7 @@ bool BtrfsBackupFileSystem::copyFile(const std::string& src, const std::string& 
 	std::vector<char> buf(512 * 1024);
 	size_t rc;
 	bool has_error = false;
-	while ((rc = (_u32)fsrc->Read(buf.data(), buf.size(), &has_error)) > 0)
+	while ((rc = (_u32)fsrc->Read(buf.data(), static_cast<_u32>(buf.size()), &has_error)) > 0)
 	{
 		if (has_error)
 		{
@@ -233,7 +233,7 @@ bool BtrfsBackupFileSystem::setXAttr(const std::string& path, const std::string&
 
 std::string BtrfsBackupFileSystem::getName()
 {
-	return std::string();
+	return "btrfs:"+backing_file->getFilename();
 }
 
 bool BtrfsBackupFileSystem::forceAllocMetadata()
@@ -244,4 +244,31 @@ bool BtrfsBackupFileSystem::forceAllocMetadata()
 bool BtrfsBackupFileSystem::balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated)
 {
 	return false;
+}
+
+IFile* BtrfsBackupFileSystem::getBackingFile()
+{
+	return backing_file;
+}
+
+std::string BtrfsBackupFileSystem::lastError()
+{
+	return btrfs.errno_to_str(errno)
+		+ " (" + std::to_string(errno) + ")";
+}
+
+std::vector<BtrfsBackupFileSystem::SChunk> BtrfsBackupFileSystem::getChunks()
+{
+	auto res = btrfs.get_chunks();
+
+	std::vector<BtrfsBackupFileSystem::SChunk> ret;
+	if(res.first==nullptr)
+		return ret;
+
+	ret.assign(reinterpret_cast<SChunk*>(res.first),
+		reinterpret_cast<SChunk*>(res.first) + res.second);
+
+	free(res.first);
+
+	return ret;
 }
