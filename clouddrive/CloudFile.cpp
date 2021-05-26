@@ -2104,28 +2104,33 @@ namespace
 		}
 	};
 
-#ifdef HAS_MOUNT_SERVICE
 	class UpdateFsChunksThread : public IThread
 	{
 		std::string path;
 		int notify_eventfd;
+		IBackupFileSystem* fs;
 	public:
 		struct SOutput
 		{
-			std::vector<btrfs_chunks::SChunk> chunks;
+			std::vector<IBackupFileSystem::SChunk> chunks;
 			std::atomic<bool> done;
 		};
 
-		UpdateFsChunksThread(std::shared_ptr<SOutput> output,
+		UpdateFsChunksThread(IBackupFileSystem* fs,
+			std::shared_ptr<SOutput> output,
 			std::string path, int notify_eventfd) :
-			output(output), path(path),
+			fs(fs), output(output), path(path),
 			notify_eventfd(notify_eventfd) {}
 
 		void operator()() {
+#ifdef HAS_MOUNT_SERVICE
 			if (!btrfs_get_chunks_via_service(path, output->chunks))
 			{
 				output->chunks = btrfs_chunks::get_chunks(path);
 			}
+#else
+			output->chunks = fs->getChunks();
+#endif
 			output->done.store(true, std::memory_order_release);
 			if (notify_eventfd != -1)
 			{
@@ -2137,7 +2142,6 @@ namespace
 	private:
 		std::shared_ptr<SOutput> output;
 	};
-#endif //HAS_MOUNT_SERVICE
 }
 
 void CloudFile::preload_items(const std::string & fn, size_t n_threads, int tag, bool disable_memfiles, bool load_only)
@@ -2447,14 +2451,18 @@ int64 CloudFile::min_block_size()
 	return small_block_size;
 }
 
-void CloudFile::set_is_mounted(const std::string & p_mount_path)
+void CloudFile::set_is_mounted(const std::string & p_mount_path, IBackupFileSystem* fs)
 {
+	std::vector<IBackupFileSystem::SChunk> new_fs_chunks;
 #ifdef HAS_MOUNT_SERVICE
-	std::vector<btrfs_chunks::SChunk> new_fs_chunks;
 	if (!btrfs_get_chunks_via_service(p_mount_path, new_fs_chunks))
 	{
 		new_fs_chunks = btrfs_chunks::get_chunks(p_mount_path);
 	}
+#else
+	topfs = fs;
+	new_fs_chunks = fs->getChunks();
+#endif
 
 	for (auto& it : new_fs_chunks)
 	{
@@ -2466,15 +2474,19 @@ void CloudFile::set_is_mounted(const std::string & p_mount_path)
 		fs_chunks = new_fs_chunks;
 		mount_path = p_mount_path;
 	}
-#endif
+
 
 	kv_store.set_num_second_chances_callback(this);
 }
 
 void CloudFile::update_fs_chunks(bool update_time, IScopedWriteLock& lock)
 {
-#ifdef HAS_MOUNT_SERVICE
 	lock.relock(chunks_mutex.get());
+
+#ifndef HAS_MOUNT_SERVICE
+	if (topfs == nullptr)
+		return;
+#endif
 
 	if (updating_fs_chunks)
 	{
@@ -2487,7 +2499,8 @@ void CloudFile::update_fs_chunks(bool update_time, IScopedWriteLock& lock)
 	lock.relock(nullptr);
 
 	std::shared_ptr<UpdateFsChunksThread::SOutput> new_fs_chunks = std::make_shared<UpdateFsChunksThread::SOutput>();
-	THREADPOOL_TICKET ticket = Server->getThreadPool()->execute(new UpdateFsChunksThread(new_fs_chunks, local_mount_path, -1), "updt fs chunks");
+	THREADPOOL_TICKET ticket = Server->getThreadPool()->execute(
+		new UpdateFsChunksThread(topfs, new_fs_chunks, local_mount_path, -1), "updt fs chunks");
 
 	if (Server->getThreadPool()->waitFor(ticket, 1000))
 	{
@@ -2514,7 +2527,6 @@ void CloudFile::update_fs_chunks(bool update_time, IScopedWriteLock& lock)
 		last_fs_chunks_update = Server->getTimeMS()-10*60*1000;
 
 	updating_fs_chunks = false;
-#endif //HAS_MOUNT_SERVICE
 }
 
 #ifdef HAS_ASYNC
@@ -3439,7 +3451,6 @@ IOnlineKvStore * CloudFile::create_migration_endpoint(const std::string& conf_fn
 
 bool CloudFile::is_metadata(int64 offset, const std::string& key)
 {
-#ifdef HAS_MOUNT_SERVICE
 	assert(fuse_io_context::is_sync_thread());
 
 	if (offset <= 5*1024*1024)
@@ -3466,7 +3477,7 @@ bool CloudFile::is_metadata(int64 offset, const std::string& key)
 			lock.relock(chunks_mutex.get());
 		}
 
-		auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), btrfs_chunks::SChunk(offset, 0, false));
+		auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), IBackupFileSystem::SChunk(offset, 0, false));
 
 		if (it != fs_chunks.begin())
 			--it;
@@ -3507,7 +3518,7 @@ bool CloudFile::is_metadata(int64 offset, const std::string& key)
 
 	update_fs_chunks(false, lock);
 
-	auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), btrfs_chunks::SChunk(offset, 0, false));
+	auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), IBackupFileSystem::SChunk(offset, 0, false));
 
 	if (it != fs_chunks.begin())
 		--it;
@@ -3525,7 +3536,6 @@ bool CloudFile::is_metadata(int64 offset, const std::string& key)
 		update_missing_chunks_thread->notify();
 	}
 	Server->Log("Cannot find chunk for offset " + convert(offset) + " in fs chunk data. Fs chunk data size " + convert(fs_chunks.size()), LL_INFO);
-#endif //HAS_MOUNT_SERVICE
 	return false;
 }
 
@@ -3650,7 +3660,6 @@ bool CloudFile::is_metadata(const std::string & key)
 
 bool CloudFile::update_missing_fs_chunks()
 {
-#ifdef HAS_MOUNT_SERVICE
 	IScopedWriteLock lock(nullptr);
 	update_fs_chunks(false, lock);
 
@@ -3675,7 +3684,7 @@ bool CloudFile::update_missing_fs_chunks()
 			first = false;
 		}
 
-		auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), btrfs_chunks::SChunk(offset, 0, false));
+		auto it = std::upper_bound(fs_chunks.begin(), fs_chunks.end(), IBackupFileSystem::SChunk(offset, 0, false));
 
 		if (it != fs_chunks.begin())
 			--it;
@@ -3710,9 +3719,6 @@ bool CloudFile::update_missing_fs_chunks()
 	}
 
 	return new_missing_chunk_keys.empty();
-#else //HAS_MOUNT_SERVICE
-	return false;
-#endif
 }
 
 bool CloudFile::migrate(std::vector<char>& buf, int64 offset, int64 len)
@@ -6613,12 +6619,10 @@ std::string CloudFile::meminfo()
 		ret += "  in_write_retrieval: " + convert(in_write_retrieval.size()) + " * " + PrettyPrintBytes(sizeof(std::string)) + "\n";
 	}
 
-#ifdef HAS_MOUNT_SERVICE
 	{
 		IScopedReadLock lock(chunks_mutex.get());
-		ret += "  fs_chunks: " + convert(fs_chunks.capacity()) + " * " + PrettyPrintBytes(sizeof(btrfs_chunks::SChunk)) + " = "+PrettyPrintBytes(sizeof(btrfs_chunks::SChunk)*fs_chunks.capacity())+"\n";
-	}		
-#endif
+		ret += "  fs_chunks: " + convert(fs_chunks.capacity()) + " * " + PrettyPrintBytes(sizeof(IBackupFileSystem::SChunk)) + " = "+PrettyPrintBytes(sizeof(IBackupFileSystem::SChunk)*fs_chunks.capacity())+"\n";
+	}
 
 	ret += kv_store.meminfo();
 

@@ -271,7 +271,7 @@ public:
 
 	int64 min_block_size();
 
-	void set_is_mounted(const std::string& p_mount_path);
+	void set_is_mounted(const std::string& p_mount_path, IBackupFileSystem* fs);
 
 	bool is_metadata(int64 offset, const std::string& key);
 
@@ -489,9 +489,7 @@ private:
 	std::string mount_path;
 
 	std::unique_ptr<ISharedMutex> chunks_mutex;
-#ifdef HAS_MOUNT_SERVICE
-	std::vector<btrfs_chunks::SChunk> fs_chunks;
-#endif
+	std::vector<IBackupFileSystem::SChunk> fs_chunks;
 	int64 last_fs_chunks_update;
 	std::vector<std::pair<std::string, int64> > missing_chunk_keys;
 	bool updating_fs_chunks;
@@ -784,4 +782,6 @@ private:
 	bool fallocate_block_file = true;
 
 	IBackupFileSystem* cachefs;
+
+	IBackupFileSystem* topfs = nullptr;
 };
