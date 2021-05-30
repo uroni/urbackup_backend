@@ -6,6 +6,7 @@
 #include "../fsimageplugin/IVHDFile.h"
 #include "../clouddrive/IClouddriveFactory.h"
 #include "../common/miniz.h"
+#include "../urbackupcommon/backup_url_parser.h"
 
 extern IBtrfsFactory* btrfs_fak;
 extern IFSImageFactory* image_fak;
@@ -128,6 +129,8 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 
 	IFile* img = nullptr;
 
+	IClouddriveFactory::CloudSettings settings;
+
 	if (next(url, 0, "file://"))
 	{
 		std::string fpath = url.substr(7);
@@ -147,75 +150,34 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 			img = vhdfile;
 		}
 	}
-	else if (next(url, 0, "s3://") ||
-		next(url, 0, "ss3://") )
+	else if (parse_backup_url(url, url_params, secret_params, settings) )
 	{
-		bool ssl = next(url, 0, "ss3://");
-		IClouddriveFactory::CloudSettings settings;
-		settings.endpoint = IClouddriveFactory::CloudEndpoint::S3;
-
-		std::string authorization = getbetween(ssl ? "ss3://" : "s3://", "@", url);
-		std::string server = getafter("@", url);
-		if (server.empty())
-		{
-			server = url.substr(5);
-		}
-
-		settings.s3_settings.access_key = getuntil(":", authorization);
-		settings.s3_settings.secret_access_key = getafter(":", authorization);
-
-		settings.s3_settings.endpoint = (ssl ? "https://" : "http://" ) + getuntil("/", server);
-		settings.s3_settings.bucket_name = getafter("/", server);
-
-		auto encryption_key_it = secret_params.find("encryption_key");
-		if (encryption_key_it != secret_params.end())
-			settings.encryption_key = encryption_key_it->second;
-
-		if (settings.s3_settings.access_key.empty())
-		{
-			auto access_key_it = secret_params.find("access_key");
-			if (access_key_it != secret_params.end())
-				settings.s3_settings.access_key = access_key_it->second;
-		}
-
-		if (settings.s3_settings.secret_access_key.empty())
-		{
-			auto secret_access_key_it = secret_params.find("secret_access_key");
-			if (secret_access_key_it != secret_params.end())
-				settings.s3_settings.secret_access_key = secret_access_key_it->second;
-		}
-
-		std::string nurl = (ssl ? "ss3://" : "s3://") + server;
-		std::string cacheid = Server->GenerateHexMD5(nurl);
-		std::string cache_img_path = "urbackup/" + cacheid + ".vhdx";
-		settings.s3_settings.cache_db_path = "urbackup/" + cacheid + ".db";
-
-		if (!FileExists(cache_img_path))
+		if (!FileExists(settings.cache_img_path))
 		{
 			if (!create_cache_init_vhdx())
 				return false;
 
-			if (!copy_vhdx("urbackup/cache_init.vhdx", cache_img_path, 1LL * 1024 * 1024 * 1024))
+			if (!copy_vhdx("urbackup/cache_init.vhdx", settings.cache_img_path, 1LL * 1024 * 1024 * 1024))
 			{
-				Server->Log("Could not copy urbackup/cache_init.vhdx to " + cache_img_path + ". " + os_last_error_str(),
+				Server->Log("Could not copy urbackup/cache_init.vhdx to " + settings.cache_img_path + ". " + os_last_error_str(),
 					LL_ERROR);
 				return false;
 			}
 		}
 
-		IVHDFile* cachevhdx = image_fak->createVHDFile(cache_img_path, false, 0,
+		IVHDFile* cachevhdx = image_fak->createVHDFile(settings.cache_img_path, false, 0,
 			2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX);
 
 		if (cachevhdx == nullptr || !cachevhdx->isOpen())
 		{
-			Server->Log("Could not open cache vhdx at " + cache_img_path, LL_ERROR);
+			Server->Log("Could not open cache vhdx at " + settings.cache_img_path, LL_ERROR);
 			return false;
 		}
 
 		IBackupFileSystem* cachefs = btrfs_fak->openBtrfsImage(cachevhdx);
 		if (cachefs == nullptr)
 		{
-			Server->Log("Could not open cache btrfs at " + cache_img_path, LL_ERROR);
+			Server->Log("Could not open cache btrfs at " + settings.cache_img_path, LL_ERROR);
 			return false;
 		}
 		
@@ -239,6 +201,8 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 	IBackupFileSystem* fs = btrfs_fak->openBtrfsImage(img);
 	if (fs == nullptr)
 		return false;
+
+	clouddrive_fak->setTopFs(img, fs);
 
 	filesystems[url] = fs;
 

@@ -1208,6 +1208,15 @@ namespace
 		return result;
 	}
 
+	bool removeFileBackup(IDatabase* db, int clientid, int backupid)
+	{
+		ServerSettings settings(db);
+		bool result = false;
+		Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(settings.getSettings()->backupfolder, 
+			clientid, backupid, false, &result)));
+		return result;
+	}
+
 	std::string deleteOrMarkImageBackup(IDatabase* db, int backupid, int clientid, bool mark_only)
 	{
 		ServerCleanupDao cleanup_dao(db);
@@ -1300,6 +1309,70 @@ namespace
 		return std::string();
 	}
 
+	std::string deleteOrMarkFileBackup(IDatabase* db, int backupid, int clientid, bool mark_only)
+	{
+		ServerCleanupDao cleanup_dao(db);
+		if (cleanup_dao.getFileBackupClientId(backupid).value != clientid)
+		{
+			return "wrong_clientid";
+		}
+
+		if (ServerCleanupThread::findArchivedFileBackupRef(&cleanup_dao, backupid))
+		{
+			return "archived_ref";
+		}
+
+		if (!mark_only)
+		{
+
+			if (ServerCleanupThread::findIncompleteFileBackupRef(&cleanup_dao, backupid))
+			{
+				return "incomplete_ref";
+			}
+		}
+
+		IQuery* q = db->Prepare("UPDATE backup_images SET delete_pending=1 WHERE id=? AND clientid=?");
+
+		std::vector<ServerCleanupDao::SFileBackupRef> refs = cleanup_dao.getFileBackupRefs(backupid);
+		for (size_t i = 0; i < refs.size(); ++i)
+		{
+			std::vector<ServerCleanupDao::SFileBackupRef> new_refs = cleanup_dao.getFileBackupRefs(refs[i].id);
+			refs.insert(refs.end(), new_refs.begin(), new_refs.end());
+
+			if (mark_only)
+			{
+				q->Bind(refs[i].id);
+				q->Bind(clientid);
+				q->Write();
+				q->Reset();
+			}
+			else
+			{
+				if (!removeFileBackup(db, clientid, refs[i].id))
+				{
+					return "remove_image_failed";
+				}
+			}
+		}
+
+		if (mark_only)
+		{
+			q->Bind(backupid);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+		else
+		{
+			if (!removeFileBackup(db, clientid, backupid))
+			{
+				return "remove_image_failed";
+			}
+		}
+
+		return std::string();
+	}
+
 	void unmarkImageBackup(IDatabase* db, int backupid, int clientid)
 	{
 		ServerCleanupDao cleanup_dao(db);
@@ -1332,6 +1405,34 @@ namespace
 		for (size_t i = 0; i < refs.size(); ++i)
 		{
 			std::vector<ServerCleanupDao::SImageRef> new_refs = cleanup_dao.getImageRefsReverse(refs[i].id);
+			refs.insert(refs.end(), new_refs.begin(), new_refs.end());
+
+			q->Bind(refs[i].id);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+
+		q->Bind(backupid);
+		q->Bind(clientid);
+		q->Write();
+		q->Reset();
+	}
+
+	void unmarkFileBackup(IDatabase* db, int backupid, int clientid)
+	{
+		ServerCleanupDao cleanup_dao(db);
+		if (cleanup_dao.getFileBackupClientId(backupid).value != clientid)
+		{
+			return;
+		}
+
+		IQuery* q = db->Prepare("UPDATE backups SET delete_pending=0 WHERE id=? AND clientid=?");
+
+		std::vector<ServerCleanupDao::SFileBackupRef> refs = cleanup_dao.getFileBackupRefsReverse(backupid);
+		for (size_t i = 0; i < refs.size(); ++i)
+		{
+			std::vector<ServerCleanupDao::SFileBackupRef> new_refs = cleanup_dao.getFileBackupRefsReverse(refs[i].id);
 			refs.insert(refs.end(), new_refs.begin(), new_refs.end());
 
 			q->Bind(refs[i].id);
@@ -1580,11 +1681,11 @@ ACTION_IMPL(backups)
 						}
 						else
 						{
-							IQuery *q = db->Prepare("UPDATE backups SET delete_pending=1 WHERE id=? AND clientid=?");
-							q->Bind(delete_id);
-							q->Bind(t_clientid);
-							q->Write();
-							q->Reset();
+							std::string err = deleteOrMarkFileBackup(db, delete_id, t_clientid, true);
+							if (!err.empty())
+							{
+								ret.set("delete_err", err);
+							}
 						}
 					}
 					if (CURRP.find("stop_delete") != CURRP.end())
@@ -1597,10 +1698,7 @@ ACTION_IMPL(backups)
 						}
 						else
 						{
-							IQuery *q = db->Prepare("UPDATE backups SET delete_pending=0 WHERE id=? AND clientid=?");
-							q->Bind(stop_delete_id);
-							q->Bind(t_clientid);
-							q->Write();
+							unmarkFileBackup(db, stop_delete_id, t_clientid);
 						}
 					}
 					if (CURRP.find("delete_now") != CURRP.end())
@@ -1617,12 +1715,10 @@ ACTION_IMPL(backups)
 						}
 						else
 						{
-							ServerSettings settings(db);
-							bool result = false;
-							Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(settings.getSettings()->backupfolder, t_clientid, delete_now_id, false, &result)));
-							if (!result)
+							std::string err = deleteOrMarkFileBackup(db, delete_now_id, t_clientid, false);
+							if (!err.empty())
 							{
-								ret.set("delete_now_err", "delete_file_backup_failed");
+								ret.set("delete_now_err", err);
 							}
 						}
 					}

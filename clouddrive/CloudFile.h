@@ -215,6 +215,12 @@ public:
 
 	void enable_background_worker(bool b);
 
+	bool start_background_worker();
+
+	void set_background_worker_result_fn(const std::string& result_fn);
+
+	bool has_background_task();
+
 	void preload(int64 start, int64 stop, size_t n_threads);
 
 #ifdef HAS_ASYNC
@@ -314,6 +320,8 @@ public:
 	std::string get_raid_freespace_stats();
 
 	virtual bool hasKey(const std::string& key) override;
+
+	int64 get_transid();
 private:
 
 	void preload_items(const std::string& fn, size_t n_threads, int tag, bool disable_memfiles, bool load_only);

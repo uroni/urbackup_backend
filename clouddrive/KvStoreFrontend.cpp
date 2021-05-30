@@ -25,6 +25,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../common/data.h"
 #include "../stringtools.h"
+#include "ObjectCollector.h"
 #include "../Interface/ThreadPool.h"
 #include "../Interface/Pipe.h"
 #include "../Interface/DatabaseCursor.h"
@@ -1771,6 +1772,11 @@ std::string KvStoreFrontend::encodeKey( const std::string& key, int64 transid )
 
 std::string KvStoreFrontend::encodeKey(int64 cd_id, const std::string& key, int64 transid)
 {
+	return encodeKeyStatic(cd_id, key, transid);
+}
+
+std::string KvStoreFrontend::encodeKeyStatic(int64 cd_id, const std::string& key, int64 transid)
+{
 	if (cd_id == 0)
 		return encodeKey(key, transid);
 
@@ -1864,6 +1870,33 @@ bool KvStoreFrontend::is_background_worker_running()
 void KvStoreFrontend::enable_background_worker(bool b)
 {
 	background_worker.set_pause(!b);
+}
+
+void KvStoreFrontend::set_background_worker_result_fn(const std::string& result_fn)
+{
+	background_worker.set_result_fn(result_fn);
+}
+
+bool KvStoreFrontend::start_background_worker()
+{
+	if (!has_background_task())
+		return false;
+
+	size_t nwork = background_worker.get_nwork();
+
+	enable_background_worker(true);
+
+	while (nwork == background_worker.get_nwork())
+		Server->wait(100);
+
+	return true;
+}
+
+bool KvStoreFrontend::has_background_task()
+{
+	IDatabase* db = getDatabase();
+	KvStoreDao dao(db);
+	return dao.getTask(Server->getTimeSeconds() - task_delay).exists;
 }
 
 void KvStoreFrontend::start_scrub_sync_test1()
@@ -2685,422 +2718,6 @@ void KvStoreFrontend::BackgroundWorker::quit()
 	do_quit=true;
 }
 
-namespace
-{
-	class CompressedWData : public CWData
-	{
-		Bytef* compressed_data;
-		uLongf compressed_data_size;
-		size_t decompressed_length;
-		std::unique_ptr<CRData> rdata;
-	public:
-		CompressedWData()
-			: decompressed_length(std::string::npos), compressed_data(nullptr), compressed_data_size(0) {}
-
-		~CompressedWData() {
-			free(compressed_data);
-		}
-
-		bool compress()
-		{
-			if (decompressed_length != std::string::npos)
-			{
-				assert(false);
-				return false;
-			}
-
-			uLongf orig_compressed_data_size = compressBound(static_cast<uLong>(data.size()));
-			compressed_data = static_cast<Bytef*>(malloc(orig_compressed_data_size));
-			if (compressed_data == nullptr)
-				throw std::bad_alloc();
-			
-			compressed_data_size = orig_compressed_data_size;
-
-			if (::compress(compressed_data, &compressed_data_size,
-				reinterpret_cast<const Bytef*>(data.data()), static_cast<uLong>(data.size())) != Z_OK)
-			{
-				assert(false);
-				return false;
-			}
-
-			if (orig_compressed_data_size != compressed_data_size)
-			{
-				compressed_data = static_cast<Bytef*>(realloc(compressed_data, compressed_data_size));
-			}
-
-			decompressed_length = data.size();
-			std::string().swap(data);
-			rdata.reset();
-			return true;
-		}
-
-		bool decompress()
-		{
-			if (decompressed_length == std::string::npos)
-			{
-				assert(false);
-				return false;
-			}
-
-			data.resize(decompressed_length);
-
-			uLongf new_decompressed_length = static_cast<uLongf>(decompressed_length);
-			int rc;
-			if ((rc=::uncompress(reinterpret_cast<Bytef*>(&data[0]), &new_decompressed_length,
-				compressed_data, compressed_data_size)) != Z_OK)
-			{
-				assert(false);
-				return false;
-			}
-
-			free(compressed_data);
-			compressed_data = nullptr;
-			compressed_data_size = 0;
-			decompressed_length = std::string::npos;
-
-			return true;
-		}
-
-		CRData* getRData()
-		{
-			if (rdata.get() != nullptr)
-			{
-				return rdata.get();
-			}
-
-			if (decompressed_length != std::string::npos)
-			{
-				if (!decompress())
-				{
-					assert(false);
-					return nullptr;
-				}
-			}
-
-			assert(decompressed_length == std::string::npos);
-			rdata.reset(new CRData(data.data(), data.size()));
-			return rdata.get();
-		}
-
-		int64 compressed_capacity()
-		{
-			if (decompressed_length == std::string::npos)
-			{
-				assert(compressed_data_size==0);
-				return capacity();
-			}
-			else
-			{
-				assert(data.capacity()<100);
-				return compressed_data_size;
-			}
-		}
-
-		int64 uncompressed_capacity()
-		{
-			if (decompressed_length == std::string::npos)
-				return capacity();
-			else
-				return decompressed_length;
-		}
-
-		void clear_all()
-		{
-			if (decompressed_length == std::string::npos)
-			{
-				std::string().swap(data);
-			}
-			else
-			{
-				free(compressed_data);
-				compressed_data = nullptr;
-				compressed_data_size = 0;
-				decompressed_length = std::string::npos;
-			}
-		}
-	};
-
-	class ObjectCollector
-	{
-		std::vector<std::unique_ptr<CompressedWData> > backend_keys;
-		std::vector<std::unique_ptr<CompressedWData> > backend_locinfo;
-		CWData* curr_backend_keys;
-		size_t n_backend_keys;
-		CWData* curr_backend_locinfo;
-		size_t stride_size;
-		KvStoreFrontend* frontend;
-		int64 global_transid;
-		bool with_mirrored;
-		int64 cd_id;
-	public:
-		int64 memsize;
-		int64 uncompressed_memsize;
-		std::vector<IKvStoreBackend::key_next_fun_t> key_next_funs;
-		std::vector<IKvStoreBackend::locinfo_next_fun_t> locinfo_next_funs;
-
-		ObjectCollector(size_t stride_size, KvStoreFrontend* frontend,
-			int64 global_transid, bool with_mirrored, int64 cd_id)
-			: curr_backend_keys(nullptr),
-			curr_backend_locinfo(nullptr),
-			n_backend_keys(0),
-			stride_size(stride_size),
-			frontend(frontend),
-			global_transid(global_transid),
-			memsize(0),
-			uncompressed_memsize(0),
-			with_mirrored(with_mirrored),
-			cd_id(cd_id)
-		{
-
-		}
-
-		void add(int64 transid, const std::string& tkey, const std::string& locinfo, bool mirrored)
-		{
-			if (n_backend_keys >= stride_size
-				|| curr_backend_keys == nullptr)
-			{
-				if (!backend_keys.empty())
-				{
-					backend_keys[backend_keys.size() - 1]->compress();
-				}
-				if (!backend_locinfo.empty())
-				{
-					backend_locinfo[backend_locinfo.size() - 1]->compress();
-				}
-				backend_keys.push_back(std::unique_ptr<CompressedWData>(new CompressedWData));
-				curr_backend_keys = backend_keys[backend_keys.size() - 1].get();
-				backend_locinfo.push_back(std::unique_ptr<CompressedWData>(new CompressedWData));
-				curr_backend_locinfo = backend_locinfo[backend_locinfo.size() - 1].get();
-				n_backend_keys = 0;
-
-				size_t transid_size = 0;
-				if (transid >= 1>>24)
-					transid_size = 4;
-				else if (transid >= 1>>16)
-					transid_size = 3;
-				else if (transid >= 1>>8)
-					transid_size = 2;
-				else if (transid > 0)
-					transid_size = 1;
-
-				if (with_mirrored)
-					transid_size += 1;
-
-				curr_backend_keys->reserve(stride_size*(tkey.size()+1+ transid_size));
-				curr_backend_locinfo->reserve(stride_size*(backend_locinfo.size() + 1));
-			}
-
-			++n_backend_keys;
-
-			if (transid >= 0)
-			{
-				curr_backend_keys->addVarInt(transid);
-			}
-			curr_backend_keys->addString2(tkey);
-			curr_backend_locinfo->addString2(locinfo);
-			if (with_mirrored)
-			{
-				curr_backend_keys->addChar(mirrored ? 1 : 0);
-			}
-		}
-
-		void add(int64 transid, const std::string& tkey, bool mirrored)
-		{
-			if (n_backend_keys >= stride_size
-				|| curr_backend_keys == nullptr)
-			{
-				if (!backend_keys.empty())
-				{
-					backend_keys[backend_keys.size() - 1]->compress();
-				}
-				backend_keys.push_back(std::unique_ptr<CompressedWData>(new CompressedWData));
-				curr_backend_keys = backend_keys[backend_keys.size() - 1].get();
-				backend_locinfo.push_back(nullptr);
-				n_backend_keys = 0;
-
-				size_t transid_size = 0;
-				if (transid >= 1 >> 24)
-					transid_size = 4;
-				else if (transid >= 1 >> 16)
-					transid_size = 3;
-				else if (transid >= 1 >> 8)
-					transid_size = 2;
-				else if (transid > 0)
-					transid_size = 1;
-
-				if (with_mirrored)
-					transid_size += 1;
-
-				curr_backend_keys->reserve(stride_size*(tkey.size() + 1+ transid_size));
-			}
-
-			++n_backend_keys;
-
-			if (transid >= 0)
-			{
-				curr_backend_keys->addVarInt(transid);
-			}
-			curr_backend_keys->addString2(tkey);
-
-			if (with_mirrored)
-			{
-				curr_backend_keys->addChar(mirrored ? 1 : 0);
-			}
-		}
-
-		void finalize()
-		{
-			for (size_t i = 0; i < backend_keys.size(); ++i)
-			{
-				memsize += backend_keys[i]->compressed_capacity();
-				uncompressed_memsize += backend_keys[i]->uncompressed_capacity();
-				if (backend_locinfo[i] != nullptr)
-				{
-					memsize += backend_locinfo[i]->compressed_capacity();
-					uncompressed_memsize += backend_locinfo[i]->uncompressed_capacity();
-				}
-			}
-
-			int64 l_cd_id = cd_id;
-			for (size_t i = 0; i < backend_keys.size(); ++i)
-			{
-				CompressedWData* rdata = backend_keys[i].get();
-				KvStoreFrontend* cfrontend = frontend;
-				bool c_with_mirrored = with_mirrored;
-				if (global_transid >= 0)
-				{
-					int64 transid = global_transid;
-					key_next_funs.push_back(
-						[cfrontend, c_with_mirrored, transid, rdata, l_cd_id](IKvStoreBackend::key_next_action_t action, std::string* key) {
-
-						if (action == IKvStoreBackend::key_next_action_t::clear) {
-							rdata->clear_all();
-							assert(key==nullptr);
-							return true;
-						}
-
-						if(action == IKvStoreBackend::key_next_action_t::reset) {
-							rdata->getRData()->setStreampos(0);
-							assert(key==nullptr);
-							return true;
-						}
-
-						assert(action == IKvStoreBackend::key_next_action_t::next);
-
-						std::string tkey;
-						if (!rdata->getRData()->getStr2(&tkey))
-						{
-							return false;
-						}
-
-						cfrontend->incr_total_del_ops();
-						*key = cfrontend->prefixKey(cfrontend->encodeKey(l_cd_id, tkey, transid));
-
-						if (c_with_mirrored)
-						{
-							char mirrored;
-							if (!rdata->getRData()->getChar(&mirrored))
-							{
-								return false;
-							}
-
-							if (mirrored == 1)
-							{
-								cfrontend->log_del_mirror(*key);
-							}
-						}
-						return true;
-					});
-				}
-				else
-				{
-					key_next_funs.push_back(
-						[cfrontend, c_with_mirrored, rdata, l_cd_id](IKvStoreBackend::key_next_action_t action, std::string* key) {
-
-						if (action == IKvStoreBackend::key_next_action_t::clear) {
-							rdata->clear_all();
-							assert(key == nullptr);
-							return true;
-						}
-
-						if (action == IKvStoreBackend::key_next_action_t::reset) {
-							rdata->getRData()->setStreampos(0);
-							assert(key == nullptr);
-							return true;
-						}
-
-						assert(action == IKvStoreBackend::key_next_action_t::next);
-
-						int64 transid;
-						if (!rdata->getRData()->getVarInt(&transid))
-						{
-							return false;
-						}
-
-						std::string tkey;
-						if (!rdata->getRData()->getStr2(&tkey))
-						{
-							rdata->compress();
-							return false;
-						}
-
-						cfrontend->incr_total_del_ops();
-						*key = cfrontend->prefixKey(cfrontend->encodeKey(l_cd_id, tkey, transid));
-
-						if (c_with_mirrored)
-						{
-							char mirrored;
-							if (!rdata->getRData()->getChar(&mirrored))
-							{
-								return false;
-							}
-
-							if (mirrored == 1)
-							{
-								cfrontend->log_del_mirror(*key);
-							}
-						}
-						return true;
-					});
-				}
-
-				if (backend_locinfo[i] != nullptr)
-				{
-					CompressedWData* rdata = backend_locinfo[i].get();
-					locinfo_next_funs.push_back(
-						[rdata](IKvStoreBackend::key_next_action_t action, std::string* locinfo) {
-
-						if (action == IKvStoreBackend::key_next_action_t::clear) {
-							assert(locinfo==nullptr);
-							rdata->clear_all();
-							return true;
-						}
-						
-						if (action == IKvStoreBackend::key_next_action_t::reset) {
-							assert(locinfo == nullptr);
-							rdata->getRData()->setStreampos(0);
-							return true;
-						}
-
-						assert(action == IKvStoreBackend::key_next_action_t::next);
-
-						if (!rdata->getRData()->getStr2(locinfo))
-						{
-							return false;
-						}
-
-						return true;
-					});
-				}
-				else
-				{
-					locinfo_next_funs.push_back(nullptr);
-				}
-			}
-		}
-	};
-}
-
 std::string KvStoreFrontend::BackgroundWorker::meminfo()
 {
 	std::string ret;
@@ -3335,8 +2952,15 @@ bool KvStoreFrontend::BackgroundWorker::removeOldObjects(KvStoreDao& dao,
 
 		Server->Log("Object collector size " + PrettyPrintBytes(object_collector_size) + " uncompressed " + PrettyPrintBytes(object_collector_size_uncompressed), LL_INFO);
 
-		ret = frontend->backend_del_parallel(object_collector.key_next_funs,
-			object_collector.locinfo_next_funs, true);
+		if (result_fn.empty())
+		{
+			ret = frontend->backend_del_parallel(object_collector.key_next_funs,
+				object_collector.locinfo_next_funs, true);
+		}
+		else
+		{
+			ret = object_collector.persist(TASK_REMOVE_OLD_OBJECTS, p_trans_ids, result_fn);
+		}
 
 		Server->Log("Backend del done res=" + convert(ret), LL_INFO);
 	}
@@ -3345,7 +2969,8 @@ bool KvStoreFrontend::BackgroundWorker::removeOldObjects(KvStoreDao& dao,
 	{
 		if(has_object)
 		{
-			if (!backend->sync(false, true))
+			if (result_fn.empty() 
+				&& !backend->sync(false, true))
 			{
 				object_collector_size = 0;
 				object_collector_size_uncompressed = 0;
@@ -3589,7 +3214,15 @@ bool KvStoreFrontend::BackgroundWorker::removeTransaction(KvStoreDao& dao, int64
 
 		Server->Log("Object collector size " + PrettyPrintBytes(object_collector_size) + " uncompressed " + PrettyPrintBytes(object_collector_size_uncompressed), LL_INFO);
 
-		ret = frontend->backend_del_parallel(object_collector.key_next_funs, object_collector.locinfo_next_funs, true);
+		if (result_fn.empty())
+		{
+			ret = frontend->backend_del_parallel(object_collector.key_next_funs, object_collector.locinfo_next_funs, true);
+		}
+		else
+		{
+			ret = object_collector.persist(TASK_REMOVE_TRANSACTION,
+				properties.completed, properties.active, { trans_id }, result_fn);
+		}
 	}
 
 	if(ret)

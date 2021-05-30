@@ -1247,6 +1247,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_GET_CLIENTNAME(cmd); continue;
 			}
+			else if (next(cmd, 0, "FINISH LBACKUP?"))
+			{
+				CMD_FINISH_LBACKUP(cmd);
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
@@ -3413,7 +3417,7 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 
 bool ClientConnector::getBackupDest(const std::string& clientsubname, int facet_id,
 	std::string& dest, std::string& dest_params, str_map& dest_secret_params,
-	std::string& computername)
+	std::string& computername, size_t& max_backups, std::string& perm_uid)
 {
 	std::string settings_fn = "urbackup/data_"+convert(facet_id )+"/settings.cfg";
 	if (!clientsubname.empty())
@@ -3451,6 +3455,17 @@ bool ClientConnector::getBackupDest(const std::string& clientsubname, int facet_
 		computername = val;
 	}
 
+	if (curr_settings->getValue("min_file_incr", &val)
+		|| curr_settings->getValue("min_file_incr_def", &val))
+	{
+		max_backups = watoi(val);
+	}
+
+	if (curr_settings->getValue("perm_uid", &val))
+	{
+		perm_uid = watoi(val);
+	}
+	
 	if (computername.empty())
 	{
 		computername = IndexThread::getFileSrv()->getServerName();
@@ -3833,6 +3848,41 @@ void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, 
 		0, identity);
 }
 
+void ClientConnector::updateLocalBackupPc(int64 local_process_id, int backupid, int64 status_id, int nv, const std::string& identity,
+	const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms)
+{
+	IScopedLock lock(backup_mutex);
+
+	{
+		IScopedLock lock_process(process_mutex);
+
+		SRunningProcess* proc = getRunningProcess(local_process_id);
+
+		if (proc != NULL)
+		{
+			if (nv > 100)
+			{
+				removeRunningProcess(local_process_id, total_bytes == done_bytes);
+			}
+			else
+			{
+				proc->pcdone = nv;
+				proc->last_pingtime = Server->getTimeMS();
+				proc->details = fn;
+				proc->detail_pc = fn_pc;
+				proc->total_bytes = total_bytes;
+				proc->done_bytes = done_bytes;
+				proc->speed_bpms = speed_bpms;
+			}
+		}
+	}
+
+	sendMessageToChannel("BACKUP PERCENT pc=" + convert(nv) + "&status_id=" + convert(status_id) + "&id=" + convert(backupid)
+		+ "&details=" + EscapeParamString(fn) + "&detail_pc=" + convert(fn_pc) + "&total_bytes=" + convert(total_bytes) + "&done_bytes=" + convert(done_bytes)
+		+ "&speed_bpms=" + convert(speed_bpms),
+		0, identity);
+}
+
 bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity )
 {
 	return sendMessageToChannel("RESTORE DONE status_id="+convert(status_id)+
@@ -4125,7 +4175,8 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 
 bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_params,
 	const str_map& dest_secret_params, const std::string& computername,
-	bool full, const std::string& server_identity, str_map& params)
+	bool full, size_t max_backups, const std::string& server_identity, str_map& params,
+	const std::string& perm_uid)
 {
 	if (dest_url.empty())
 		return false;
@@ -4134,6 +4185,7 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 		return false;
 
 	dest_url = greplace("$CLIENTNAME$", computername, dest_url);
+	dest_url = greplace("$CLIENTUID$", perm_uid, dest_url);
 
 	int64 server_id = watoi64(params["status_id"]);
 
@@ -4152,8 +4204,6 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	{
 		clientsubname = conv_filename(it_clientsubname->second);
 	}
-
-	dest_url = greplace("$CLIENTSUBNAME$", clientsubname, dest_url);
 
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
 
@@ -4195,7 +4245,7 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	{
 		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system, group,
 			clientsubname, new_proc.id, log_id, server_id, new_proc.id,
-			server_token, server_identity, facet_id);
+			server_token, server_identity, facet_id, max_backups);
 
 		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
 	}
@@ -4203,7 +4253,7 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 	{
 		LocalIncrFileBackup* fb = new LocalIncrFileBackup(file_system,
 			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
-			server_identity, facet_id);
+			server_identity, facet_id, max_backups);
 
 		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup incr");
 	}

@@ -21,8 +21,13 @@
 #include "../Interface/Condition.h"
 #include "../stringtools.h"
 #include "ClientService.h"
+#include "../common/data.h"
+#include "../clouddrive/IClouddriveFactory.h"
+#include "client.h"
 #include <memory>
 #include <set>
+
+extern IClouddriveFactory* clouddrive_fak;
 
 namespace
 {
@@ -50,7 +55,7 @@ namespace
 				IScopedLock lock(update_mutex.get());
 				while (!stopped)
 				{
-					ClientConnector::updateRestorePc(local_process_id, backup_id, status_id, curr_pc, server_token, std::string(), -1, total_bytes, done_bytes, speed_bpms);
+					ClientConnector::updateLocalBackupPc(local_process_id, backup_id, status_id, curr_pc, server_token, std::string(), -1, total_bytes, done_bytes, speed_bpms);
 
 					if (Server->getTimeMS() - last_fn_time > 61000)
 					{
@@ -59,7 +64,7 @@ namespace
 					update_cond->wait(&lock, 60000);
 				}
 			}
-			ClientConnector::updateRestorePc(local_process_id, backup_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
+			ClientConnector::updateLocalBackupPc(local_process_id, backup_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
 			delete this;
 		}
 
@@ -119,12 +124,13 @@ namespace
 }
 
 LocalBackup::LocalBackup(IBackupFileSystem* p_backup_files, int64 local_process_id, int64 server_log_id, 
-	int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id)
+	int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id,
+	size_t max_backups)
 	: backup_updater_thread(NULL),
 	server_log_id(server_log_id), server_status_id(server_status_id),
 	backupid(backupid), server_token(std::move(server_token)), server_identity(std::move(server_identity)),
 	local_process_id(local_process_id), facet_id(facet_id),
-	orig_backup_files(p_backup_files)
+	orig_backup_files(p_backup_files), max_backups(max_backups)
 {
 	
 }
@@ -134,10 +140,41 @@ void LocalBackup::onStartBackup()
 	backup_updater_thread = new BackupUpdaterThread(local_process_id, backupid, server_status_id, server_token);
 }
 
-void LocalBackup::onBackupFinish()
+void LocalBackup::onBackupFinish(bool image)
 {
 	backup_updater_thread->stop();
 	backup_updater_thread = NULL;
+
+	log("Cleaning up old backups...", LL_INFO);
+
+	if (!cleanupOldBackups(image))
+	{
+		log("Cleaning up old backups failed", LL_ERROR);
+		backup_success = false;
+	}
+
+	log("Calculating background delete data...", LL_INFO);
+
+	if (backup_success &&
+		clouddrive_fak != nullptr &&
+		clouddrive_fak->isCloudFile(orig_backup_files->getBackingFile()))
+	{
+		int64 transid = clouddrive_fak->getCfTransid(orig_backup_files->getBackingFile());
+		if (!clouddrive_fak->runBackgroundWorker(orig_backup_files->getBackingFile(),
+			"urbackup/bg_del_" + conv_filename(server_token) + "_" + std::to_string(transid) + "_"+std::to_string(backupid)+".dat"))
+		{
+			log("Error generating background delete data", LL_ERROR);
+			backup_success = false;
+		}
+	}
+
+	if (!ClientConnector::localBackupDone(server_log_id, server_status_id, backupid,
+		backup_success, server_identity))
+	{
+		log("Error notifying server about local backup success", LL_WARNING);
+	}
+
+	log("Backup finished.", LL_INFO);
 }
 
 void LocalBackup::updateProgressPc(int new_pc, int64 p_total_bytes, int64 p_done_bytes)
@@ -207,6 +244,114 @@ bool LocalBackup::createSymlink(const std::string& name, size_t depth, const std
 	}
 
 	//return backup_files->createSymlink(target, os_file_prefix(name), NULL, &isdir);
+	return false;
+}
+
+bool LocalBackup::sync()
+{
+	if (!backup_files->sync(std::string()))
+	{
+		log("Error syncing backup file system -2", LL_ERROR);
+		return false;
+	}
+
+	IFile* backing_file = backup_files->getBackingFile();
+
+	if (backing_file != nullptr &&
+		!backing_file->Sync())
+	{
+		log("Error syncing backup file system backing file", LL_ERROR);
+		return false;
+	}
+
+	return true;
+}
+
+void LocalBackup::log(const std::string& msg, int loglevel)
+{
+	ClientConnector::tochannelLog(server_log_id, msg, loglevel, server_identity);
+}
+
+void LocalBackup::logIndexResult()
+{
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_GetLog);
+	unsigned int result_id = IndexThread::getResultId();
+	data.addUInt(result_id);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+	std::string ret;
+	IndexThread::getResult(result_id, 8000, ret);
+	IndexThread::removeResult(result_id);
+
+
+	if (!ret.empty())
+	{
+		std::vector<std::string> lines;
+		Tokenize(ret, lines, "\n");
+
+		for (std::string& line : lines)
+		{
+			size_t f1 = line.find("-");
+			size_t f2 = line.find("-", f1 + 1);
+			int ll = watoi(line.substr(0, f1));
+			int64 times = watoi64(line.substr(f1+1, f2 - f1));
+
+			log(line.substr(f2 + 1), ll);
+		}
+	}
+}
+
+bool LocalBackup::cleanupOldBackups(bool image)
+{
+	std::vector<SFile> backups = orig_backup_files->listFiles(std::string());
+
+	size_t n_backups = 0;
+	for (SFile& backup: backups)
+	{
+		if (backup.isdir && backup.name.find("Image") == std::string::npos && !image)
+			++n_backups;
+		else if (backup.isdir && backup.name.find("Image") != std::string::npos && image)
+			++n_backups;
+	}
+
+	bool did_cleanup = false;
+
+	while (n_backups > max_backups)
+	{
+		for (SFile& backup : backups)
+		{
+			bool del_backup = false;
+			if (backup.isdir && backup.name.find("Image") == std::string::npos && !image)
+				del_backup = true;
+			else if (backup.isdir && backup.name.find("Image") != std::string::npos && image)
+				del_backup = true;
+
+			if (del_backup)
+			{
+				if (!orig_backup_files->deleteSubvol(backup.name))
+				{
+					log("Error deleting subvol \"" + backup.name + "\". " + orig_backup_files->lastError(), LL_ERROR);
+					return false;
+				}
+				did_cleanup = true;
+				--n_backups;
+				break;
+			}
+		}
+
+		backups = orig_backup_files->listFiles(std::string());
+	}
+
+	if (did_cleanup)
+	{
+		if (!orig_backup_files->sync(std::string()))
+		{
+			log("Error syncing fs after cleanup. " + orig_backup_files->lastError(), LL_ERROR);
+			return false;
+		}
+	}
+
 	return false;
 }
 
@@ -308,7 +453,17 @@ bool LocalBackup::PrefixedBackupFiles::setXAttr(const std::string& path, const s
 
 std::string LocalBackup::PrefixedBackupFiles::getName()
 {
-	return prefix + backup_files->getName();
+	return prefix + "|" + backup_files->getName();
+}
+
+IFile* LocalBackup::PrefixedBackupFiles::getBackingFile()
+{
+	return nullptr;
+}
+
+std::string LocalBackup::PrefixedBackupFiles::lastError()
+{
+	return std::string();
 }
 
 bool LocalBackup::PrefixedBackupFiles::copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str)

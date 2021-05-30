@@ -225,6 +225,9 @@
     <ClCompile Include="DocanyMount.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\backup_url_parser.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -408,6 +411,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="DocanyMount.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\backup_url_parser.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

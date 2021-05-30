@@ -58,6 +58,7 @@
 #include <stack>
 #include "FullFileBackup.h"
 #include "IncrFileBackup.h"
+#include "LocalBackup.h"
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
 #include "ThrottleUpdater.h"
@@ -294,7 +295,7 @@ void ClientMain::operator ()(void)
 	std::auto_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
 	backup_dao = local_server_backup_dao.get();
 
-	clientid=getClientID(db, clientname, server_settings.get(), NULL);
+	clientid=getClientID(db, clientname, server_settings.get(), NULL, nullptr, nullptr, &perm_uid);
 
 	if(clientid==-1)
 	{
@@ -496,7 +497,8 @@ void ClientMain::operator ()(void)
 
 			for (size_t i = 0; i<backup_queue.size();)
 			{
-				if (backup_queue[i].ticket != ILLEGAL_THREADPOOL_TICKET)
+				if (backup_queue[i].ticket != ILLEGAL_THREADPOOL_TICKET
+					|| backup_queue[i].running)
 				{
 					if (!backup_queue[i].backup->isFileBackup())
 					{
@@ -548,7 +550,7 @@ void ClientMain::operator ()(void)
 						}
 					}
 
-					if ( Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0)
+					if ( isBackupFinished(backup_queue[i])
 						 && (dynamic_cast<ImageBackup*>(backup_queue[i].backup)==NULL 
 							 || dynamic_cast<ImageBackup*>(backup_queue[i].backup)->getDependencies(false).empty()) )
 					{
@@ -801,10 +803,20 @@ void ClientMain::operator ()(void)
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
 				SRunningBackup backup;
-				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
-					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
-				backup.group=filebackup_group_offset + c_group_default;
+				if (server_settings->getSettings()->backup_dest_url.empty())
+				{					
+					backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
+						do_full_backup_now ? LogAction_AlwaysLog : LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
+						tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
+				}
+				else
+				{
+					backup.backup = new LocalBackup(this, clientid, clientname, clientsubname,
+						do_full_backup_now ? LogAction_AlwaysLog : LogAction_LogIfNotDisabled, true, false,
+						server_token, convert(c_group_default), !do_full_backup_now, filebackup_group_offset + c_group_default);
+				}
+
+				backup.group = filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
 
@@ -817,9 +829,18 @@ void ClientMain::operator ()(void)
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
 				SRunningBackup backup;
-				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
-					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
+				if (server_settings->getSettings()->backup_dest_url.empty())
+				{
+					backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
+						do_incr_backup_now ? LogAction_AlwaysLog : LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
+						tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
+				}
+				else
+				{
+					backup.backup = new LocalBackup(this, clientid, clientname, clientsubname,
+						do_incr_backup_now ? LogAction_AlwaysLog : LogAction_LogIfNotDisabled, true, true,
+						server_token, convert(c_group_default), !do_incr_backup_now, filebackup_group_offset + c_group_default);
+				}
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -925,6 +946,7 @@ void ClientMain::operator ()(void)
 						bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
 
 						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
+							&& !backup_queue[i].running
 							&& (!backup_queue[i].backup->isScheduled() || inBackupWindow(backup_queue[i].backup) )
 							&& (!filebackup || !isRunningFileBackup(backup_queue[i].group, false) ) )
 						{
@@ -942,7 +964,19 @@ void ClientMain::operator ()(void)
 									tname = "ibackup main";
 								}
 
-								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, tname);
+								LocalBackup* localBackup = dynamic_cast<LocalBackup*>(backup_queue[i].backup);
+								if (localBackup == nullptr)
+								{
+									backup_queue[i].ticket = Server->getThreadPool()->execute(backup_queue[i].backup, tname);
+								}
+								else
+								{
+									backup_queue[i].running = true;
+
+									if (!localBackup->doBackup())
+									{
+									}
+								}
 								started_job=true;
 							}
 							else
@@ -1082,6 +1116,16 @@ void ClientMain::operator ()(void)
 				running_restores.push_back(SRunningRestore(restore_identity, log_id, status_id, restore_id));
 			}
 		}
+		else if (next(msg, 0, "BACKUP DONE?"))
+		{
+			str_map params;
+			ParseParamStrHttp(msg.substr(12), &params);
+
+			int64 status_id = watoi64(params["status_id"]);
+			updateLocalBackup(status_id, watoi(params["success"]) > 0,
+				watoi(params["should_backoff"]) > 0);
+			removeLocalBackup(status_id);
+		}
 
 		if(!msg.empty())
 		{
@@ -1135,17 +1179,24 @@ void ClientMain::prepareSQL(void)
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
-int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey, int* client_group)
+int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, 
+	bool *new_client, std::string* authkey, int* client_group, std::string* perm_uid = NULL)
 {
 	if(new_client!=NULL)
 		*new_client=false;
 
-	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
+	IQuery *q=db->Prepare("SELECT id, perm_uid FROM clients WHERE name=?",false);
 	if(q==NULL) return -1;
 
 	q->Bind(clientname);
 	db_results res=q->Read();
 	db->destroyQuery(q);
+
+	if (!res.empty() &&
+		perm_uid!=nullptr)
+	{
+		*perm_uid = res[0]["perm_uid"];
+	}
 
 	if(res.size()>0)
 		return watoi(res[0]["id"]);
@@ -1161,9 +1212,20 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 
 		if(server_settings==NULL || c_clients<server_settings->getSettings()->max_active_clients)
 		{
+			std::vector<char> uid(16);
+			Server->secureRandomFill(uid.data(), uid.size());
+
+			if (perm_uid != nullptr)
+			{
+				perm_uid->assign(uid.data(), uid.size());
+			}
+
 			DBScopedWriteTransaction trans(db);
-			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images,created) VALUES (?, CURRENT_TIMESTAMP, 0, 0, strftime('%s', 'now') )", false);
+			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients "
+				"(name, lastseen,bytes_used_files,bytes_used_images,created,perm_uid) "
+				"VALUES (?, CURRENT_TIMESTAMP, 0, 0, strftime('%s', 'now'), ?)", false);
 			q_insert_newclient->Bind(clientname);
+			q_insert_newclient->Bind(uid.data(), uid.size());
 			q_insert_newclient->Write();
 			int rid=(int)db->getLastInsertID();
 			q_insert_newclient->Reset();
@@ -1946,6 +2008,7 @@ void ClientMain::sendSettings(void)
 		}
 	}
 	s_settings += "server_token=" + server_token + "\n";
+	s_settings += "perm_uid=" + bytesToHex(perm_uid) + "\n";
 	escapeClientMessage(s_settings);
 	if(!sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{
@@ -3415,6 +3478,51 @@ void ClientMain::timeoutRestores()
 	}
 }
 
+void ClientMain::timeoutLocalBackups()
+{
+	std::lock_guard<std::mutex> lock(local_backup_mutex);
+
+	for (size_t i = 0; i < running_local_backups.size();)
+	{
+		if (Server->getTimeMS() - running_local_backups[i].last_active > 5 * 60 * 1000) //5min
+		{
+			LocalBackup* lb = nullptr;
+			for (SRunningBackup& rb : backup_queue)
+			{
+				if (rb.backup->getStatusId() == running_local_backups[i].status_id)
+					lb = dynamic_cast<LocalBackup*>(rb.backup);
+				if (lb != nullptr)
+					break;
+			}
+
+			bool finished;
+			bool success;
+			if (!lb->queryBackupFinished(60000, finished))
+			{
+				ServerLogger::Log(running_local_backups[i].log_id, "Local backup was inactive for 5min. Timeout. Stopping local backup...", LL_ERROR);
+
+				finishLocalBackup(false, running_local_backups[i].log_id, running_local_backups[i].status_id, running_local_backups[i].backupid);
+
+				running_local_backups.erase(running_local_backups.begin() + i);
+			}
+			else
+			{
+				running_local_backups[i].last_active = Server->getTimeMS();
+
+				if (finished)
+				{
+					finishLocalBackup(lb->getResult(), running_local_backups[i].log_id, running_local_backups[i].status_id,
+						running_local_backups[i].backupid);
+				}
+			}
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
 std::string ClientMain::getIdentity()
 {
 	IScopedLock lock(clientaddr_mutex);
@@ -3722,7 +3830,19 @@ void ClientMain::cleanupRestoreShare(int clientid, std::string restore_identity)
 	}
 }
 
-bool ClientMain::finishRestore(int64 restore_id)
+void ClientMain::updateLocalBackup(int64 status_id, bool success, bool should_backoff)
+{
+	for (SRunningBackup& rb : backup_queue)
+	{
+		if (rb.backup->getStatusId() == status_id)
+		{
+			rb.backup->setResult(success, should_backoff);
+			return;
+		}
+	}
+}
+
+bool ClientMain::removeRestore(int64 restore_id)
 {
 	IScopedLock lock(restore_mutex.get());
 
@@ -3731,6 +3851,22 @@ bool ClientMain::finishRestore(int64 restore_id)
 		if (running_restores[i].restore_id == restore_id)
 		{
 			running_restores.erase(running_restores.begin() + i);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ClientMain::removeLocalBackup(int64 status_id)
+{
+	std::lock_guard<std::mutex> lock(local_backup_mutex);
+
+	for (size_t i = 0; i < running_local_backups.size(); ++i)
+	{
+		if (running_local_backups[i].status_id == status_id)
+		{
+			running_local_backups.erase(running_local_backups.begin() + i);
 			return true;
 		}
 	}
@@ -3747,6 +3883,22 @@ bool ClientMain::updateRestoreRunning(int64 restore_id)
 		if (running_restores[i].restore_id == restore_id)
 		{
 			running_restores[i].last_active = Server->getTimeMS();
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ClientMain::updateLocalBackupRunning(int backupid)
+{
+	std::lock_guard<std::mutex> lock(local_backup_mutex);
+
+	for (size_t i = 0; i < running_local_backups.size(); ++i)
+	{
+		if (running_local_backups[i].backupid == backupid)
+		{
+			running_local_backups[i].last_active = Server->getTimeMS();
 			return true;
 		}
 	}
@@ -3826,6 +3978,76 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 			++i;
 		}
 	}
+
+	ServerLogger::reset(log_id);
+}
+
+void ClientMain::finishLocalBackup(bool success, logid_t log_id, int64 status_id, int backupid)
+{
+	SProcess proc = ServerStatus::getProcess(clientname, status_id);
+
+	if (proc.id == 0)
+		return;
+
+	ServerStatus::stopProcess(clientname, status_id);
+
+	int errors = 0;
+	int warnings = 0;
+	int infos = 0;
+	std::string logdata = ServerLogger::getLogdata(log_id, errors, warnings, infos);
+
+	int num_issues = 0;
+	bool image = proc.action == sa_full_image || proc.action == sa_incr_image;
+	bool incr = proc.action == sa_incr_image || proc.action == sa_incr_file || proc.action == sa_resume_incr_file;
+	bool resumed = proc.action == sa_resume_incr_file || proc.action == sa_resume_full_file;
+
+	backup_dao->saveBackupLog(clientid, errors, warnings, infos, image,
+		incr, resumed, 0);
+
+	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
+
+	if (!success)
+	{
+		ServerCleanupDao cleanupdao(db);
+		cleanupdao.removeFileBackup(backupid);
+	}
+	else
+	{
+		ServerBackupDao backup_dao(db);
+		backup_dao.updateClientLastFileBackup(backupid, num_issues, clientid);
+		backup_dao.updateFileBackupSetComplete(backupid);
+	}
+
+	ServerLogger::reset(log_id);
+}
+
+bool ClientMain::isLocalBackupRunning(int64 status_id)
+{
+	std::lock_guard<std::mutex> lock(local_backup_mutex);
+
+	for (size_t i = 0; i < running_local_backups.size();)
+	{
+		if (running_local_backups[i].status_id == status_id)
+			return true;
+	}
+
+	return false;
+}
+
+bool ClientMain::isBackupFinished(const SRunningBackup& rb)
+{
+	if (rb.running)
+	{
+		LocalBackup* lb = dynamic_cast<LocalBackup*>(rb.backup);
+		if (lb != nullptr)
+			return !isLocalBackupRunning(lb->getStatusId());
+	}
+	else if (rb.ticket != ILLEGAL_THREADPOOL_TICKET)
+	{
+		return Server->getThreadPool()->waitFor(rb.ticket, 0);
+	}
+
+	return false;
 }
 
 void ClientMain::updateVirtualClients()

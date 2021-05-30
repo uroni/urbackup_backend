@@ -595,6 +595,22 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 		STARTUP(params);
 	}
+	else if (next(msg, 0, "BACKUP PERCENT "))
+	{
+		std::string s_params = msg.substr(15);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		BACKUP_PERCENT(params);
+	}
+	else if (next(msg, 0, "BACKUP DONE "))
+	{
+		std::string s_params = msg.substr(12);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		BACKUP_DONE(params);
+	}
 	else
 	{
 		{
@@ -1577,6 +1593,8 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 
 void ServerChannelThread::RESTORE_PERCENT( str_map params )
 {
+	ServerStatus::updateActive();
+
 	int64 status_id = watoi64(params["status_id"]);
 	int64 restore_id = watoi64(params["id"]);
 	int pc = watoi(params["pc"]);
@@ -1646,8 +1664,87 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 
 		client_main->finishRestore(restore_id);
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
+	}	
+}
+
+void ServerChannelThread::BACKUP_PERCENT(str_map params)
+{
+	ServerStatus::updateActive();
+
+	int64 status_id = watoi64(params["status_id"]);
+	int backupid = watoi(params["id"]);
+	int pc = watoi(params["pc"]);
+	double speed_bpms = atof(params["speed_bpms"].c_str());
+	std::string details = params["details"];
+	int64 total_bytes = watoi64(params["total_bytes"]);
+	int64 done_bytes = watoi64(params["done_bytes"]);
+	int detail_pc = watoi(params["detail_pc"]);
+
+	client_main->updateLocalBackupRunning(backupid);
+
+	ServerStatus::setProcessPcDone(clientname, status_id, pc);
+	ServerStatus::setProcessSpeed(clientname, status_id, speed_bpms);
+	ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
+	ServerStatus::setProcessTotalBytes(clientname, status_id, total_bytes);
+}
+
+void ServerChannelThread::BACKUP_DONE(str_map params)
+{
+	int64 status_id = watoi64(params["status_id"]);
+	logid_t log_id = std::make_pair(watoi64(params["log_id"]), 0);
+	int backupid = watoi(params["id"]);
+	bool success = params["success"] == "true";
+	int num_issues = watoi(params["issues"]);
+
+	if (!ServerLogger::hasClient(log_id, clientid))
+	{
+		Server->Log("Log doesn't have correct client in BACKUP DONE", LL_ERROR);
+		return;
 	}
+
+	SProcess proc = ServerStatus::getProcess(clientname, status_id);
+
+	if (proc.id == 0)
+	{
+		Server->Log("Backup done process not found", LL_ERROR);
+	}
+
+	if (proc.logid != log_id)
+	{
+		Server->Log("Process doesn't have correct log id in BACKUP DONE", LL_ERROR);
+	}
+
+	if (proc.backupid != backupid)
+	{
+		Server->Log("Process doesn't have correct backup id in BACKUP DONE", LL_ERROR);
+	}
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	ServerStatus::stopProcess(clientname, status_id);
+		
+	int errors = 0;
+	int warnings = 0;
+	int infos = 0;
+	std::string logdata = ServerLogger::getLogdata(log_id, errors, warnings, infos);
+
+	bool image = proc.action == sa_full_image || proc.action == sa_incr_image;
+	bool incr = proc.action == sa_incr_image || proc.action == sa_incr_file || proc.action == sa_resume_incr_file;
+	bool resumed = proc.action == sa_resume_incr_file || proc.action == sa_resume_full_file;
+
+	backup_dao.saveBackupLog(clientid, errors, warnings, infos, image,
+		incr, resumed, 0);
+
+	backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+
+	backup_dao.updateClientLastFileBackup(backupid, num_issues, clientid);
+	backup_dao.updateFileBackupSetComplete(backupid);
 	
+	ServerLogger::reset(log_id);
+
+	client_main->sendToPipe("BACKUP DONE?status_id=" + convert(status_id)
+		+ "&success=" + convert(success ? 1 : 0) + "&should_backoff=0");
 }
 
 void ServerChannelThread::STARTUP(str_map& params)

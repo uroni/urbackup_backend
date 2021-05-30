@@ -5431,6 +5431,33 @@ void CloudFile::enable_background_worker(bool b)
 	}
 }
 
+bool CloudFile::start_background_worker()
+{
+	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
+	if (frontend != nullptr)
+	{
+		return frontend->start_background_worker();
+	}
+}
+
+void CloudFile::set_background_worker_result_fn(const std::string& result_fn)
+{
+	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
+	if (frontend != nullptr)
+	{
+		return frontend->set_background_worker_result_fn(result_fn);
+	}
+}
+
+bool CloudFile::has_background_task()
+{
+	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
+	if (frontend != nullptr)
+	{
+		return frontend->has_background_task();
+	}
+}
+
 void CloudFile::preload(int64 start, int64 stop, size_t n_threads)
 {
 	if (is_async)
@@ -5930,6 +5957,11 @@ bool CloudFile::hasKey(const std::string& key)
 	}
 
 	return ret;
+}
+
+int64 CloudFile::get_transid()
+{
+	return kv_store.get_transid();
 }
 
 

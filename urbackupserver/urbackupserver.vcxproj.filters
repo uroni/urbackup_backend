@@ -399,6 +399,9 @@
     <ClCompile Include="ServerDownloadThreadGroup.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="LocalBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -708,6 +711,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="ServerDownloadThreadGroup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LocalBackup.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

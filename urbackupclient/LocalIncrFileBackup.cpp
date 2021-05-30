@@ -50,8 +50,13 @@ bool LocalIncrFileBackup::prepareBackuppath()
 	if (last_backuppath.empty())
 		return false;
 
+	log("Creating snapshot for backup...", LL_INFO);
+
 	if (!orig_backup_files->createSnapshot(last_backuppath, prefix))
+	{
+		log("Creating snapshot failed", LL_ERROR);
 		return false;
+	}
 
 	prepareBackupFiles(prefix);
 
@@ -92,6 +97,8 @@ bool LocalIncrFileBackup::run()
 	//for phash
 	data.addString2(async_id);*/
 
+	log("Indexing files to backup", LL_INFO);
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	IndexThread::refResult(curr_result_id);
@@ -127,6 +134,10 @@ bool LocalIncrFileBackup::run()
 		}
 	}
 
+	log("Indexing finished", LL_INFO);
+
+	logIndexResult();
+
 	file_metadata_pipe.reset(IndexThread::getFileSrv()->getFileMetadataPipe());
 
 	if (!prepareBackuppath())
@@ -135,16 +146,25 @@ bool LocalIncrFileBackup::run()
 	std::string filelistpath = IndexThread::getFileSrv()->getShareDir(backupgroup > 0 ? ("urbackup/filelist_" + convert(backupgroup) + ".ub") : "urbackup/filelist.ub", "#I" + server_identity + "#");
 
 	if (filelistpath.empty())
+	{
+		log("Error getting filelistpath", LL_ERROR);
 		return false;
+	}
 
 	std::unique_ptr<IFile> curr_file_list(Server->openFile(filelistpath, MODE_READ));
-	if (curr_file_list.get() == NULL)
+	if (!curr_file_list)
+	{
+		log("Error opening current file list at \"" + filelistpath + "\". " + os_last_error_str(), LL_ERROR);
 		return false;
+	}
 
 	std::unique_ptr<IFile> last_file_list(backup_files->root()->openFile(last_backuppath + "\\" + getBackupInternalDataDir() + "\\filelist.ub", MODE_READ));
 
 	if (last_file_list.get() == nullptr)
+	{
+		log("Error opening last file list at \"" + last_backuppath + "\\" + getBackupInternalDataDir() + "\\filelist.ub\"", LL_ERROR);
 		return false;
+	}
 
 	bool has_symbit = true;
 	bool is_windows = false;
@@ -160,13 +180,22 @@ bool LocalIncrFileBackup::run()
 		dir_diffs, nullptr, has_symbit, is_windows);
 
 	if (diff_error)
+	{
+		log("Error diffing file trees", LL_ERROR);
 		return false;
+	}
 
 	if (!deleteFilesInSnapshot(last_file_list.get(), deleted_ids, "", false, false))
+	{
+		log("Error deleting files in snapshot", LL_ERROR);
 		return false;
+	}
 
 	if (!deleteFilesInSnapshot(last_file_list.get(), deleted_ids, ".hashes", false, false))
+	{
+		log("Error deleting file metdata in snapshot", LL_ERROR);
 		return false;
+	}
 
 	std::auto_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
 
@@ -304,7 +333,8 @@ bool LocalIncrFileBackup::run()
 									{
 										if (!backup_files->deleteFile(local_curr_os_path))
 										{
-											//ServerLogger::Log(logid, "Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" " + systemErrorInfo(), LL_ERROR);
+											log("Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" " +
+												backup_files->lastError(), LL_ERROR);
 											c_has_error = true;
 											break;
 										}
@@ -316,14 +346,15 @@ bool LocalIncrFileBackup::run()
 										//Directory to directory symlink
 										if (!backup_files->deleteFile(local_curr_os_path))
 										{
-											//ServerLogger::Log(logid, "Could not remove directory at \"" + backuppath + local_curr_os_path + "\" " + systemErrorInfo(), LL_ERROR);
+											log("Could not remove directory at \"" + backuppath + local_curr_os_path + "\" " +
+												backup_files->lastError(), LL_ERROR);
 											c_has_error = true;
 											break;
 										}
 
 										if (!backup_files->deleteFile(metadata_fn))
 										{
-											//ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + "\". " + os_last_error_str(), LL_WARNING);
+											log("Error deleting metadata file \"" + metadata_fn + "\". " + backup_files->lastError(), LL_WARNING);
 										}
 									}
 								}
@@ -334,7 +365,8 @@ bool LocalIncrFileBackup::run()
 
 								if (!createSymlink(backuppath + local_curr_os_path, depth, sym_target->second, orig_sep, true))
 								{
-									//ServerLogger::Log(logid, "Creating symlink at \"" + backuppath + local_curr_os_path + "\" to \"" + sym_target->second + "\" failed. " + systemErrorInfo(), LL_ERROR);
+									log("Creating symlink at \"" + backuppath + local_curr_os_path + "\" to \"" + sym_target->second + "\" failed. "
+										+ backup_files->lastError(), LL_ERROR);
 									c_has_error = true;
 									break;
 								}
@@ -347,16 +379,16 @@ bool LocalIncrFileBackup::run()
 							{
 								if (!backup_files->createDir( local_curr_os_path))
 								{
-									std::string errstr = os_last_error_str();
+									std::string errstr = backup_files->lastError();
 									if (!backup_files->directoryExists(local_curr_os_path))
 									{
-										//ServerLogger::Log(logid, "Creating directory  \"" + backuppath + local_curr_os_path + "\" failed. - " + errstr, LL_ERROR);
+										log("Creating directory  \"" + backuppath + local_curr_os_path + "\" failed. - " + errstr, LL_ERROR);
 										c_has_error = true;
 										break;
 									}
 									else
 									{
-										//ServerLogger::Log(logid, "Directory \"" + backuppath + local_curr_os_path + "\" does already exist.", LL_WARNING);
+										log("Directory \"" + backuppath + local_curr_os_path + "\" does already exist.", LL_WARNING);
 									}
 								}
 							}
@@ -365,16 +397,16 @@ bool LocalIncrFileBackup::run()
 							{
 								if (!backup_files->directoryExists(".hashes\\" + local_curr_os_path))
 								{
-									std::string errstr = os_last_error_str();
-									if (!os_directory_exists(os_file_prefix(".hashes\\" + local_curr_os_path)))
+									std::string errstr = backup_files->lastError();
+									if (!backup_files->directoryExists(".hashes\\" + local_curr_os_path))
 									{
-										//ServerLogger::Log(logid, "Creating directory  \"" + backuppath_hashes + local_curr_os_path + "\" failed. - " + errstr, LL_ERROR);
+										log("Creating directory  \".hashes\\" + local_curr_os_path + "\" failed. - " + errstr, LL_ERROR);
 										c_has_error = true;
 										break;
 									}
 									else
 									{
-										//ServerLogger::Log(logid, "Directory  \"" + backuppath_hashes + local_curr_os_path + "\" does already exist. - " + errstr, LL_WARNING);
+										log("Directory  \".hashes\\" + local_curr_os_path + "\" does already exist. - " + errstr, LL_WARNING);
 									}
 								}
 							}
@@ -390,7 +422,8 @@ bool LocalIncrFileBackup::run()
 											//Directory symlink to directory
 											if (!backup_files->deleteFile(local_curr_os_path))
 											{
-												//ServerLogger::Log(logid, "Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" (2). " + systemErrorInfo(), LL_ERROR);
+												log("Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" (2). "
+													+ backup_files->lastError(), LL_ERROR);
 												c_has_error = true;
 												break;
 											}
@@ -399,24 +432,26 @@ bool LocalIncrFileBackup::run()
 											{
 												if (!backup_files->directoryExists(backuppath + local_curr_os_path))
 												{
-													//ServerLogger::Log(logid, "Creating directory  \"" + backuppath + local_curr_os_path + "\" failed. - " + systemErrorInfo(), LL_ERROR);
+													log("Creating directory  \"" + backuppath + local_curr_os_path + "\" failed. - " +
+														backup_files->lastError(), LL_ERROR);
 													c_has_error = true;
 													break;
 												}
 												else
 												{
-													//ServerLogger::Log(logid, "Directory \"" + backuppath + local_curr_os_path + "\" does already exist.", LL_WARNING);
+													log("Directory \"" + backuppath + local_curr_os_path + "\" does already exist.", LL_WARNING);
 												}
 											}
 
 											std::string metadata_fn_curr = ".hashes\\"+ orig_curr_os_path + "\\" + escape_metadata_fn(cf.name);
 											if (!backup_files->deleteFile(metadata_fn_curr))
 											{
-												//ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn_curr + "\". " + os_last_error_str(), LL_WARNING);
+												log("Error deleting metadata file \"" + metadata_fn_curr + "\". " + backup_files->lastError(), LL_WARNING);
 											}
 											if (!backup_files->createDir(".hashes\\" + local_curr_os_path))
 											{
-												//ServerLogger::Log(logid, "Error creating metadata directory \"" + backuppath_hashes + local_curr_os_path + "\". " + os_last_error_str(), LL_WARNING);
+												log("Error creating metadata directory \".hashes\\"  + local_curr_os_path + "\". " + 
+													backup_files->lastError(), LL_WARNING);
 											}
 
 											metadata_srcpath = last_backuppath_hashes + orig_curr_os_path + "\\" + escape_metadata_fn(cf.name);
@@ -426,7 +461,7 @@ bool LocalIncrFileBackup::run()
 									{
 										if (!backup_files->deleteFile(metadata_fn))
 										{
-											//ServerLogger::Log(logid, "Error deleting metadata directory \"" + metadata_fn + "\". " + os_last_error_str(), LL_WARNING);
+											log("Error deleting metadata directory \"" + metadata_fn + "\". " + backup_files->lastError(), LL_WARNING);
 										}
 									}
 								}
@@ -445,6 +480,8 @@ bool LocalIncrFileBackup::run()
 								{
 									if (!backup_files->copyFile(metadata_srcpath, metadata_fn, false, nullptr))
 									{
+										log("Cannot copy directory metadata from \"" + metadata_srcpath + 
+											"\" to \"" + metadata_fn + "\". - " + backup_files->lastError(), LL_ERROR);
 										/*if (client_main->handle_not_enough_space(metadata_fn))
 										{
 											if (!copy_file(metadata_srcpath, metadata_fn))
@@ -464,7 +501,8 @@ bool LocalIncrFileBackup::run()
 								std::unique_ptr<IFsFile> metadata_f(backup_files->openFile(metadata_fn, MODE_RW_CREATE));
 								if (metadata_f.get() == nullptr)
 								{
-									//Log
+									log("Cannot open directory metadata file at \"" + metadata_fn + "\". " +
+										backup_files->lastError(), LL_ERROR);
 									c_has_error = true;
 									break;
 								}
@@ -472,7 +510,7 @@ bool LocalIncrFileBackup::run()
 
 								if (!write_file_metadata(metadata_f.get(), nullptr, metadata, false, truncate_to_bytes))
 								{
-									//ServerLogger::Log(logid, "Writing directory metadata to \"" + metadata_fn + "\" failed.", LL_ERROR);
+									log("Writing directory metadata to \"" + metadata_fn + "\" failed.", LL_ERROR);
 									c_has_error = true;
 									break;
 								}
@@ -510,7 +548,8 @@ bool LocalIncrFileBackup::run()
 							std::unique_ptr<IFsFile> metadata_f(backup_files->openFile(metadata_fn, MODE_RW_CREATE));
 							if (metadata_f.get() == nullptr)
 							{
-								//Log
+								log("Cannot open file metdata file at \"" + metadata_fn + "\". " +
+									backup_files->lastError(), LL_ERROR);
 								c_has_error = true;
 								break;
 							}
@@ -519,7 +558,7 @@ bool LocalIncrFileBackup::run()
 
 							if (!backupMetadata(metadata_f.get(), sourcepath, &metadata))
 							{
-								//Log
+								log("Error backing up file metadata from \"" + sourcepath + "\".", LL_ERROR);
 								c_has_error = true;
 								break;
 							}
@@ -637,7 +676,8 @@ bool LocalIncrFileBackup::run()
 
 						if (!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), false))
 						{
-							//ServerLogger::Log(logid, "Creating symlink at \"" + symlink_path + "\" to \"" + sym_target->second + "\" failed. " + systemErrorInfo(), LL_ERROR);
+							log("Creating symlink at \"" + symlink_path + "\" to \"" + sym_target->second 
+								+ "\" failed. " + backup_files->lastError(), LL_ERROR);
 							c_has_error = true;
 							break;
 						}
@@ -653,7 +693,7 @@ bool LocalIncrFileBackup::run()
 						std::auto_ptr<IFile> touch_file(backup_files->openFile(touch_path, MODE_WRITE));
 						if (touch_file.get() == NULL)
 						{
-							//ServerLogger::Log(logid, "Error touching file at \"" + touch_path + "\". " + systemErrorInfo(), LL_ERROR);
+							log("Error touching file at \"" + touch_path + "\". " + backup_files->lastError(), LL_ERROR);
 							c_has_error = true;
 							break;
 						}
@@ -687,7 +727,8 @@ bool LocalIncrFileBackup::run()
 							std::unique_ptr<IFsFile> metadata_f(backup_files->openFile(metadatapath, MODE_RW_CREATE));
 							if (metadata_f.get() == nullptr)
 							{
-								//Log
+								log("Error opening metadata file at \"" + metadatapath + "\". " +
+									backup_files->lastError(), LL_ERROR);
 								c_has_error = true;
 								break;
 							}
@@ -697,18 +738,28 @@ bool LocalIncrFileBackup::run()
 							std::unique_ptr<IFsFile> last_metadataf(backup_files->openFile(last_metadatapath, MODE_RW_CREATE));
 							if (metadata_f.get() == nullptr)
 							{
-								//Log
+								log("Error opening last medata file at \"" + last_metadatapath + "\". " +
+									backup_files->lastError(), LL_ERROR);
 								c_has_error = true;
 								break;
 							}
 
-							std::auto_ptr<IFsFile> sourcef(Server->openFile(os_file_prefix(sourcepath), MODE_READ_SEQUENTIAL_BACKUP));
+							std::unique_ptr<IFsFile> sourcef(Server->openFile(os_file_prefix(sourcepath), MODE_READ_SEQUENTIAL_BACKUP));
 
-							std::auto_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
-
-							if (destf.get() == nullptr)
+							if (!sourcef)
 							{
-								//Log
+								log("Error opening backup source file at \"" + sourcepath +
+									"\". " + os_last_error_str(), LL_ERROR);
+								c_has_error = true;
+								break;
+							}
+
+							std::unique_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
+
+							if (!destf)
+							{
+								log("Error opening backup dest file at \"" + targetpath + "\". " +
+									backup_files->lastError(), LL_ERROR);
 								c_has_error = true;
 								break;
 							}
@@ -721,7 +772,7 @@ bool LocalIncrFileBackup::run()
 								nullptr, &extent_iterator);
 							if (!b)
 							{
-								//Log
+								log("Error backing up \"" + sourcepath + "\"", LL_ERROR);
 								c_has_error = true;
 								break;
 							}
@@ -729,7 +780,7 @@ bool LocalIncrFileBackup::run()
 							{
 								if (!destf->Resize(sourcef->Size()))
 								{
-									//Log
+									log("Error resizing dest file to source size", LL_ERROR);
 									c_has_error = true;
 									break;
 								}
@@ -771,16 +822,17 @@ bool LocalIncrFileBackup::run()
 					if (download_metadata)
 					{
 						std::unique_ptr<IFsFile> metadata_f(backup_files->openFile(metadatapath, MODE_RW_CREATE));
-						if (metadata_f.get() == nullptr)
+						if (!metadata_f)
 						{
-							//Log
+							log("Error opening backup metadata file \"" + metadatapath + "\". " + 
+								backup_files->lastError(), LL_ERROR);
 							c_has_error = true;
 							break;
 						}
 
 						if (!backupMetadata(metadata_f.get(), sourcepath, &metadata))
 						{
-							//Log
+							log("Error backing up file metadata of file \"" + metadatapath + "\"", LL_ERROR);
 							c_has_error = true;
 							break;
 						}
@@ -808,22 +860,31 @@ bool LocalIncrFileBackup::run()
 
 	if (has_read_error)
 	{
-		//ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+		log("Error reading from file " + curr_file_list->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 		return false;
 	}
 
 	filelist_out.reset();
 
 	if (c_has_error)
+	{
+		log("Error during backup (see previous messages)", LL_ERROR);
 		return false;
+	}
 
 	if (!backup_files->sync(std::string()))
+	{
+		log("Error syncing backup subvol", LL_ERROR);
 		return false;
+	}
 
 	if (!backup_files->renameToFinal())
+	{
+		log("Error renaming backup subvol to final location", LL_ERROR);
 		return false;
+	}
 
-	return backup_files->sync(std::string());
+	return sync();
 }
 
 bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std::vector<size_t>& deleted_ids,
@@ -879,7 +940,8 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 							{
 								if (!backup_files->deleteFile(curr_fn))
 								{
-									//ServerLogger::Log(logid, "Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
+									log("Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " 
+										+ os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);
 
 									if (!no_error)
 									{
@@ -890,7 +952,8 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 							else if (!backup_files->removeDirRecursive(curr_fn)
 								|| backup_files->directoryExists(curr_fn))
 							{
-								//ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
+								log("Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " 
+									+ os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);
 
 								if (!no_error)
 								{
@@ -925,11 +988,13 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 								std::unique_ptr<IFile> tf(backup_files->openFile(curr_fn, MODE_READ));
 								if (tf.get() != NULL)
 								{
-									//ServerLogger::Log(logid, "Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
+									log("Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " 
+										+ os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);
 								}
 								else
 								{
-									//ServerLogger::Log(logid, "Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo() + ". It was already deleted.", no_error ? LL_WARNING : LL_ERROR);
+									log("Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - "
+										+ os_last_error_str() + ". It was already deleted.", no_error ? LL_WARNING : LL_ERROR);
 								}
 
 								if (!no_error)
@@ -941,7 +1006,8 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 								&& (!backup_files->removeDirRecursive(curr_fn)
 									|| backup_files->directoryExists(curr_fn)))
 							{
-								//ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot (2) - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
+								log("Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot (2) - " 
+									+ os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);
 
 								if (!no_error)
 								{
@@ -950,7 +1016,8 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 							}
 							else if (ftype == 0)
 							{
-								//ServerLogger::Log(logid, "Cannot get file type in ::deleteFilesInSnapshot. " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
+								log("Cannot get file type in ::deleteFilesInSnapshot. " + 
+									os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);
 								if (!no_error)
 								{
 									return false;

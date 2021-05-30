@@ -8,7 +8,9 @@
 class LocalFileBackup : public LocalBackup
 {
 public:
-	LocalFileBackup(IBackupFileSystem* backup_files, int64 local_process_id, int64 server_log_id, int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id);
+	LocalFileBackup(IBackupFileSystem* backup_files, int64 local_process_id, int64 server_log_id, 
+		int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, 
+		int facet_id, size_t max_backups);
 
 protected:
 	_i64 getIncrementalSize(IFile* f, const std::vector<size_t>& diffs, bool& backup_with_components, bool all);

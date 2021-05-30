@@ -221,6 +221,9 @@ public:
 	static void updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
 		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);
 
+	static void updateLocalBackupPc(int64 local_process_id, int backupid, int64 status_id, int nv, const std::string& identity,
+		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);
+
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
 	static void updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, const std::string& identity,
@@ -273,7 +276,8 @@ private:
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
 	bool getBackupDest(const std::string& clientsubname, int facet_id, std::string& dest,
-		std::string& dest_params, str_map& dest_secret_params, std::string& computername);
+		std::string& dest_params, str_map& dest_secret_params, std::string& computername,
+		size_t& max_backups, std::string& perm_uid);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
@@ -352,6 +356,7 @@ private:
 	void CMD_CLIENT_ACCESS_KEY(const std::string& cmd);
 	void CMD_WRITE_TOKENS(const std::string& cmd);
 	void CMD_GET_CLIENTNAME(const std::string& cmd);
+	void CMD_FINISH_LBACKUP(const std::string& cmd);
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
@@ -367,7 +372,9 @@ private:
 		const std::string& dest_params,
 		const str_map& dest_secret_params,
 		const std::string& computername,
-		bool full, const std::string& server_identity, str_map& params);
+		bool full, size_t max_backups,
+		const std::string& server_identity, str_map& params,
+		const std::string& perm_uid);
 
 	static void timeoutAsyncFileIndex();
 

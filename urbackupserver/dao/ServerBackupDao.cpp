@@ -679,13 +679,14 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 * @func bool ServerBackupDao::newFileBackup
 * @sql
 *       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
-*		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int) )
+*		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int),
+*				:incremental_ref(int))
 */
-bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup)
+bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int incremental_ref)
 {
 	if(q_newFileBackup==NULL)
 	{
-		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ? )", false);
+		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup, incremental_ref) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ?, ?)", false);
 	}
 	q_newFileBackup->Bind(incremental);
 	q_newFileBackup->Bind(clientid);
@@ -693,6 +694,7 @@ bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::st
 	q_newFileBackup->Bind(resumed);
 	q_newFileBackup->Bind(indexing_time_ms);
 	q_newFileBackup->Bind(tgroup);
+	q_newFileBackup->Bind(incremental_ref);
 	bool ret = q_newFileBackup->Write();
 	q_newFileBackup->Reset();
 	return ret;

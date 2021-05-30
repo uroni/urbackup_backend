@@ -249,6 +249,34 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incr
 
 /**
 * @-SQLGenAccess
+* @func std::vector<SFileBackupRef> ServerCleanupDao::getFileBackupRefsReverse
+* @return int id, int complete, int archived
+* @sql
+*	SELECT id, complete, archived FROM backups
+*	WHERE id = (SELECT incremental_ref FROM backups WHERE id=:backupid(int))
+*/
+std::vector<ServerCleanupDao::SFileBackupRef> ServerCleanupDao::getFileBackupRefsReverse(int backupid)
+{
+	if(q_getFileBackupRefsReverse==NULL)
+	{
+		q_getFileBackupRefsReverse=db->Prepare("SELECT id, complete, archived FROM backups WHERE id = (SELECT incremental_ref FROM backups WHERE id=?)", false);
+	}
+	q_getFileBackupRefsReverse->Bind(backupid);
+	db_results res=q_getFileBackupRefsReverse->Read();
+	q_getFileBackupRefsReverse->Reset();
+	std::vector<ServerCleanupDao::SFileBackupRef> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi(res[i]["id"]);
+		ret[i].complete=watoi(res[i]["complete"]);
+		ret[i].archived=watoi(res[i]["archived"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func std::vector<SImageRef> ServerCleanupDao::getImageRefsReverse
 * @return int id, int complete, int archived
 * @sql
@@ -274,6 +302,35 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefsReverse(i
 	}
 	return ret;
 }
+
+/**
+* @-SQLGenAccess
+* @func std::vector<SFileBackupRef> ServerCleanupDao::getFileBackupRefs
+* @return int id, int complete, int archived
+* @sql
+*	SELECT id, complete, archived FROM backups
+*	WHERE incremental<>0 AND incremental_ref=:incremental_ref(int)
+*/
+std::vector<ServerCleanupDao::SFileBackupRef> ServerCleanupDao::getFileBackupRefs(int incremental_ref)
+{
+	if(q_getFileBackupRefs==NULL)
+	{
+		q_getFileBackupRefs=db->Prepare("SELECT id, complete, archived FROM backups WHERE incremental<>0 AND incremental_ref=?", false);
+	}
+	q_getFileBackupRefs->Bind(incremental_ref);
+	db_results res=q_getFileBackupRefs->Read();
+	q_getFileBackupRefs->Reset();
+	std::vector<ServerCleanupDao::SFileBackupRef> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi(res[i]["id"]);
+		ret[i].complete=watoi(res[i]["complete"]);
+		ret[i].archived=watoi(res[i]["archived"]);
+	}
+	return ret;
+}
+
 
 /**
 * @-SQLGenAccess
@@ -429,6 +486,28 @@ int ServerCleanupDao::getIncrNumImagesForBackup(int backupid)
 
 /**
 * @-SQLGenAccess
+* @func int ServerCleanupDao::getIncrNumFileBackupsForBackup
+* @return int_raw c
+* @sql
+*	SELECT COUNT(id) AS c FROM backups
+*	WHERE clientid=(SELECT clientid FROM backups WHERE id=:backupid(int))
+*			AND incremental<>0 AND complete=1 AND archived=0
+*/
+int ServerCleanupDao::getIncrNumFileBackupsForBackup(int backupid)
+{
+	if(q_getIncrNumFileBackupsForBackup==NULL)
+	{
+		q_getIncrNumFileBackupsForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backups WHERE clientid=(SELECT clientid FROM backups WHERE id=?) AND incremental<>0 AND complete=1 AND archived=0", false);
+	}
+	q_getIncrNumFileBackupsForBackup->Bind(backupid);
+	db_results res=q_getIncrNumFileBackupsForBackup->Read();
+	q_getIncrNumFileBackupsForBackup->Reset();
+	assert(!res.empty());
+	return watoi(res[0]["c"]);
+}
+
+/**
+* @-SQLGenAccess
 * @func std::vector<int> ServerCleanupDao::getFullNumFiles
 * @return int id
 * @sql
@@ -502,6 +581,31 @@ ServerCleanupDao::CondString ServerCleanupDao::getClientName(int clientid)
 	{
 		ret.exists=true;
 		ret.value=res[0]["name"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func string ServerCleanupDao::getClientPermUid
+* @return string perm_uid
+* @sql
+*	SELECT perm_uid FROM clients WHERE id=:clientid(int)
+*/
+ServerCleanupDao::CondString ServerCleanupDao::getClientPermUid(int clientid)
+{
+	if(q_getClientPermUid==NULL)
+	{
+		q_getClientPermUid=db->Prepare("SELECT perm_uid FROM clients WHERE id=?", false);
+	}
+	q_getClientPermUid->Bind(clientid);
+	db_results res=q_getClientPermUid->Read();
+	q_getClientPermUid->Reset();
+	CondString ret = { false, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["perm_uid"];
 	}
 	return ret;
 }
@@ -1294,16 +1398,20 @@ void ServerCleanupDao::createQueries(void)
 	q_getClientsSortImagebackups=NULL;
 	q_getFullNumImages=NULL;
 	q_getImageRefs=NULL;
+	q_getFileBackupRefsReverse=NULL;
 	q_getImageRefsReverse=NULL;
+	q_getFileBackupRefs=NULL;
 	q_getImageClientId=NULL;
 	q_getFileBackupClientId=NULL;
 	q_getImageClientname=NULL;
 	q_getImagePath=NULL;
 	q_getIncrNumImages=NULL;
 	q_getIncrNumImagesForBackup=NULL;
+	q_getIncrNumFileBackupsForBackup=NULL;
 	q_getFullNumFiles=NULL;
 	q_getIncrNumFiles=NULL;
 	q_getClientName=NULL;
+	q_getClientPermUid=NULL;
 	q_getFileBackupPath=NULL;
 	q_removeFileBackup=NULL;
 	q_changeImagePath=NULL;
@@ -1348,16 +1456,20 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getClientsSortImagebackups);
 	db->destroyQuery(q_getFullNumImages);
 	db->destroyQuery(q_getImageRefs);
+	db->destroyQuery(q_getFileBackupRefsReverse);
 	db->destroyQuery(q_getImageRefsReverse);
+	db->destroyQuery(q_getFileBackupRefs);
 	db->destroyQuery(q_getImageClientId);
 	db->destroyQuery(q_getFileBackupClientId);
 	db->destroyQuery(q_getImageClientname);
 	db->destroyQuery(q_getImagePath);
 	db->destroyQuery(q_getIncrNumImages);
 	db->destroyQuery(q_getIncrNumImagesForBackup);
+	db->destroyQuery(q_getIncrNumFileBackupsForBackup);
 	db->destroyQuery(q_getFullNumFiles);
 	db->destroyQuery(q_getIncrNumFiles);
 	db->destroyQuery(q_getClientName);
+	db->destroyQuery(q_getClientPermUid);
 	db->destroyQuery(q_getFileBackupPath);
 	db->destroyQuery(q_removeFileBackup);
 	db->destroyQuery(q_changeImagePath);

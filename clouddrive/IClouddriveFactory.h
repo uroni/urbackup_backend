@@ -44,6 +44,7 @@ public:
 		float resubmit_compressed_ratio = 0.8f;
 		bool verify_cache = false;
 		CompressionMethod submit_compression = CompressionMethod::none;
+		CompressionMethod metadata_submit_compression = CompressionMethod::zstd_3;
 		CompressionMethod background_compression = CompressionMethod::lzma_5;
 		bool multi_trans_delete = true;
 		int64 reserved_cache_device_space = 100 * 1024 * 1024;
@@ -53,6 +54,8 @@ public:
 		int64 min_metadata_cache_free = 100 * 1024 * 1024;
 		bool with_submitted_files = true;
 		bool only_memfiles = false;
+		bool background_worker_manual_run = true;
+		std::string cache_img_path;
 		
 		CloudEndpoint endpoint;
 		CloudSettingsS3 s3_settings;
@@ -61,6 +64,16 @@ public:
 	virtual bool checkConnectivity(CloudSettings settings,
 		int64 timeoutms) = 0;
 
+	virtual IKvStoreBackend* createBackend(IBackupFileSystem* cachefs, CloudSettings settings) = 0;
+
 	virtual IFile* createCloudFile(IBackupFileSystem* cachefs,
 		CloudSettings settings) = 0;
+
+	virtual bool setTopFs(IFile* cloudFile, IBackupFileSystem* fs) = 0;
+
+	virtual bool isCloudFile(IFile* cloudfile) = 0;
+
+	virtual bool runBackgroundWorker(IFile* cloudfile, const std::string& output_fn) = 0;
+
+	virtual int64 getCfTransid(IFile* cloudfile) = 0;
 };

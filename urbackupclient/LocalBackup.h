@@ -59,6 +59,8 @@ class LocalBackup : public IThread
 		virtual bool getXAttr(const std::string& path, const std::string& key, std::string& value) override;
 		virtual bool setXAttr(const std::string& path, const std::string& key, const std::string& val) override;
 		virtual std::string getName() override;
+		virtual IFile* getBackingFile() override;
+		virtual std::string lastError() override;
 	private:
 		std::string prefix;
 		IBackupFileSystem* backup_files;		
@@ -67,10 +69,11 @@ class LocalBackup : public IThread
 public:
 	LocalBackup(IBackupFileSystem* backup_files, int64 local_process_id,
 		int64 server_log_id, int64 server_status_id, int64 backupid,
-		std::string server_token, std::string server_identity, int facet_id);
+		std::string server_token, std::string server_identity, int facet_id,
+		size_t max_backups);
 protected:
 	void onStartBackup();
-	void onBackupFinish();
+	void onBackupFinish(bool image);
 
 	void updateProgressPc(int new_pc, int64 p_total_bytes, int64 p_done_bytes);
 	void updateProgressDetails(const std::string& details);
@@ -81,9 +84,17 @@ protected:
 
 	bool createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir);
 
+	bool sync();
+
+	void log(const std::string& msg, int loglevel);
+
+	void logIndexResult();
+
 	std::string fixFilenameForOS(std::string fn) {
 		return fn;
 	}
+
+	bool cleanupOldBackups(bool image);
 
 	std::unique_ptr<PrefixedBackupFiles> backup_files;
 	std::unique_ptr<IBackupFileSystem> orig_backup_files;
@@ -94,6 +105,8 @@ protected:
 	int64 server_status_id;
 	int64 backupid;
 	int facet_id;
+	size_t max_backups;
+	bool backup_success = false;
 private:
 
 	BackupUpdaterThread* backup_updater_thread;

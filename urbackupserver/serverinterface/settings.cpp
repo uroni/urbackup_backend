@@ -279,6 +279,7 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_STR(ransomware_canary_paths);
 	SET_SETTING_STR(backup_dest_url);
 	SET_SETTING_STR(backup_dest_params);
+	SET_SETTING_STR(backup_dest_secret_params);
 #undef SET_SETTING
 	return ret;
 }
@@ -642,6 +643,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 	std::vector<std::string> sset_client_use = getClientConfigurableSettingsList();
 	std::sort(sset_client_use.begin(), sset_client_use.end());
 	std::vector<std::string> sset=getSettingsList();
+	sset.push_back("backup_dest_secret_params");
 	for(size_t i=0;i<sset.size();++i)
 	{
 		str_map::iterator it=POST.find(sset[i]);

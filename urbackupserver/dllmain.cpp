@@ -54,6 +54,7 @@ extern IServer* Server;
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
 #include "../luaplugin/ILuaInterpreter.h"
+#include "../clouddrive/IClouddriveFactory.h"
 
 #include "database.h"
 #include "actions.h"
@@ -126,6 +127,7 @@ namespace
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
+IClouddriveFactory* clouddrive_fak;
 IUrlFactory *url_fak=NULL;
 IFileServ* fileserv=NULL;
 ILuaInterpreter* lua_interpreter = NULL;
@@ -552,6 +554,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if( crypto_fak==NULL )
 		{
 			Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
+		}
+	}
+
+	{
+		str_map params;
+		clouddrive_fak = reinterpret_cast<IClouddriveFactory*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("clouddriveplugin", params)));
+		if (clouddrive_fak == nullptr)
+		{
+			Server->Log("Error loading clouddriveplugin", LL_ERROR);
 		}
 	}
 
@@ -2335,6 +2346,35 @@ bool upgrade64_65()
 	return b;
 }
 
+bool upgrade65_66()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+	b &= db->Write("ALTER TABLE backups ADD incremental_ref INTEGER");
+	b &= db->Write("UPDATE backups SET incremental_ref=0");
+	b &= db->Write("ALTER TABLE clients ADD perm_uid BLOB");
+
+	db_results res_clients = db->Read("SELECT id FROM clients");
+
+	IQuery* q_update = db->Prepare("UPDATE clients SET perm_uid=? WHERE id=?");
+	if (q_update == nullptr)
+		return false;
+
+	for (db_single_result res : res_clients)
+	{
+		std::vector<char> uid(16);
+		Server->secureRandomFill(uid.data(), uid.size());
+
+		q_update->Bind(uid.data(), uid.size());
+		q_update->Bind(res["id"]);
+		b &= q_update->Write();
+		q_update->Reset();
+	}
+
+	return b;	
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2356,7 +2396,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=65;
+	int max_v=66;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2750,6 +2790,13 @@ void upgrade(void)
 				break;
 			case 64:
 				if (!upgrade64_65())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 65:
+				if (!upgrade65_66())
 				{
 					has_error = true;
 				}

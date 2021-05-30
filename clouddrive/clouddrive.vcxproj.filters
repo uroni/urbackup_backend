@@ -69,6 +69,9 @@
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectCollector.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IClouddriveFactory.h">
@@ -111,6 +114,12 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="TransactionalKvStore.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectCollector.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IKvStoreFrontend.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

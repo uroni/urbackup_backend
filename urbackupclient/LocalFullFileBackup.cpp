@@ -35,7 +35,10 @@ bool LocalFullFileBackup::prepareBackuppath() {
 	std::string prefix = std::string(mbstr);
 
 	if (!orig_backup_files->createSubvol(prefix))
+	{
+		log("Creating new subvolume for backup...", LL_INFO);
 		return false;
+	}
 
 	prepareBackupFiles(prefix);
 
@@ -76,6 +79,8 @@ bool LocalFullFileBackup::run()
 	//for phash
 	data.addString2(async_id);*/
 
+	log("Indexing files to backup", LL_INFO);
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	IndexThread::refResult(curr_result_id);
@@ -111,17 +116,26 @@ bool LocalFullFileBackup::run()
 		}
 	}
 
+	log("Indexing finished", LL_INFO);
+
+	logIndexResult();
+
 	if (!prepareBackuppath())
 		return false;
 
-	std::string filelistpath = IndexThread::getFileSrv()->getShareDir(backupgroup > 0 ? ("urbackup/filelist_" + convert(backupgroup) + ".ub") : "urbackup/filelist.ub", "#I"+server_identity+"#");
+	std::string filelistpath = IndexThread::getFileSrv()->getShareDir(backupgroup > 0 ?
+		("urbackup/filelist_" + convert(backupgroup) + ".ub") :
+		"urbackup/filelist.ub", "#I"+server_identity+"#");
 
 	if (filelistpath.empty())
 		return false;
 
 	std::auto_ptr<IFile> curr_file_list(Server->openFile(filelistpath, MODE_READ));
 	if (curr_file_list.get() == NULL)
+	{
+		log("Error opening current file list. " + os_last_error_str(), LL_ERROR);
 		return false;
+	}
 
 	std::vector<size_t> diffs;
 	bool backup_with_components;
@@ -185,13 +199,13 @@ bool LocalFullFileBackup::run()
 
 						if (!backup_files->createDir(curr_os_path))
 						{
-							//Log
+							log("Error creating directory \"" + curr_os_path + "\"", LL_ERROR);
 							return false;
 						}
 
 						if (!backup_files->createDir(".hashes\\" + curr_os_path))
 						{
-							//Log
+							log("Error creating hash directory \".hashes\\" + curr_os_path + "\"", LL_ERROR);
 							return false;
 						}
 
@@ -202,13 +216,13 @@ bool LocalFullFileBackup::run()
 
 						if (metadataf.get() == NULL)
 						{
-							//Log
+							log("Error opening metadata file \"" + metadatapath + "\"", LL_ERROR);
 							return false;
 						}
 
 						if (!backupMetadata(metadataf.get(), sourcepath, &metadata))
 						{
-							//Log
+							log("Error backing up metadata of \"" + sourcepath + "\"", LL_ERROR);
 							return false;
 						}
 
@@ -266,13 +280,13 @@ bool LocalFullFileBackup::run()
 
 					if (metadataf.get() == NULL)
 					{
-						//Log
+						log("Error opening metadata file at \"" + metadatapath + "\"", LL_ERROR);
 						return false;
 					}
 
 					if (!backupMetadata(metadataf.get(), sourcepath, &metadata))
 					{
-						//Log
+						log("Error backing up file metadata of \"" + sourcepath + "\"", LL_ERROR);
 						return false;
 					}
 
@@ -280,7 +294,7 @@ bool LocalFullFileBackup::run()
 
 					if (sourcef.get() == NULL)
 					{
-						//Log
+						log("Error opening \"" + sourcepath + "\" for backup. " + os_last_error_str(), LL_ERROR);
 						return false;
 					}
 
@@ -294,7 +308,7 @@ bool LocalFullFileBackup::run()
 
 					if (!b)
 					{
-						//Log
+						log("Error backing up \"" + sourcepath + "\"", LL_ERROR);
 						return false;
 					}
 
@@ -312,12 +326,18 @@ bool LocalFullFileBackup::run()
 	filelist_out.reset();
 
 	if (!backup_files->sync(std::string()))
+	{
+		log("Error syncing backup file system", LL_ERROR);
 		return false;
+	}
 
 	if (!backup_files->renameToFinal())
+	{
+		log("Error renaming backup subvol to final location", LL_ERROR);
 		return false;
+	}
 
-	return backup_files->sync(std::string());
+	return sync();
 }
 
 

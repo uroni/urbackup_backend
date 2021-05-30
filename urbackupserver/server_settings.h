@@ -155,6 +155,7 @@ struct SSettings
 	std::string ransomware_canary_paths;
 	std::string backup_dest_url;
 	std::string backup_dest_params;
+	std::string backup_dest_secret_params;
 };
 
 struct SLDAPSettings

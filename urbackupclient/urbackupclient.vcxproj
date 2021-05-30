@@ -24,6 +24,7 @@
     <ClCompile Include="..\common\miniz.c" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
+    <ClCompile Include="..\urbackupcommon\backup_url_parser.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
@@ -92,6 +93,7 @@
     <ClInclude Include="..\common\miniz.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\stringtools.h" />
+    <ClInclude Include="..\urbackupcommon\backup_url_parser.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\change_ids.h" />

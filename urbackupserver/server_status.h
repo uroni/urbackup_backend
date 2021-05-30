@@ -63,7 +63,8 @@ struct SProcess
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
 		speed_bpms(0), can_stop(false), total_bytes(-1),
-		done_bytes(0), detail_pc(-1), paused(false)
+		done_bytes(0), detail_pc(-1), paused(false),
+		backupid(0)
 	{
 
 	}
@@ -86,6 +87,7 @@ struct SProcess
 	int64 total_bytes;
 	int64 done_bytes;
 	bool paused;
+	int backupid;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -258,7 +260,7 @@ public:
 	void Exit(void) { do_exit=true; }
 
 private:
-	bool do_exit;
+	volatile bool do_exit;
 };
 
 class ScopedActiveThread

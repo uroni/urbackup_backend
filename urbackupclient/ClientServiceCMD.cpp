@@ -351,10 +351,13 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
 	std::string dest, dest_params, computername;
 	str_map dest_secret_params;
-	getBackupDest(clientsubname, facet_id, dest, dest_params, dest_secret_params, computername);
+	size_t max_backups=1;
+	std::string perm_uid;
+	getBackupDest(clientsubname, facet_id, dest, dest_params,
+		dest_secret_params, computername, max_backups, perm_uid);
 
 	if (localBackup(dest, dest_params, dest_secret_params, computername,
-		false, server_identity, params))
+		false, max_backups, server_identity, params, perm_uid))
 	{
 		return;
 	}
@@ -533,9 +536,13 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
 	std::string dest, dest_params, computername;
 	str_map dest_secret_params;
-	getBackupDest(clientsubname, facet_id, dest, dest_params, dest_secret_params, computername);
+	size_t max_backups = 1;
+	std::string perm_uid;
+	getBackupDest(clientsubname, facet_id, dest, dest_params, dest_secret_params, 
+		computername, max_backups, perm_uid);
 
-	if (localBackup(dest, dest_params, dest_secret_params, computername, true, server_identity, params))
+	if (localBackup(dest, dest_params, dest_secret_params, computername,
+		true, max_backups, server_identity, params, perm_uid))
 	{
 		return;
 	}
@@ -3134,5 +3141,63 @@ void ClientConnector::CMD_GET_CLIENTNAME(const std::string& cmd)
 {
 	std::string name = IndexThread::getFileSrv()->getServerName();
 	tcpstack.Send(pipe, "name="+EscapeParamString(name));
+}
+
+void ClientConnector::CMD_FINISH_LBACKUP(const std::string& cmd)
+{
+	str_map params;
+	ParseParamStrHttp(cmd.substr(15), &params);
+
+	int step = watoi(params["step"]);
+
+	if (step == 1)
+	{
+		std::vector<SFile> files = getFiles("urbackup");
+
+		size_t idx = 0;
+		std::string ret = "ok=1";
+
+		for (SFile& file : files)
+		{
+			if (!file.isdir && next(file.name, 0, "bg_del_"+conv_filename(server_token)))
+			{
+				ret += "&del_fn" + std::to_string(idx) + "=" + EscapeParamString(file.name);
+				++idx;
+			}
+		}
+
+		tcpstack.Send(pipe, ret);
+	}
+	else if (step == 2)
+	{
+		std::vector<std::string> del_fns;
+		size_t idx = 0;
+		while (params.find("del_fn" + std::to_string(idx)) != params.end())
+		{
+			del_fns.push_back(params["del_fn" + std::to_string(idx)]);
+			++idx;
+		}
+
+		std::vector<SFile> files = getFiles("urbackup");
+
+		std::sort(files.begin(), files.end());
+
+		for (std::string del_fn : del_fns)
+		{
+			SFile cf;
+			cf.name = del_fn;
+
+			if (std::binary_search(files.begin(), files.end(), cf))
+			{
+				Server->deleteFile("urbackup" + os_file_sep() + conv_filename(cf.name));
+			}
+		}
+
+		tcpstack.Send(pipe, "ok=1");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "ok=0&err=no step");
+	}
 }
 	

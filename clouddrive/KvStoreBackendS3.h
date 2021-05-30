@@ -28,17 +28,17 @@ public:
 	virtual bool list( IListCallback* callback );
 
 	virtual bool put( const std::string& key, IFsFile* src, const std::string& path, 
-				unsigned int flags, bool allow_error_event, std::string& md5sum, int64& compressed_size);
+				unsigned int flags, bool allow_error_event, std::string& md5sum, 
+				int64& compressed_size) override;
 
-	virtual bool del( key_next_fun_t key_next_fun,
-		bool background_queue);
-						
-	virtual bool del( key_next_fun_t key_next_fun,
-		locinfo_next_fun_t locinfo_next_fun,
-		bool background_queue)
-	{
-		return del(key_next_fun, background_queue);
+	virtual bool del(key_next_fun_t key_next_fun,
+		bool background_queue) {
+		return del(key_next_fun, nullptr, background_queue);
 	}
+						
+	virtual bool del(key_next_fun_t key_next_fun,
+		locinfo_next_fun_t locinfo_next_fun,
+		bool background_queue);
 	
 	virtual size_t max_del_size() { return 100; }
 	
@@ -56,7 +56,7 @@ public:
 	
 	virtual bool prefer_sequential_read() { return false; }
 	
-	virtual bool del_with_location_info() { return false; }
+	virtual bool del_with_location_info() { return true; }
 	
 	virtual bool ordered_del() { return false; }
 	
@@ -98,7 +98,7 @@ private:
 	void resetClient();
 	
 	virtual bool del_int( key_next_fun_t key_next_fun,
-		bool shard_optimized);
+		locinfo_next_fun_t locinfo_next_fun, bool shard_optimized);
 	
 	void fixError(Aws::S3::S3Errors error);
 	

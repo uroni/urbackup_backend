@@ -18,6 +18,7 @@
 #include "server_settings.h"
 
 #include <memory>
+#include <mutex>
 #include "server_log.h"
 
 class ServerVHDWriter;
@@ -85,13 +86,14 @@ struct SRunningBackup
 {
 	SRunningBackup()
 		: backup(NULL), ticket(ILLEGAL_THREADPOOL_TICKET),
-		group(c_group_default)
+		group(c_group_default), running(false)
 	{
 
 	}
 
 
 	Backup* backup;
+	bool running;
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
@@ -108,6 +110,19 @@ struct SRunningRestore
 	logid_t log_id;
 	int64 status_id;
 	int64 restore_id;
+	int64 last_active;
+};
+
+struct SRunningLocalBackup
+{
+	SRunningLocalBackup(logid_t log_id, int64 status_id, int backupid)
+		: log_id(log_id), status_id(status_id), backupid(backupid),
+		last_active(Server->getTimeMS())
+	{}
+
+	logid_t log_id;
+	int64 status_id;
+	int backupid;
 	int64 last_active;
 };
 
@@ -174,7 +189,8 @@ public:
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);
 	static bool tooManyClients(IDatabase *db, const std::string &clientname, ServerSettings *server_settings);
-	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey=NULL, int* client_group=NULL);
+	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, 
+		bool *new_client, std::string* authkey=NULL, int* client_group=NULL, std::string* perm_uid=NULL);
 
 	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL, bool do_encrypt=true);
 
@@ -243,9 +259,15 @@ public:
 
 	static void cleanupRestoreShare(int clientid, std::string restore_identity);
 
-	bool finishRestore(int64 restore_id);
+	void updateLocalBackup(int64 status_id, bool success, bool should_backoff);
+
+	bool removeRestore(int64 restore_id);
+
+	bool removeLocalBackup(int64 status_id);
 
 	bool updateRestoreRunning(int64 restore_id);
+
+	bool updateLocalBackupRunning(int backupid);
 
 	static bool startBackupBarrier(int64 timeout_seconds);
 
@@ -316,11 +338,18 @@ private:
 
 	void timeoutRestores();
 
+	void timeoutLocalBackups();
+
 	void cleanupShares();
 	static void cleanupShare(SShareCleanup& tocleanup);
 
 	void finishFailedRestore(std::string restore_identity, logid_t log_id, int64 status_id, int64 restore_id);
 
+	void finishLocalBackup(bool success, logid_t log_id, int64 status_id, int backupid);
+
+	bool isLocalBackupRunning(int64 status_id);
+
+	bool isBackupFinished(const SRunningBackup& rb);
 
 	bool renameClient(const std::string& clientuid);
 	void updateVirtualClients();
@@ -353,6 +382,7 @@ private:
 	static IMutex *tmpfile_mutex;
 
 	int clientid;
+	std::string perm_uid;
 
 	std::auto_ptr<ServerSettings> server_settings;
 
@@ -439,6 +469,9 @@ private:
 
 	std::auto_ptr<IMutex> restore_mutex;
 	std::vector<SRunningRestore> running_restores;
+
+	std::mutex local_backup_mutex;
+	std::vector<SRunningLocalBackup> running_local_backups;
 
 	std::vector< std::map<ImageBackup*, bool>  > running_image_groups;
 

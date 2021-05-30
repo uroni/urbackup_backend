@@ -171,6 +171,7 @@
     <ClCompile Include="KvStoreDao.cpp" />
     <ClCompile Include="KvStoreFrontend.cpp" />
     <ClCompile Include="LzmaCompressor.cpp" />
+    <ClCompile Include="ObjectCollector.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="TransactionalKvStore.cpp" />
   </ItemGroup>
@@ -182,11 +183,13 @@
     <ClInclude Include="IClouddriveFactory.h" />
     <ClInclude Include="ICompressEncrypt.h" />
     <ClInclude Include="IKvStoreBackend.h" />
+    <ClInclude Include="IKvStoreFrontend.h" />
     <ClInclude Include="IOnlineKvStore.h" />
     <ClInclude Include="KvStoreBackendS3.h" />
     <ClInclude Include="KvStoreDao.h" />
     <ClInclude Include="KvStoreFrontend.h" />
     <ClInclude Include="LzmaCompressor.h" />
+    <ClInclude Include="ObjectCollector.h" />
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="TransactionalKvStore.h" />
   </ItemGroup>

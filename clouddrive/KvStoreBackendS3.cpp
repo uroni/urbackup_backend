@@ -136,7 +136,7 @@ namespace
 	std::string base64md5(std::string md5)
 	{
 		std::string b = hexToBytes(md5);
-		return base64_encode(reinterpret_cast<const unsigned char*>(b.data()), b.size());
+		return base64_encode(reinterpret_cast<const unsigned char*>(b.data()), static_cast<unsigned int>(b.size()));
 	}
 	
 	size_t getShardIdx(const std::string& key, size_t n_shards)
@@ -183,7 +183,7 @@ protected:
 
 		bool has_read_error=false;
 		size_t toread = (std::min)(static_cast<size_t>(size - pos), buffer.size());
-		_u32 read = f->Read(pos, buffer.data(), toread, &has_read_error);
+		_u32 read = f->Read(pos, buffer.data(), static_cast<_u32>(toread), &has_read_error);
 		
 		if(has_read_error)
 		{
@@ -823,7 +823,7 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 				break;
 			}
 
-			if(tmpfile->Write(buffer.data(), read)!=read)
+			if(tmpfile->Write(buffer.data(), static_cast<_u32>(read))!=read)
 			{
 				std::string syserr = os_last_error_str();
 				Server->Log("Error writing to tmp file \""+tmpfile->getFilename()+"\". " + syserr, LL_ERROR);
@@ -930,6 +930,13 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 
 		md5sum = hexToBytes(etag);
 		compressed_size = local_size;
+
+		if (del_with_location_info())
+		{
+			Aws::String version = putObjectOutcome.GetResult().GetVersionId();
+			md5sum.resize(16 + version.size());
+			md5sum.replace(md5sum.begin() + 16, md5sum.end(), version.data());
+		}
 	}
 	else
 	{
@@ -968,15 +975,16 @@ namespace
 	}
 }
 
-bool KvStoreBackendS3::del( key_next_fun_t key_next_fun,
+bool KvStoreBackendS3::del(key_next_fun_t key_next_fun,
+		locinfo_next_fun_t locinfo_next_fun,
 		bool background_queue)
 {
 	//shard_optimized=false for now because of https://tracker.ceph.com/issues/41642 (radosgw does not return NoSuckKey if key is not present)
-	return del_int(key_next_fun, false);
+	return del_int(key_next_fun, locinfo_next_fun, false);
 }
 
 bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
-		bool shard_optimized)
+	locinfo_next_fun_t locinfo_next_fun, bool shard_optimized)
 {
 	if(next(s3_endpoint, 0, "https://storage.googleapis.com"))
 	{
@@ -998,14 +1006,25 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 			std::string key;
 			while(key_next_fun(IKvStoreBackend::key_next_action_t::next, &key))
 			{
+				std::string locinfo;
+				if (locinfo_next_fun != nullptr)
+				{
+					if (locinfo_next_fun(IKvStoreBackend::key_next_action_t::next, &locinfo))
+						break;
+				}
+
 				if(shard_optimized &&
 					sharded &&
 					getShardIdx(key, buckets.size()-1)+1!=idx)
 				{
 					continue;
 				}
-				
+
 				deleteObjectRequest.SetKey(key.c_str());
+				if (!locinfo.empty())
+				{
+					deleteObjectRequest.SetVersionId(locinfo.c_str());
+				}
 				auto s3_client = getS3Client(idx);
 				Aws::S3::Model::DeleteObjectOutcome deleteObjectOutcome = s3_client.second->DeleteObject(deleteObjectRequest);
 				releaseS3Client(idx, s3_client);
@@ -1025,13 +1044,17 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 			if(idx+1<buckets.size())
 			{
 				key_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
+				if (locinfo_next_fun != nullptr)
+					locinfo_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
 			}
 		}
 		
 		if(shard_optimized && sharded && has_missing)
 		{
 			key_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
-			return del_int(key_next_fun, false);
+			if (locinfo_next_fun != nullptr)
+				locinfo_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
+			return del_int(key_next_fun, locinfo_next_fun, false);
 		}
 
 		return true;
@@ -1056,6 +1079,13 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 		std::string key;
 		while(key_next_fun(IKvStoreBackend::key_next_action_t::next, &key))
 		{
+			std::string locinfo;
+			if (locinfo_next_fun != nullptr)
+			{
+				if (locinfo_next_fun(IKvStoreBackend::key_next_action_t::next, &locinfo))
+					break;
+			}
+
 			if(shard_optimized && sharded &&
 				getShardIdx(key, buckets.size()-1)+1!=idx)
 			{
@@ -1064,6 +1094,10 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 			
 			Aws::S3::Model::ObjectIdentifier oi;
 			oi.SetKey(key.c_str());
+			if (!locinfo.empty())
+			{
+				oi.SetVersionId(locinfo.c_str());
+			}
 			deleteList.AddObjects(oi);
 
 			if (deleteList.GetObjects().size() > max_del_size() )
@@ -1086,7 +1120,7 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 			}
 		}
 
-		if (!deleteList.GetObjects().empty() > 0)
+		if (!deleteList.GetObjects().empty())
 		{
 			deleteObjectsRequest.SetDelete(deleteList);
 
@@ -1107,6 +1141,8 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 		if(idx+1<buckets.size())
 		{
 			key_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
+			if (locinfo_next_fun != nullptr)
+				locinfo_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
 		}
 	}
 	
@@ -1114,7 +1150,9 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 	{
 		Server->Log("Sharded and has missing. Re-running delete on all buckets...", LL_INFO);
 		key_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
-		return del_int(key_next_fun, false);
+		if (locinfo_next_fun != nullptr)
+			locinfo_next_fun(IKvStoreBackend::key_next_action_t::reset, nullptr);
+		return del_int(key_next_fun, locinfo_next_fun, false);
 	}
 	
 	return true;
@@ -1166,7 +1204,7 @@ std::pair<int64, std::shared_ptr<Aws::S3::S3Client> > KvStoreBackendS3::newS3Cli
 	Aws::Client::ClientConfiguration clientConfiguration;
 	clientConfiguration.region = BucketLocationToRegion(buckets[idx].location);
 	clientConfiguration.followRedirects = Aws::Client::FollowRedirectsPolicy::ALWAYS;
-	clientConfiguration.requestTimeoutMs = curr_requesttimeout;
+	clientConfiguration.requestTimeoutMs = static_cast<long>(curr_requesttimeout);
 	clientConfiguration.connectTimeoutMs = 3000;
 	if(!s3_endpoint.empty())
 	{

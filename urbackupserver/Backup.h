@@ -86,6 +86,17 @@ public:
 		return scheduled;
 	}
 
+	size_t getStatusId()
+	{
+		return status_id;
+	}
+
+	void setResult(bool p_backup_result, bool p_should_backoff)
+	{
+		backup_result = p_backup_result;
+		should_backoff = p_should_backoff;
+	}
+
 protected:
 	virtual bool doBackup() = 0;
 

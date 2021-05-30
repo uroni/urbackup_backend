@@ -1,6 +1,7 @@
 #pragma once
 #include "IOnlineKvStore.h"
 #include "IKvStoreBackend.h"
+#include "IKvStoreFrontend.h"
 #include "KvStoreDao.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Mutex.h"
@@ -41,7 +42,7 @@ namespace
 
 class IBackupFileSystem;
 
-class KvStoreFrontend : public IOnlineKvStore, public IThread
+class KvStoreFrontend : public IOnlineKvStore, public IThread, public IKvStoreFrontend
 {
 public:
 	KvStoreFrontend(const std::string& db_path, IKvStoreBackend* backend, bool import, 
@@ -128,11 +129,13 @@ public:
 
 	virtual bool is_put_sync();
 
-	std::string prefixKey(const std::string& key);
+	std::string prefixKey(const std::string& key) override;
 
 	static std::string encodeKey(const std::string& key, int64 transid);
 
-	static std::string encodeKey(int64 cd_id, const std::string& key, int64 transid);
+	std::string encodeKey(int64 cd_id, const std::string& key, int64 transid) override;
+
+	static std::string encodeKeyStatic(int64 cd_id, const std::string& key, int64 transid);
 
 	IKvStoreBackend* getBackend();
 
@@ -150,6 +153,12 @@ public:
 
 	void enable_background_worker(bool b);
 
+	void set_background_worker_result_fn(const std::string& result_fn);
+
+	bool start_background_worker();
+
+	bool has_background_task();
+
 	static void start_scrub_sync_test1();
 	static void start_scrub_sync_test2();
 
@@ -162,13 +171,13 @@ public:
 
 	int64 get_total_balance_ops();
 
-	void incr_total_del_ops();
+	void incr_total_del_ops() override;
 
 	int64 get_total_del_ops();
 
 	virtual bool has_backend_key(const std::string& key, std::string& md5sum, bool update_md5sum);
 
-	bool log_del_mirror(const std::string& fn);
+	bool log_del_mirror(const std::string& fn) override;
 
 	std::string next_log_del_mirror_item();
 
@@ -273,6 +282,10 @@ private:
 
 		std::string meminfo();
 
+		void set_result_fn(const std::string& fn) {
+			result_fn = fn;
+		}
+
 	private:
 		bool removeOldObjects(KvStoreDao& dao, const std::vector<int64>& trans_ids, int64 cd_id);
 
@@ -293,6 +306,7 @@ private:
 		int64 object_collector_size;
 		int64 object_collector_size_uncompressed;
 		relaxed_atomic<bool> running;
+		std::string result_fn;
 	};
 
 	class ScrubQueue

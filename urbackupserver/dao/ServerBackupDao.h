@@ -127,7 +127,7 @@ public:
 	void addMiscValue(const std::string& tkey, const std::string& tvalue);
 	void delMiscValue(const std::string& tkey);
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
-	bool newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
+	bool newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int incremental_ref);
 	void updateFileBackupRunning(int backupid);
 	void setFileBackupDone(int backupid);
 	void setFileBackupSynced(int backupid);

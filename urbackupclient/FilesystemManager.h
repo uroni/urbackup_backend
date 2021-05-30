@@ -12,7 +12,6 @@ public:
 		const str_map& secret_params, const std::string& mount_path);
 
 	static IBackupFileSystem* getFileSystem(const std::string& url);
-
 private:
 
 	static std::mutex mutex;
