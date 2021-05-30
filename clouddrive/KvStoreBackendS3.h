@@ -17,7 +17,7 @@ class KvStoreBackendS3 : public IKvStoreBackend
 public:
 	KvStoreBackendS3(const std::string& encryption_key, const std::string& access_key, const std::string& secret_access_key,
 		const std::string& bucket_name, ICompressEncryptFactory* compress_encrypt_factory, const std::string& s3_endpoint,
-		const std::string& s3_region, const std::string& p_storage_class, unsigned int comp_method,
+		const std::string& s3_region, const std::string& p_storage_class, unsigned int comp_method, unsigned int comp_method_metadata,
 		IBackupFileSystem* cachefs);
 
 	static void init_mutex();
@@ -124,6 +124,7 @@ private:
 	ICompressEncryptFactory* compress_encrypt_factory;
 	IOnlineKvStore* online_kv_store;
 	unsigned int comp_method;
+	unsigned int comp_method_metadata;
 
 	relaxed_atomic<int64> uploaded_bytes;
 

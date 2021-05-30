@@ -263,11 +263,13 @@ int64 KvStoreBackendS3::n_requests=0;
 
 KvStoreBackendS3::KvStoreBackendS3(const std::string& encryption_key, const std::string& access_key, const std::string& secret_access_key,
 	const std::string& bucket_name, ICompressEncryptFactory* compress_encrypt_factory, const std::string& s3_endpoint, 
-	const std::string& s3_region, const std::string& p_storage_class, unsigned int comp_method, IBackupFileSystem* cachefs)
+	const std::string& s3_region, const std::string& p_storage_class, unsigned int comp_method, unsigned int comp_method_metadata,
+	IBackupFileSystem* cachefs)
 	: encryption_key(encryption_key),
 	  compress_encrypt_factory(compress_encrypt_factory), online_kv_store(NULL), 
 	  s3_endpoint(s3_endpoint), s3_region(s3_region),
 	  storage_class(Aws::S3::Model::StorageClass::NOT_SET), comp_method(comp_method),
+	  comp_method_metadata(comp_method_metadata),
 		uploaded_bytes(0), downloaded_bytes(0), cachefs(cachefs)
 {
 	if(!access_key.empty())
@@ -776,6 +778,9 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 		src->Seek(0);
 	}
 
+	unsigned int curr_comp_method = (flags & IKvStoreBackend::GetMetadata) > 0 ? comp_method_metadata
+		: comp_method;
+
 	std::string local_md5;
 	std::shared_ptr<Aws::IOStream> upload_file;
 	std::shared_ptr<offset_buf> offset_buffer;
@@ -798,7 +803,8 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 			return false;
 		}
 		
-		std::unique_ptr<ICompressAndEncrypt> compress_encrypt(compress_encrypt_factory->createCompressAndEncrypt(encryption_key, src, online_kv_store, comp_method));
+		std::unique_ptr<ICompressAndEncrypt> compress_encrypt(compress_encrypt_factory->createCompressAndEncrypt(encryption_key, 
+			src, online_kv_store, curr_comp_method));
 
 		std::vector<char> buffer;
 		buffer.resize(32768);
