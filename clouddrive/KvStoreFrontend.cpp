@@ -340,7 +340,8 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 		}
 		else if (tmp_f->Read(static_cast<int64>(0), static_cast<_u32>(tmp_f->Size())) != "CD_MAGIC")
 		{
-			std::string err = "Magic file content is wrong.";
+			std::string content = tmp_f->Read(static_cast<int64>(0), static_cast<_u32>(tmp_f->Size()));
+			std::string err = "Magic file content is wrong. ("+ content+")";
 			Server->Log(err, LL_ERROR);
 			setMountStatusErr(err);
 			throw std::runtime_error(err);
