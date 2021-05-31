@@ -1778,6 +1778,7 @@ fuse_io_context::io_uring_task<int> CloudFile::ReadAsync(fuse_io_context& io, fu
 	if (read_tasks.empty())
 	{
 		Server->Log("No read_tasks in ReadAsync", LL_WARNING);
+		abort();
 		co_return -1;
 	}
 
