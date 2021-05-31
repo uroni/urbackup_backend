@@ -419,6 +419,7 @@ bool DecryptAndDecompress::put( char* buffer, size_t buffer_size )
 			{
 				const size_t buffer_size = 128 * 1024;
 				output_buf.resize(buffer_size);
+				decompressor->setOut(output_buf.data(), output_buf.size());
 			}
 
 			if(buffer_size>toread)
@@ -573,6 +574,5 @@ bool DecryptAndDecompress::init_decompression(unsigned int decompressor_id)
 		return false;
 	}
 
-	decompressor->setOut(output_buf.data(), output_buf.size());
 	return true;
 }
