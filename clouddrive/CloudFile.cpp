@@ -3403,6 +3403,7 @@ IOnlineKvStore * CloudFile::create_migration_endpoint(const std::string& conf_fn
 			secret_access_key, bucket_name, get_compress_encrypt_factory(), s3_endpoint, 
 			s3_region, storage_class,
 			CompressionMethodFromString(settings->getValue("compression_method", "zstd_9")),
+			CompressionMethodFromString(settings->getValue("metadata_compression_method", "zstd_9"))
 			migrate_cachefs);
 
 		return new KvStoreFrontend(cache_path + "/migration/objects.db",
@@ -3435,6 +3436,7 @@ IOnlineKvStore * CloudFile::create_migration_endpoint(const std::string& conf_fn
 		IKvStoreBackend* backend = new KvStoreBackendAzure(aes_key, account_name,
 			account_key, container_name, get_compress_encrypt_factory(),
 			CompressionMethodFromString(settings->getValue("compression_method", "zstd_9")),
+			CompressionMethodFromString(settings->getValue("metadata_compression_method", "zstd_9"))
 			migrate_cachefs);
 
 		return new KvStoreFrontend(cache_path + "/migration/objects.db",
