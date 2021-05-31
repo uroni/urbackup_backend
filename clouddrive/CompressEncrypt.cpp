@@ -50,6 +50,8 @@ unsigned int CompressionMethodFromString(const std::string & str)
 		return CompressionZstd9;
 	else if (str == "none")
 		return CompressionNone;
+	else if (str == "zstd_7")
+		return CompressionZstd7;
 	else
 		return CompressionZstd3;
 }
@@ -107,6 +109,7 @@ ICompressAndEncrypt* CompressEncryptFactory::createCompressAndEncrypt(const std:
 	case CompressionZstd3:
 	case CompressionZstd19:
 	case CompressionZstd9:
+	case CompressionZstd7:
 	{
 		int level = 3;
 		switch (compression_id)
@@ -115,6 +118,8 @@ ICompressAndEncrypt* CompressEncryptFactory::createCompressAndEncrypt(const std:
 			level = 19;
 		case CompressionZstd9:
 			level = 9;
+		case CompressionZstd7:
+			level = 7;
 		}
 		compressor = new CdZstdCompressor(level, CompressionZstd3);
 	} break;
