@@ -384,7 +384,8 @@ bool ObjectCollector::persist(int task_id, int64 completed, int64 active,
 
 	for (auto& it : backend_keys)
 	{
-		if (out_f->Write(pos, it->getCompressedDataPtr(), it->getCompressedDataLength()) != it->getCompressedDataLength())
+		if (out_f->Write(pos, it->getCompressedDataPtr(),
+			static_cast<_u32>(it->getCompressedDataLength())) != it->getCompressedDataLength())
 			return false;
 
 		pos += it->getCompressedDataLength();
@@ -392,7 +393,8 @@ bool ObjectCollector::persist(int task_id, int64 completed, int64 active,
 
 	for (auto& it : backend_locinfo)
 	{
-		if (out_f->Write(pos, it->getCompressedDataPtr(), it->getCompressedDataLength()) != it->getCompressedDataLength())
+		if (out_f->Write(pos, it->getCompressedDataPtr(),
+			static_cast<_u32>(it->getCompressedDataLength())) != it->getCompressedDataLength())
 			return false;
 
 		pos += it->getCompressedDataLength();

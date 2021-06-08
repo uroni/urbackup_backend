@@ -227,7 +227,8 @@ bool IncrFileBackup::doFileBackup()
 	ServerLogger::Log(logid, clientname+" Starting incremental backup...", LL_DEBUG);
 
 	int incremental_num = resumed_full?0:(last.incremental+1);
-	if (!backup_dao->newFileBackup(incremental_num, clientid, backuppath_single, resumed_backup, Server->getTimeMS() - indexing_start_time, group))
+	if (!backup_dao->newFileBackup(incremental_num, clientid, backuppath_single, 
+		resumed_backup, Server->getTimeMS() - indexing_start_time, group, 0))
 	{
 		ServerLogger::Log(logid, "Error creating new backup row in database", LL_ERROR);
 		has_early_error = true;

@@ -61,6 +61,7 @@ class LocalBackup : public IThread
 		virtual std::string getName() override;
 		virtual IFile* getBackingFile() override;
 		virtual std::string lastError() override;
+		virtual std::vector<SChunk> getChunks() override;
 	private:
 		std::string prefix;
 		IBackupFileSystem* backup_files;		

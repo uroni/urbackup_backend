@@ -1,8 +1,9 @@
 #pragma once
 #include <stdint.h>
-struct device_extension;
 
-typedef struct
+typedef struct _device_extension device_extension;
+
+typedef struct _BtrfsChunk
 {
     uint64_t offset;
     uint64_t len;

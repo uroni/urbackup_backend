@@ -466,6 +466,11 @@ std::string LocalBackup::PrefixedBackupFiles::lastError()
 	return std::string();
 }
 
+std::vector<IBackupFileSystem::SChunk> LocalBackup::PrefixedBackupFiles::getChunks()
+{
+	return backup_files->getChunks();
+}
+
 bool LocalBackup::PrefixedBackupFiles::copyFile(const std::string& src, const std::string& dst, bool flush, std::string* error_str)
 {
 	return backup_files->copyFile(prefix+src, prefix+dst, flush, error_str);

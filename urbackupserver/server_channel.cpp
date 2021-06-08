@@ -1662,7 +1662,7 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 
 		ServerLogger::reset(log_id);
 
-		client_main->finishRestore(restore_id);
+		client_main->removeRestore(restore_id);
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
 	}	
 }

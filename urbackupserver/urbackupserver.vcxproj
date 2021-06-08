@@ -187,6 +187,7 @@
   <ItemGroup>
     <ClCompile Include="..\blockalign_src\crc.cpp" />
     <ClCompile Include="..\blockalign_src\crc32c-adler.cpp" />
+    <ClCompile Include="..\clouddrive\ObjectCollector.cpp" />
     <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\common\miniz.c" />

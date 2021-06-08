@@ -35,7 +35,7 @@ bool LocalBackup::doBackup()
 	if (!backup_dao.newFileBackup(incremental, clientid, backuppath_single, 0, 0, group, incremental_ref))
 		return false;
 
-	backupid = db->getLastInsertID();
+	backupid = static_cast<int>(db->getLastInsertID());
 
 	std::string pver = "3";
 
@@ -126,7 +126,6 @@ bool LocalBackup::doBackup()
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
-		std::string ret;
 		bool has_error = false;
 		while (tcpstack.getPacket(ret))
 		{

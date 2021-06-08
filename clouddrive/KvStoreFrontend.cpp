@@ -2959,7 +2959,7 @@ bool KvStoreFrontend::BackgroundWorker::removeOldObjects(KvStoreDao& dao,
 		}
 		else
 		{
-			ret = object_collector.persist(TASK_REMOVE_OLD_OBJECTS, p_trans_ids, result_fn);
+			ret = object_collector.persist(TASK_REMOVE_OLD_OBJECTS, 0, 0, p_trans_ids, result_fn);
 		}
 
 		Server->Log("Backend del done res=" + convert(ret), LL_INFO);

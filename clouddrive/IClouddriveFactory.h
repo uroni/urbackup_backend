@@ -4,6 +4,8 @@
 #include "../Interface/File.h"
 #include "../Interface/BackupFileSystem.h"
 
+class IKvStoreBackend;
+
 class IClouddriveFactory : public IPlugin
 {
 public:

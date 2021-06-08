@@ -1180,7 +1180,7 @@ void ClientMain::prepareSQL(void)
 }
 
 int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, 
-	bool *new_client, std::string* authkey, int* client_group, std::string* perm_uid = NULL)
+	bool *new_client, std::string* authkey, int* client_group, std::string* perm_uid)
 {
 	if(new_client!=NULL)
 		*new_client=false;
