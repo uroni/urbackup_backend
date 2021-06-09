@@ -593,7 +593,9 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 
 bool KvStoreBackendS3::list( IListCallback* callback )
 {
-	Aws::String marker;
+	bool etag_error = false;
+	Aws::String key_marker;
+	Aws::String version_marker;
 	size_t idx=0;
 	auto s3_client = getS3Client(idx);
 	while(idx<buckets.size())
@@ -604,7 +606,8 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 			{
 				++idx;
 				s3_client = getS3Client(idx);
-				marker.clear();
+				key_marker.clear();
+				version_marker.clear();
 				continue;
 			}
 			else
@@ -613,15 +616,16 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 			}
 		}
 
-		Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+		Aws::S3::Model::ListObjectVersionsRequest listObjectsRequest;
 		listObjectsRequest.SetBucket(buckets[idx].name.c_str());
 
-		if(!marker.empty())
+		if(!key_marker.empty())
 		{
-			listObjectsRequest.WithMarker(marker);
+			listObjectsRequest.WithKeyMarker(key_marker);
+			listObjectsRequest.WithVersionIdMarker(version_marker);
 		}
 
-		Aws::S3::Model::ListObjectsOutcome listObjectsOutcome = s3_client.second->ListObjects(listObjectsRequest);
+		Aws::S3::Model::ListObjectVersionsOutcome listObjectsOutcome = s3_client.second->ListObjectVersions(listObjectsRequest);
 
 		if(!listObjectsOutcome.IsSuccess())
 		{
@@ -631,28 +635,23 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 			return false;
 		}
 
-		for (const Aws::S3::Model::Object& object: listObjectsOutcome.GetResult().GetContents())
+		for (const Aws::S3::Model::ObjectVersion& object: listObjectsOutcome.GetResult().GetVersions())
 		{			
-			std::string etag = trim(object.GetETag().c_str());
-			if(etag.size()>2)
-			{
-				etag = etag.substr(1, etag.size()-2);
+			key_marker = object.GetKey();
+			version_marker = object.GetVersionId();
 
-				if(etag=="00000000000000000000000000000000-1") //minio returns this sometimes
+			std::string md5sum;
+			if (version_marker.size()>=16)
 			{
-					Server->Log("Server (minio) returned etag "+etag+" while listing object "+object.GetKey().c_str() + ". Ignoring etag.", LL_ERROR);
-					etag.clear();
+				md5sum.resize(16 + version_marker.size());
+				md5sum.replace(md5sum.begin() + 16, md5sum.end(), version_marker.data());
 			}
-				else if(!IsHex(etag))
+			else
 			{
-					Server->Log("Server returned invalid etag "+etag+" (not hex) while listing object "+object.GetKey().c_str() + ". Ignoring etag.", LL_ERROR);
-					etag.clear();
+				md5sum.assign(version_marker.begin(), version_marker.end());
 			}
-			}
-			
-			marker = object.GetKey();
 
-			if(!callback->onlineItem(object.GetKey().c_str(), hexToBytes(etag), object.GetSize(), object.GetLastModified().Millis()))
+			if(!callback->onlineItem(object.GetKey().c_str(), md5sum, object.GetSize(), object.GetLastModified().Millis()))
 			{
 				releaseS3Client(idx, s3_client);
 				return false;
@@ -667,7 +666,8 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 			{
 				++idx;
 				s3_client = getS3Client(idx);
-				marker.clear();
+				key_marker.clear();
+				version_marker.clear();
 			}
 			else
 			{
@@ -676,9 +676,10 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 		}
 		else
 		{
-			if(!listObjectsOutcome.GetResult().GetNextMarker().empty())
+			if(!listObjectsOutcome.GetResult().GetNextKeyMarker().empty())
 			{
-				marker = listObjectsOutcome.GetResult().GetNextMarker();
+				key_marker = listObjectsOutcome.GetResult().GetNextKeyMarker();
+				version_marker = listObjectsOutcome.GetResult().GetNextVersionIdMarker();
 			}
 		}
 	}
