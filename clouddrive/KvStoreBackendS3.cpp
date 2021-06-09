@@ -20,6 +20,7 @@
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsRequest.h>
+#include <aws/s3/model/ListObjectVersionsRequest.h>
 #include <aws/s3/model/Object.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/s3/model/DeleteObjectsRequest.h>
@@ -35,6 +36,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../urbackupcommon/events.h"
+#include "../md5.h"
 #include <fstream>
 #include <cstdarg>
 #include <stdlib.h>
@@ -348,9 +350,14 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		idx0 = getShardIdx(key, buckets.size()-1)+1;
 	}
 	
+	std::string expected_md5sum = get_md5sum(md5sum);
+	std::string version = get_locinfo(md5sum);
+	
 	Aws::S3::Model::GetObjectRequest getObjectRequest;
 	getObjectRequest.SetBucket(buckets[idx0].name.c_str());
 	getObjectRequest.SetKey(key.c_str());
+	if(!version.empty())
+		getObjectRequest.SetVersionId(version.c_str());
 
 	IFsFile* tmpfile = Server->openTemporaryFile();
 	if(tmpfile==NULL)
@@ -414,65 +421,6 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 			}
 			++n_requests;
 		}
-	
-		std::string etag = trim(getObjectOutcome.GetResult().GetETag().c_str());
-
-		if(etag.size()>2)
-		{
-			etag = strlower(etag.substr(1, etag.size()-2));
-
-			if(etag=="00000000000000000000000000000000-1") //minio returns this sometimes
-			{
-				if (!FileExists("/var/urbackup/ignore_etag_error"))
-				{
-					if (allow_error_event)
-					{
-						writestring("/var/urbackup/ignore_etag_error", convert(Server->getTimeSeconds()));
-							addSystemEvent("s3_backend",
-								"Minio has missing object metadata",
-								"Minio returned the etag (checksum) " + etag + " for object " + key + " but the appliance expected etag " + bytesToHex(md5sum)
-								+ ". Your minio data store might be corrupted. The etag will be ignored, but the actual data might be"
-								" corrupted as well which will lead to further errors and might make your backup storage inaccessible.", LL_WARNING);
-					}
-					Server->Log("Minio returned etag " + etag + " for object " + key + ". Expected etag " + bytesToHex(md5sum), LL_WARNING);
-				}
-				etag = bytesToHex(md5sum);
-			}
-			else if (!IsHex(etag))
-			{
-				if (!FileExists("/var/urbackup/ignore_etag_error"))
-				{
-					if (allow_error_event)
-					{
-						writestring("/var/urbackup/ignore_etag_error", convert(Server->getTimeSeconds()));
-						addSystemEvent("s3_backend",
-							"Missing object metadata",
-							"S3 storage returned the etag (checksum) " + etag + " for object " + key + " but the appliance expected etag " + bytesToHex(md5sum)
-							+ " (md5sum of object data). The appliance will ignore this etag (and other etags like it).", LL_WARNING);
-					}
-					Server->Log("S3 returned etag " + etag + " for object " + key + ". Expected etag " + bytesToHex(md5sum), LL_WARNING);
-				}
-				etag = bytesToHex(md5sum);
-			}
-		}
-
-		if(!md5sum.empty()
-			&& etag!=bytesToHex(md5sum))
-		{
-			if (allow_error_event)
-			{
-				addSystemEvent("s3_backend",
-					"Object checksum wrong after download",
-					"Online md5sum (" + etag + " -- orig etag '" + getObjectOutcome.GetResult().GetETag().c_str() + "') is not equal to locally stored md5sum (" + bytesToHex(md5sum) + ") after retrieving "+key, LL_ERROR);
-			}
-			Server->Log("Online md5sum ("+etag+" -- orig etag '"+ getObjectOutcome.GetResult().GetETag().c_str()+"') is not equal to locally stored md5sum ("+bytesToHex(md5sum)+") after retrieving "+key, LL_ERROR);
-			return false;
-		}
-		else if (md5sum.empty()
-			&& key!="cd_magic_file")
-		{
-			Server->Log("Locally stored md5sum of object "+key+" empty. Using online md5sum from now ("+etag+")", LL_WARNING);
-		}
 
 		int mode = MODE_RW;
 #ifdef _WIN32
@@ -532,6 +480,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		std::vector<char> buffer;
 		buffer.resize(32768);
 
+		MD5 md_check;
 		tmpfile->Seek(0);
 		while(true)
 		{
@@ -541,7 +490,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 				break;
 			}
 
-			if(decrypt_and_decompress.get()!=NULL
+			if(decrypt_and_decompress.get()!=nullptr
 				&& !decrypt_and_decompress->put(buffer.data(), read))
 			{
 				if(allow_error_event)
@@ -553,8 +502,9 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 				Server->Log("Error decrypting and decompressing", LL_ERROR);
 				return false;
 			}
-			else if(decrypt_and_decompress.get()==NULL)
+			else if(decrypt_and_decompress.get()==nullptr)
 			{
+				md_check.update(reinterpret_cast<unsigned char*>(buffer.data()), read);
 				if(res->Write(buffer.data(), read)!=read)
 				{
 					std::string syserr = os_last_error_str();
@@ -584,46 +534,32 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 				return false;
 			}
 
-			std::string final_md5sum_hex = decrypt_and_decompress->md5sum();
+			ret_md5sum = hexToBytes(decrypt_and_decompress->md5sum());
+		}
+		else
+		{
+			md_check.finalize();
+			ret_md5sum.assign(reinterpret_cast<char*>(md_check.raw_digest_int()), 16);
+		}
 
-			if (!md5sum.empty()
-				&& bytesToHex(md5sum) != final_md5sum_hex)
+		if (!expected_md5sum.empty()
+			&& bytesToHex(expected_md5sum) != ret_md5sum)
+		{
+			Server->Log("Calculated md5sum of downloaded object differs from expected md5sum for object " + key 
+				+ ". Calculated=" + ret_md5sum + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
+			if (allow_error_event)
 			{
-				Server->Log("Calculated md5sum of downloaded object differs from expected md5sum for object "+key+". Calculated=" + final_md5sum_hex+ " Expected="+ bytesToHex(md5sum), LL_ERROR);
-				if (allow_error_event)
-				{
-					addSystemEvent("s3_backend",
-						"Calculated md5sum differs from expected",
-						"Calculated md5sum of downloaded object differs from expected md5sum for object " + key + ". Calculated=" + final_md5sum_hex + " Expected=" + bytesToHex(md5sum), LL_ERROR);
-				}
-				return false;
+				addSystemEvent("s3_backend",
+					"Calculated md5sum differs from expected",
+					"Calculated md5sum of downloaded object differs from expected md5sum for object " + key
+					+ ". Calculated=" + ret_md5sum + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
 			}
-
-			if (!etag.empty()
-				&& etag != final_md5sum_hex)
-			{
-				Server->Log("Calculated md5sum of downloaded object differs from etag for object " + key + ". Calculated=" + final_md5sum_hex + " Etag=" + etag, LL_ERROR);
-				if (allow_error_event)
-				{
-					addSystemEvent("s3_backend",
-						"Calculated md5sum differs from etag",
-						"Calculated md5sum of downloaded object differs from etag for object " + key + ". Calculated=" + final_md5sum_hex + " Etag=" + etag, LL_ERROR);
-				}
-				return false;
-			}
+			return false;
 		}
 
 		if(ret_file==nullptr)
 		{
 			ret_file = res_src.release();
-		}
-		if (!md5sum.empty())
-		{
-			ret_md5sum = md5sum;
-		}
-		else
-		{
-			ret_md5sum = hexToBytes(etag);
 		}
 		return true;
 	}
@@ -696,26 +632,26 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 		}
 
 		for (const Aws::S3::Model::Object& object: listObjectsOutcome.GetResult().GetContents())
-		{
+		{			
 			std::string etag = trim(object.GetETag().c_str());
 			if(etag.size()>2)
 			{
 				etag = etag.substr(1, etag.size()-2);
 
 				if(etag=="00000000000000000000000000000000-1") //minio returns this sometimes
-				{
+			{
 					Server->Log("Server (minio) returned etag "+etag+" while listing object "+object.GetKey().c_str() + ". Ignoring etag.", LL_ERROR);
 					etag.clear();
-				}
+			}
 				else if(!IsHex(etag))
-				{
+			{
 					Server->Log("Server returned invalid etag "+etag+" (not hex) while listing object "+object.GetKey().c_str() + ". Ignoring etag.", LL_ERROR);
 					etag.clear();
-				}
+			}
 			}
 			
 			marker = object.GetKey();
-			
+
 			if(!callback->onlineItem(object.GetKey().c_str(), hexToBytes(etag), object.GetSize(), object.GetLastModified().Millis()))
 			{
 				releaseS3Client(idx, s3_client);
@@ -879,6 +815,8 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 	putObjectRequest.SetBucket(buckets[idx].name.c_str());
 	putObjectRequest.SetKey(key.c_str());
 	putObjectRequest.SetBody(upload_file);
+	putObjectRequest.SetContentMD5(base64_encode(reinterpret_cast<unsigned char*>(local_md5.data()),
+		static_cast<unsigned int>(local_md5.size())).c_str());
 	if (storage_class != Aws::S3::Model::StorageClass::NOT_SET)
 	{
 		putObjectRequest.SetStorageClass(storage_class);
@@ -908,27 +846,8 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 			}
 			++n_requests;
 		}
-	
-		std::string etag = trim(putObjectOutcome.GetResult().GetETag().c_str());
 
-		if(etag.size()>2)
-		{
-			etag = etag.substr(1, etag.size()-2);
-		}
-
-		if(strlower(etag)!=bytesToHex(local_md5))
-		{
-			Server->Log("Local md5sum is not equal to md5sum from s3 during upload (key "+key+"). Expected "+bytesToHex(local_md5)+" got "+strlower(etag), LL_WARNING);
-			if(allow_error_event)
-			{
-				addSystemEvent("s3_backend",
-					"Checksum error after upload",
-					"Local md5sum is not equal to md5sum from s3 during upload while uploading object "+key+". Expected "+bytesToHex(local_md5)+" got "+strlower(etag), LL_ERROR);
-			}
-			return false;
-		}
-
-		md5sum = hexToBytes(etag);
+		md5sum = local_md5;
 		compressed_size = local_size;
 
 		if (del_with_location_info())

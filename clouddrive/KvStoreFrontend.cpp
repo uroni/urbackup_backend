@@ -680,7 +680,7 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 		bool backend_not_found = not_found;
 		if (backend_mirror == nullptr
 			|| !backend_mirror->get(bkey, path, 
-					cd_object.md5sum.size()>16 ? cd_object.md5sum.substr(0, 16) : cd_object.md5sum,
+					get_md5sum(cd_object.md5sum),
 					flags, allow_error_event, ret, ret_md5sum, get_status))
 		{
 			not_found = (get_status & IKvStoreBackend::GetStatusNotFound)>0;
@@ -827,7 +827,7 @@ bool KvStoreFrontend::put(int64 cd_id, const std::string& key, int64 transid,
 			dao.getObjectInTransid(transid, tkey) :
 			dao.getObjectInTransidCd(cd_id, transid, tkey);
 		if (obj.exists
-			&& obj.md5sum.size()>16)
+			&& !get_locinfo(obj.md5sum).empty())
 		{
 			size_t idx1 = 0;
 			size_t idx2 = 0;
@@ -855,7 +855,7 @@ bool KvStoreFrontend::put(int64 cd_id, const std::string& key, int64 transid,
 				}
 				if (idx2>0)
 					return false;
-				*locinfo = obj.md5sum.substr(16);
+				*locinfo = get_locinfo(obj.md5sum);
 				++idx2;
 				return true;
 			},false);
@@ -2852,9 +2852,7 @@ bool KvStoreFrontend::BackgroundWorker::removeOldObjects(KvStoreDao& dao,
 				object_collector.add(
 					deletable_object.trans_id,
 					deletable_object.tkey,
-					deletable_object.md5sum.size() > 16 ?
-					deletable_object.md5sum.substr(16) :
-					std::string(),
+					get_locinfo(deletable_object.md5sum),
 					mirrored);
 
 				has_object = true;
@@ -2987,9 +2985,7 @@ bool KvStoreFrontend::BackgroundWorker::removeOldObjects(KvStoreDao& dao,
 				obj.md5sum.clear();
 #endif
 				assert(backend->check_deleted(frontend->prefixKey(frontend->encodeKey(cd_id, obj.tkey, obj.trans_id)),
-					obj.md5sum.size() > 16 ?
-					obj.md5sum.substr(16) :
-					std::string()));
+					get_locinfo(obj.md5sum)));
 			}
 #endif
 
@@ -3139,9 +3135,7 @@ bool KvStoreFrontend::BackgroundWorker::removeTransaction(KvStoreDao& dao, int64
 
 				object_collector.add(-1,
 					trans_object.tkey,
-					trans_object.md5sum.size() > 16 ?
-					trans_object.md5sum.substr(16) :
-					std::string(),
+					get_locinfo(trans_object.md5sum),
 					mirrored);
 
 				has_object = true;
@@ -3294,9 +3288,7 @@ bool KvStoreFrontend::BackgroundWorker::removeTransaction(KvStoreDao& dao, int64
 				obj.md5sum.clear();
 #endif
 				assert(backend->check_deleted(frontend->prefixKey(frontend->encodeKey(cd_id, obj.tkey, trans_id)),
-					obj.md5sum.size() > 16 ?
-					obj.md5sum.substr(16) :
-					std::string()));
+					get_locinfo(obj.md5sum)));
 			}
 			for (std::string& key : add_backend_keys)
 			{

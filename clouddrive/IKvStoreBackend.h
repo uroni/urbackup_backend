@@ -7,6 +7,29 @@
 
 class IOnlineKvStore;
 
+namespace
+{
+	std::string get_md5sum(const std::string& md5sum)
+	{
+		if (md5sum.size() == 16)
+			return md5sum;
+		else if (md5sum.size() > 16)
+			return md5sum.substr(0, 16);
+		else
+			return std::string();
+	}
+
+	std::string get_locinfo(const std::string& md5sum)
+	{
+		if (md5sum.size() == 16)
+			return std::string();
+		else if (md5sum.size() > 16)
+			return md5sum.substr(16);
+		else
+			return md5sum;
+	}
+}
+
 class IKvStoreBackend : public IObject
 {
 public:
