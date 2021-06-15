@@ -216,7 +216,8 @@ public:
 
 	static bool tochannelSendChanges(const char* changes, size_t changes_size);
 
-	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
+	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity,
+		int timeoutms=10000);
 
 	static void updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
 		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);

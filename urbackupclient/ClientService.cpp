@@ -3808,9 +3808,10 @@ void ClientConnector::sendStatus()
 	db->destroyAllQueries();
 }
 
-bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity)
+bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int loglevel,
+	const std::string& identity, int timeoutms)
 {
-	return sendMessageToChannel("LOG "+convert(log_id)+"-"+convert(loglevel)+"-"+msg, 10000, identity);
+	return sendMessageToChannel("LOG "+convert(log_id)+"-"+convert(loglevel)+"-"+msg, timeoutms, identity);
 }
 
 void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
@@ -3953,6 +3954,9 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 				return true;
 			}
 		}
+
+		if (timeoutms == 0)
+			return false;
 
 		lock.relock(NULL);
 		Server->wait(100);
@@ -4224,36 +4228,24 @@ bool ClientConnector::localBackup(std::string dest_url, const std::string& dest_
 
 	running_processes.push_back(new_proc);
 
-	if (!FilesystemManager::openFilesystemImage(dest_url, dest_params, dest_secret_params))
-	{
-		tcpstack.Send(pipe, "ERR-Opening destination file system");
-		return true;
-	}
-
 	int64 log_id = watoi64(params["log_id"]);
-
-	IBackupFileSystem* file_system = FilesystemManager::getFileSystem(dest_url);
-
-	if (file_system == nullptr)
-	{
-		tcpstack.Send(pipe, "ERR-Destination file system is NULL");
-		return true;
-	}
 
 	THREADPOOL_TICKET backup_ticket;
 	if (full)
 	{
-		LocalFullFileBackup* fb = new LocalFullFileBackup(file_system, group,
+		LocalFullFileBackup* fb = new LocalFullFileBackup(group,
 			clientsubname, new_proc.id, log_id, server_id, new_proc.id,
-			server_token, server_identity, facet_id, max_backups);
+			server_token, server_identity, facet_id, max_backups,
+			dest_url, dest_params, dest_secret_params);
 
 		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup full");
 	}
 	else
 	{
-		LocalIncrFileBackup* fb = new LocalIncrFileBackup(file_system,
-			group, clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
-			server_identity, facet_id, max_backups);
+		LocalIncrFileBackup* fb = new LocalIncrFileBackup(group, 
+			clientsubname, new_proc.id, log_id, server_id, new_proc.id, server_token,
+			server_identity, facet_id, max_backups,
+			dest_url, dest_params, dest_secret_params);
 
 		backup_ticket = Server->getThreadPool()->execute(fb, "lfbackup incr");
 	}
