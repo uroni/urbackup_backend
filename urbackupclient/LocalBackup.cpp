@@ -23,6 +23,7 @@
 #include "ClientService.h"
 #include "../common/data.h"
 #include "../clouddrive/IClouddriveFactory.h"
+#include "FilesystemManager.h"
 #include "client.h"
 #include <memory>
 #include <set>
@@ -123,21 +124,29 @@ namespace
 	};
 }
 
-LocalBackup::LocalBackup(IBackupFileSystem* p_backup_files, int64 local_process_id, int64 server_log_id, 
+LocalBackup::LocalBackup(int64 local_process_id, int64 server_log_id, 
 	int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id,
-	size_t max_backups)
+	size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
+	const str_map& dest_secret_params)
 	: backup_updater_thread(NULL),
 	server_log_id(server_log_id), server_status_id(server_status_id),
 	backupid(backupid), server_token(std::move(server_token)), server_identity(std::move(server_identity)),
 	local_process_id(local_process_id), facet_id(facet_id),
-	orig_backup_files(p_backup_files), max_backups(max_backups)
+	max_backups(max_backups),
+	dest_url(dest_url), dest_url_params(dest_url_params), 
+	dest_secret_params(dest_secret_params)
 {
 	
 }
 
-void LocalBackup::onStartBackup()
+bool LocalBackup::onStartBackup()
 {
+	if (!openFileSystem())
+		return false;
+
 	backup_updater_thread = new BackupUpdaterThread(local_process_id, backupid, server_status_id, server_token);
+
+	return true;
 }
 
 void LocalBackup::onBackupFinish(bool image)
@@ -153,14 +162,14 @@ void LocalBackup::onBackupFinish(bool image)
 		backup_success = false;
 	}
 
-	log("Calculating background delete data...", LL_INFO);
-
 	if (backup_success &&
 		clouddrive_fak != nullptr &&
-		clouddrive_fak->isCloudFile(orig_backup_files->getBackingFile()))
+		clouddrive_fak->isCloudFile(backup_files->getBackingFile()))
 	{
-		int64 transid = clouddrive_fak->getCfTransid(orig_backup_files->getBackingFile());
-		if (!clouddrive_fak->runBackgroundWorker(orig_backup_files->getBackingFile(),
+		log("Calculating background delete data...", LL_INFO);
+
+		int64 transid = clouddrive_fak->getCfTransid(backup_files->getBackingFile());
+		if (!clouddrive_fak->runBackgroundWorker(backup_files->getBackingFile(),
 			"urbackup/bg_del_" + conv_filename(server_token) + "_" + std::to_string(transid) + "_"+std::to_string(backupid)+".dat"))
 		{
 			log("Error generating background delete data", LL_ERROR);
@@ -169,12 +178,25 @@ void LocalBackup::onBackupFinish(bool image)
 	}
 
 	if (!ClientConnector::localBackupDone(server_log_id, server_status_id, backupid,
-		backup_success, server_identity))
+		backup_success, server_token))
 	{
 		log("Error notifying server about local backup success", LL_WARNING);
 	}
 
 	log("Backup finished.", LL_INFO);
+
+	int64 log_send_starttime = Server->getTimeMS();
+	while (Server->getTimeMS() - log_send_starttime<3*60*1000)
+	{
+		if (sendLogBuffer())
+		{
+			break;
+		}
+		else
+		{
+			Server->wait(5000);
+		}
+	}
 }
 
 void LocalBackup::updateProgressPc(int new_pc, int64 p_total_bytes, int64 p_done_bytes)
@@ -267,9 +289,40 @@ bool LocalBackup::sync()
 	return true;
 }
 
+bool LocalBackup::sendLogBuffer()
+{
+	size_t send_ok = std::string::npos;
+	for (size_t i = 0; i < log_buffer.size(); ++i)
+	{
+		if (ClientConnector::tochannelLog(server_log_id,
+			log_buffer[i].first, log_buffer[i].second, server_token,
+			0))
+		{
+			send_ok = i;
+		}
+	}
+
+	if (send_ok != std::string::npos)
+	{
+		log_buffer.erase(log_buffer.begin(), log_buffer.begin() + send_ok + 1);
+	}
+
+	return log_buffer.empty();
+}
+
 void LocalBackup::log(const std::string& msg, int loglevel)
 {
-	ClientConnector::tochannelLog(server_log_id, msg, loglevel, server_identity);
+	Server->Log(msg, loglevel);
+	if (!sendLogBuffer() ||
+		!ClientConnector::tochannelLog(server_log_id, msg,
+			loglevel, server_token, 0))
+	{
+		if (log_buffer.size() > 100)
+		{
+			log_buffer.erase(log_buffer.begin());
+		}
+		log_buffer.push_back(std::make_pair(msg, loglevel));
+	}
 }
 
 void LocalBackup::logIndexResult()
@@ -304,7 +357,7 @@ void LocalBackup::logIndexResult()
 
 bool LocalBackup::cleanupOldBackups(bool image)
 {
-	std::vector<SFile> backups = orig_backup_files->listFiles(std::string());
+	std::vector<SFile> backups = backup_files->root()->listFiles(std::string());
 
 	size_t n_backups = 0;
 	for (SFile& backup: backups)
@@ -329,9 +382,9 @@ bool LocalBackup::cleanupOldBackups(bool image)
 
 			if (del_backup)
 			{
-				if (!orig_backup_files->deleteSubvol(backup.name))
+				if (!backup_files->root()->deleteSubvol(backup.name))
 				{
-					log("Error deleting subvol \"" + backup.name + "\". " + orig_backup_files->lastError(), LL_ERROR);
+					log("Error deleting subvol \"" + backup.name + "\". " + backup_files->lastError(), LL_ERROR);
 					return false;
 				}
 				did_cleanup = true;
@@ -340,19 +393,38 @@ bool LocalBackup::cleanupOldBackups(bool image)
 			}
 		}
 
-		backups = orig_backup_files->listFiles(std::string());
+		backups = backup_files->root()->listFiles(std::string());
 	}
 
 	if (did_cleanup)
 	{
-		if (!orig_backup_files->sync(std::string()))
+		if (!backup_files->root()->sync(std::string()))
 		{
-			log("Error syncing fs after cleanup. " + orig_backup_files->lastError(), LL_ERROR);
+			log("Error syncing fs after cleanup. " + backup_files->lastError(), LL_ERROR);
 			return false;
 		}
 	}
 
-	return false;
+	return true;
+}
+
+bool LocalBackup::openFileSystem()
+{
+	if (!FilesystemManager::openFilesystemImage(dest_url, dest_url_params, dest_secret_params))
+	{
+		log("Error opening destination file system "+dest_url, LL_ERROR);
+		return false;
+	}	
+
+	orig_backup_files.reset(FilesystemManager::getFileSystem(dest_url));
+
+	if (!orig_backup_files)
+	{
+		log("Error getting destination file system " + dest_url, LL_ERROR);
+		return false;
+	}
+
+	return true;
 }
 
 bool LocalBackup::PrefixedBackupFiles::hasError()

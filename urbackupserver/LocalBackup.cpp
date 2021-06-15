@@ -14,6 +14,30 @@ bool LocalBackup::doBackup()
 	logid = ServerLogger::getLogId(clientid);
 	db = nullptr;
 
+	if (is_file_backup)
+	{
+		if (r_incremental)
+		{
+			status_id = ServerStatus::startProcess(clientname, sa_incr_file, details, logid, true);
+		}
+		else
+		{
+			status_id = ServerStatus::startProcess(clientname, sa_full_file, details, logid, true);
+		}
+	}
+	else
+	{
+		if (r_incremental)
+		{
+			status_id = ServerStatus::startProcess(clientname, sa_incr_image, details, logid, true);
+		}
+		else
+		{
+			status_id = ServerStatus::startProcess(clientname, sa_full_image, details, logid, true);
+		}
+		ServerStatus::setProcessPcDone(clientname, status_id, 0);
+	}
+
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	server_settings.reset(new ServerSettings(db, clientid));
 	ServerBackupDao backup_dao(db);
@@ -80,6 +104,7 @@ bool LocalBackup::doBackup()
 
 	start_backup_cmd += "&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1&with_proper_symlinks=1";
 	start_backup_cmd += "&status_id=" + convert(status_id);
+	start_backup_cmd += "&log_id=" + convert(logid.first);
 	start_backup_cmd += "&async=1";
 	start_backup_cmd += "#token=" + server_token;
 
@@ -534,3 +559,4 @@ void LocalBackup::log_progress(const std::string& fn, int64 total, int64 downloa
 		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". Loaded " + PrettyPrintBytes(downloaded) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 }
+

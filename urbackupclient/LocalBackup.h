@@ -68,12 +68,13 @@ class LocalBackup : public IThread
 	};
 
 public:
-	LocalBackup(IBackupFileSystem* backup_files, int64 local_process_id,
+	LocalBackup(int64 local_process_id,
 		int64 server_log_id, int64 server_status_id, int64 backupid,
 		std::string server_token, std::string server_identity, int facet_id,
-		size_t max_backups);
+		size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
+		const str_map& dest_secret_params);
 protected:
-	void onStartBackup();
+	bool onStartBackup();
 	void onBackupFinish(bool image);
 
 	void updateProgressPc(int new_pc, int64 p_total_bytes, int64 p_done_bytes);
@@ -87,6 +88,8 @@ protected:
 
 	bool sync();
 
+	bool sendLogBuffer();
+
 	void log(const std::string& msg, int loglevel);
 
 	void logIndexResult();
@@ -96,6 +99,8 @@ protected:
 	}
 
 	bool cleanupOldBackups(bool image);
+
+	bool openFileSystem();
 
 	std::unique_ptr<PrefixedBackupFiles> backup_files;
 	std::unique_ptr<IBackupFileSystem> orig_backup_files;
@@ -108,6 +113,12 @@ protected:
 	int facet_id;
 	size_t max_backups;
 	bool backup_success = false;
+	std::string dest_url;
+	std::string dest_url_params;
+	str_map dest_secret_params;
+
+	std::vector<std::pair<std::string, int> > log_buffer;
+
 private:
 
 	BackupUpdaterThread* backup_updater_thread;

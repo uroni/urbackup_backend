@@ -29,14 +29,15 @@ bool LocalFullFileBackup::prepareBackuppath() {
 
 	const std::time_t t = std::time(nullptr);
 	char mbstr[100];
-	if (!std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M.new", std::localtime(&t)))
+	if (!std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H-%M.new", std::localtime(&t)))
 		return false;
 
 	std::string prefix = std::string(mbstr);
 
+	log("Creating new subvolume for backup...", LL_INFO);
 	if (!orig_backup_files->createSubvol(prefix))
 	{
-		log("Creating new subvolume for backup...", LL_INFO);
+		log("Error creating new subvolume for backup. " + orig_backup_files->lastError(), LL_ERROR);
 		return false;
 	}
 

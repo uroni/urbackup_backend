@@ -975,7 +975,11 @@ void ClientMain::operator ()(void)
 
 									if (!localBackup->doBackup())
 									{
+										localBackup->setResult(false, false);
 									}
+									
+									running_local_backups.push_back(SRunningLocalBackup(localBackup->getLogId(),
+										localBackup->getStatusId(), localBackup->getBackupId()));
 								}
 								started_job=true;
 							}
@@ -3496,7 +3500,6 @@ void ClientMain::timeoutLocalBackups()
 			}
 
 			bool finished;
-			bool success;
 			if (!lb->queryBackupFinished(60000, finished))
 			{
 				ServerLogger::Log(running_local_backups[i].log_id, "Local backup was inactive for 5min. Timeout. Stopping local backup...", LL_ERROR);

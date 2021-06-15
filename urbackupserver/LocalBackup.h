@@ -21,6 +21,10 @@ public:
 
 	virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps) override;
 
+	int getBackupId() {
+		return backupid;
+	}
+
 protected:
 	bool constructBackupPath();
 

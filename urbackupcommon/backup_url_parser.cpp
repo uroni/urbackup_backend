@@ -8,7 +8,6 @@ bool parse_backup_url(const std::string& url, const std::string& url_params,
 		next(url, 0, "ss3://"))
 	{
 		bool ssl = next(url, 0, "ss3://");
-		IClouddriveFactory::CloudSettings settings;
 		settings.endpoint = IClouddriveFactory::CloudEndpoint::S3;
 
 		std::string authorization = getbetween(ssl ? "ss3://" : "s3://", "@", url);
