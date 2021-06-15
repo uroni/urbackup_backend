@@ -1027,7 +1027,7 @@ static NTSTATUS write_btrfs(HANDLE h, uint64_t size, PUNICODE_STRING label, uint
 
 static bool look_for_device(btrfs_filesystem* bfs, BTRFS_UUID* devuuid) {
     uint32_t i;
-    btrfs_filesystem_device* dev;
+    btrfs_filesystem_device* dev = NULL;
 
     for (i = 0; i < bfs->num_devices; i++) {
         if (i == 0)

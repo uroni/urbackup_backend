@@ -42,6 +42,27 @@ extern "C"
     } DUPLICATE_EXTENTS_DATA, * PDUPLICATE_EXTENTS_DATA;
 
 #define FSCTL_DUPLICATE_EXTENTS_TO_FILE CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 209, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+
+    typedef struct {
+        void* table;
+        void* unk1;
+        WCHAR* string;
+    } DSTRING;
+
+    typedef struct {
+        void* table;
+    } STREAM_MESSAGE;
+
+    typedef struct {
+        uint16_t unk1;
+        uint16_t unk2;
+        uint32_t flags;
+        DSTRING* label;
+    } options;
+
+    BOOL __stdcall FormatEx(DSTRING* root, STREAM_MESSAGE* message, options* opts, uint32_t unk1);
+
+#define FORMAT_FLAG_QUICK_FORMAT        0x00000001
 }
 
 namespace
@@ -155,6 +176,8 @@ void btrfs_fuse_init()
     DriverEntry(driver_object.get(), reg_path.getUstr());
 }
 
+extern std::atomic<size_t> max_volumes;
+
 BtrfsFuse::BtrfsFuse(IFile* img)
     : fs_data(new FsData), img(img)
 {
@@ -168,7 +191,8 @@ BtrfsFuse::BtrfsFuse(IFile* img)
 
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     std::vector<char> moundev_name_buf;
-    std::wstring volname = L"VOL1";
+    size_t curr_vol_idx = max_volumes.fetch_add(1);
+    std::wstring volname = L"VOL"+std::to_wstring(curr_vol_idx);
     IoRegisterDeviceObjectPointer(UStr(volname).getUstr(), fs_data->file_object.get(), fs_data->device_object.get());
     moundev_name_buf.resize(sizeof(ULONG) + sizeof(WCHAR) * (volname.size() + 1));
     PMOUNTDEV_NAME mountdev_name = reinterpret_cast<PMOUNTDEV_NAME>(moundev_name_buf.data());
@@ -178,6 +202,12 @@ BtrfsFuse::BtrfsFuse(IFile* img)
     irp->StackLocation.Parameters.DeviceIoControl.IoControlCode = IOCTL_BTRFS_PROBE_VOLUME;
     irp->StackLocation.Parameters.DeviceIoControl.InputBufferLength = moundev_name_buf.size();
     driver_object->MajorFunction[IRP_MJ_DEVICE_CONTROL](master_devobj, irp.get());
+
+    if (new_disks.empty())
+    {
+        has_error = true;
+        return;
+    }
 
     PDEVICE_OBJECT btrfs_disk = new_disks[new_disks.size() - 1];
     for (PDEVICE_OBJECT disk : new_disks)
@@ -731,10 +761,14 @@ bool BtrfsFuse::create_snapshot(const std::string& src_path, const std::string& 
 
 bool BtrfsFuse::rename(const std::string& orig_name, const std::string& new_name)
 {
-    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(orig_name, MODE_READ, true, false);
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(orig_name, MODE_READ, false, false);
 
     if (src_file_obj.get() == nullptr)
-        return false;
+    {
+        src_file_obj = openFileInt(orig_name, MODE_READ, true, false);
+        if (src_file_obj.get() == nullptr)
+            return false;
+    }
 
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     irp->Flags = IRP_NOCACHE;
@@ -1041,6 +1075,8 @@ std::pair<BtrfsFuse::SBtrfsChunk*, size_t> BtrfsFuse::get_chunks()
 
 std::unique_ptr<_FILE_OBJECT> BtrfsFuse::openFileInt(const std::string& path, int mode, bool openDirectory, bool deleteFile)
 {
+    if (path == "trans_4\\s\\7300")
+        int abc = 5;
     if (mode == MODE_WRITE || mode== MODE_RW_CREATE)
     {
         this->deleteFile(path);
@@ -1141,4 +1177,25 @@ int64 BtrfsFuse::fileSize(PFILE_OBJECT file_object)
         return -1;
     }
     return fsi.EndOfFile.QuadPart;
+}
+
+bool btrfs_format_vol(IFile* vol)
+{
+    static std::atomic<int> file_num;
+    std::wstring file_name = L"vol" + std::to_wstring(file_num.fetch_add(1));
+    RegisterNtFile(&file_name[0], vol);
+
+    DSTRING root = { nullptr, nullptr, &file_name[0] };
+
+    STREAM_MESSAGE message = { nullptr };
+
+    DSTRING label = { nullptr, nullptr, &file_name[0] };
+
+    options opts = { 0, 0, FORMAT_FLAG_QUICK_FORMAT, &label };
+
+    BOOL ret = FormatEx(&root, &message, &opts, 0);
+
+    UnregisterNtFile(&file_name[0]);
+
+    return ret;
 }

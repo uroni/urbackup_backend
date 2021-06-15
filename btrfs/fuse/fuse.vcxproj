@@ -181,6 +181,7 @@
     <ClCompile Include="..\..\external\btrfs\src\send.c" />
     <ClCompile Include="..\..\external\btrfs\src\sha256.c" />
     <ClCompile Include="..\..\external\btrfs\src\treefuncs.c" />
+    <ClCompile Include="..\..\external\btrfs\src\ubtrfs\ubtrfs.c" />
     <ClCompile Include="..\..\external\btrfs\src\volume.c" />
     <ClCompile Include="..\..\external\btrfs\src\worker-thread.c" />
     <ClCompile Include="..\..\external\btrfs\src\write.c" />
@@ -219,6 +220,7 @@
     <ClInclude Include="get_chunks.h" />
     <ClInclude Include="nt\ata.h" />
     <ClInclude Include="nt\device.h" />
+    <ClInclude Include="nt\devioctl.h" />
     <ClInclude Include="nt\guiddef.h" />
     <ClInclude Include="nt\mountdev.h" />
     <ClInclude Include="nt\mountmgr.h" />
@@ -233,10 +235,13 @@
     <ClInclude Include="nt\ntstrsafe.h" />
     <ClInclude Include="nt\os.h\Header.h" />
     <ClInclude Include="nt\resource.h" />
+    <ClInclude Include="nt\stringapiset.h" />
     <ClInclude Include="nt\wdm.h" />
+    <ClInclude Include="nt\winbase.h" />
     <ClInclude Include="nt\windef.h" />
     <ClInclude Include="nt\Windows.h" />
     <ClInclude Include="nt\winnt.h" />
+    <ClInclude Include="nt\winternl.h" />
     <ClInclude Include="nt\workqueue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

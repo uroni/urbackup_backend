@@ -96,3 +96,5 @@ private:
 
 void btrfs_fuse_init();
 
+bool btrfs_format_vol(IFile* vol);
+

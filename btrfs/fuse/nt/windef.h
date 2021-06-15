@@ -881,7 +881,7 @@ typedef struct _IDENTIFY_DEVICE_DATA {
     struct _COMMAND_SUPPORT {
         BOOLEAN FlushCache;
     } CommandSetSupport;
-
+    ULONG NominalMediaRotationRate;
 } IDENTIFY_DEVICE_DATA;
 typedef IDENTIFY_DEVICE_DATA* PIDENTIFY_DEVICE_DATA;
 
@@ -1605,7 +1605,20 @@ typedef struct _TARGET_DEVICE_REMOVAL_NOTIFICATION {
 } TARGET_DEVICE_REMOVAL_NOTIFICATION;
 typedef TARGET_DEVICE_REMOVAL_NOTIFICATION* PTARGET_DEVICE_REMOVAL_NOTIFICATION;
 
+typedef struct _TOKEN_PRIVILEGE {
+    LUID Luid;
+    ULONG Attributes;
+} TOKEN_PRIVILEGE;
 
+typedef struct _TOKEN_PRIVILEGES {
+    ULONG PrivilegeCount;
+    TOKEN_PRIVILEGE Privileges[1];
+} TOKEN_PRIVILEGES;
+
+typedef struct _FILETIME {
+    DWORD dwLowDateTime;
+    DWORD dwHighDateTime;
+} FILETIME;
 
 #ifndef ANYSIZE_ARRAY
 #define ANYSIZE_ARRAY 1
@@ -1638,7 +1651,7 @@ typedef TARGET_DEVICE_REMOVAL_NOTIFICATION* PTARGET_DEVICE_REMOVAL_NOTIFICATION;
 #define OPTIONAL
 #endif
 
-#define FORCEINLINE
+#define FORCEINLINE static
 
 #define DO_BUFFERED_IO (1<<0)
 #define DO_DIRECT_IO (1<<1)
@@ -1764,6 +1777,7 @@ typedef TARGET_DEVICE_REMOVAL_NOTIFICATION* PTARGET_DEVICE_REMOVAL_NOTIFICATION;
 #define MOUNTMGR_DEVICE_NAME L"MountMgr"
 
 #define FILE_SHARE_READ (1<<0)
+#define FILE_SHARE_WRITE (1<<1)
 
 #define FILE_NON_DIRECTORY_FILE (1<<0)
 #define FILE_WRITE_THROUGH (1<<1)
@@ -2051,6 +2065,23 @@ typedef TARGET_DEVICE_REMOVAL_NOTIFICATION* PTARGET_DEVICE_REMOVAL_NOTIFICATION;
 #define SE_LOAD_DRIVER_PRIVILEGE 10
 
 #define INFINITE 0xFFFFFFFF
+
+#define NTSYSCALLAPI
+
+#define HMODULE HANDLE
+
+#define WINAPI
+
+#define CP_UTF8 1
+
+#define TOKEN_ADJUST_PRIVILEGES 1
+#define TOKEN_QUERY 2
+
+#define SE_PRIVILEGE_ENABLED 1
+
+#define APIENTRY
+
+#define DLL_PROCESS_ATTACH 1
 
 static const ULONG LowPagePriority = 1;
 
@@ -2555,6 +2586,47 @@ void CcMdlWriteComplete(PFILE_OBJECT FileObject, PLARGE_INTEGER Offset, PMDL Mdl
 BOOLEAN WdmlibRtlIsNtDdiVersionAvailable(ULONG Version);
 
 void init_windef();
+
+static HANDLE GetCurrentProcess(void) { return 0; }
+
+BOOL OpenProcessToken(HANDLE hProc, ULONG Flags, PHANDLE Token);
+
+BOOL LookupPrivilegeValueW(PVOID ptr1, WCHAR* Name, PLUID Luid);
+
+static void GetSystemTimeAsFileTime(FILETIME* Filetime) {
+    Filetime->dwLowDateTime = 0;
+    Filetime->dwHighDateTime = 0;
+}
+
+ULONG WideCharToMultiByteInt(ULONG Codepage, DWORD Flags, WCHAR* Wchar, int NumWchar, char* buf, ULONG blen, PVOID ptr1, PVOID ptr2);
+
+static ULONG WideCharToMultiByte(ULONG Codepage, DWORD Flags, WCHAR* Wchar, int NumWchar, char* buf, ULONG blen, PVOID ptr1, PVOID ptr2)
+{
+    return WideCharToMultiByteInt(Codepage, Flags, Wchar, NumWchar, buf, blen, ptr1, ptr2);
+}
+
+NTSTATUS NtDeviceIoControlFile(HANDLE h, PVOID ptr1, PVOID ptr2, PVOID ptr3, PIO_STATUS_BLOCK Iocb, ULONG Cmd,
+    PVOID Apte1, ULONG Ape1Len, PVOID Apte2, ULONG Ape2Len);
+
+void RegisterNtFile(WCHAR* Name, PVOID file);
+
+void UnregisterNtFile(WCHAR* Name);
+
+NTSTATUS NtOpenFile(PHANDLE Handle, ULONG Attributes, POBJECT_ATTRIBUTES Atts, PIO_STATUS_BLOCK iosb,
+    ULONG SharingMode, ULONG AlertMode);
+
+NTSTATUS NtWriteFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer,
+    ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key);
+
+NTSTATUS NtReadFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer,
+    ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key);
+
+static void CloseHandle(HANDLE h) {}
+
+BOOL AdjustTokenPrivileges(HANDLE token, BOOL b, TOKEN_PRIVILEGES* TokenPrivs, ULONG TokenPrivsSize, PVOID ptr1, PVOID ptr2);
+
+NTSTATUS NtFsControlFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, 
+    PIO_STATUS_BLOCK IoStatusBlock, ULONG FsControlCode, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength);
    
 #define CONTAINING_RECORD(addr, type, field) ((type*)( (char*)(addr)-(ULONG_PTR)(&((type*)0)->field)))
 #define FILE_ATTRIBUTE_SPARSE_FILE (1)

@@ -25,6 +25,9 @@
     <Filter Include="btrfs\zlib">
       <UniqueIdentifier>{d31f708a-d5c4-4c76-a8c4-e51296eb9a02}</UniqueIdentifier>
     </Filter>
+    <Filter Include="btrfs\ubtrfs">
+      <UniqueIdentifier>{dee5e378-aa09-44ba-a22c-2716a0741b6e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="fuse.cpp">
@@ -210,6 +213,9 @@
     <ClCompile Include="get_chunks.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\external\btrfs\src\ubtrfs\ubtrfs.c">
+      <Filter>btrfs\ubtrfs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nt\ntifs.h">
@@ -280,6 +286,18 @@
     </ClInclude>
     <ClInclude Include="get_chunks.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\winbase.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\winternl.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\devioctl.h">
+      <Filter>nt</Filter>
+    </ClInclude>
+    <ClInclude Include="nt\stringapiset.h">
+      <Filter>nt</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

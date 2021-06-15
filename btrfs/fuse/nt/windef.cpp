@@ -22,6 +22,7 @@ extern "C"
 #include <thread>
 #include "file.h"
 #include "utf8.h"
+#include "../../utf8/utf8.h"
 
 POBJECT_TYPE* IoFileObjectType;
 
@@ -152,6 +153,156 @@ void init_windef()
 {
 	init_events();
 	init_object_type();
+}
+
+BOOL OpenProcessToken(HANDLE hProc, ULONG Flags, PHANDLE Token)
+{
+	return TRUE;
+}
+
+BOOL LookupPrivilegeValueW(PVOID ptr1, WCHAR* Name, PLUID Luid)
+{
+	return TRUE;
+}
+
+ULONG WideCharToMultiByteInt(ULONG Codepage, DWORD Flags, WCHAR* Wchar, int NumWchar, char* buf, ULONG blen, PVOID ptr1, PVOID ptr2)
+{
+	if (NumWchar == 0)
+	{
+		return 0;
+	}
+
+	if (NumWchar == -1)
+	{
+		NumWchar = wcslen(Wchar) + 1;
+	}
+
+	std::string ret;
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf16to8(Wchar, Wchar+NumWchar, back_inserter(ret));
+		}
+		else if (sizeof(wchar_t) == 4)
+		{
+			utf8::utf32to8(Wchar, Wchar + NumWchar, back_inserter(ret));
+		}
+
+	}
+	catch (...) {}
+	
+
+	if (blen == 0)
+	{
+		return ret.size();
+	}
+
+	ULONG tocopy = (std::min)(blen, static_cast<ULONG>(ret.size()));
+	memcpy(buf, ret.data(), tocopy);
+
+	return tocopy;
+}
+
+NTSTATUS NtDeviceIoControlFile(HANDLE h, PVOID ptr1, PVOID ptr2, PVOID ptr3, PIO_STATUS_BLOCK Iocb, ULONG Cmd, 
+	PVOID Apte1, ULONG Ape1Len, PVOID Apte2, ULONG Ape2Len)
+{
+	if (Cmd == IOCTL_DISK_GET_LENGTH_INFO)
+	{
+		IFile* vol = reinterpret_cast<IFile*>(h);
+		GET_LENGTH_INFORMATION* gli = reinterpret_cast<GET_LENGTH_INFORMATION*>(Apte2);
+		gli->Length.QuadPart = vol->Size();
+		return STATUS_SUCCESS;
+	}
+	else if (Cmd == IOCTL_DISK_GET_DRIVE_GEOMETRY)
+	{
+		DISK_GEOMETRY* dg = reinterpret_cast<DISK_GEOMETRY*>(Apte2);
+		dg->BytesPerSector = 512;
+		dg->Cylinders.QuadPart = 0;
+		dg->SectorsPerTrack = 1;
+		dg->TracksPerCylinder = 1;
+		return STATUS_SUCCESS;
+	}
+
+	return STATUS_NOT_IMPLEMENTED;
+}
+
+std::mutex registered_files_mutex;
+std::map<std::wstring, IFile*> registered_files;
+
+void RegisterNtFile(WCHAR* Name, PVOID file)
+{
+	std::lock_guard<std::mutex> lock(registered_files_mutex);
+	registered_files[Name] = reinterpret_cast<IFile*>(file);
+}
+
+void UnregisterNtFile(WCHAR* Name)
+{
+	std::lock_guard<std::mutex> lock(registered_files_mutex);
+	auto it = registered_files.find(Name);
+	if (it != registered_files.end())
+		registered_files.erase(it);
+}
+
+NTSTATUS NtOpenFile(PHANDLE Handle, ULONG Attributes, POBJECT_ATTRIBUTES Atts, PIO_STATUS_BLOCK iosb, ULONG SharingMode, ULONG AlertMode)
+{
+	std::lock_guard<std::mutex> lock(registered_files_mutex);
+
+	auto it = registered_files.find(Atts->path);
+	if (it == registered_files.end())
+		return STATUS_NOT_FOUND;
+
+	*Handle = it->second;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS NtWriteFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, 
+	PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key)
+{
+	IFile* f = reinterpret_cast<IFile*>(FileHandle);
+
+	bool has_error = false;
+	_u32 rc = f->Write(ByteOffset->QuadPart, reinterpret_cast<char*>(Buffer), Length, &has_error);
+
+	IoStatusBlock->Information = rc;
+	IoStatusBlock->Status = STATUS_SUCCESS;
+
+	if (has_error)
+	{
+		IoStatusBlock->Status = STATUS_CRC_ERROR;
+	}
+
+	return IoStatusBlock->Status;
+}
+
+NTSTATUS NtReadFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, 
+	PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key)
+{
+	IFile* f = reinterpret_cast<IFile*>(FileHandle);
+
+	bool has_error = false;
+	_u32 rc = f->Read(ByteOffset->QuadPart, reinterpret_cast<char*>(Buffer), Length, &has_error);
+
+	IoStatusBlock->Information = rc;
+	IoStatusBlock->Status = STATUS_SUCCESS;
+
+	if (has_error)
+	{
+		IoStatusBlock->Status = STATUS_CRC_ERROR;
+	}
+
+	return IoStatusBlock->Status;
+}
+
+BOOL AdjustTokenPrivileges(HANDLE token, BOOL b, TOKEN_PRIVILEGES* TokenPrivs, ULONG TokenPrivsSize, PVOID ptr1, PVOID ptr2)
+{
+	return TRUE;
+}
+
+NTSTATUS NtFsControlFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG FsControlCode, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength)
+{
+	return STATUS_SUCCESS;
 }
 
 BOOL FsRtlOplockIsFastIoPossible(POPLOCK lock)
@@ -749,15 +900,22 @@ NTSTATUS PsCreateSystemThread(HANDLE* hThread, ULONG access, POBJECT_ATTRIBUTES 
 	return STATUS_SUCCESS;
 }
 
+std::atomic<size_t> max_volumes(0);
+
 NTSTATUS IoGetDeviceInterfaces(PGUID arg1, PVOID arg2, ULONG len, WCHAR** list)
 {
 	std::wstring devlist;
 	if (memcmp(arg1, &GUID_DEVINTERFACE_DISK, sizeof(GUID)) == 0)
 	{		
-		devlist += L"VOL1";
+		for (size_t i = 0; i < max_volumes; ++i)
+		{
+			devlist += L"VOL" + std::to_wstring(i);
+			devlist += wchar_t{ 0 };
+		}
 	}
 	*list = reinterpret_cast<WCHAR*>(ExAllocate((devlist.size() + 1) * sizeof(WCHAR)));
-	memcpy(*list, devlist.data(), (devlist.size() + 1) * sizeof(wchar_t));
+	memcpy(*list, devlist.data(), devlist.size() * sizeof(wchar_t));
+	(*list)[devlist.size()] = 0;
 	return STATUS_SUCCESS;
 }
 

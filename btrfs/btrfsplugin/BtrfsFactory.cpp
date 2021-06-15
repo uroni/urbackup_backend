@@ -21,5 +21,17 @@
 
 IBackupFileSystem* BtrfsFactory::openBtrfsImage(IFile* img)
 {
-	return new BtrfsBackupFileSystem(img);
+	BtrfsBackupFileSystem* ret = new BtrfsBackupFileSystem(img);
+	if (ret->hasError())
+	{
+		delete ret;
+		return nullptr;
+	}
+
+	return ret;
+}
+
+bool BtrfsFactory::formatVolume(IFile* img)
+{
+	return btrfs_format_vol(img);
 }

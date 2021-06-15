@@ -21,6 +21,9 @@
 BtrfsBackupFileSystem::BtrfsBackupFileSystem(IFile* img)
 	: btrfs(img), backing_file(img)
 {
+	if (btrfs.get_has_error())
+		return;
+
 	btrfs.resize_max();
 }
 

@@ -7,4 +7,6 @@ class IBtrfsFactory : public IPlugin
 {
 public:
 	virtual IBackupFileSystem* openBtrfsImage(IFile* img) = 0;
+
+	virtual bool formatVolume(IFile* img) = 0;
 };
