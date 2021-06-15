@@ -5438,6 +5438,7 @@ bool CloudFile::start_background_worker()
 	{
 		return frontend->start_background_worker();
 	}
+	return false;
 }
 
 void CloudFile::set_background_worker_result_fn(const std::string& result_fn)
@@ -5456,6 +5457,7 @@ bool CloudFile::has_background_task()
 	{
 		return frontend->has_background_task();
 	}
+	return false;
 }
 
 void CloudFile::preload(int64 start, int64 stop, size_t n_threads)
