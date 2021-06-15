@@ -7,114 +7,11 @@
 #include "../clouddrive/IClouddriveFactory.h"
 #include "../common/miniz.h"
 #include "../urbackupcommon/backup_url_parser.h"
+#include "../urbackupcommon/os_functions.h"
 
 extern IBtrfsFactory* btrfs_fak;
 extern IFSImageFactory* image_fak;
 extern IClouddriveFactory* clouddrive_fak;
-
-namespace
-{
-#include "cache_init_vhdx.h"
-
-	std::string get_cache_init_vhdx()
-	{
-		size_t out_len;
-		void* cdata = tinfl_decompress_mem_to_heap(btrfs2_vhdx_z, btrfs2_vhdx_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
-		if (cdata == NULL)
-		{
-			return std::string();
-		}
-
-		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
-		mz_free(cdata);
-		return ret;
-	}
-
-	bool copy_vhdx(IVHDFile* src_vhdx, IFile* dst)
-	{
-		std::vector<char> buf(512 * 1024);
-		unsigned int blocksize = src_vhdx->getBlocksize();
-		for (int64 pos = 0; pos < src_vhdx->Size();)
-		{
-			if (!src_vhdx->this_has_sector())
-			{
-				pos += blocksize;
-				src_vhdx->Seek(pos);
-				continue;
-			}
-
-			int64 spos = pos;
-			while (pos < spos + blocksize)
-			{
-				size_t toread = (std::min)(static_cast<size_t>((spos + blocksize) - pos), buf.size());
-				size_t read;
-				if (!src_vhdx->Read(buf.data(), toread, read))
-					return false;
-
-				if (dst->Write(pos, buf.data(), static_cast<_u32>(read)) != read)
-					return false;
-
-				pos += read;
-			}
-		}
-
-		return true;
-	}
-
-	bool copy_vhdx(const std::string& src_fn, IFile* dst)
-	{
-		std::unique_ptr<IVHDFile> src_vhdx(image_fak->createVHDFile(src_fn, true, 0,
-			2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX));
-
-		if (!src_vhdx ||
-			!src_vhdx->isOpen())
-			return false;
-
-		return copy_vhdx(src_vhdx.get(), dst);
-	}
-
-	bool copy_vhdx(const std::string& src_fn, const std::string& dst_fn, int64 dst_size)
-	{
-		std::unique_ptr<IVHDFile> dst_vhdx(image_fak->createVHDFile(dst_fn + ".new", false, dst_size,
-			2 * 1024 * 1024, true, IFSImageFactory::ImageFormat_VHDX));
-
-		if (!dst_vhdx ||
-			!dst_vhdx->isOpen())
-			return false;
-
-		if (!copy_vhdx(src_fn, dst_vhdx.get()))
-			return false;
-
-		dst_vhdx.reset();
-
-		return os_rename_file(dst_fn + ".new", dst_fn);
-	}
-
-	bool create_cache_init_vhdx()
-	{
-		if (!FileExists("urbackup/cache_init.vhdx"))
-		{
-			std::unique_ptr<IFile> f(Server->openFile("urbackup/cache_init.vhdx.new", MODE_WRITE));
-			if (!f)
-				return false;
-
-			std::string data = get_cache_init_vhdx();
-
-			if (f->Write(data) != data.size())
-				return false;
-
-			if (!f->Sync())
-				return false;
-
-			f.reset();
-
-			if (!os_rename_file("urbackup/cache_init.vhdx.new", "urbackup/cache_init.vhdx"))
-				return false;
-		}
-
-		return true;
-	}
-}
 
 std::mutex FilesystemManager::mutex;
 std::map<std::string, IBackupFileSystem*> FilesystemManager::filesystems;
@@ -154,13 +51,30 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 	{
 		if (!FileExists(settings.cache_img_path))
 		{
-			if (!create_cache_init_vhdx())
-				return false;
+			Server->Log("Creating new cache file system", LL_INFO);
 
-			if (!copy_vhdx("urbackup/cache_init.vhdx", settings.cache_img_path, 1LL * 1024 * 1024 * 1024))
+			int64 cache_size = 1LL * 1024 * 1024 * 1024;
+			std::unique_ptr<IVHDFile> dst_vhdx(image_fak->createVHDFile(settings.cache_img_path + ".new", false, cache_size,
+				2 * 1024 * 1024, true, IFSImageFactory::ImageFormat_VHDX));
+
+			if (!dst_vhdx || !dst_vhdx->isOpen())
 			{
-				Server->Log("Could not copy urbackup/cache_init.vhdx to " + settings.cache_img_path + ". " + os_last_error_str(),
-					LL_ERROR);
+				Server->Log("Could not open cache vhdx to crate at " + settings.cache_img_path, LL_ERROR);
+				return false;
+			}
+
+			if (!btrfs_fak->formatVolume(dst_vhdx.get()))
+			{
+				Server->Log("Could not btrfs format cache volume", LL_ERROR);
+				return false;
+			}
+
+			dst_vhdx.reset();
+
+			if (!os_rename_file(settings.cache_img_path + ".new",
+				settings.cache_img_path))
+			{
+				Server->Log("Error renaming " + settings.cache_img_path + ". " + os_last_error_str(), LL_ERROR);
 				return false;
 			}
 		}
@@ -181,7 +95,7 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 			return false;
 		}
 		
-		settings.size = 100LL * 1024 * 1024 * 1024 * 1024; //100TB
+		settings.size = 20LL * 1024 * 1024 * 1024; //20GB
 
 		img = clouddrive_fak->createCloudFile(cachefs, settings);
 	}
@@ -191,11 +105,11 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 
 	if (img->RealSize() == 0)
 	{
-		if (!create_cache_init_vhdx())
+		if (!btrfs_fak->formatVolume(img))
+		{
+			Server->Log("Could not btrfs format volume", LL_ERROR);
 			return false;
-
-		if (!copy_vhdx("urbackup/cache_init.vhdx", img))
-			return false;
+		}
 	}
 
 	IBackupFileSystem* fs = btrfs_fak->openBtrfsImage(img);
