@@ -385,7 +385,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 	}
 
 	getObjectRequest.SetResponseStreamFactory([&tmpfile_path](){ return Aws::New<Aws::FStream>( ALLOCATION_TAG, tmpfile_path, 
-		std::ios_base::out | std::ios_base::in | std::ios_base::trunc
+		std::ios_base::out | std::ios_base::in | std::ios_base::trunc | std::ios_base::binary
 #ifdef _WIN32
 		, _SH_DENYNO
 #endif
@@ -543,16 +543,16 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		}
 
 		if (!expected_md5sum.empty()
-			&& bytesToHex(expected_md5sum) != ret_md5sum)
+			&& expected_md5sum != ret_md5sum)
 		{
 			Server->Log("Calculated md5sum of downloaded object differs from expected md5sum for object " + key 
-				+ ". Calculated=" + ret_md5sum + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
+				+ ". Calculated=" + bytesToHex(ret_md5sum) + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
 			if (allow_error_event)
 			{
 				addSystemEvent("s3_backend",
 					"Calculated md5sum differs from expected",
 					"Calculated md5sum of downloaded object differs from expected md5sum for object " + key
-					+ ". Calculated=" + ret_md5sum + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
+					+ ". Calculated=" + bytesToHex(ret_md5sum) + " Expected=" + bytesToHex(expected_md5sum), LL_ERROR);
 			}
 			return false;
 		}
