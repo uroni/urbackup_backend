@@ -239,6 +239,8 @@ void KvStoreDao::prepareQueries()
 	q_getUnmirroredTransactions=NULL;
 	q_setTransactionMirrored=NULL;
 	q_updateGenerationCd=NULL;
+	q_getLowerTransidObject=NULL;
+	q_getLowerTransidObjectCd=NULL;
 }
 
 //@-SQLGenDestruction
@@ -346,6 +348,8 @@ KvStoreDao::~KvStoreDao()
 	db->destroyQuery(q_getUnmirroredTransactions);
 	db->destroyQuery(q_setTransactionMirrored);
 	db->destroyQuery(q_updateGenerationCd);
+	db->destroyQuery(q_getLowerTransidObject);
+	db->destroyQuery(q_getLowerTransidObjectCd);
 }
 
 IDatabase * KvStoreDao::getDb()
@@ -2724,3 +2728,60 @@ void KvStoreDao::setUpdateGenerationQuery(IQuery* q)
 {
 	q_updateGeneration = q;
 }
+
+
+/**
+* @-SQLGenAccess
+* @func int64 KvStoreDao::getLowerTransidObject
+* @return int64 trans_id
+* @sql
+*		SELECT trans_id FROM clouddrive_objects
+*			WHERE tkey=:tkey(blob) AND trans_id<:transid(int64) LIMIT 1
+*/
+KvStoreDao::CondInt64 KvStoreDao::getLowerTransidObject(const std::string& tkey, int64 transid)
+{
+	if(q_getLowerTransidObject==NULL)
+	{
+		q_getLowerTransidObject=db->Prepare("SELECT trans_id FROM clouddrive_objects WHERE tkey=? AND trans_id<? LIMIT 1", false);
+	}
+	q_getLowerTransidObject->Bind(tkey.c_str(), (_u32)tkey.size());
+	q_getLowerTransidObject->Bind(transid);
+	db_results res=q_getLowerTransidObject->Read();
+	q_getLowerTransidObject->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0]["trans_id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 KvStoreDao::getLowerTransidObjectCd
+* @return int64 trans_id
+* @sql
+*		SELECT trans_id FROM clouddrive_objects_cd
+*			WHERE cd_id=:cd_id(int64) AND tkey=:tkey(blob) AND trans_id<:transid(int64) LIMIT 1
+*/
+KvStoreDao::CondInt64 KvStoreDao::getLowerTransidObjectCd(int64 cd_id, const std::string& tkey, int64 transid)
+{
+	if(q_getLowerTransidObjectCd==NULL)
+	{
+		q_getLowerTransidObjectCd=db->Prepare("SELECT trans_id FROM clouddrive_objects_cd WHERE cd_id=? AND tkey=? AND trans_id<? LIMIT 1", false);
+	}
+	q_getLowerTransidObjectCd->Bind(cd_id);
+	q_getLowerTransidObjectCd->Bind(tkey.c_str(), (_u32)tkey.size());
+	q_getLowerTransidObjectCd->Bind(transid);
+	db_results res=q_getLowerTransidObjectCd->Read();
+	q_getLowerTransidObjectCd->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0]["trans_id"]);
+	}
+	return ret;
+}
+

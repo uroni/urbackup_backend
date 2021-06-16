@@ -207,6 +207,8 @@ public:
 	std::vector<SCdTrans> getUnmirroredTransactions(void);
 	void setTransactionMirrored(int64 id);
 	bool updateGenerationCd(int64 cd_id, int64 generation);
+	CondInt64 getLowerTransidObject(const std::string& tkey, int64 transid);
+	CondInt64 getLowerTransidObjectCd(int64 cd_id, const std::string& tkey, int64 transid);
 	//@-SQLGenFunctionsEnd
 
 	IQuery* getUpdateGenerationQuery();
@@ -316,6 +318,8 @@ private:
 	IQuery* q_getUnmirroredTransactions;
 	IQuery* q_setTransactionMirrored;
 	IQuery* q_updateGenerationCd;
+	IQuery* q_getLowerTransidObject;
+	IQuery* q_getLowerTransidObjectCd;
 	//@-SQLGenVariablesEnd
 
 	void prepareQueries();

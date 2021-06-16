@@ -1423,6 +1423,22 @@ namespace
 	class ImportCallback : public IKvStoreBackend::IListCallback
 	{
 	public:
+		struct STransaction
+		{
+			int64 cd_id;
+			int64 transid;
+
+			STransaction(int64 cd_id, int64 transid)
+				: cd_id(cd_id), transid(transid) {}
+
+			bool operator<(const STransaction& other) const
+			{
+				return std::make_pair(cd_id, transid)
+					< std::make_pair(other.cd_id, other.transid);
+			}
+		};
+
+		std::map<STransaction, bool> transactions;
 
 		ImportCallback(KvStoreDao& dao, bool has_last_modified, int64 total_num_keys)
 			: dao(dao), last_modified_key_time(0), n_imported_keys(0), num_noprefix_files(0), num_prefix_files(0),
@@ -1502,14 +1518,16 @@ namespace
 				return true;
 			}
 
-			if(transactions.find(std::make_pair(cd_id, transid) )==transactions.end())
+			auto trans_it = transactions.find(STransaction(cd_id, transid));
+
+			if(trans_it==transactions.end())
 			{
 				if(cd_id==0)
 					dao.insertTransaction(transid);
 				else
 					dao.insertTransactionCd(transid, cd_id);
 
-				transactions.insert(std::make_pair(cd_id, transid));
+				trans_it = transactions.insert(std::make_pair(STransaction(cd_id, transid), false)).first;
 			}
 			
 			if(hexkey=="inactive")
@@ -1547,6 +1565,12 @@ namespace
 
 				if (cd_id == 0)
 				{
+					if (!trans_it->second &&
+						dao.getLowerTransidObject(bkey, transid).exists)
+					{
+						trans_it->second = true;
+					}
+
 					if (has_last_modified)
 					{
 						dao.addObject2(transid, bkey, md5sum, size, last_modified);
@@ -1558,6 +1582,12 @@ namespace
 				}
 				else
 				{
+					if (!trans_it->second &&
+						dao.getLowerTransidObjectCd(cd_id, bkey, transid).exists)
+					{
+						trans_it->second = true;
+					}
+
 					if (has_last_modified)
 					{
 						dao.addObject2Cd(cd_id, transid, bkey, md5sum, size, last_modified);
@@ -1624,7 +1654,6 @@ namespace
 		std::string last_modified_key;
 		std::string last_modified_md5sum;
 		int64 last_modified_key_time;
-		std::set<std::pair<int64, int64> > transactions;
 		int64 n_imported_keys;
 		size_t num_prefix_files;
 		size_t num_noprefix_files;
@@ -1745,6 +1774,13 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 	if (has_prefix)
 	{
 		dao.setMiscValue("has_prefix", "1");
+	}
+
+	for (auto trans_it : import_callback.transactions)
+	{
+		if(trans_it.second)
+			dao.addTask(TASK_REMOVE_OLD_OBJECTS, trans_it.first.transid, 
+				Server->getTimeSeconds(), trans_it.first.cd_id);
 	}
 
 	return true;
