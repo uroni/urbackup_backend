@@ -3,7 +3,7 @@
 		{?show_client_breadcrumb}
 		<a href="javascript: show_backups1()">{tClients}</a> >
 		{/show_client_breadcrumb}
-		<strong>{clientname}</strong>
+		<strong>{clientname} (ID: {clientid})</strong>
 	</div>
 	<div class="panel-body">
 		{?backups}
@@ -12,6 +12,7 @@
 			<tr>
 				<th>&nbsp;</th>
 				<th>{tBackup time}</th>
+                <th>{tBackup ID}</th>
 				<th>{tIncremental}</th>
 				<th>{tSize}</th>
 				<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
@@ -21,6 +22,7 @@
 				<tr onclick="tabMouseClickBackups({clientid}, {id})" style="cursor: pointer">
 					<td>&nbsp;</td>
 					<td>{backuptime}</td>
+                    <td>{id}</td>
 					<td>{incr}</td>
 					<td>{size_bytes}</td>
 					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
