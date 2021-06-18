@@ -347,8 +347,8 @@ bool create_subvolume(int mode, std::string subvolume_folder)
 		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "create", "-p", subvolume_folder.c_str(), NULL);
                 std::string subvolume_path;
-                exec_wait(find_zfs_cmd(), subvolume_path, "get", "-H", "-o", "mountpoint", subvolume_folder.c_str(), NULL);
-                chown_dir(subvolume_path);
+                exec_wait(find_zfs_cmd(), subvolume_path, "get", "-H", "-o", "value", "mountpoint", subvolume_folder.c_str(), NULL);
+                chown_dir(trim(subvolume_path));
 		return rc==0;
 	}
 	return false;
@@ -392,8 +392,8 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
 		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "clone", (snapshot_src+"@ro").c_str(), snapshot_dst.c_str(), NULL);
 		std::string snapshot_dst_path;
-                exec_wait(find_zfs_cmd(), snapshot_dst_path, "get", "-H", "-o", "mountpoint", snapshot_dst.c_str(), NULL);
-                chown_dir(snapshot_dst_path);
+		exec_wait(find_zfs_cmd(), snapshot_dst_path, "get", "-H", "-o", "value", "mountpoint", snapshot_dst.c_str(), NULL);
+                chown_dir(trim(snapshot_dst_path));
 		return rc==0;
 	}
 	return false;

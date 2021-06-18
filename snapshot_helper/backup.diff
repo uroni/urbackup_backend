@@ -1,0 +1,404 @@
+diff --git a/snapshot_helper/main.cpp b/snapshot_helper/main.cpp
+index e4b8d4a2..25c98b3a 100644
+--- a/snapshot_helper/main.cpp
++++ b/snapshot_helper/main.cpp
+@@ -1,29 +1,29 @@
+ #include <string>
+ #include <string>
+ #include <iostream>
+-#include <vector>
++#include <vector>
+ #include "../stringtools.h"
+ #include "../urbackupcommon/os_functions.h"
+ #include <stdlib.h>
+ #ifndef _WIN32
+-#include <unistd.h>
+-#include <stdarg.h>
+-#include <sys/types.h>
++#include <unistd.h>
++#include <stdarg.h>
++#include <sys/types.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+-#include <fcntl.h>
++#include <fcntl.h>
+ #include <pwd.h>
+-extern char **environ;
+-#endif
+-
+-#define DEF_Server
++extern char **environ;
++#endif
++
++#define DEF_Server
+ #include "../Server.h"
+ 
+ const int mode_btrfs=0;
+ const int mode_zfs=1;
+-const int mode_zfs_file=2;
+-
+-IServer *Server;
++const int mode_zfs_file=2;
++
++IServer *Server;
+ 
+ #ifdef _WIN32
+ #include <Windows.h>
+@@ -80,18 +80,18 @@ std::string getBackupfolderPath(int mode)
+ 		return std::string();
+ 	}
+ 
+-	std::string fn;
++	std::string fn;
+ #ifdef _WIN32
+ 	fn=trim(getFile(fn_name));
+ #else
+ 	fn=trim(getFile("/etc/urbackup/"+fn_name));
+ #endif
+-	if(fn.find("\n")!=std::string::npos)
+-		fn=getuntil("\n", fn);
+-	if(fn.find("\r")!=std::string::npos)
+-		fn=getuntil("\r", fn);
+-	
+-	return fn;
++	if(fn.find("\n")!=std::string::npos)
++		fn=getuntil("\n", fn);
++	if(fn.find("\r")!=std::string::npos)
++		fn=getuntil("\r", fn);
++	
++	return fn;
+ }
+ 
+ std::string handleFilename(std::string fn)
+@@ -103,29 +103,29 @@ std::string handleFilename(std::string fn)
+ 	}
+ 	return fn;
+ }
+-
+-#ifndef _WIN32
+-int exec_wait(const std::string& path, bool keep_stdout, ...)
+-{
+-	va_list vl;
+-	va_start(vl, keep_stdout);
+-	
+-	std::vector<char*> args;
+-	args.push_back(const_cast<char*>(path.c_str()));
+-	
+-	while(true)
+-	{
+-		const char* p = va_arg(vl, const char*);
+-		if(p==NULL) break;
+-		args.push_back(const_cast<char*>(p));
+-	}
+-	va_end(vl);
+-	
+-	args.push_back(NULL);
+-	
+-	pid_t child_pid = fork();
+-	
+-	if(child_pid==0)
++
++#ifndef _WIN32
++int exec_wait(const std::string& path, bool keep_stdout, ...)
++{
++	va_list vl;
++	va_start(vl, keep_stdout);
++	
++	std::vector<char*> args;
++	args.push_back(const_cast<char*>(path.c_str()));
++	
++	while(true)
++	{
++		const char* p = va_arg(vl, const char*);
++		if(p==NULL) break;
++		args.push_back(const_cast<char*>(p));
++	}
++	va_end(vl);
++	
++	args.push_back(NULL);
++	
++	pid_t child_pid = fork();
++	
++	if(child_pid==0)
+ 	{
+ 		environ = new char*[1];
+ 		*environ=NULL;
+@@ -151,23 +151,23 @@ int exec_wait(const std::string& path, bool keep_stdout, ...)
+ 				return -1;
+ 			}
+ 		}
+-		
+-		int rc = execvp(path.c_str(), args.data());
+-		exit(rc);
+-	}
+-	else
+-	{
+-		int status;
+-		waitpid(child_pid, &status, 0);
+-		if(WIFEXITED(status))
+-		{
+-			return WEXITSTATUS(status);
+-		}
+-		else
+-		{
+-			return -1;
+-		}
+-	}
++		
++		int rc = execvp(path.c_str(), args.data());
++		exit(rc);
++	}
++	else
++	{
++		int status;
++		waitpid(child_pid, &status, 0);
++		if(WIFEXITED(status))
++		{
++			return WEXITSTATUS(status);
++		}
++		else
++		{
++			return -1;
++		}
++	}
+ }
+ 
+ int exec_wait(const std::string& path, std::string& stdout, ...)
+@@ -237,17 +237,17 @@ int exec_wait(const std::string& path, std::string& stdout, ...)
+ 			return -1;
+ 		}
+ 	}
+-}
+-
+-bool chown_dir(const std::string& dir)
+-{
+-	passwd* user_info = getpwnam("urbackup");
+-	if(user_info)
+-	{
+-		int rc = chown(dir.c_str(), user_info->pw_uid, user_info->pw_gid);
+-		return rc!=-1;
+-	}
+-	return false;
++}
++
++bool chown_dir(const std::string& dir)
++{
++	passwd* user_info = getpwnam("urbackup");
++	if(user_info)
++	{
++		int rc = chown(dir.c_str(), user_info->pw_uid, user_info->pw_gid);
++		return rc!=-1;
++	}
++	return false;
+ }
+ 
+ std::string find_btrfs_cmd()
+@@ -328,7 +328,7 @@ void zfs_elevate()
+ 		std::cout << "Cannot become root user (2)" << std::endl;
+ 	}
+ #endif
+-}
++}
+ #endif
+ 
+ bool create_subvolume(int mode, std::string subvolume_folder)
+@@ -338,15 +338,17 @@ bool create_subvolume(int mode, std::string subvolume_folder)
+ #else
+ 	if(mode==mode_btrfs)
+ 	{
+-		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "create", subvolume_folder.c_str(), NULL);
+-		chown_dir(subvolume_folder);
++		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "create", subvolume_folder.c_str(), NULL);
++		chown_dir(subvolume_folder);
+ 		return rc==0;
+ 	}
+ 	else if(mode==mode_zfs)
+ 	{
+ 		zfs_elevate();
+ 		int rc=exec_wait(find_zfs_cmd(), true, "create", "-p", subvolume_folder.c_str(), NULL);
+-		chown_dir(subvolume_folder);
++		std::string subvolume_path;
++                exec_wait(find_zfs_cmd(), subvolume_path, "get", "-H", "-o", "mountpoint", subvolume_folder.c_str(), NULL);
++                chown_dir(subvolume_path);
+ 		return rc==0;
+ 	}
+ 	return false;
+@@ -381,7 +383,7 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
+ #else
+ 	if(mode==mode_btrfs)
+ 	{
+-		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
++		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
+ 		chown_dir(snapshot_dst);
+ 		return rc==0;
+ 	}
+@@ -389,7 +391,9 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
+ 	{
+ 		zfs_elevate();
+ 		int rc=exec_wait(find_zfs_cmd(), true, "clone", (snapshot_src+"@ro").c_str(), snapshot_dst.c_str(), NULL);
+-		chown_dir(snapshot_dst);
++		std::string snapshot_dst_path;
++                exec_wait(find_zfs_cmd(), snapshot_dst_path, "get", "-H", "-o", "mountpoint", snapshot_dst.c_str(), NULL);
++                chown_dir(snapshot_dst_path);
+ 		return rc==0;
+ 	}
+ 	return false;
+@@ -488,7 +492,7 @@ bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
+ 		else
+ 		{
+ 			rc=exec_wait(find_btrfs_cmd(), !quiet, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
+-		}
++		}
+ 		return rc==0;
+ 	}
+ 	else if(mode==mode_zfs)
+@@ -621,11 +625,11 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	std::string backupfolder=getBackupfolderPath(mode);
+-	
+-	if(backupfolder.empty())
++	
++	if(backupfolder.empty())
+ 	{	
+ 		if(mode==mode_btrfs)
+-		{
++		{
+ 			std::cout << "Backupfolder not set" << std::endl;
+ 		}
+ 		else if(mode==mode_zfs)
+@@ -639,22 +643,22 @@ int main(int argc, char *argv[])
+ 		else
+ 		{
+ 			std::cout << "Unknown mode: " << mode << std::endl;
+-		}
+-		return 1;
++		}
++		return 1;
+ 	}
+ 	
+ 	if(cmd!="test" && mode==mode_zfs_file)
+ 	{
+ 		mode=mode_zfs;
+-	}
+-	
+-#ifndef _WIN32
+-	if(seteuid(0)!=0)
+-	{
+-		std::cout << "Cannot become root user" << std::endl;
+-		return 1;
+-	}
+-#endif
++	}
++	
++#ifndef _WIN32
++	if(seteuid(0)!=0)
++	{
++		std::cout << "Cannot become root user" << std::endl;
++		return 1;
++	}
++#endif
+ 
+ 	if(cmd=="create")
+ 	{
+@@ -733,52 +737,52 @@ int main(int argc, char *argv[])
+ 		}
+ 		create_dir_rc = create_dir_rc || os_create_dir(clientdir);
+ 		if(create_dir_rc)
+-		{	
++		{	
+ 			if(!create_subvolume(mode_btrfs, clientdir+os_file_sep()+"A") )
+ 			{
+ 				std::cout << "TEST FAILED: Creating test btrfs subvolume failed" << std::endl;
+ 				os_remove_dir(clientdir);
+ 				
+-				return zfs_test();
++				return zfs_test();
+ 			}
+-			
+-			bool suc=true;
++			
++			bool suc=true;
+ 
+ 			if(!create_snapshot(mode_btrfs, clientdir+os_file_sep()+"A", clientdir+os_file_sep()+"B") )
+ 			{
+ 				std::cout << "TEST FAILED: Creating test snapshot failed" << std::endl;
+-				suc=false;
++				suc=false;
+ 			}
+-			
+-			if(suc)
+-			{			
+-				writestring("test", clientdir+os_file_sep()+"A"+os_file_sep()+"test");
+-				
+-				if(!os_create_hardlink(clientdir+os_file_sep()+"B"+os_file_sep()+"test", clientdir+os_file_sep()+"A"+os_file_sep()+"test", true, NULL))
+-				{
+-					std::cout << "TEST FAILED: Creating cross sub-volume reflink failed. Need Linux kernel >= 3.6." << std::endl;
+-					suc=false;
++			
++			if(suc)
++			{			
++				writestring("test", clientdir+os_file_sep()+"A"+os_file_sep()+"test");
++				
++				if(!os_create_hardlink(clientdir+os_file_sep()+"B"+os_file_sep()+"test", clientdir+os_file_sep()+"A"+os_file_sep()+"test", true, NULL))
++				{
++					std::cout << "TEST FAILED: Creating cross sub-volume reflink failed. Need Linux kernel >= 3.6." << std::endl;
++					suc=false;
+ 				}
+ 				else
+-				{
+-					if(getFile(clientdir+os_file_sep()+"B"+os_file_sep()+"test")!="test")
+-					{
+-						std::cout << "TEST FAILED: Cannot read reflinked file" << std::endl;
+-						suc=false;
++				{
++					if(getFile(clientdir+os_file_sep()+"B"+os_file_sep()+"test")!="test")
++					{
++						std::cout << "TEST FAILED: Cannot read reflinked file" << std::endl;
++						suc=false;
+ 					}
+-				}
+-			}
++				}
++			}
+ 
+ 			if(!remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"A") )
+ 			{
+ 				std::cout << "TEST FAILED: Removing subvolume A failed" << std::endl;
+-				suc=false;
++				suc=false;
+ 			}
+ 
+ 			if(!remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"B") )
+ 			{
+ 				std::cout << "TEST FAILED: Removing subvolume B failed" << std::endl;
+-				suc=false;
++				suc=false;
+ 			}
+ 
+ 			if(!os_remove_dir(clientdir))
+@@ -786,11 +790,11 @@ int main(int argc, char *argv[])
+ 				std::cout << "TEST FAILED: Removing test clientdir failed" << std::endl;
+ 				return 1;
+ 			}
+-			
+-			if(!suc)
+-			{
+-				return 1;
+-			}
++			
++			if(!suc)
++			{
++				return 1;
++			}
+ 		}
+ 		else
+ 		{
+@@ -836,5 +840,5 @@ int main(int argc, char *argv[])
+ 		std::cout << "Command not found" << std::endl;
+ 		return 1;
+ 	}
+-}
+-
++}
++
