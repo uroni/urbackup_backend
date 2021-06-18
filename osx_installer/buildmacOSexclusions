@@ -77,6 +77,12 @@ for item in $user_paths_excluded; do
 	fi
 done
 
+# Hardcode paths for DataVaults
+
+paths_excluded_array+=("/Users/*/Library/VoiceTrigger/SAT")
+paths_excluded_array+=("/Users/*/Library/Containers/com.apple.mail/Data/DataVaults")
+paths_excluded_array+=("/var/folders/*/*/*/com.apple.nsurlsessiond")
+
 
 set -f
 sorted_array=($(sort <<<"${paths_excluded_array[*]}"))
