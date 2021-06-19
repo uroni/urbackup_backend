@@ -40,8 +40,7 @@ namespace
 	const int64 allocate_size_add_size = 100 * 1024 * 1024;
 	const _u32 log_sector_size = 4096;
 
-	template<typename T>
-	auto roundUp(T numToRound, T multiple)
+	size_t roundUp(size_t numToRound, size_t multiple)
 	{
 		return ((numToRound + multiple - 1) / multiple) * multiple;
 	}
@@ -477,10 +476,11 @@ namespace
 			parent_locator_size = sizeof(VhdxParentLocatorHeader);
 			parent_locator_size += sizeof(VhdxParentLocatorEntry) * parent_loc_entries.size();
 
-			for (auto it : parent_loc_entries)
+			for (str_map::iterator it = parent_loc_entries.begin();
+				it!=parent_loc_entries.end();++it)
 			{
-				parent_locator_size += it.first.size();
-				parent_locator_size += it.second.size();
+				parent_locator_size += it->first.size();
+				parent_locator_size += it->second.size();
 			}
 		}
 
@@ -573,20 +573,21 @@ namespace
 			size_t str_pos = parent_locator_entry->Offset + sizeof(VhdxParentLocatorHeader) +
 				sizeof(VhdxParentLocatorEntry) * parent_loc_entries.size();
 
-			for (auto it: parent_loc_entries)
+			for (str_map::iterator it = parent_loc_entries.begin();
+				it!=parent_loc_entries.end();++it)
 			{
 				VhdxParentLocatorEntry* entry = reinterpret_cast<VhdxParentLocatorEntry*>(ret.data() + entry_pos);
 				entry_pos += sizeof(VhdxParentLocatorEntry);
 
 				entry->KeyOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
-				entry->KeyLength = static_cast<_u16>(it.first.size());
-				memcpy(ret.data() + str_pos, it.first.data(), it.first.size());
-				str_pos += it.first.size();
+				entry->KeyLength = static_cast<_u16>(it->first.size());
+				memcpy(ret.data() + str_pos, it->first.data(), it->first.size());
+				str_pos += it->first.size();
 
 				entry->ValueOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
-				entry->ValueLength = static_cast<_u16>(it.second.size());
-				memcpy(ret.data() + str_pos, it.second.data(), it.second.size());
-				str_pos += it.second.size();
+				entry->ValueLength = static_cast<_u16>(it->second.size());
+				memcpy(ret.data() + str_pos, it->second.data(), it->second.size());
+				str_pos += it->second.size();
 			}
 
 			assert(str_pos == ret.size());
@@ -646,9 +647,12 @@ namespace
 
 	struct LogEntry
 	{
+		LogEntry()
+			: sequence_number(-1) {}
+
 		std::vector<LogZeroDescriptor> to_zero;
 		std::vector<LogData> to_write;
-		int64 sequence_number = -1;
+		int64 sequence_number;
 		int64 length;
 		int64 fsize;
 		int64 new_fsize;
@@ -1596,8 +1600,11 @@ bool VHDXFile::syncInt(bool full)
 	{
 		IScopedLock lock(pending_sector_bitmaps_mutex.get());
 
-		for (_u32 sector_block : pending_sector_bitmaps)
+		for (std::set<_u32>::iterator it = pending_sector_bitmaps.begin();
+			it!=pending_sector_bitmaps.end(); ++it)
 		{
+			_u32 sector_block = *it;
+
 			VhdxBatEntry* sector_bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + sector_block;
 
 			if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT)
@@ -1606,7 +1613,7 @@ bool VHDXFile::syncInt(bool full)
 				return false;
 			}
 
-			auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+			std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 			if (it_sector_bitmap == sector_bitmap_bufs.end())
 			{
 				assert(false);
@@ -1684,7 +1691,7 @@ bool VHDXFile::syncInt(bool full)
 		}
 
 		int64 b_idx = -1;
-		for (auto it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
+		for (std::set<int64>::iterator it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
 		{
 			int64 entry_idx = *it;
 
@@ -1708,7 +1715,7 @@ bool VHDXFile::syncInt(bool full)
 
 			if (stop_idx != -1)
 			{
-				auto it_prev = it;
+				std::set<int64>::iterator it_prev = it;
 				++it;
 				pending_bat_entries.erase(it_prev);
 			}
@@ -1865,8 +1872,9 @@ bool VHDXFile::createNew()
 			}
 
 			parent_rel_path = cparent_fn;
-			for (char ch : fn)
+			for (size_t i=0;i<fn.size();++i)
 			{
+				char ch = fn[i];
 				if (ch == '\\')
 					parent_rel_path += "..\\";
 			}
@@ -2699,9 +2707,9 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 			return false;
 	}
 
-	size_t desc_count = roundUp(bsize, size_t{ log_sector_size }) / log_sector_size;
+	size_t desc_count = roundUp(bsize, static_cast<size_t>(log_sector_size)) / log_sector_size;
 
-	std::vector<char> log_entry(log_sector_size + roundUp(bsize, size_t{ log_sector_size } ) );
+	std::vector<char> log_entry(log_sector_size + roundUp(bsize, static_cast<size_t>(log_sector_size) ) );
 
 	if (log_pos + log_entry.size() > curr_header.LogLength)
 	{
@@ -2767,7 +2775,7 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 {
 	IScopedLock lock(sector_bitmap_mutex.get());
-	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+	std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
 		lock.relock(NULL);
@@ -2801,7 +2809,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 char* VHDXFile::addZeroBitmap(_u32 sector_block)
 {
 	IScopedLock lock(sector_bitmap_mutex.get());
-	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+	std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
 		std::vector<char> sector_bitmap_buf(block_size);
