@@ -1656,8 +1656,10 @@ bool VHDXFile::syncInt(bool full)
 
 			int64 b_idx = -1;
 			int64 last_log_idx = -1;
-			for (int64 entry_idx : pending_bat_entries)
+			for (std::set<int64>::iterator it = pending_bat_entries.begin();
+				it!=pending_bat_entries.end();++it)
 			{
+				int64 entry_idx = *it;
 				int64 c_b_idx = (entry_idx * sizeof(int64)) / log_sector_size;
 
 				if (b_idx != c_b_idx)
@@ -1960,8 +1962,9 @@ bool VHDXFile::replayLog()
 		return false;
 	}
 
-	for (int64 entry_pos : seq.entries)
+	for (size_t i=0;i<seq.entries.size();++i)
 	{
+		int64 entry_pos = seq.entries[i];
 		LogEntry loge = readLogEntry(file, curr_header.LogGuid, entry_pos);
 
 		if (loge.sequence_number == -1)
@@ -1977,8 +1980,9 @@ bool VHDXFile::replayLog()
 			return false;
 		}
 
-		for (LogZeroDescriptor& zero_desc : loge.to_zero)
+		for (size_t j=0;j<loge.to_zero.size();++j)
 		{
+			LogZeroDescriptor& zero_desc =  loge.to_zero[j];
 			std::vector<char> zero_buf(zero_desc.ZeroLength);
 			if (file->Write(zero_desc.FileOffset, zero_buf.data(), static_cast<_u32>(zero_buf.size())) != zero_buf.size())
 			{
@@ -1987,8 +1991,9 @@ bool VHDXFile::replayLog()
 			}
 		}
 
-		for (LogData& log_data : loge.to_write)
+		for (size_t j=0;j<loge.to_write.size();++j)
 		{
+			LogData& log_data = loge.to_write[j];
 			if (file->Write(log_data.offset, log_data.data, sizeof(log_data.data)) != sizeof(log_data.data))
 			{
 				Server->Log("Error writing data from log. " + os_last_error_str(), LL_WARNING);

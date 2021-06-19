@@ -120,11 +120,11 @@ private:
 		 : max_sequence(-1),
 		  fsize(-1),
 		  new_fsize(-1) {}
-		  
+
 		std::vector<uint64> entries;
-		int64 max_sequence = -1;
-		int64 fsize = -1;
-		int64 new_fsize = -1;
+		int64 max_sequence;
+		int64 fsize;
+		int64 new_fsize;
 	};
 
 	LogSequence findLogSequence();
