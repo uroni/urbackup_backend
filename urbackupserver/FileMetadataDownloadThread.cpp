@@ -47,7 +47,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(FileClient* fc, const std
 
 FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn,
 	int backupid, int clientid, bool use_tmpfiles, std::string tmpfile_path)
-	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn),
+	: server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn),
 	dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), is_complete(false), is_finished(true), force_start(false)
 {
@@ -56,7 +56,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFsFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid));
+	std::unique_ptr<IFsFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid));
 	metadata_tmp_fn = tmp_f->getFilename();
 
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
@@ -96,7 +96,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 #ifdef _WIN32
 	mode = MODE_READ_DEVICE;
 #endif
-	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, mode));
+	std::unique_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, mode));
 
 	if(metadata_f.get()==NULL)
 	{
@@ -356,7 +356,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				cond->wait(&lock, 60000);
 			}
 
-			std::auto_ptr<IFile> output_f;
+			std::unique_ptr<IFile> output_f;
 			bool new_metadata_file = false;
 
 			int ftype = 0;
@@ -716,7 +716,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			{
 				ServerLogger::Log(logid, "META: Copying file: \"" + os_path + "\"", LL_DEBUG);
 
-				std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(os_path), MODE_WRITE));
+				std::unique_ptr<IFile> output_f(Server->openFile(os_file_prefix(os_path), MODE_WRITE));
 
 				if (output_f.get() == NULL)
 				{
@@ -821,7 +821,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 		{
 			ServerLogger::Log(logid, "Error applying meta data. Unknown meta data.", LL_ERROR);
 
-			std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
+			std::unique_ptr<IFile> tmp(Server->openTemporaryFile());
 
 			if(copy_file(metadata_f.get(), tmp.get()))
 			{
@@ -1433,7 +1433,7 @@ void FileMetadataDownloadThread::setFinished()
 
 void FileMetadataDownloadThread::copyForAnalysis(IFile* metadata_f)
 {
-	std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
+	std::unique_ptr<IFile> tmp(Server->openTemporaryFile());
 
 	if (copy_file(metadata_f, tmp.get()))
 	{

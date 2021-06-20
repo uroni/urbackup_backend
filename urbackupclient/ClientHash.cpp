@@ -80,7 +80,7 @@ ClientHash::~ClientHash()
 
 bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_cbt)
 {
-	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+	std::unique_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
 
 	if (f.get() == NULL)
 	{

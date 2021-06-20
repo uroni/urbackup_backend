@@ -249,7 +249,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 bool write_file_metadata(const std::string& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing)
 {
-	std::auto_ptr<IFile> out(Server->openFile(os_file_prefix(out_fn), MODE_RW_CREATE));
+	std::unique_ptr<IFile> out(Server->openFile(os_file_prefix(out_fn), MODE_RW_CREATE));
 
 	if(!out.get())
 	{
@@ -284,7 +284,7 @@ bool is_metadata_only(IFile* hash_file)
 
 bool read_metadata(const std::string& in_fn, FileMetadata& metadata)
 {
-	std::auto_ptr<IFile> in(Server->openFile(os_file_prefix(in_fn)));
+	std::unique_ptr<IFile> in(Server->openFile(os_file_prefix(in_fn)));
 
 	if(!in.get())
 	{
@@ -423,8 +423,8 @@ int64 os_metadata_offset( IFile* meta_file )
 
 bool copy_os_metadata( const std::string& in_fn, const std::string& out_fn, INotEnoughSpaceCallback *cb)
 {
-	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
-    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_RW));
+	std::unique_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
+    std::unique_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_RW));
 
 	if(in_f.get()==NULL)
 	{

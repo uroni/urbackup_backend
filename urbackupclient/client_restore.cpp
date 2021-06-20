@@ -574,7 +574,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 
-	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
 	if(client_pipe.get()==NULL)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
@@ -602,7 +602,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 
 	std::string restore_out=outfile;
 	Server->Log("Restoring to "+restore_out);
-	std::auto_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
+	std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
 	if(out_file.get()==NULL)
 	{
 		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
@@ -816,7 +816,7 @@ int downloadFiles(int backupid, std::string backup_time)
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 
-	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
 	if(client_pipe.get()==NULL)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
@@ -1245,7 +1245,7 @@ void do_restore(void)
 	else if (cmd == "read_mbr")
 	{
 		std::string dev_fn = Server->getServerParameter("device_fn");
-		std::auto_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+		std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
 
 		if (dev.get() == NULL)
 		{

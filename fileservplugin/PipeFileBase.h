@@ -106,7 +106,7 @@ private:
 	bool buf_circle;
 	std::vector<char> buffer;
 	std::string stderr_ret;
-	std::auto_ptr<IMutex> buffer_mutex;
+	std::unique_ptr<IMutex> buffer_mutex;
 	size_t threadidx;
 	bool has_eof;
 	int64 stream_size;

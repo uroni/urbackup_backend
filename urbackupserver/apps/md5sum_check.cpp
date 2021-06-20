@@ -45,7 +45,7 @@ int md5sum_check()
 #endif
 		fn = check_workingdir + fn;
 
-		std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+		std::unique_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
 
 		if (f.get() == NULL)
 		{

@@ -114,7 +114,7 @@ protected:
 	LogAction log_action;
 
 	IDatabase* db;
-	std::auto_ptr<ServerSettings> server_settings;
+	std::unique_ptr<ServerSettings> server_settings;
 	ServerBackupDao* backup_dao;
 
 	bool log_backup;

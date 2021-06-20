@@ -65,6 +65,6 @@ private:
 
 	size_t num_updated_files;
 
-	std::auto_ptr<ServerBackupDao> backupdao;
-	std::auto_ptr<FileIndex> fileindex;
+	std::unique_ptr<ServerBackupDao> backupdao;
+	std::unique_ptr<FileIndex> fileindex;
 };

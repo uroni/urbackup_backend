@@ -207,7 +207,7 @@ std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
 			}
 			else
 			{				
-				std::auto_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+				std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
 
 				if(!dev.get())
 				{

@@ -70,13 +70,13 @@ private:
 	volatile bool has_read;
 	int64 phash_queue_pos;
 	SQueueRef* phash_queue;
-	std::auto_ptr<IMutex> mutex;	
+	std::unique_ptr<IMutex> mutex;	
 	
 	std::map<int64, SCurrDir> curr_dirs;
 
 	std::deque<std::string> postponed_finish;
 	
-	std::auto_ptr<ClientHash> client_hash;
+	std::unique_ptr<ClientHash> client_hash;
 	int sha_version;
 	THREADPOOL_TICKET ticket;
 	std::vector<THREADPOOL_TICKET> extra_tickets;
@@ -94,7 +94,7 @@ private:
 		bool insert;
 	};
 
-	std::auto_ptr<IMutex> modify_file_buffer_mutex;
+	std::unique_ptr<IMutex> modify_file_buffer_mutex;
 	std::vector< SBufferItem > modify_file_buffer;
 	size_t modify_file_buffer_size;
 	int64 last_file_buffer_commit_time;
@@ -102,6 +102,6 @@ private:
 	bool extra_thread;
 
 	std::deque<std::pair<int64, std::string> > extra_queue;
-	std::auto_ptr<IMutex> extra_mutex;
-	std::auto_ptr<ICondition> extra_cond;
+	std::unique_ptr<IMutex> extra_mutex;
+	std::unique_ptr<ICondition> extra_cond;
 };

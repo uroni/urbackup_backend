@@ -55,5 +55,5 @@ private:
 	std::string last_backuppath;
 	int backupgroup;
 	std::string clientsubname;
-	std::auto_ptr<IFileMetadataPipe> file_metadata_pipe;
+	std::unique_ptr<IFileMetadataPipe> file_metadata_pipe;
 };

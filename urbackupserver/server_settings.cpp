@@ -111,8 +111,8 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 	}	
 }
 
-void ServerSettings::createSettingsReaders(IDatabase* db, int clientid, std::auto_ptr<ISettingsReader>& settings_default,
-	std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global,
+void ServerSettings::createSettingsReaders(IDatabase* db, int clientid, std::unique_ptr<ISettingsReader>& settings_default,
+	std::unique_ptr<ISettingsReader>& settings_client, std::unique_ptr<ISettingsReader>& settings_global,
 	int& settings_default_id)
 {
 	settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
@@ -1051,7 +1051,7 @@ std::string ServerSettings::getImageFileFormatInt( const std::string& image_file
 
 void ServerSettings::readStringClientSetting(IDatabase * db, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
 {
-	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	std::unique_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int setting_default_id;
 	createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, setting_default_id);
 
@@ -1243,7 +1243,7 @@ void ServerSettings::readSettings()
 	local_settings = new SSettings();
 	local_settings->refcount = 1;
 	local_settings->clientid = clientid;
-	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	std::unique_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int settings_default_id;
 
 	IQuery* q_get_client_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
@@ -1317,7 +1317,7 @@ bool ServerSettings::isInTimeSpan(std::vector<STimeSpan> bw)
 
 SLDAPSettings ServerSettings::getLDAPSettings()
 {
-	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	std::unique_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int setting_default_id;
 	createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, setting_default_id);
 	SLDAPSettings ldap_settings;

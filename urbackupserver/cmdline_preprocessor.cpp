@@ -141,7 +141,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 	}
 
 	{
-		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(fn));
+		std::unique_ptr<ISettingsReader> settings(Server->createFileSettingsReader(fn));
 		std::string val;
 		if(settings->getValue("FASTCGI_PORT", &val))
 		{

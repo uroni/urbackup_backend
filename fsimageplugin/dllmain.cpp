@@ -110,7 +110,7 @@ namespace
 
 		if(findextension(fn)=="vhdz")
 		{
-			std::auto_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
+			std::unique_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
 
 			if(vhdfile->isOpen() && vhdfile->getParent()!=NULL)
 			{
@@ -262,7 +262,7 @@ namespace
 
 		for(size_t i=0;i<fn.size();++i)
 		{
-			std::auto_ptr<IFile> f(Server->openFile(fn[i]+".mbr", MODE_READ));
+			std::unique_ptr<IFile> f(Server->openFile(fn[i]+".mbr", MODE_READ));
 			if(f.get()==NULL)
 			{
 				Server->Log("Could not open MBR file "+fn[i]+".mbr", LL_ERROR);
@@ -469,7 +469,7 @@ namespace
 #ifdef FIBMAP
 		//leaks
 
-		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
+		std::unique_ptr<IFile> f(Server->openFile(fn, MODE_READ));
 
 		int fd = open64(fn.c_str(), O_RDONLY| O_LARGEFILE);
 
@@ -1102,7 +1102,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string image_verify=Server->getServerParameter("image_verify");
 	if(!image_verify.empty())
 	{
-		std::auto_ptr<IVHDFile> in(open_device_file(image_verify));
+		std::unique_ptr<IVHDFile> in(open_device_file(image_verify));
 
 		if(in.get()==NULL || in->isOpen()==false)
 		{
@@ -1231,7 +1231,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string device_verify=Server->getServerParameter("device_verify");
 	if(!device_verify.empty())
 	{
-		std::auto_ptr<IVHDFile> in(open_device_file(device_verify));
+		std::unique_ptr<IVHDFile> in(open_device_file(device_verify));
 
 		if(in.get()==NULL || in->isOpen()==false)
 		{

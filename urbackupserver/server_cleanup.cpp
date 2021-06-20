@@ -84,7 +84,7 @@ void ServerCleanupThread::destroyMutex(void)
 }
 
 ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
-	: cleanup_action(cleanup_action), cleanupdao(NULL), backupdao(NULL)
+	: cleanup_action(cleanup_action)
 {
 	logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 }
@@ -1814,7 +1814,7 @@ namespace
 			src_file_destroy.reset(src_file);
 		}
 
-		std::auto_ptr<IFile> dst_file(Server->openFile(os_file_prefix(dst), MODE_WRITE));
+		std::unique_ptr<IFile> dst_file(Server->openFile(os_file_prefix(dst), MODE_WRITE));
 
 		bool copy_ok = true;
 		if (src_file != NULL

@@ -397,7 +397,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 bool FileBackup::wait_for_async(const std::string& async_id, int64 timeout_time)
 {
 	int64 starttime = Server->getTimeMS();
-	std::auto_ptr<IPipe> cc;
+	std::unique_ptr<IPipe> cc;
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
 	while (Server->getTimeMS() - starttime <= timeout_time)
@@ -553,7 +553,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer, bool request
 	Server->destroy(tokens_file);
 
 
-	std::auto_ptr<ISettingsReader> urbackup_tokens(
+	std::unique_ptr<ISettingsReader> urbackup_tokens(
 		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	std::string access_key;
@@ -1481,7 +1481,7 @@ std::string FileBackup::getSHA512(const std::string& fn)
 
 std::string FileBackup::getSHADef(const std::string& fn)
 {
-	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fn), MODE_READ));
+	std::unique_ptr<IFsFile> f(Server->openFile(os_file_prefix(fn), MODE_READ));
 
 	if (f.get() == NULL)
 	{
@@ -1553,7 +1553,7 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs, std::stri
 					return false;
 				}
 
-				std::auto_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
+				std::unique_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
 				if (touch_f.get() == NULL)
 				{
 					ServerLogger::Log(logid, "Could not touch file " + backuppath + ". " + os_last_error_str(), LL_ERROR);
@@ -1661,7 +1661,7 @@ bool FileBackup::constructBackupPathCdp()
 
 void FileBackup::createUserViews(IFile* file_list_f)
 {
-	std::auto_ptr<ISettingsReader> urbackup_tokens(
+	std::unique_ptr<ISettingsReader> urbackup_tokens(
 		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	if(urbackup_tokens.get()==NULL)
@@ -2073,7 +2073,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 
 void FileBackup::saveUsersOnClient()
 {
-	std::auto_ptr<ISettingsReader> urbackup_tokens(
+	std::unique_ptr<ISettingsReader> urbackup_tokens(
 		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	if(urbackup_tokens.get()==NULL)
@@ -2223,7 +2223,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 	if(client_main->getProtocolVersions().file_meta>0)
 	{
 		std::string identity = client_main->getIdentity();
-		std::auto_ptr<FileClient> fc_metadata_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+		std::unique_ptr<FileClient> fc_metadata_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 			client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this));
 
 		_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream.get(), server_settings.get(), 60000);
@@ -2290,7 +2290,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 			do
 			{
 				std::string identity = client_main->getIdentity();
-				std::auto_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+				std::unique_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 					client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 				_u32 rc = client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
@@ -2406,7 +2406,7 @@ bool FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
 	if (os_directory_exists(os_file_prefix(component_config_dir)))
 	{
 		ServerLogger::Log(logid, "Loading Windows backup component config XML...", LL_DEBUG);
-		std::auto_ptr<IFsFile> component_config_xml(Server->openFile(os_file_prefix(component_config_dir+os_file_sep()+"backupcom.xml"), MODE_WRITE));
+		std::unique_ptr<IFsFile> component_config_xml(Server->openFile(os_file_prefix(component_config_dir+os_file_sep()+"backupcom.xml"), MODE_WRITE));
 		_u32 rc = fc.GetFile(server_token + "|windows_components_config/backupcom.xml", component_config_xml.get(), true, false, 0, false, 0);
 		if (rc != ERR_SUCCESS)
 		{
@@ -2426,7 +2426,7 @@ bool FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
 bool FileBackup::startPhashDownloadThread(const std::string& async_id)
 {
 	std::string identity = client_main->getIdentity();
-	std::auto_ptr<FileClient> fc_phash_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+	std::unique_ptr<FileClient> fc_phash_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 		client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 	_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream.get(), server_settings.get(), 60000);
@@ -2477,7 +2477,7 @@ bool FileBackup::stopPhashDownloadThread(const std::string& async_id)
 		do
 		{
 			std::string identity = client_main->getIdentity();
-			std::auto_ptr<FileClient> fc_phash_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+			std::unique_ptr<FileClient> fc_phash_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 				client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 			_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream_end.get(), server_settings.get(), 10000);
@@ -2674,13 +2674,13 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 
 	fc.setProgressLogCallback(this);
 
-	std::auto_ptr<IFile> tmpfile(Server->openTemporaryFile());
+	std::unique_ptr<IFile> tmpfile(Server->openTemporaryFile());
 	std::string tmpdirname = tmpfile->getFilename();
 	tmpfile.reset();
 	Server->deleteFile(tmpdirname);
 	os_create_dir(tmpdirname);
 
-	std::auto_ptr<IFsFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
+	std::unique_ptr<IFsFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
 	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false, 0);
 
 	if(rc!=ERR_SUCCESS)

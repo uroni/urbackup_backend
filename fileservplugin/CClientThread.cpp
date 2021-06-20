@@ -1826,7 +1826,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 	ScopedShareActive scoped_share_active;
 
-	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
+	std::unique_ptr<ScopedPipeFileUser> pipe_file_user;
 	IFile* srv_file = NULL;
 	IFileServ::CbtHashFileInfo cbt_hash_file_info;
 	IFileServ::IMetadataCallback* metadata_callback = NULL;
@@ -2198,7 +2198,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 		return false;
 	}
 
-	std::auto_ptr<IFile> tf(Server->openFileFromHandle((void*)hFile, filename));
+	std::unique_ptr<IFile> tf(Server->openFileFromHandle((void*)hFile, filename));
 	if(tf.get()==NULL)
 	{
 		Log("Could not open file from handle -hash", LL_ERROR);
@@ -2603,7 +2603,7 @@ std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_
 	data.addVarInt(0);
 	data.addVarInt(folder_items);
 	data.addVarInt(metadata_id);
-	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
+	std::unique_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
 	std::string ttokens;
 	if (token_callback.get() != NULL)
 	{

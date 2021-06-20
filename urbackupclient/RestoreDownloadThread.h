@@ -113,8 +113,8 @@ private:
 	bool all_downloads_ok;
 	std::vector<size_t> download_nok_ids;
 
-	std::auto_ptr<IMutex> mutex;
-	std::auto_ptr<ICondition> cond;
+	std::unique_ptr<IMutex> mutex;
+	std::unique_ptr<ICondition> cond;
 
 	bool skipping;
 	bool is_offline;

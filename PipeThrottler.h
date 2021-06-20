@@ -31,7 +31,7 @@ private:
 	size_t curr_bytes;
 	int64 lastresettime;
 	int64 lastupdatetime;
-	std::auto_ptr<IPipeThrottlerUpdater> updater;
+	std::unique_ptr<IPipeThrottlerUpdater> updater;
 	ThrottleState throttle_state;
 	int64 lastprobetime;
 	float probe_bps;

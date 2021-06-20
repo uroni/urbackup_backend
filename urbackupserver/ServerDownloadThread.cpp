@@ -1334,7 +1334,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 	std::string hashpath_old=last_backuppath+os_file_sep()+".hashes"+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 	std::string filepath_old=last_backuppath+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 
-	std::auto_ptr<IFsFile> file_old(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
+	std::unique_ptr<IFsFile> file_old(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
 
 	if(file_old.get()==NULL)
 	{
@@ -1373,7 +1373,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 		cfn=server_token+"|"+cfn;
 	}
 
-	std::auto_ptr<IFile> hashfile_old(Server->openFile(os_file_prefix(hashpath_old), MODE_READ));
+	std::unique_ptr<IFile> hashfile_old(Server->openFile(os_file_prefix(hashpath_old), MODE_READ));
 
 	dlfiles.delete_chunkhashes=false;
 	if( (hashfile_old.get()==NULL ||
@@ -1821,7 +1821,7 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 								}
 								else
 								{
-									std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(backuppath + os_path), MODE_WRITE));
+									std::unique_ptr<IFile> touch_file(Server->openFile(os_file_prefix(backuppath + os_path), MODE_WRITE));
 									if (touch_file.get() == NULL)
 									{
 										ServerLogger::Log(logid, "Error touching TAR special file at \"" + backuppath + os_path + "\"", LL_ERROR);

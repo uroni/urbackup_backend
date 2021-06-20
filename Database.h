@@ -87,8 +87,8 @@ private:
 	ICondition *unlock_cond;
 	ISharedMutex* single_user_mutex;
 
-	std::auto_ptr<IScopedReadLock> transaction_read_lock;
-	std::auto_ptr<IScopedWriteLock> write_lock;
+	std::unique_ptr<IScopedReadLock> transaction_read_lock;
+	std::unique_ptr<IScopedWriteLock> write_lock;
 
 	std::vector<std::pair<std::string,std::string> > attached_dbs;
 	str_map params;

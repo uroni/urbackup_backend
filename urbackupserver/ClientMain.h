@@ -166,7 +166,7 @@ public:
 			internet_connection(false)
 		{}
 
-		std::auto_ptr<IPipe> conn;
+		std::unique_ptr<IPipe> conn;
 		bool internet_connection;
 	};
 
@@ -210,7 +210,7 @@ public:
 
 	_u32 getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms=10000);
 
-	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked,
+	bool getClientChunkedFilesrvConnection(std::unique_ptr<FileClientChunked>& fc_chunked,
 		ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms=10000);
 
 	bool isOnInternetConnection()
@@ -384,7 +384,7 @@ private:
 	int clientid;
 	std::string perm_uid;
 
-	std::auto_ptr<ServerSettings> server_settings;
+	std::unique_ptr<ServerSettings> server_settings;
 
 	IQuery *q_update_lastseen;
 	IQuery *q_update_setting;
@@ -467,7 +467,7 @@ private:
 	std::string curr_server_token;
 	bool needs_authentification;
 
-	std::auto_ptr<IMutex> restore_mutex;
+	std::unique_ptr<IMutex> restore_mutex;
 	std::vector<SRunningRestore> running_restores;
 
 	std::mutex local_backup_mutex;

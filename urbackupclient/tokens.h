@@ -34,7 +34,7 @@ namespace tokens
 		void operator=(const TokenCache& other);
 		TokenCache(const TokenCache& other);
 
-		std::auto_ptr<TokenCacheInt> token_cache;
+		std::unique_ptr<TokenCacheInt> token_cache;
 	};
 
 	enum ETokenRight

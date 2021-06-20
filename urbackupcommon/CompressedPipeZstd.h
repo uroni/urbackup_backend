@@ -77,8 +77,8 @@ private:
 	ZSTD_CCtx* def_stream;
 	ZSTD_inBuffer inf_in_last;
 
-	std::auto_ptr<IMutex> read_mutex;
-	std::auto_ptr<IMutex> write_mutex;
+	std::unique_ptr<IMutex> read_mutex;
+	std::unique_ptr<IMutex> write_mutex;
 };
 
 #endif //NO_ZSTD_COMPRESSION

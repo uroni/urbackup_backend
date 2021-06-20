@@ -224,9 +224,9 @@ namespace
 
 			std::string ext = findextension(img_fn);
 
-			std::auto_ptr<IFile> imgf;
+			std::unique_ptr<IFile> imgf;
 
-			std::auto_ptr<VHDFile> vhdfile;
+			std::unique_ptr<VHDFile> vhdfile;
 			if (ext == "raw")
 			{
 				imgf.reset(Server->openFile(img_fn, MODE_READ));

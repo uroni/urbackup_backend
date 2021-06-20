@@ -126,8 +126,8 @@ namespace
 		}
 
 	private:
-		std::auto_ptr<IMutex> update_mutex;
-		std::auto_ptr<ICondition> update_cond;
+		std::unique_ptr<IMutex> update_mutex;
+		std::unique_ptr<ICondition> update_cond;
 		bool stopped;
 		int curr_pc;
 		std::string curr_fn;
@@ -296,7 +296,7 @@ void RestoreFiles::operator()()
 			"Running a file backup may fix this issue.", LL_ERROR);
 	}
 
-	std::auto_ptr<RestoreFiles> delete_this(this);
+	std::unique_ptr<RestoreFiles> delete_this(this);
 	if (restore_declined)
 	{
 		log("Restore was declined by client", LL_ERROR);
@@ -352,7 +352,7 @@ void RestoreFiles::operator()()
 			return;
 		}
 
-		std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token));
+		std::unique_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token));
 		THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get(), "file restore metadata download");
 
 		int64 starttime = Server->getTimeMS();
@@ -904,7 +904,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 						}
 						else
 						{
-							std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
+							std::unique_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
 
 							if (orig_file.get() == NULL)
 							{
@@ -928,7 +928,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 					}
 					else
 					{
-						std::auto_ptr<IFsFile> restore_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
+						std::unique_ptr<IFsFile> restore_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 
 						if (restore_file.get() == NULL)
 						{
@@ -958,7 +958,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	FileListParser filelist_parser;
 
-	std::auto_ptr<FileClientChunked> fc_chunked = createFcChunked();
+	std::unique_ptr<FileClientChunked> fc_chunked = createFcChunked();
 
 	if(fc_chunked.get()==NULL)
 	{
@@ -978,7 +978,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string share_path;
 	std::string server_path = "clientdl";
 
-	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping, *this));
+	std::unique_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping, *this));
     THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download.get(), "file restore download");
 
 	std::string curr_files_dir;
@@ -1468,7 +1468,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
-						std::auto_ptr<IFsFile> orig_file;
+						std::unique_ptr<IFsFile> orig_file;
 						bool use_open_fallback = true;
 
 						if (restore_flags & restore_flag_open_all_files_first)
@@ -1614,8 +1614,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}
 							else
 							{
-								std::auto_ptr<IHashFunc> hashf;
-								std::auto_ptr<IHashFunc> hashf2;
+								std::unique_ptr<IHashFunc> hashf;
+								std::unique_ptr<IHashFunc> hashf2;
 
 								std::string hash_key;
 
@@ -1720,7 +1720,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						if (data.size == 0)
 						{
-							std::auto_ptr<IFile> touch_file;
+							std::unique_ptr<IFile> touch_file;
 							if (orig_file == NULL)
 							{
 								touch_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
@@ -1848,16 +1848,16 @@ void RestoreFiles::log( const std::string& msg, int loglevel )
 	}
 }
 
-std::auto_ptr<FileClientChunked> RestoreFiles::createFcChunked()
+std::unique_ptr<FileClientChunked> RestoreFiles::createFcChunked()
 {
 	IPipe* conn = new_fileclient_connection();
 
 	if(conn==NULL)
 	{
-		return std::auto_ptr<FileClientChunked>();
+		return std::unique_ptr<FileClientChunked>();
 	}
 
-	return std::auto_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
+	return std::unique_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
 		NULL, client_token, NULL));
 }
 

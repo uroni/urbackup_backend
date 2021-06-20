@@ -83,7 +83,7 @@ private:
 
 	int64 last_backup_filetime;
 
-	std::auto_ptr<ContinuousWatchEnqueue> continuous_watch;
+	std::unique_ptr<ContinuousWatchEnqueue> continuous_watch;
 
 	static std::vector<std::string> open_files;
 };

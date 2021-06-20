@@ -131,7 +131,7 @@ bool LocalFullFileBackup::run()
 	if (filelistpath.empty())
 		return false;
 
-	std::auto_ptr<IFile> curr_file_list(Server->openFile(filelistpath, MODE_READ));
+	std::unique_ptr<IFile> curr_file_list(Server->openFile(filelistpath, MODE_READ));
 	if (curr_file_list.get() == NULL)
 	{
 		log("Error opening current file list. " + os_last_error_str(), LL_ERROR);
@@ -147,7 +147,7 @@ bool LocalFullFileBackup::run()
 	std::string curr_path;
 	std::string curr_os_path;
 
-	std::auto_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
+	std::unique_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
 
 	int depth = 0;
 	FileListParser list_parser;
@@ -213,7 +213,7 @@ bool LocalFullFileBackup::run()
 						std::string sourcepath = IndexThread::getFileSrv()->getShareDir(curr_path, std::string());
 						std::string metadatapath = ".hashes\\" + curr_os_path + "\\"+ metadata_dir_fn;
 
-						std::auto_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
+						std::unique_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
 
 						if (metadataf.get() == NULL)
 						{
@@ -277,7 +277,7 @@ bool LocalFullFileBackup::run()
 					if (metadatapath.find("btrfs.h") != std::string::npos)
 						int abc = 5;
 
-					std::auto_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
+					std::unique_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
 
 					if (metadataf.get() == NULL)
 					{
@@ -291,7 +291,7 @@ bool LocalFullFileBackup::run()
 						return false;
 					}
 
-					std::auto_ptr<IFile> sourcef(Server->openFile(sourcepath, MODE_READ_SEQUENTIAL_BACKUP));
+					std::unique_ptr<IFile> sourcef(Server->openFile(sourcepath, MODE_READ_SEQUENTIAL_BACKUP));
 
 					if (sourcef.get() == NULL)
 					{
@@ -302,7 +302,7 @@ bool LocalFullFileBackup::run()
 					if (sourcepath.find("btrfs.c") != std::string::npos)
 						int abct = 5;
 
-					std::auto_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
+					std::unique_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
 
 					bool b = build_chunk_hashs(sourcef.get(),
 						metadataf.get(), NULL, destf.get(), false);

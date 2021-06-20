@@ -107,8 +107,8 @@ namespace
 		}
 
 	private:
-		std::auto_ptr<IMutex> update_mutex;
-		std::auto_ptr<ICondition> update_cond;
+		std::unique_ptr<IMutex> update_mutex;
+		std::unique_ptr<ICondition> update_cond;
 		bool stopped;
 		int curr_pc;
 		std::string curr_details;

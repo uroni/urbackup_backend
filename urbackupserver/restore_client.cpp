@@ -108,7 +108,7 @@ namespace
 				}
 			}
 
-			std::auto_ptr<IFile> metadata_file(Server->openFile(os_file_prefix(metadata_path), MODE_READ));
+			std::unique_ptr<IFile> metadata_file(Server->openFile(os_file_prefix(metadata_path), MODE_READ));
 
 			if(metadata_file.get()==NULL)
 			{

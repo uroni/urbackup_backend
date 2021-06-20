@@ -387,7 +387,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			return false;
 		}
 
-		std::auto_ptr<IFsFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+		std::unique_ptr<IFsFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
 
 		if (mbr_file.get() != NULL)
 		{
@@ -591,7 +591,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 	else
 	{
-		std::auto_ptr<IFile> hashfile(Server->openFile(os_file_prefix(pParentvhd + ".hash")));
+		std::unique_ptr<IFile> hashfile(Server->openFile(os_file_prefix(pParentvhd + ".hash")));
 		if(hashfile.get()==NULL)
 		{
 			ServerLogger::Log(logid, "Error opening hashfile ("+ pParentvhd + ".hash). "+os_last_error_str(), LL_ERROR);
@@ -600,7 +600,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			Server->destroy(cc);
 			return false;
 		}
-		std::auto_ptr<IFile> prevbitmap;
+		std::unique_ptr<IFile> prevbitmap;
 		std::string prevbitmap_str;
 		if (transfer_prev_cbitmap)
 		{
@@ -675,7 +675,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	IVHDFile *r_vhdfile=NULL;
 	IFile *hashfile=NULL;
 	IFile *parenthashfile=NULL;
-	std::auto_ptr<IFile> bitmap_file;
+	std::unique_ptr<IFile> bitmap_file;
 	int64 blockcnt=0;
 	int64 numblocks=0;
 	int64 blocks=0;
@@ -870,7 +870,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						ts += "&clientsubname=" + EscapeParamString(clientsubname);
 					}
 					ts += "&zero_skipped=1";
-					std::auto_ptr<IFile> prevbitmap;
+					std::unique_ptr<IFile> prevbitmap;
 					if (transfer_prev_cbitmap)
 					{
 						prevbitmap.reset(Server->openFile(os_file_prefix(pParentvhd + ".cbitmap")));
@@ -1569,7 +1569,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								int64 image_size = t_file->RealSize();
 								Server->destroy(t_file);
 
-								std::auto_ptr<IFile> sync_f;
+								std::unique_ptr<IFile> sync_f;
 								if (!vhdfile_err)
 								{
 									if (!os_sync(imagefn))
@@ -2146,7 +2146,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		{
 			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
-				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
+				std::unique_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
 				if (touch_f.get()==NULL)
 				{
 					ServerLogger::Log(logid, "Could not touch file " + image_folder + ". " + os_last_error_str(), LL_ERROR);
@@ -2231,7 +2231,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		{
 			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
-				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
+				std::unique_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
 				if (touch_f.get() == NULL)
 				{
 					ServerLogger::Log(logid, "Could not touch file " + image_folder + ". " + os_last_error_str(), LL_ERROR);

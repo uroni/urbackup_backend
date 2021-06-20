@@ -126,7 +126,7 @@ private:
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing, const std::string& backuppath)
 {
 	std::string fp=res["fullpath"];
-	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fp), MODE_READ));
+	std::unique_ptr<IFsFile> f(Server->openFile(os_file_prefix(fp), MODE_READ));
 	if( f.get()==NULL )
 	{
 		std::cout << std::endl;
@@ -477,7 +477,7 @@ bool verify_hashes(std::string arg)
 		{
 			files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 			ServerFilesDao backupdao(files_db);
-			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
+			std::unique_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
 			if(fileindex.get()==NULL)
 			{

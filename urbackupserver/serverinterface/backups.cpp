@@ -384,7 +384,7 @@ namespace backupaccess
 			return STokens();
 		}
 
-		std::auto_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+".hashes"+os_file_sep()+".urbackup_tokens.properties"));
+		std::unique_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+".hashes"+os_file_sep()+".urbackup_tokens.properties"));
 
 		if(!backup_tokens.get())
 		{
@@ -829,7 +829,7 @@ namespace backupaccess
 				}
 				else
 				{
-					std::auto_ptr<IFile> f;
+					std::unique_ptr<IFile> f;
 
 					if(path_info.is_file)
 					{
@@ -960,7 +960,7 @@ namespace backupaccess
 			std::string extension = findextension(filename);
 
 			bool disk_image = false;
-			std::auto_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
+			std::unique_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
 			if (mbrfile.get() && mbrfile->Size()<10*1024*1024)
 			{
 				std::string mbrdata_header = mbrfile->Read(0LL, 2);
@@ -997,7 +997,7 @@ namespace backupaccess
 				}
 			}
 
-			std::auto_ptr<IVHDFile> vhdfile;
+			std::unique_ptr<IVHDFile> vhdfile;
 			if (extension == "vhd"
 				|| extension == "vhdz")
 			{

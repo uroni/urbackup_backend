@@ -166,7 +166,7 @@ void BackupServerPrepareHash::operator()(void)
 			}
 			else
 			{
-				std::auto_ptr<ExtentIterator> extent_iterator;
+				std::unique_ptr<ExtentIterator> extent_iterator;
 				if (!sparse_extents_fn.empty())
 				{
 					IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
@@ -216,7 +216,7 @@ void BackupServerPrepareHash::operator()(void)
 					}
 					else
 					{
-						std::auto_ptr<IFile> l_hashoutput_f(Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ));
+						std::unique_ptr<IFile> l_hashoutput_f(Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ));
 						hashoutput_f = l_hashoutput_f.get();
 						TreeHash treehash(NULL);
 						hashf = &treehash;

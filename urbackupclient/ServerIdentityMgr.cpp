@@ -401,7 +401,7 @@ bool ServerIdentityMgr::write_file_admin_atomic(const std::string & data, const 
 	}
 
 	{
-		std::auto_ptr<IFile> f(Server->openFile(fn + ".new", MODE_RW));
+		std::unique_ptr<IFile> f(Server->openFile(fn + ".new", MODE_RW));
 		if (f.get() != NULL)
 			f->Sync();
 	}

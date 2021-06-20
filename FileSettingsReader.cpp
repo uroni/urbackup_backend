@@ -67,7 +67,7 @@ std::vector<std::string> CFileSettingsReader::getKeys()
 
 void CFileSettingsReader::read(const std::string& pFile )
 {
-	std::auto_ptr<IFile> file(Server->openFile(pFile));
+	std::unique_ptr<IFile> file(Server->openFile(pFile));
 	if (file.get() == NULL)
 	{
 		return;

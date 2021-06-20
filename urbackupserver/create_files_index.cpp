@@ -190,7 +190,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 		Server->destroyAllDatabases();
 
-		std::auto_ptr<IFile> db_file(Server->openFile("urbackup/backup_server_files_new.db", MODE_RW));
+		std::unique_ptr<IFile> db_file(Server->openFile("urbackup/backup_server_files_new.db", MODE_RW));
 
 		if (db_file.get() == NULL)
 		{

@@ -9,7 +9,7 @@ bool skiphash_copy(const std::string& src_path,
 	const std::string& dst_path,
 	const std::string& hashinput_path)
 {
-	std::auto_ptr<IFile> src(Server->openFile(os_file_prefix(src_path), MODE_READ_SEQUENTIAL));
+	std::unique_ptr<IFile> src(Server->openFile(os_file_prefix(src_path), MODE_READ_SEQUENTIAL));
 
 	if(!src.get())
 	{
@@ -17,7 +17,7 @@ bool skiphash_copy(const std::string& src_path,
 		return false;
 	}
 
-	std::auto_ptr<IFile> hashoutput(Server->openFile(os_file_prefix(dst_path+".hash"), MODE_WRITE));
+	std::unique_ptr<IFile> hashoutput(Server->openFile(os_file_prefix(dst_path+".hash"), MODE_WRITE));
 
 	if(!hashoutput.get())
 	{
@@ -27,7 +27,7 @@ bool skiphash_copy(const std::string& src_path,
 
 	bool dst_exists = Server->fileExists(dst_path);
 
-	std::auto_ptr<IFsFile> dst(Server->openFile(os_file_prefix(dst_path), MODE_RW));
+	std::unique_ptr<IFsFile> dst(Server->openFile(os_file_prefix(dst_path), MODE_RW));
 
 	if(!dst.get())
 	{
@@ -40,7 +40,7 @@ bool skiphash_copy(const std::string& src_path,
 		return false;
 	}
 
-	std::auto_ptr<IFile> hashinput;
+	std::unique_ptr<IFile> hashinput;
 	
 	if(!hashinput_path.empty())
 	{

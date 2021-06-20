@@ -29,7 +29,7 @@ private:
 	IFile *file;
 	std::string s_filename;
 	size_t share_active_gen;
-	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
+	std::unique_ptr<ScopedPipeFileUser> pipe_file_user;
 	_i64 curr_hash_size;
 	_i64 curr_file_size;
 	_i64 curr_max_vdl;

@@ -639,7 +639,7 @@ namespace
 
 					attr_buf.resize((attrlist->last_vnc - attrlist->starting_vnc + 1) * vol_data.BytesPerCluster);
 
-					std::auto_ptr<IFsFile> dev(Server->openFileFromHandle(vol, "vol"));
+					std::unique_ptr<IFsFile> dev(Server->openFileFromHandle(vol, "vol"));
 					if (dev.get() == NULL)
 						return -1;
 

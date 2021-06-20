@@ -133,7 +133,7 @@ bool ImageThread::sendFullImageThread(void)
 
 	int64 last_shadowcopy_update = Server->getTimeMS();
 
-	std::auto_ptr<IFile> hdat_img;
+	std::unique_ptr<IFile> hdat_img;
 	std::string hdat_vol;
 	int r_shadow_id = -1;
 	str_map other_vols;
@@ -206,7 +206,7 @@ bool ImageThread::sendFullImageThread(void)
 		}
 		else
 		{
-			std::auto_ptr<IFilesystem> fs;
+			std::unique_ptr<IFilesystem> fs;
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
@@ -522,7 +522,7 @@ bool ImageThread::sendIncrImageThread(void)
 	lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeMS();
 
-	std::auto_ptr<IFile> hdat_img;
+	std::unique_ptr<IFile> hdat_img;
 	std::string hdat_vol;
 	int r_shadow_id = -1;
 	str_map other_vols;
@@ -591,7 +591,7 @@ bool ImageThread::sendIncrImageThread(void)
 		}
 		else
 		{
-			std::auto_ptr<IFilesystem> fs;
+			std::unique_ptr<IFilesystem> fs;
 			FsShutdownHelper shutdown_helper;
 			if (!image_inf->shadowdrive.empty())
 			{
@@ -615,7 +615,7 @@ bool ImageThread::sendIncrImageThread(void)
 			int64 changed_blocks = 0;
 			int64 unchanged_blocks = 0;
 
-			std::auto_ptr<IReadOnlyBitmap> previous_bitmap;
+			std::unique_ptr<IReadOnlyBitmap> previous_bitmap;
 			if (bitmapfile != NULL
 				&& hdat_img.get() != NULL)
 			{
@@ -1217,7 +1217,7 @@ std::string ImageThread::getFsErrMsg()
 		std::string extra_info;
 		if (!image_inf->shadowdrive.empty())
 		{
-			std::auto_ptr<IFile> dev(Server->openFile(image_inf->shadowdrive, MODE_READ_DEVICE));
+			std::unique_ptr<IFile> dev(Server->openFile(image_inf->shadowdrive, MODE_READ_DEVICE));
 			if (dev.get() == NULL)
 			{
 				extra_info += ". Shadow copy " + image_inf->shadowdrive + " not present anymore. May have been removed";

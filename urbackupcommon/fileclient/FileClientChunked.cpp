@@ -156,7 +156,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 
 	if(!queued_fcs.empty())
 	{
-		std::auto_ptr<FileClientChunked> next(queued_fcs.front());
+		std::unique_ptr<FileClientChunked> next(queued_fcs.front());
 
 		queued_fcs.pop_front();
 

@@ -205,7 +205,7 @@ void RestoreDownloadThread::queueStop()
 
 bool RestoreDownloadThread::load_file( SQueueItem todl )
 {
-	std::auto_ptr<IFsFile> dest_f;
+	std::unique_ptr<IFsFile> dest_f;
 	
     if(!todl.metadata_only)
 	{

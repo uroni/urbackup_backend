@@ -113,7 +113,7 @@ private:
 	int64 folder_items;
 	IFileServ::IMetadataCallback* callback;
 	std::string server_token;
-	std::auto_ptr<IFile> metadata_file;
+	std::unique_ptr<IFile> metadata_file;
 	int64 metadata_file_off;
 	int64 metadata_file_size;
 	int64 metadata_id;
@@ -122,7 +122,7 @@ private:
 	MetadataState metadata_state;
 
 	std::string stderr_buf;
-	std::auto_ptr<IPipe> errpipe;
+	std::unique_ptr<IPipe> errpipe;
 	IPipe* pipe;
 
 	size_t metadata_buffer_size;
@@ -137,7 +137,7 @@ private:
 	IPipe* transmit_wait_pipe;
 	sha512_ctx transmit_file_ctx;
 
-	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
+	std::unique_ptr<IFileServ::ITokenCallback> token_callback;
 };
 
 #ifndef _WIN32

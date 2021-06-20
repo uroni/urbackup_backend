@@ -503,7 +503,7 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 	datamsg.addChar(METADATA_PIPE_SEND_RAW_FILEDATA);
 	datamsg.addString("f" + public_fn);
 	datamsg.addVoidPtr(file);
-	std::auto_ptr<IPipe> waitpipe(Server->createMemoryPipe());
+	std::unique_ptr<IPipe> waitpipe(Server->createMemoryPipe());
 	datamsg.addVoidPtr(waitpipe.get());
 	datamsg.addString(server_token);
 

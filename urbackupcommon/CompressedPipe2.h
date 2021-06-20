@@ -81,6 +81,6 @@ private:
 	z_stream inf_stream;
 	z_stream def_stream;
 
-	std::auto_ptr<IMutex> read_mutex;
-	std::auto_ptr<IMutex> write_mutex;
+	std::unique_ptr<IMutex> read_mutex;
+	std::unique_ptr<IMutex> write_mutex;
 };

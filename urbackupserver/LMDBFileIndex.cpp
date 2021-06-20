@@ -501,7 +501,7 @@ bool LMDBFileIndex::create_env()
 		}
 
 		{
-			std::auto_ptr<IFile> lmdb_f(Server->openFile("urbackup/fileindex/backup_server_files_index.lmdb", MODE_READ));
+			std::unique_ptr<IFile> lmdb_f(Server->openFile("urbackup/fileindex/backup_server_files_index.lmdb", MODE_READ));
 			if(lmdb_f.get()!=NULL)
 			{
 				while(lmdb_f->Size()>static_cast<_i64>(map_size))

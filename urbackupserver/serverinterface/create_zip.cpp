@@ -279,7 +279,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		}
 		else
 		{	
-			std::auto_ptr<IFsFile> add_file(Server->openFile(os_file_prefix(filename), MODE_READ_SEQUENTIAL));
+			std::unique_ptr<IFsFile> add_file(Server->openFile(os_file_prefix(filename), MODE_READ_SEQUENTIAL));
 			if (add_file.get() == NULL)
 			{
 				Server->Log("Error opening file \"" + filename + "\" for ZIP file download. " + os_last_error_str(), LL_ERROR);

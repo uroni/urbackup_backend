@@ -62,8 +62,8 @@ private:
 	int64 curr_chunk_patch_pos;
 
 	CTCPStack tcpstack;
-	std::auto_ptr<FileClientChunked> fc_chunked;
-	std::auto_ptr<FileClient> fc;
+	std::unique_ptr<FileClientChunked> fc_chunked;
+	std::unique_ptr<FileClient> fc;
 
 	std::vector<FileDownloadQueueItemChunked> dlqueueChunked;
 	std::vector<FileDownloadQueueItemFull> dlqueueFull;

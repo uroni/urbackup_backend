@@ -222,7 +222,7 @@ namespace
 		}
 		else
 		{
-			std::auto_ptr<IFile> journal_info(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
+			std::unique_ptr<IFile> journal_info(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
 
 			if(journal_info.get()==NULL) return -1;
 
@@ -234,7 +234,7 @@ namespace
 
 			sequence_id = journal_data.UsnJournalID;
 
-			std::auto_ptr<IFile> journal(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
+			std::unique_ptr<IFile> journal(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
 
 			if(journal.get()==NULL) return -1;
 
@@ -5550,7 +5550,7 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
 	}
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if(curr_settings.get()!=NULL)
 	{
 		std::string background_backups;
@@ -5565,7 +5565,7 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 
 void IndexThread::writeTokens()
 {
-	std::auto_ptr<ISettingsReader> access_keys(
+	std::unique_ptr<ISettingsReader> access_keys(
 		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::string access_keys_data;
@@ -6076,7 +6076,7 @@ bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
 		settings_fn = "urbackup/data_"+ convert(index_facet_id) + "/settings_" + conv_filename(clientsubname) + ".cfg";
 	}
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if (curr_settings.get() != NULL)
 	{
 		std::string cbt_volumes;
@@ -6098,7 +6098,7 @@ bool IndexThread::crashPersistentCbtIsEnabled(std::string clientsubname, std::st
 		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
 	}
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if (curr_settings.get() != NULL)
 	{
 		std::string cbt_crash_persistent_volumes;
@@ -6149,7 +6149,7 @@ namespace
 
 	PURBCT_BITMAP_DATA readBitmap(std::string fn, std::vector<char>& data)
 	{
-		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
+		std::unique_ptr<IFile> f(Server->openFile(fn, MODE_READ));
 
 		if (f.get() == NULL)
 		{
@@ -6260,7 +6260,7 @@ namespace
 			}
 		}
 
-		std::auto_ptr<IFile> f(Server->openFile(fn+".new", MODE_WRITE));
+		std::unique_ptr<IFile> f(Server->openFile(fn+".new", MODE_WRITE));
 
 		if (f.get() == NULL)
 		{
@@ -6469,7 +6469,7 @@ inline int64 roundDown(int64 numToRound, int64 multiple)
 
 bool  IndexThread::addFileToCbt(const std::string& fpath, const DWORD& blocksize, const PURBCT_BITMAP_DATA& bitmap_data)
 {
-	std::auto_ptr<IFsFile> hive_file(Server->openFile(fpath, MODE_READ));
+	std::unique_ptr<IFsFile> hive_file(Server->openFile(fpath, MODE_READ));
 
 	if (hive_file.get() != nullptr)
 	{
@@ -7088,7 +7088,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			return false;
 		}
 
-		std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
+		std::unique_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
 		bool concurrent_active = false;
 
@@ -7188,7 +7188,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			++index_hdat_sequence_ids[strlower(volume)];
 		}
 
-		std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DELETE));
+		std::unique_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DELETE));
 
 		if (hdat_file.get() == NULL)
 		{
@@ -7303,8 +7303,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		Server->deleteFile("urbackup/hdat_img_" + conv_filename(fs_dev) + ".dat");
 	}
 
-	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
-	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
+	std::unique_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
+	std::unique_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
 
 	if (hdat_img.get() == NULL && hdat_file.get() == NULL)
 	{
@@ -7320,7 +7320,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		return false;
 	}
 
-	std::auto_ptr<IFile> volfile(Server->openFile(orig_dev, MODE_READ_DEVICE));
+	std::unique_ptr<IFile> volfile(Server->openFile(orig_dev, MODE_READ_DEVICE));
 
 	if (volfile.get() == NULL)
 	{
@@ -7502,7 +7502,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 		return false;
 	}
 
-	std::auto_ptr<IFile> cowfile(Server->openFile(cbt_file, MODE_READ));
+	std::unique_ptr<IFile> cowfile(Server->openFile(cbt_file, MODE_READ));
 
 	if (cowfile.get() == NULL)
 	{
@@ -7972,7 +7972,7 @@ bool IndexThread::finishCbtEra2(IFsFile* hdat, int64 hdat_era)
 {
 	if (hdat != NULL)
 	{
-		std::auto_ptr<IFile> hdat_file_era_new(Server->openFile(hdat->getFilename() + ".era.new", MODE_WRITE));
+		std::unique_ptr<IFile> hdat_file_era_new(Server->openFile(hdat->getFilename() + ".era.new", MODE_WRITE));
 
 		if (hdat_file_era_new.get() == NULL)
 		{
@@ -8107,7 +8107,7 @@ void IndexThread::updateCbt()
 	std::set<std::string> vols;
 
 	std::string settings_fn = "urbackup/data/settings.cfg";
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	std::string volumes;
 	if (curr_settings.get() != NULL)
 	{
@@ -8191,7 +8191,7 @@ void IndexThread::createMd5sumsFile(const std::string & path, std::string vol)
 	normalizeVolume(vol);
 
 	std::string fn = "md5sums-"+conv_filename(vol)+"-"+db->Read("SELECT strftime('%Y-%m-%d %H-%M', 'now', 'localtime') AS fn")[0]["fn"]+".txt";
-	std::auto_ptr<IFile> output_f(Server->openFile(fn, MODE_WRITE));
+	std::unique_ptr<IFile> output_f(Server->openFile(fn, MODE_WRITE));
 
 	if (output_f.get() == NULL)
 	{
@@ -8216,7 +8216,7 @@ void IndexThread::createMd5sumsFile(const std::string & path, const std::string&
 		}
 		else if (!files[i].isspecialf)
 		{
-			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(path + os_file_sep() + files[i].name), MODE_READ_SEQUENTIAL_BACKUP));
+			std::unique_ptr<IFile> f(Server->openFile(os_file_prefix(path + os_file_sep() + files[i].name), MODE_READ_SEQUENTIAL_BACKUP));
 
 			if (f.get() == NULL)
 			{
@@ -8773,7 +8773,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	for (size_t i = 0; i < flock_files.size(); ++i)
 	{
 		std::string flock_fp = flock_files[i].fn;
-		std::auto_ptr<IFsFile> flock_f(Server->openFile(flock_fp, MODE_RW));
+		std::unique_ptr<IFsFile> flock_f(Server->openFile(flock_fp, MODE_RW));
 		if (flock_f.get() == NULL)
 		{
 			VSSLog("Error opening file to lock: " + flock_fp + ". " + os_last_error_str(), LL_WARNING);
@@ -8894,7 +8894,7 @@ std::string IndexThread::get_snapshot_script_location(const std::string & name, 
 	{
 		return std::string();
 	}
-	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(conffile));
+	std::unique_ptr<ISettingsReader> settings(Server->createFileSettingsReader(conffile));
 
 	std::string ret;
 	if (!index_clientsubname.empty()
@@ -9092,7 +9092,7 @@ void IndexThread::readSnapshotGroups()
 	image_snapshot_groups.clear();
 	file_snapshot_groups.clear();
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if (curr_settings.get() != NULL)
 	{
 		readSnapshotGroup(curr_settings.get(), "image_snapshot_groups", image_snapshot_groups);
@@ -9367,7 +9367,7 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
 	}
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	size_t client_hash_threads = 1;
 	if (curr_settings.get() != NULL)
 	{

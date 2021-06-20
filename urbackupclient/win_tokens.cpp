@@ -56,7 +56,7 @@ TokenCache::TokenCache( const TokenCache& other )
 	assert(false);
 }
 
-TokenCache::TokenCache() : token_cache(NULL)
+TokenCache::TokenCache()
 {
 
 }

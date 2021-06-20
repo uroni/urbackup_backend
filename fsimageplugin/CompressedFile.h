@@ -85,7 +85,7 @@ private:
 	IFile* uncompressedFile;
 	int64 uncompressedFileSize;
 	
-	std::auto_ptr<LRUMemCache> hotCache;
+	std::unique_ptr<LRUMemCache> hotCache;
 
 	//for reading
 	std::vector<char> compressedBuffer;
@@ -101,7 +101,7 @@ private:
 
 	bool noMagic;
 
-	std::auto_ptr<IMutex> mutex;
+	std::unique_ptr<IMutex> mutex;
 
 	size_t n_threads;
 };

@@ -61,7 +61,7 @@ namespace
 			IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 			ServerFilesDao filesdao(files_db);
 			
-			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
+			std::unique_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
 			fileindex->start_transaction();
 			fileindex->start_iteration();

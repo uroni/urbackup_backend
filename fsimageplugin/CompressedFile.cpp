@@ -43,7 +43,7 @@ const size_t c_header_size = sizeof(headerMagic) + sizeof(headerVersionV1_0) + s
 
 
 CompressedFile::CompressedFile( std::string pFilename, int pMode, size_t n_threads)
-	: hotCache(NULL), error(false), currentPosition(0),
+	: error(false), currentPosition(0),
 	  finished(false), filesize(0), noMagic(false),
 	mutex(Server->createMutex()), n_threads(n_threads), numBlockOffsets(0)
 {
@@ -80,7 +80,7 @@ CompressedFile::CompressedFile( std::string pFilename, int pMode, size_t n_threa
 }
 
 CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly, size_t n_threads)
-	: hotCache(NULL), error(false), currentPosition(0),
+	: error(false), currentPosition(0),
 	finished(false), uncompressedFile(file), filesize(0), readOnly(readOnly),
 	noMagic(false), n_threads(n_threads), numBlockOffsets(0)
 {

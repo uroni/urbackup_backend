@@ -514,7 +514,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else if (app == "hash")
 		{
-			std::auto_ptr<IFsFile> f(Server->openFile(Server->getServerParameter("hash_file"), MODE_READ_SEQUENTIAL));
+			std::unique_ptr<IFsFile> f(Server->openFile(Server->getServerParameter("hash_file"), MODE_READ_SEQUENTIAL));
 			if (f.get() != NULL)
 			{
 				std::string h = BackupServerPrepareHash::calc_hash(f.get(), Server->getServerParameter("hash_method"));
@@ -889,7 +889,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				port = 55415;
 			}
 
-			std::auto_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings",
+			std::unique_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings",
 				"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
 
 			std::string port_str = settings_db->getValue("internet_server_bind_port", std::string());
@@ -1508,7 +1508,7 @@ bool upgrade35_36()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	std::auto_ptr<IFile> db_file(Server->openFile("urbackup/backup_server.db", MODE_READ));
+	std::unique_ptr<IFile> db_file(Server->openFile("urbackup/backup_server.db", MODE_READ));
 
 	if(db_file.get() && Server->getServerParameter("override_freespace_check")==std::string())
 	{

@@ -420,7 +420,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 
 		lock->relock(NULL);
 		Server->Log("Trying to connect to internet server "+ formatServerForLog(selected_server_settings), LL_DEBUG);
-		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack(true));
+		std::unique_ptr<CTCPStack> tcpstack(new CTCPStack(true));
 		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
 		if(cs!=NULL)
@@ -702,7 +702,7 @@ void InternetClientThread::operator()(void)
 
 		if(token.second.empty())
 		{
-			std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
+			std::unique_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
 
 			std::string shared_key = ecdh_key_exchange->getSharedKey(server_pubkey);
 			if (shared_key.empty())

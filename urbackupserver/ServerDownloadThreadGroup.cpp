@@ -41,7 +41,7 @@ ServerDownloadThreadGroup::ServerDownloadThreadGroup(FileClient& fc, FileClientC
 			if (incremental_num > 0 &&
 				intra_file_diffs)
 			{
-				std::auto_ptr<FileClientChunked> new_fc;
+				std::unique_ptr<FileClientChunked> new_fc;
 				if (client_main->getClientChunkedFilesrvConnection(new_fc, server_settings, client_main, 60000))
 				{
 					new_fc->setProgressLogCallback(client_main);

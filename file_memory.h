@@ -78,13 +78,13 @@ public:
 private:
 
 	std::vector<char, aligned_allocator<char> > data;
-	std::auto_ptr<ISharedMutex> mutex;
+	std::unique_ptr<ISharedMutex> mutex;
 	size_t pos;
 	bool mlock_mem;
 	std::string name;
 	static int page_size;
 	int memory_protected;
-	std::auto_ptr<IMutex> mprotect_mutex;
+	std::unique_ptr<IMutex> mprotect_mutex;
 };
 
 namespace

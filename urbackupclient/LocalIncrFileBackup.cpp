@@ -197,7 +197,7 @@ bool LocalIncrFileBackup::run()
 		return false;
 	}
 
-	std::auto_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
+	std::unique_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
 
 	const std::string last_backuppath_hashes = last_backuppath + "\\.hashes\\";
 	bool c_has_error = false;
@@ -690,7 +690,7 @@ bool LocalIncrFileBackup::run()
 					else if (extra_params.find("special") != extra_params.end() && (indirchange || file_changed))
 					{
 						std::string touch_path = local_curr_os_path;
-						std::auto_ptr<IFile> touch_file(backup_files->openFile(touch_path, MODE_WRITE));
+						std::unique_ptr<IFile> touch_file(backup_files->openFile(touch_path, MODE_WRITE));
 						if (touch_file.get() == NULL)
 						{
 							log("Error touching file at \"" + touch_path + "\". " + backup_files->lastError(), LL_ERROR);

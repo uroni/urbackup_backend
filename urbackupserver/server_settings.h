@@ -255,8 +255,8 @@ public:
 
 	std::string ldapMapToString(const std::map<std::string, std::string>& ldap_map);
 
-	static void createSettingsReaders(IDatabase* db, int clientid, std::auto_ptr<ISettingsReader>& settings_default,
-		std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global, int& settings_default_id);
+	static void createSettingsReaders(IDatabase* db, int clientid, std::unique_ptr<ISettingsReader>& settings_default,
+		std::unique_ptr<ISettingsReader>& settings_client, std::unique_ptr<ISettingsReader>& settings_global, int& settings_default_id);
 
 	std::string getImageFileFormatInt(const std::string& image_file_format);
 

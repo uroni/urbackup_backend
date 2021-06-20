@@ -26,7 +26,7 @@ public:
 
 private:
 	static DataplanDb* instance;
-	std::auto_ptr<IMutex> mutex;
+	std::unique_ptr<IMutex> mutex;
 	std::vector<SDataplanItem> items;
 	common::lrucache<std::string, SDataplanItem> cache;
 	

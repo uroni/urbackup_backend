@@ -33,7 +33,7 @@ void PhashLoad::operator()()
 	fc->setNoFreeSpaceCallback(NULL);
 
 	std::string cfn = "SCRIPT|phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + async_id + "|0|0|" + server_token;
-	std::auto_ptr<IFsFile> phash_file_dl(Server->openTemporaryFile());
+	std::unique_ptr<IFsFile> phash_file_dl(Server->openTemporaryFile());
 
 	if (phash_file_dl.get() == NULL)
 	{

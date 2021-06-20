@@ -742,7 +742,7 @@ void ImageMount::mount_image_thread(int backupid, int partition, std::string& er
 	if (partition >= 0)
 	{
 		std::string ext = findextension(image_inf.path);
-		std::auto_ptr<IVHDFile> vhdfile;
+		std::unique_ptr<IVHDFile> vhdfile;
 		if (ext == "raw")
 		{
 			vhdfile.reset(image_fak->createVHDFile(image_inf.path, true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_RawCowFile));

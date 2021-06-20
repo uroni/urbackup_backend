@@ -649,7 +649,7 @@ private:
 
 	bool execAddFile(SChange& change)
 	{
-		std::auto_ptr<IFile> f(Server->openFile(getFullpath(change.fn1), MODE_WRITE));
+		std::unique_ptr<IFile> f(Server->openFile(getFullpath(change.fn1), MODE_WRITE));
 
 		if(!f.get())
 		{
@@ -699,7 +699,7 @@ private:
 		}
 	}
 
-	bool constructFileClient(std::auto_ptr<FileClient>& new_fc)
+	bool constructFileClient(std::unique_ptr<FileClient>& new_fc)
 	{		
 		new_fc.reset(new FileClient(false, server_identity, client_main->getProtocolVersions().file_protocol_version, client_main->isOnInternetConnection(), client_main, client_main));
 		_u32 rc = client_main->getClientFilesrvConnection(new_fc.get(), server_settings.get());
@@ -724,7 +724,7 @@ private:
 
 	bool execMod(SChange& change)
 	{
-		std::auto_ptr<IFile> f(Server->openFile(getFullpath(change.fn1)));
+		std::unique_ptr<IFile> f(Server->openFile(getFullpath(change.fn1)));
 
 		if(!fileclient.get())
 		{
@@ -930,15 +930,15 @@ private:
 	int backupid;
 	IPipe* hashpipe_prepare;
 
-	std::auto_ptr<BackupServerHash> local_hash;
+	std::unique_ptr<BackupServerHash> local_hash;
 
-	std::auto_ptr<FileClientChunked> fileclient_chunked;
-	std::auto_ptr<FileClient> fileclient;
-	std::auto_ptr<FileClient> fileclient_metadata;
+	std::unique_ptr<FileClientChunked> fileclient_chunked;
+	std::unique_ptr<FileClient> fileclient;
+	std::unique_ptr<FileClient> fileclient_metadata;
 
-	std::auto_ptr<ServerSettings> server_settings;
+	std::unique_ptr<ServerSettings> server_settings;
 
-	std::auto_ptr<ServerDownloadThreadGroup> server_download;
+	std::unique_ptr<ServerDownloadThreadGroup> server_download;
 
 	std::deque<SQueueItem> dl_queue;
 
@@ -947,9 +947,9 @@ private:
 	bool transfer_incr_blockdiff;
 
 	bool has_fullpath_entryid_mapping_table;
-	std::auto_ptr<ServerBackupDao> backupdao;
-	std::auto_ptr<ServerFilesDao> filesdao;
-	std::auto_ptr<FileIndex> fileindex;
+	std::unique_ptr<ServerBackupDao> backupdao;
+	std::unique_ptr<ServerFilesDao> filesdao;
+	std::unique_ptr<FileIndex> fileindex;
 
 	FilePathCorrections filepath_corrections;
 

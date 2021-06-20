@@ -284,7 +284,7 @@ namespace
 
 				std::string test3_path = testfolderpath + os_file_sep() + "CON";
 
-				std::auto_ptr<IFile> test_file(Server->openFile(test3_path, MODE_WRITE));
+				std::unique_ptr<IFile> test_file(Server->openFile(test3_path, MODE_WRITE));
 
 				if (test_file.get() == NULL)
 				{
@@ -339,7 +339,7 @@ namespace
 					tmpfile_path = server_settings->backupfolder + os_file_sep() + "urbackup_tmp_files";
 				}
 
-				std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid_t()));
+				std::unique_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid_t()));
 
 				if (tmp_f.get() == NULL)
 				{

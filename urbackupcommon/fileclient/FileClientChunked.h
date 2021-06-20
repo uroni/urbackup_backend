@@ -279,7 +279,7 @@ private:
 
 	bool curr_is_script;
 
-	std::auto_ptr<ExtentIterator> extent_iterator;
+	std::unique_ptr<ExtentIterator> extent_iterator;
 	IFsFile::SSparseExtent curr_sparse_extent;
 
 	int reconnect_tries;

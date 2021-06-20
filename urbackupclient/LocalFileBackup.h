@@ -36,7 +36,7 @@ protected:
 
 	bool writeOsMetadata(const std::string& sourcefn, int64 dest_start_offset, IFile* dest);
 
-	std::auto_ptr<IFileMetadataPipe> file_metadata_pipe;
+	std::unique_ptr<IFileMetadataPipe> file_metadata_pipe;
 
 private:
 };

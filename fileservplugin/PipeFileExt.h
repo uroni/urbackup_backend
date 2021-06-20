@@ -18,5 +18,5 @@ protected:
 	virtual void finishStdout();
 	virtual bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
 private:
-	std::auto_ptr<IPipeFileExt> file_ext;
+	std::unique_ptr<IPipeFileExt> file_ext;
 };

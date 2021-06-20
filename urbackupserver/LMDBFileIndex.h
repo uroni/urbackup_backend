@@ -62,7 +62,7 @@ private:
 	static MDB_dbi dbi;
 	size_t map_size;
 
-	std::auto_ptr<IScopedReadLock> read_transaction_lock;
+	std::unique_ptr<IScopedReadLock> read_transaction_lock;
 
 	void put_internal(const SIndexKey& key, int64 value, int flags, bool log, bool handle_enosp);
 

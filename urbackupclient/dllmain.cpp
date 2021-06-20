@@ -169,7 +169,7 @@ namespace
 
 	void do_print_dm_file_extents(const std::string& fn)
 	{
-		std::auto_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
+		std::unique_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
 		if (f.get() == NULL)
 		{
 			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
@@ -449,7 +449,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if( !FileExists("urbackup/data/settings.cfg") && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
 	{
-		std::auto_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
+		std::unique_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
 		std::string access_keys;
 		std::string client_access_keys;
 		if (settings_reader->getValue("access_keys", &access_keys) && !access_keys.empty())

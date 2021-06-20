@@ -340,7 +340,7 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 
 	update_patterns=false;
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
 	if(curr_settings.get())
 	{

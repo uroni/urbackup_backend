@@ -1132,7 +1132,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		int img_version=watoi(res[0]["version"]);
 		if(params["mbr"]=="true")
 		{
-			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(res[0]["path"]+".mbr"), MODE_READ));
+			std::unique_ptr<IFile> f(Server->openFile(os_file_prefix(res[0]["path"]+".mbr"), MODE_READ));
 			if(f.get()==NULL)
 			{
 				_i64 r=little_endian(-1);

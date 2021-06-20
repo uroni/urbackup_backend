@@ -45,10 +45,10 @@ struct SDatabase
 	std::map<THREAD_ID, IDatabaseInt*> tmap;
 	std::vector<std::pair<std::string,std::string> > attach;
 	size_t allocation_chunk_size;
-	std::auto_ptr<ISharedMutex> single_user_mutex;
-	std::auto_ptr<IMutex> lock_mutex;
-	std::auto_ptr<int> lock_count;
-	std::auto_ptr<ICondition> unlock_cond;
+	std::unique_ptr<ISharedMutex> single_user_mutex;
+	std::unique_ptr<IMutex> lock_mutex;
+	std::unique_ptr<int> lock_count;
+	std::unique_ptr<ICondition> unlock_cond;
 	str_map params;
 
 private:

@@ -89,7 +89,7 @@ private:
 
 	bool renameFilesOnRestart(std::vector<std::pair<std::string, std::string> >& rename_queue);
 
-	std::auto_ptr<FileClientChunked> createFcChunked();
+	std::unique_ptr<FileClientChunked> createFcChunked();
 
 	void calculateDownloadSpeed(FileClient & fc, FileClientChunked * fc_chunked);
 

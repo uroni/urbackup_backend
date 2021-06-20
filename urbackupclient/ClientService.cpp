@@ -627,7 +627,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 						if (crypto_fak->verifyFile(pubkey,
 							UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 						{
-							std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
+							std::unique_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
 							if(updatefile.get()!=NULL)
 							{
 								if(checkHash(getSha512Hash(updatefile.get()))
@@ -1846,7 +1846,7 @@ std::vector<std::string> getSettingsList(void);
 void ClientConnector::updateSettings(const std::string &pData, const std::string& server_identity)
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
+	std::unique_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(server_identity));
 	std::string facet_dir = "data_" + convert(facet_id);
@@ -1887,7 +1887,7 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 			facet_id, group_offset);
 	}
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> critical_settings;
 	critical_settings.push_back("internet_mode_enabled");
@@ -1977,7 +1977,7 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 	if(mod
 		|| getFile(settings_fn)!= pData)
 	{
-		std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
+		std::unique_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
 			&& newf->Write(pData+ settings_add) == pData.size()+settings_add.size()
 			&& newf->Sync())
@@ -1995,7 +1995,7 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 
 void ClientConnector::replaceSettings(const std::string &pData)
 {
-	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
+	std::unique_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::string facet_name = new_settings->getValue("facet_name", "default");
 
@@ -2025,7 +2025,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		settings_fn = "urbackup/data_"+convert(facet_id)+"/settings_"+conv_filename(clientsubname)+".cfg";
 	}
 
-	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
+	std::unique_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
@@ -2591,7 +2591,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	}
 
 	{
-		std::auto_ptr<VOLUME_DISK_EXTENTS> vde((VOLUME_DISK_EXTENTS*)new char[sizeof(VOLUME_DISK_EXTENTS)]);
+		std::unique_ptr<VOLUME_DISK_EXTENTS> vde((VOLUME_DISK_EXTENTS*)new char[sizeof(VOLUME_DISK_EXTENTS)]);
 		b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde.get(), sizeof(VOLUME_DISK_EXTENTS), &ret_bytes, NULL);
 		if(b==0 && GetLastError()==ERROR_MORE_DATA)
 		{
@@ -2631,7 +2631,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 			DWORD numPartitions=10;
 			DWORD inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
 
-			std::auto_ptr<DRIVE_LAYOUT_INFORMATION_EX> inf((DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)]);
+			std::unique_ptr<DRIVE_LAYOUT_INFORMATION_EX> inf((DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)]);
 
 			b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf.get(), inf_size, &ret_bytes, NULL);
 			while(b==0 && GetLastError()==ERROR_INSUFFICIENT_BUFFER && numPartitions<1000)
@@ -3973,7 +3973,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
         return std::string();
     }
 
-	std::auto_ptr<ISettingsReader> access_keys(
+	std::unique_ptr<ISettingsReader> access_keys(
 		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::vector<std::string> server_token_keys = access_keys->getKeys();
@@ -4022,7 +4022,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 
 	if(with_clientname)
 	{
-		std::auto_ptr<ISettingsReader> settings(
+		std::unique_ptr<ISettingsReader> settings(
 			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
 		std::string computername;
@@ -4348,7 +4348,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			settings_fn = "urbackup/data_"+convert(facet_id)+"/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
 		}
 
-		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+		std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 		if (curr_settings.get() != NULL)
 		{
@@ -4408,7 +4408,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 					new_data += keys[i] + "=" + val + "\n";
 				}
 
-				std::auto_ptr<IFile> settings_f(Server->openFile(settings_fn+".new_2", MODE_WRITE));
+				std::unique_ptr<IFile> settings_f(Server->openFile(settings_fn+".new_2", MODE_WRITE));
 
 				if (settings_f.get() != NULL)
 				{

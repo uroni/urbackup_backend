@@ -1077,7 +1077,7 @@ bool FileClient::Reconnect(void)
 	_u32 hash_r;
 	MD5 hash_func;
 	IFile* file = backing_file;
-	std::auto_ptr<SparseFile> sparse_file;
+	std::unique_ptr<SparseFile> sparse_file;
 
 	char* buf = dl_buf;
 

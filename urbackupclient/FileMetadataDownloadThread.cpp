@@ -109,7 +109,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(RestoreFiles& restore, Fi
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFsFile> tmp_f(Server->openTemporaryFile());
+	std::unique_ptr<IFsFile> tmp_f(Server->openTemporaryFile());
 
 	if(tmp_f.get()==NULL)
 	{
@@ -141,7 +141,7 @@ void FileMetadataDownloadThread::operator()()
 bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 {
 	buffer.resize(32768);
-	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
+	std::unique_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
 
 	if(metadata_f.get()==NULL)
 	{
@@ -374,7 +374,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		&& (os_get_file_type(os_file_prefix(output_fn)) & EFileType_Directory) )
 	{
 		os_remove_dir(os_file_prefix(output_fn));
-		std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(output_fn), MODE_WRITE));
+		std::unique_ptr<IFile> touch_file(Server->openFile(os_file_prefix(output_fn), MODE_WRITE));
 	}
 
 	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE | ACCESS_SYSTEM_SECURITY | WRITE_OWNER | WRITE_DAC, FILE_SHARE_READ, NULL,

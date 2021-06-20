@@ -229,9 +229,9 @@ private:
 		}
 	}
 
-	std::auto_ptr<IMutex> mutex;
-	std::auto_ptr<ICondition> start_readahead_cond;
-	std::auto_ptr<ICondition> read_block_cond;
+	std::unique_ptr<IMutex> mutex;
+	std::unique_ptr<ICondition> start_readahead_cond;
+	std::unique_ptr<ICondition> read_block_cond;
 	Filesystem& fs;
 
 	std::map<int64, IFilesystem::IFsBuffer*> read_blocks;
@@ -925,7 +925,7 @@ bool Filesystem::excludeFile(const std::string& path)
 		return false;
 	}
 #else
-	std::auto_ptr<IFsFile> f(Server->openFile(path, MODE_READ));
+	std::unique_ptr<IFsFile> f(Server->openFile(path, MODE_READ));
 	if (f.get() == NULL)
 	{
 		Server->Log("Error opening file " + path + ". " + os_last_error_str(), LL_DEBUG);

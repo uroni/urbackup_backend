@@ -224,7 +224,7 @@ bool FullFileBackup::doFileBackup()
 
 	std::string last_backuppath;
 	std::string last_backuppath_complete;
-	std::auto_ptr<ServerDownloadThreadGroup> server_download(new ServerDownloadThreadGroup(fc, NULL, backuppath,
+	std::unique_ptr<ServerDownloadThreadGroup> server_download(new ServerDownloadThreadGroup(fc, NULL, backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
@@ -511,7 +511,7 @@ bool FullFileBackup::doFileBackup()
 					else if(extra_params.find("special")!=extra_params.end())
 					{
 						std::string touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
-						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						std::unique_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
 						if(touch_file.get()==NULL)
 						{
 							ServerLogger::Log(logid, "Error touching file at \""+touch_path+"\". " + systemErrorInfo(), LL_ERROR);
@@ -895,7 +895,7 @@ bool FullFileBackup::doFileBackup()
 				c_has_error = true;
 		}
 
-		std::auto_ptr<IFile> sync_f;
+		std::unique_ptr<IFile> sync_f;
 		if (!c_has_error)
 		{
 			sync_f.reset(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));

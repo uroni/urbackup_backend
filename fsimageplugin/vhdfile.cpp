@@ -1428,7 +1428,7 @@ bool VHDFile::isCompressed()
 bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
+	std::unique_ptr<IReadOnlyBitmap> bitmap_source;
 
 	bitmap_source.reset(new ClientBitmap(backing_file->getFilename() + ".cbitmap"));
 

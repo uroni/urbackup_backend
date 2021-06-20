@@ -48,7 +48,7 @@ public:
 #endif
 
 private:
-	std::auto_ptr<std::shared_lock<std::shared_timed_mutex> > read_lock;
+	std::unique_ptr<std::shared_lock<std::shared_timed_mutex> > read_lock;
 
 #ifdef SHARED_MUTEX_CHECK
 	SharedMutex* shared_mutex;
@@ -61,5 +61,5 @@ public:
 	WriteLock(std::unique_lock<std::shared_timed_mutex>* write_lock);
 
 private:
-	std::auto_ptr<std::unique_lock<std::shared_timed_mutex> > write_lock;
+	std::unique_ptr<std::unique_lock<std::shared_timed_mutex> > write_lock;
 };

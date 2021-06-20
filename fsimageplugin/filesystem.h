@@ -130,8 +130,8 @@ protected:
 	IFsBuffer* getBuffer();
 
 	std::vector<SSimpleBuffer*> buffers;
-	std::auto_ptr<IMutex> buffer_mutex;
-	std::auto_ptr<Filesystem_ReadaheadThread> readahead_thread;
+	std::unique_ptr<IMutex> buffer_mutex;
+	std::unique_ptr<Filesystem_ReadaheadThread> readahead_thread;
 	THREADPOOL_TICKET readahead_thread_ticket;
 
 	size_t num_uncompleted_blocks;

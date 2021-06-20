@@ -85,7 +85,7 @@ protected:
 
 	int64 snapshot_id;
 
-	std::auto_ptr<IMutex> mutex;
+	std::unique_ptr<IMutex> mutex;
 
 	std::string snapshot_group_loginfo;
 

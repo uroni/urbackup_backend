@@ -297,7 +297,7 @@ public:
 
 struct SQueueRef
 {
-	std::auto_ptr<IMutex> mutex;
+	std::unique_ptr<IMutex> mutex;
 	IFile* phash_queue;
 	size_t refcount;
 	IDeregisterFileSrvScriptFn* dereg_fn;
@@ -650,7 +650,7 @@ private:
 
 	SVolumesCache* volumes_cache;
 
-	std::auto_ptr<ScopedBackgroundPrio> background_prio;
+	std::unique_ptr<ScopedBackgroundPrio> background_prio;
 
 	std::string starttoken;
 
@@ -711,7 +711,7 @@ private:
 		int64 target_generation;
 	};
 
-	std::auto_ptr<ClientHash> client_hash;
+	std::unique_ptr<ClientHash> client_hash;
 
 	std::vector< SBufferItem > modify_file_buffer;
 	size_t modify_file_buffer_size;
@@ -861,12 +861,12 @@ private:
 		const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
 
-	std::auto_ptr<SLastFileList> last_filelist;
+	std::unique_ptr<SLastFileList> last_filelist;
 
 	std::vector<SReadError> read_errors;
 	IMutex* read_error_mutex;
 
-	std::auto_ptr<IFsFile> index_hdat_file;
+	std::unique_ptr<IFsFile> index_hdat_file;
 	std::map<std::string, size_t> index_hdat_sequence_ids;
 	int64 index_hdat_fs_block_size;
 	int64 index_chunkhash_pos;

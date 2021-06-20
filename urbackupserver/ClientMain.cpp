@@ -108,7 +108,7 @@ ICondition* ClientMain::client_uid_reset_cond = NULL;
 ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName,
 	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
 	bool use_file_snapshots, bool use_image_snapshots, bool use_reflink)
-	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
+	: internet_connection(internet_connection), client_throttler(NULL),
 	  use_file_snapshots(use_file_snapshots), use_image_snapshots(use_image_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
 	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false),
@@ -292,7 +292,7 @@ void ClientMain::operator ()(void)
 
 	std::string identity = getIdentity();	
 
-	std::auto_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
+	std::unique_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
 	backup_dao = local_server_backup_dao.get();
 
 	clientid=getClientID(db, clientname, server_settings.get(), NULL, nullptr, nullptr, &perm_uid);
@@ -1404,7 +1404,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 {
 	CTCPStack tcpstack(internet_connection);
 
-	std::auto_ptr<IPipe> cc;
+	std::unique_ptr<IPipe> cc;
 	if (conn != NULL
 		&& conn->conn.get() != NULL
 		&& conn->internet_connection == internet_connection)
@@ -1508,7 +1508,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 {
 	CTCPStack tcpstack(internet_connection);
 
-	std::auto_ptr<IPipe> cc;
+	std::unique_ptr<IPipe> cc;
 	if (conn != NULL
 		&& conn->conn.get() != NULL
 		&& conn->internet_connection == internet_connection)
@@ -1928,7 +1928,7 @@ void ClientMain::sendSettings(void)
 	std::vector<std::string> settings_names=getSettingsList();
 	std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
 
-	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	std::unique_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int settings_default_id;
 	server_settings->createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, settings_default_id);
 
@@ -2067,7 +2067,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	ScopedDeleteFn delete_fn(tmp_fn);
 	Server->destroy(tmp);
 
-	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
+	std::unique_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
 	std::vector<std::string> setting_names=getSettingsList();
 
@@ -2322,13 +2322,13 @@ void ClientMain::checkClientVersion(void)
 			}
 
 
-			std::auto_ptr<IFile> sigfile(Server->openFile(signature_file, MODE_READ));
+			std::unique_ptr<IFile> sigfile(Server->openFile(signature_file, MODE_READ));
 			if(sigfile.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening sigfile", LL_ERROR);
 				return;
 			}
-			std::auto_ptr<IFile> updatefile(Server->openFile(installer_file, MODE_READ));
+			std::unique_ptr<IFile> updatefile(Server->openFile(installer_file, MODE_READ));
 			if(updatefile.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening updatefile", LL_ERROR);
@@ -2337,7 +2337,7 @@ void ClientMain::checkClientVersion(void)
 			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings.get(), 10000));
+			std::unique_ptr<IPipe> cc(getClientCommandConnection(server_settings.get(), 10000));
 			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
@@ -2912,7 +2912,7 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 	}
 }
 
-bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, 
+bool ClientMain::getClientChunkedFilesrvConnection(std::unique_ptr<FileClientChunked>& fc_chunked, 
 	ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms)
 {
 	if (no_free_space_callback == NULL)

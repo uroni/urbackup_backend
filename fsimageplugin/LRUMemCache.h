@@ -43,9 +43,9 @@ private:
 	std::vector<SCacheItem> evictedItems;
 	std::vector<char*> lruItemBuffers;
 
-	std::auto_ptr<IMutex> mutex;
-	std::auto_ptr<ICondition> cond;
-	std::auto_ptr<ICondition> cond_wait;
+	std::unique_ptr<IMutex> mutex;
+	std::unique_ptr<ICondition> cond;
+	std::unique_ptr<ICondition> cond_wait;
 
 	size_t buffersize;
 	size_t nbuffers;

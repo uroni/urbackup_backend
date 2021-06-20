@@ -127,7 +127,7 @@ void ParallelHash::operator()()
 #ifdef _WIN32
 	mode = MODE_READ_DEVICE;
 #endif
-	std::auto_ptr<IFile> phashf(Server->openFile(phash_queue->phash_queue->getFilename(), mode));
+	std::unique_ptr<IFile> phashf(Server->openFile(phash_queue->phash_queue->getFilename(), mode));
 
 	while (!do_quit
 		&& phashf.get()!=NULL)
@@ -340,7 +340,7 @@ bool ParallelHash::hashFile(int64 working_file_id, CRData & data, ClientDAO& cli
 
 	std::string full_path = dir->snapshot_dir + os_file_sep() + fn;
 
-	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(full_path), MODE_READ_SEQUENTIAL_BACKUP));
+	std::unique_ptr<IFsFile>  f(Server->openFile(os_file_prefix(full_path), MODE_READ_SEQUENTIAL_BACKUP));
 
 	SFileAndHash fandhash;
 	std::string ph_action;

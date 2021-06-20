@@ -365,7 +365,7 @@ std::string PipeFileTar::buildCurrMetadata()
 	data.addVarInt(0);
 	data.addVarInt(0);
 	data.addVarInt(0);
-	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
+	std::unique_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
 	std::string ttokens;
 	if (token_callback.get() != NULL)
 	{

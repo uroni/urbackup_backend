@@ -191,7 +191,7 @@ namespace
 {
 	bool is_disk_mbr(const std::string& mbrfn)
 	{
-		std::auto_ptr<IFile> mbrf(Server->openFile(os_file_prefix(mbrfn), MODE_READ));
+		std::unique_ptr<IFile> mbrf(Server->openFile(os_file_prefix(mbrfn), MODE_READ));
 		if (mbrf.get() != NULL)
 		{
 			std::string mbr_header = mbrf->Read(2);

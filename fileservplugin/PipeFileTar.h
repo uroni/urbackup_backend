@@ -81,7 +81,7 @@ public:
 
 		size_t refcount;
 		IPipeFile* pipe_file;
-		std::auto_ptr<IMutex> mutex;
+		std::unique_ptr<IMutex> mutex;
 		std::set<std::string> paths;
 	};
 
@@ -140,7 +140,7 @@ private:
 	sha_def_ctx sha_ctx;
 	int64 hash_pos;
 
-	std::auto_ptr<IMutex> mutex;
+	std::unique_ptr<IMutex> mutex;
 
 	PipeFileStore* pipe_file;
 

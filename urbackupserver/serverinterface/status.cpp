@@ -90,7 +90,7 @@ std::string get_stop_show_version(IDatabase *db)
 
 void set_server_version_info(IDatabase* db, JSON::Object& ret)
 {
-	std::auto_ptr<ISettingsReader> infoProperties(Server->createFileSettingsReader("urbackup/server_version_info.properties"));
+	std::unique_ptr<ISettingsReader> infoProperties(Server->createFileSettingsReader("urbackup/server_version_info.properties"));
 
 	if(infoProperties.get())
 	{

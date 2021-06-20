@@ -216,10 +216,10 @@ private:
 
 	CleanupAction cleanup_action;
 
-	std::auto_ptr<ServerCleanupDao> cleanupdao;
-	std::auto_ptr<ServerBackupDao> backupdao;
-	std::auto_ptr<ServerFilesDao> filesdao;
-	std::auto_ptr<FileIndex> fileindex;
+	std::unique_ptr<ServerCleanupDao> cleanupdao;
+	std::unique_ptr<ServerBackupDao> backupdao;
+	std::unique_ptr<ServerFilesDao> filesdao;
+	std::unique_ptr<FileIndex> fileindex;
 
 	logid_t logid;
 

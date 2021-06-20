@@ -204,7 +204,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 	read_only = pRead_only;
 
 	{
-		std::auto_ptr<IFile> parentf(Server->openFile(parent_fn, MODE_READ));
+		std::unique_ptr<IFile> parentf(Server->openFile(parent_fn, MODE_READ));
 		if (parentf.get() != NULL)
 		{
 			filesize = parentf->Size();
@@ -639,7 +639,7 @@ void CowFile::setBitmapBit(uint64 offset, bool v)
 
 bool CowFile::saveBitmap()
 {
-	std::auto_ptr<IFile> bitmap_file(Server->openFile(filename+".bitmap", MODE_WRITE));
+	std::unique_ptr<IFile> bitmap_file(Server->openFile(filename+".bitmap", MODE_WRITE));
 
 	if(!bitmap_file.get())
 	{
@@ -658,7 +658,7 @@ bool CowFile::saveBitmap()
 
 bool CowFile::loadBitmap(const std::string& bitmap_fn)
 {
-	std::auto_ptr<IFile> bitmap_file(Server->openFile(bitmap_fn, MODE_READ));
+	std::unique_ptr<IFile> bitmap_file(Server->openFile(bitmap_fn, MODE_READ));
 
 	if(!bitmap_file.get())
 	{
@@ -825,7 +825,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
+	std::unique_ptr<IReadOnlyBitmap> bitmap_source;
 
 	bitmap_source.reset(new ClientBitmap(filename + ".cbitmap"));
 
@@ -935,7 +935,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 bool CowFile::syncBitmap(_i64 fs_offset)
 {
 	FileWrapper devfile(this, fs_offset);
-	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
+	std::unique_ptr<IReadOnlyBitmap> bitmap_source;
 
 	bitmap_source.reset(new ClientBitmap(filename + ".cbitmap"));
 

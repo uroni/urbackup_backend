@@ -93,7 +93,7 @@ private:
 	std::vector<int> include_depth;
 	std::vector<std::string> include_prefix;
 
-	std::auto_ptr<JournalDAO> journal_dao;
+	std::unique_ptr<JournalDAO> journal_dao;
 
 	CWData queue;
 

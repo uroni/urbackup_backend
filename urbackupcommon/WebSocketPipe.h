@@ -107,6 +107,6 @@ private:
 	char masking_key[4];
 	bool destroy_pipe;
 
-	std::auto_ptr<IMutex> read_mutex;
-	std::auto_ptr<IMutex> write_mutex;
+	std::unique_ptr<IMutex> read_mutex;
+	std::unique_ptr<IMutex> write_mutex;
 };

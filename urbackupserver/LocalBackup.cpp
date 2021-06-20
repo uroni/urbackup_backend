@@ -224,7 +224,7 @@ bool LocalBackup::queryBackupFinished(int64 timeout_time, bool& finished)
 
 	finished = false;
 	int64 starttime = Server->getTimeMS();
-	std::auto_ptr<IPipe> cc;
+	std::unique_ptr<IPipe> cc;
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
 	while (Server->getTimeMS() - starttime <= timeout_time)
@@ -446,7 +446,7 @@ bool LocalBackup::finishLocalBackup(std::vector<std::string>& del_files)
 
 	const int64 timeout_time = 60000;
 	int64 starttime = Server->getTimeMS();
-	std::auto_ptr<IPipe> cc;
+	std::unique_ptr<IPipe> cc;
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
 	while (Server->getTimeMS() - starttime <= timeout_time)

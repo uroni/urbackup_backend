@@ -126,7 +126,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	bool copy_read_eof=false;
 	_i64 hashoutputpos=sizeof(_i64);
 
-	std::auto_ptr<SChunkHashes> chunk_hashes;
+	std::unique_ptr<SChunkHashes> chunk_hashes;
 	if(hashinput!=NULL)
 	{
 		chunk_hashes.reset(new SChunkHashes);

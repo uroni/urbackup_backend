@@ -1167,7 +1167,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		db_single_result res;
 		while (cur.next(res))
 		{
-			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(res["path"])));
+			std::unique_ptr<IFile> f(Server->openFile(os_file_prefix(res["path"])));
 			if (f.get()!=NULL)
 			{
 				delete_missing = true;
@@ -1234,7 +1234,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 			}
 			else
 			{
-				std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath + os_file_sep() + ".hashes" + os_file_sep() + sync_fn), MODE_READ));
+				std::unique_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath + os_file_sep() + ".hashes" + os_file_sep() + sync_fn), MODE_READ));
 
 				if (sync_f.get() == NULL)
 				{
@@ -1259,7 +1259,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	}
 
 	IQuery* q_set_done = db->Prepare("UPDATE backups SET done=0, complete=0 WHERE id=?");
-	std::auto_ptr<FileCleanups> file_cleanups(new FileCleanups);
+	std::unique_ptr<FileCleanups> file_cleanups(new FileCleanups);
 	for (size_t i = 0; i < to_delete.size(); ++i)
 	{
 		has_delete = true;
@@ -1310,7 +1310,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 			std::string path = res["path"];
 			std::string backupinfo = "[id=" + res["backupid"] + ", path=" + path + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 
-			std::auto_ptr<IFile> image_f(Server->openFile(os_file_prefix(path), MODE_READ));
+			std::unique_ptr<IFile> image_f(Server->openFile(os_file_prefix(path), MODE_READ));
 
 			if (image_f.get() == NULL)
 			{
@@ -1346,7 +1346,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 			}
 			else
 			{
-				std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(res["path"] + ".sync"), MODE_READ));
+				std::unique_ptr<IFile> sync_f(Server->openFile(os_file_prefix(res["path"] + ".sync"), MODE_READ));
 
 				if (sync_f.get() == NULL)
 				{

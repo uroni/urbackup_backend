@@ -70,8 +70,7 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	backup_state(BackupState_StatInit),
 #endif
 	metadata_state(MetadataState_Wait),
-		errpipe(Server->createMemoryPipe()),
-	metadata_file(NULL)
+		errpipe(Server->createMemoryPipe())
 {
 	metadata_buffer.resize(4096);
 	init();
@@ -86,8 +85,7 @@ FileMetadataPipe::FileMetadataPipe()
 	backup_state(BackupState_StatInit),
 #endif
 	metadata_state(MetadataState_Wait),
-	errpipe(Server->createMemoryPipe()),
-	metadata_file(NULL)
+	errpipe(Server->createMemoryPipe())
 {
 	metadata_buffer.resize(4096);
 }

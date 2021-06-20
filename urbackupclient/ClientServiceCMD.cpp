@@ -156,7 +156,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 
 	if (!internet_conn)
 	{
-		std::auto_ptr<ISettingsReader> settings(
+		std::unique_ptr<ISettingsReader> settings(
 			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
 		local_encrypted = settings->getValue("local_encrypted", true);
@@ -2836,7 +2836,7 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 
 	std::string tokens=params["tokens"];
 
-	std::auto_ptr<ISettingsReader> settings(
+	std::unique_ptr<ISettingsReader> settings(
 		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
 	std::string server_url;
@@ -2959,7 +2959,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	if (crypto_fak != NULL
 		&& client_token_encrypted)
 	{
-		std::auto_ptr<ISettingsReader> access_keys(
+		std::unique_ptr<ISettingsReader> access_keys(
 			Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 		if (access_keys.get() != NULL)
