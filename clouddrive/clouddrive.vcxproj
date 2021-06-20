@@ -125,14 +125,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalOptions>/std:c++latest %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>C:\dev\aws-sdk-cpp-1.8.186\aws-cpp-sdk-s3\include;C:\dev\aws-sdk-cpp-1.8.186\aws-cpp-sdk-core\include;$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(SolutionDir)/deps/include/zstd;$(ZstdIncludeDir);$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(SolutionDir)/deps/include/zstd;$(ZstdIncludeDir);$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;$(SolutionDir)/deps/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>aws-cpp-sdk-core.lib;aws-cpp-sdk-s3.lib;cryptlibd_x86_64.lib;zlibd_x86_64.lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir);$(CryptoppLibDir);C:\dev\aws-sdk-cpp-1.8.186-build\aws-cpp-sdk-s3\Debug;C:\dev\aws-sdk-cpp-1.8.186-build\aws-cpp-sdk-core\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>aws-cpp-sdk-core_x86_64.lib;aws-cpp-sdk-s3_x86_64.lib;cryptlibd_x86_64.lib;zlibd_x86_64.lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir);$(CryptoppLibDir);</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

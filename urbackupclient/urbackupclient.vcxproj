@@ -258,14 +258,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd;C:\Program Files\Dokan\Dokan Library-1.4.1\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd;C:\Program Files\Dokan\Dokan Library-1.5.0\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib;dokan1.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir);C:\Program Files\Dokan\Dokan Library-1.4.1\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir);C:\Program Files\Dokan\Dokan Library-1.5.0\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
