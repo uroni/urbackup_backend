@@ -259,7 +259,7 @@ private:
 	KvStoreBackendS3* backend;
 };
 
-IMutex* KvStoreBackendS3::client_mutex=NULL;
+IMutex* KvStoreBackendS3::client_mutex=nullptr;
 int64 KvStoreBackendS3::max_request_timems=0;
 int64 KvStoreBackendS3::n_requests=0;
 
@@ -268,7 +268,7 @@ KvStoreBackendS3::KvStoreBackendS3(const std::string& encryption_key, const std:
 	const std::string& s3_region, const std::string& p_storage_class, unsigned int comp_method, unsigned int comp_method_metadata,
 	IBackupFileSystem* cachefs)
 	: encryption_key(encryption_key),
-	  compress_encrypt_factory(compress_encrypt_factory), online_kv_store(NULL), 
+	  compress_encrypt_factory(compress_encrypt_factory), online_kv_store(nullptr), 
 	  s3_endpoint(s3_endpoint), s3_region(s3_region),
 	  storage_class(Aws::S3::Model::StorageClass::NOT_SET), comp_method(comp_method),
 	  comp_method_metadata(comp_method_metadata),
@@ -360,7 +360,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		getObjectRequest.SetVersionId(version.c_str());
 
 	IFsFile* tmpfile = Server->openTemporaryFile();
-	if(tmpfile==NULL)
+	if(tmpfile==nullptr)
 	{
 		std::string syserr = os_last_error_str();
 		if (allow_error_event)
@@ -428,7 +428,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 #endif // _WIN32
 
 		tmpfile = Server->openFile(tmpfile_path, mode);
-		if(tmpfile==NULL)
+		if(tmpfile==nullptr)
 		{
 			std::string syserr = os_last_error_str();
 			if (allow_error_event)
@@ -450,7 +450,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 		{
 			res_src.reset(cachefs->openFile(path, MODE_RW_CREATE));
 
-			if(res_src.get()==NULL)
+			if(res_src.get()==nullptr)
 			{
 				std::string syserr = os_last_error_str();
 				if (allow_error_event)
@@ -694,7 +694,7 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 	if(src==nullptr)
 	{
 		tsourcefile.reset(cachefs->openFile(path, MODE_READ));
-		if(tsourcefile.get()==NULL)
+		if(tsourcefile.get()==nullptr)
 		{
 			std::string syserr = os_last_error_str();
 			Server->Log("Error opening source file "+ path+". "+syserr, LL_ERROR);
@@ -727,7 +727,7 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 		IFsFile* tmpfile = Server->openTemporaryFile();
 		ScopedDeleteFile tmpfile_delete(tmpfile);
 
-		if(tmpfile==NULL)
+		if(tmpfile==nullptr)
 		{
 			std::string syserr = os_last_error_str();
 			Server->Log("Error opening temporary file. "+syserr, LL_ERROR);

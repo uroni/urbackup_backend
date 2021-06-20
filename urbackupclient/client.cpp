@@ -89,7 +89,7 @@ IMutex* IndexThread::cbt_shadow_id_mutex;
 std::map<std::string, int> IndexThread::cbt_shadow_ids;
 std::map<unsigned int, IndexThread::SResult> IndexThread::index_results;
 unsigned int IndexThread::next_result_id = 1;
-IMutex* IndexThread::result_mutex = NULL;
+IMutex* IndexThread::result_mutex = nullptr;
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -518,10 +518,10 @@ namespace
 #endif
 }
 
-IMutex *IndexThread::filelist_mutex=NULL;
-IPipe* IndexThread::msgpipe=NULL;
-IFileServ *IndexThread::filesrv=NULL;
-IMutex *IndexThread::filesrv_mutex=NULL;
+IMutex *IndexThread::filelist_mutex=nullptr;
+IPipe* IndexThread::msgpipe=nullptr;
+IFileServ *IndexThread::filesrv=nullptr;
+IMutex *IndexThread::filesrv_mutex=nullptr;
 
 std::string add_trailing_slash(const std::string &strDirName)
 {
@@ -541,27 +541,27 @@ std::string add_trailing_slash(const std::string &strDirName)
 
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
-	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
+	with_scripts(false), volumes_cache(nullptr), phash_queue(nullptr),
 	index_backup_dirs_optional(false), sc_refs_cleanup(false)
 {
-	if(filelist_mutex==NULL)
+	if(filelist_mutex==nullptr)
 		filelist_mutex=Server->createMutex();
-	if(msgpipe==NULL)
+	if(msgpipe==nullptr)
 		msgpipe=Server->createMemoryPipe();
-	if(filesrv_mutex==NULL)
+	if(filesrv_mutex==nullptr)
 		filesrv_mutex=Server->createMutex();
 
 	read_error_mutex = Server->createMutex();
 
-	if (cbt_shadow_id_mutex == NULL)
+	if (cbt_shadow_id_mutex == nullptr)
 		cbt_shadow_id_mutex = Server->createMutex();
 
-	if (result_mutex == NULL)
+	if (result_mutex == nullptr)
 		result_mutex = Server->createMutex();
 
 	curr_result_id = 0;
 
-	dwt=NULL;
+	dwt=nullptr;
 
 	if(Server->getPlugin(Server->getThreadID(), filesrv_pluginid))
 	{
@@ -569,7 +569,7 @@ IndexThread::IndexThread(void)
 	}
 	else
 	{
-		filesrv=NULL;
+		filesrv=nullptr;
 		Server->Log("Error starting fileserver", LL_ERROR);
 	}
 
@@ -884,12 +884,12 @@ void IndexThread::operator()(void)
 				async_timeout_starttime = Server->getTimeMS();
 			}
 
-			if (phash_queue != NULL
+			if (phash_queue != nullptr
 				&& phash_queue->deref())
 			{
 				delete phash_queue;
 			}
-			phash_queue = NULL;
+			phash_queue = nullptr;
 		}
 		else if(action==IndexThreadAction_StartFullFileBackup)
 		{
@@ -982,12 +982,12 @@ void IndexThread::operator()(void)
 				async_timeout_starttime = Server->getTimeMS();
 			}
 
-			if (phash_queue != NULL
+			if (phash_queue != nullptr
 				&& phash_queue->deref())
 			{
 				delete phash_queue;
 			}
-			phash_queue = NULL;
+			phash_queue = nullptr;
 		}
 		else if(action==IndexThreadAction_CreateShadowcopy
 			 || action==IndexThreadAction_ReferenceShadowcopy )
@@ -1042,14 +1042,14 @@ void IndexThread::operator()(void)
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
 			{
-				if(scd->ref!=NULL && image_backup==0)
+				if(scd->ref!=nullptr && image_backup==0)
 				{
 					scd->ref->dontincrement=true;
 				}
 				bool onlyref = reference_sc;
 				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, running_jobs>1, std::vector<SCRef*>(), image_backup!=0?true:false))
 				{
-					if (scd->ref!=NULL
+					if (scd->ref!=nullptr
 						&& !onlyref)
 					{
 						for (size_t k = 0; k < sc_refs.size(); ++k)
@@ -1066,7 +1066,7 @@ void IndexThread::operator()(void)
 						}
 					}
 
-					if (scd->ref != NULL
+					if (scd->ref != nullptr
 						&& !scd->ref->cbt
 						&& !disableCbt(scd->orig_target) )
 					{
@@ -1119,7 +1119,7 @@ void IndexThread::operator()(void)
 				bool onlyref = reference_sc;
 				bool b= start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, running_jobs>1, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
-				if(!b || scd->ref==NULL)
+				if(!b || scd->ref==nullptr)
 				{
 					if(scd->fileserv)
 					{
@@ -1136,7 +1136,7 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
-					if (scd->ref != NULL
+					if (scd->ref != nullptr
 						&& !onlyref)
 					{
 						for (size_t k = 0; k < sc_refs.size(); ++k)
@@ -1153,7 +1153,7 @@ void IndexThread::operator()(void)
 						}
 					}
 
-					if (scd->ref != NULL
+					if (scd->ref != nullptr
 						&& !scd->ref->cbt
 						&& !disableCbt(scd->orig_target))
 					{
@@ -1208,14 +1208,14 @@ void IndexThread::operator()(void)
 
 			int64 starttime = Server->getTimeMS();
 
-			while (filesrv != NULL
+			while (filesrv != nullptr
 				&& filesrv->hasActiveTransfers(scdir, starttoken)
 				&& Server->getTimeMS() - starttime < 5000)
 			{
 				Server->wait(100);
 			}
 
-			if (filesrv != NULL
+			if (filesrv != nullptr
 				&& filesrv->hasActiveTransfers(scdir, starttoken) )
 			{
 				addResult(curr_result_id, "in use");
@@ -1426,11 +1426,11 @@ void IndexThread::operator()(void)
 
 			SCDirs *scd = getSCDir(scdir, index_clientsubname, true);
 
-			if(scd!=NULL && scd->ref!=NULL)
+			if(scd!=nullptr && scd->ref!=nullptr)
 			{
 				scd->ref->starttime = Server->getTimeSeconds();
 			}
-			if (scd != NULL)
+			if (scd != nullptr)
 			{
 				scd->starttime = Server->getTimeSeconds();
 			}
@@ -1598,13 +1598,13 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		filelist_dest_fn = "urbackup/data_"+convert(index_facet_id)+"/filelist_" + convert(index_group) + ".ub";
 	}
 
-	IFile* last_filelist_f = NULL;
+	IFile* last_filelist_f = nullptr;
 	ScopedFreeObjRef<IFile*> last_filelist_f_scope(last_filelist_f);
 	if (index_follow_last)
 	{
 		last_filelist_f = Server->openFile(filelist_dest_fn, MODE_READ);
 
-		if (last_filelist_f == NULL)
+		if (last_filelist_f == nullptr)
 		{
 			index_follow_last = false;
 		}
@@ -1821,7 +1821,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 					postSnapshotProcessing(scd, full_backup);
 				}
 #endif
-				if (scd->ref != NULL
+				if (scd->ref != nullptr
 					&& !scd->ref->cbt)
 				{
 					if (!disableCbt(backup_dirs[i].path))
@@ -1955,7 +1955,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	commitAddFilesBuffer();
 	commitModifyHardLinks();
 
-	if (phash_queue != NULL)
+	if (phash_queue != nullptr)
 	{
 		CWData data;
 		data.addChar(ID_PHASH_FINISH);
@@ -2015,10 +2015,10 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		ret = IndexErrorInfo_NoBackupPaths;
 	}
 
-	if (last_filelist_f!=NULL)
+	if (last_filelist_f!=nullptr)
 	{
 		Server->destroy(last_filelist_f);
-		last_filelist_f = NULL;
+		last_filelist_f = nullptr;
 		last_filelist.reset();
 	}
 
@@ -2293,7 +2293,7 @@ void IndexThread::updateBackupDirsWithAll()
 		db->destroyQuery(q_name);
 	}
 
-	IQuery* q_del = NULL;
+	IQuery* q_del = nullptr;
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
 		if (backup_dirs[i].facet != index_facet_id)
@@ -2313,7 +2313,7 @@ void IndexThread::updateBackupDirsWithAll()
 
 			if (std::find(volumes_norm.begin(), volumes_norm.end(), ovol)== volumes_norm.end())
 			{
-				if(q_del==NULL)
+				if(q_del==nullptr)
 					q_del = db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
 
 				std::string cpath = backup_dirs[i].path;
@@ -2378,8 +2378,8 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 	{
 		return true;
 	}
-	if( !isIncluded(include_dirs, filepath, NULL)
-		&& (namedpath.empty() || !isIncluded(include_dirs, namedpath, NULL) ) )
+	if( !isIncluded(include_dirs, filepath, nullptr)
+		&& (namedpath.empty() || !isIncluded(include_dirs, namedpath, nullptr) ) )
 	{
 		return true;
 	}
@@ -2591,7 +2591,7 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 				}
 			}
 			else if (calculate_filehashes_on_client
-				&& phash_queue != NULL
+				&& phash_queue != nullptr
 				&& !files[i].isspecialf
 				&& files[i].size>=link_file_min_size )
 			{
@@ -2660,7 +2660,7 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 	if (first)
 	{
 		assert(params_stack.empty());
-		SRecurParams curr_params(SFileAndHash(), NULL, false,
+		SRecurParams curr_params(SFileAndHash(), nullptr, false,
 			std::string(), std::string(), std::string(), depth, std::string::npos);
 		curr_params.state = 2;
 		params_stack.push_back(curr_params);
@@ -2715,7 +2715,7 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				first_info.idx = i;
-				SRecurParams curr_params(files[i], first ? &first_info : NULL, curr_included,
+				SRecurParams curr_params(files[i], first ? &first_info : nullptr, curr_included,
 					orig_dir, dir, named_path, depth, stack_idx);
 				params_stack.push_back(curr_params);
 			}
@@ -2807,7 +2807,7 @@ void IndexThread::initialCheckRecur1(std::vector<SRecurParams>& params_stack, SR
 
 	std::string listname = params.file.name;
 
-	if (params.first_info!=NULL && !params.first_info->fn_filter.empty() && params.first_info->idx == 0)
+	if (params.first_info!=nullptr && !params.first_info->fn_filter.empty() && params.first_info->idx == 0)
 	{
 		listname = params.named_path;
 	}
@@ -2934,7 +2934,7 @@ bool IndexThread::readBackupDirs(void)
 			has_backup_dir=true;
 		}
 
-		if(filesrv!=NULL)
+		if(filesrv!=nullptr)
 			shareDir("", backup_dirs[i].tname, backup_dirs[i].path);
 	}
 	return has_backup_dir;
@@ -3074,7 +3074,7 @@ bool IndexThread::readBackupScripts(bool full_backup)
 
 					scripts.push_back(new_script);
 
-					if (filesrv != NULL)
+					if (filesrv != nullptr)
 					{
 						filesrv->addScriptOutputFilenameMapping(new_script.outputname,
 							new_script.scriptname, tar_file);
@@ -3090,7 +3090,7 @@ bool IndexThread::readBackupScripts(bool full_backup)
 		}
 	}
 
-	if (filesrv != NULL && !scripts.empty() && !first_script_path.empty())
+	if (filesrv != nullptr && !scripts.empty() && !first_script_path.empty())
 	{
 		filesrv->shareDir("urbackup_backup_scripts", first_script_path, std::string(), true);
 	}
@@ -3106,7 +3106,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 {
 	bool calculated_hash=false;
 
-	if(fsfiles!=NULL)
+	if(fsfiles!=nullptr)
 	{
 		for(size_t i=0;i<fsfiles->size();++i)
 		{
@@ -3124,7 +3124,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 
 			bool needs_hashing=true;
 
-			if(dbfiles!=NULL)
+			if(dbfiles!=nullptr)
 			{
 				std::vector<SFileAndHash>::iterator it = std::lower_bound(dbfiles->begin(), dbfiles->end(), fsfile);
 
@@ -3149,7 +3149,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			}
 		}
 	}
-	else if(dbfiles!=NULL
+	else if(dbfiles!=nullptr
 		&& calc_hashes)
 	{
 		for(size_t i=0;i<dbfiles->size();++i)
@@ -3325,10 +3325,10 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 
 		if(calculate_filehashes_on_client
-			&& (phash_queue==NULL || has_files) )
+			&& (phash_queue==nullptr || has_files) )
 		{
-			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path,
-				path, named_path, exclude_dirs, include_dirs, phash_queue==NULL);
+			addMissingHashes(has_files ? &db_files : nullptr, &fs_files, orig_path,
+				path, named_path, exclude_dirs, include_dirs, phash_queue==nullptr);
 		}
 
 		if( has_files)
@@ -3520,14 +3520,14 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 #ifndef _WIN32
 				int64 wait_starttime = Server->getTimeMS();
 
-				while (filesrv != NULL
+				while (filesrv != nullptr
 					&& filesrv->hasActiveTransfers(dir->dir, starttoken)
 					&& Server->getTimeMS() - wait_starttime < 5000)
 				{
 					Server->wait(100);
 				}
 
-				if (filesrv != NULL
+				if (filesrv != nullptr
 					&& filesrv->hasActiveTransfers(dir->dir, starttoken))
 				{
 					sc_refs[i]->cleanup = true;
@@ -3581,7 +3581,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 						for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
 							it != scdirs_server.end();++it)
 						{
-							if (it->second->ref != NULL
+							if (it->second->ref != nullptr
 								&& it->second->ref != curr
 								&& it->second->ref->ssetid == ssetid)
 							{
@@ -3648,12 +3648,12 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					cd->modShadowcopyRefCount(dir->ref->save_id, 1);
 				}
 
-				if(onlyref!=NULL)
+				if(onlyref!=nullptr)
 				{
 					*onlyref=true;
 				}
 
-				if( stale_shadowcopy!=NULL )
+				if( stale_shadowcopy!=nullptr )
 				{
 					if(!do_restart)
 					{
@@ -3679,7 +3679,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	bool* has_active_transaction)
 {
 	bool c_onlyref = false;
-	if (onlyref != NULL)
+	if (onlyref != nullptr)
 	{
 		if (*onlyref)
 		{
@@ -3756,7 +3756,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	{
 		sc_refs.erase(sc_refs.end()-1);
 		delete dir->ref;
-		dir->ref=NULL;
+		dir->ref=nullptr;
 		dir->target = dir->orig_target;
 	}
 
@@ -3846,7 +3846,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 {
 	if(for_imagebackup)
 	{
-		if(dir->ref!=NULL && dir->ref->save_id!=-1)
+		if(dir->ref!=nullptr && dir->ref->save_id!=-1)
 		{
 			cd->modShadowcopyRefCount(dir->ref->save_id, -1);
 		}
@@ -3858,7 +3858,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 	bool ok=true;
 
-	if(dir->ref!=NULL 
+	if(dir->ref!=nullptr 
 #ifdef _WIN32
 		&& dir->ref->backupcom!=NULL
 #endif
@@ -3880,7 +3880,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		}
 	}
 
-	if(dir->ref!=NULL)
+	if(dir->ref!=nullptr)
 	{
 		for(size_t k=0;k<dir->ref->starttokens.size();++k)
 		{
@@ -3924,8 +3924,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 								}
 								it->second->target=it->second->orig_target;
 
-								it->second->ref=NULL;
-								if(dontdel==NULL || it->second!=dontdel )
+								it->second->ref=nullptr;
+								if(dontdel==nullptr || it->second!=dontdel )
 								{
 									delete it->second;
 									server_it->second.erase(it);
@@ -4036,7 +4036,7 @@ SCDirs* IndexThread::getSCDir(const std::string& path, const std::string& client
 	std::map<std::string, SCDirs*>::iterator it=scdirs_server.find(path);
 	if(it!=scdirs_server.end())
 	{
-		if (it->second->ref != NULL)
+		if (it->second->ref != nullptr)
 			it->second->ref->cleanup = false;
 
 		return it->second;
@@ -4080,8 +4080,8 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 	std::string output;
 	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" 
 		+ server_token + "\" "
-		+ (index_group!=NULL ? convert(*index_group) : "" )
-		+ (error_info!=NULL ? convert(*error_info) : "" )
+		+ (index_group!=nullptr ? convert(*index_group) : "" )
+		+ (error_info!=nullptr ? convert(*error_info) : "" )
 		+" 2>&1", output);
 
 	if (rc != 0 && !output.empty())
@@ -4167,7 +4167,7 @@ void IndexThread::execute_postbackup_hook(std::string scriptname, int group, con
 			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
 			std::string group_str = convert(group);
 			char* const argv[]={ const_cast<char*>(fullname.c_str()), 
-				const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
+				const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), nullptr };
 			execv(const_cast<char*>(fullname.c_str()), argv);
 			exit(1);
 		}
@@ -4253,7 +4253,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 	exclude_dirs.clear();
-	if(curr_settings!=NULL)
+	if(curr_settings!=nullptr)
 	{	
 		std::string val;
 		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+"_def", &val) )
@@ -4584,7 +4584,7 @@ bool IndexThread::isIncluded(const std::vector<SIndexInclude>& include_dirs, con
 	strupper(&wpath);
 #endif
 	int wpath_level=0;
-	if(adding_worthless!=NULL)
+	if(adding_worthless!=nullptr)
 	{
 		for(size_t i=0;i<wpath.size();++i)
 		{
@@ -4608,7 +4608,7 @@ bool IndexThread::isIncluded(const std::vector<SIndexInclude>& include_dirs, con
 			{
 				return true;
 			}
-			if(adding_worthless!=NULL)
+			if(adding_worthless!=nullptr)
 			{
 				if( include_dirs[i].depth==-1 )
 				{
@@ -4642,7 +4642,7 @@ void IndexThread::start_filesrv(void)
 	else
 	{
 		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
-		if(curr_settings!=NULL)
+		if(curr_settings!=nullptr)
 		{
 			std::string val;
 			if(curr_settings->getValue("computername", &val)
@@ -4877,7 +4877,7 @@ std::string IndexThread::getSHA256(const std::string& fn)
 
 	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
-	if(f==NULL)
+	if(f==nullptr)
 	{
 		return std::string();
 	}
@@ -5516,8 +5516,8 @@ std::string IndexThread::getShaBinary(const std::string& fn)
 	}
 	else if (sha_version == 528)
 	{
-		TreeHash treehash(index_hdat_file.get() == NULL ? NULL : client_hash.get());
-		if (!getShaBinary(fn, treehash, index_hdat_file.get() != NULL))
+		TreeHash treehash(index_hdat_file.get() == nullptr ? nullptr : client_hash.get());
+		if (!getShaBinary(fn, treehash, index_hdat_file.get() != nullptr))
 		{
 			return std::string();
 		}
@@ -5551,7 +5551,7 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 	}
 
 	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if(curr_settings.get()!=NULL)
+	if(curr_settings.get()!=nullptr)
 	{
 		std::string background_backups;
 		if(curr_settings->getValue("background_backups", &background_backups)
@@ -5739,7 +5739,7 @@ int IndexThread::execute_preimagebackup_hook(bool incr, std::string server_token
 	script_name = SYSCONFDIR "/urbackup/preimagebackup";
 #endif
 
-	return execute_hook(script_name, incr, server_token, NULL);
+	return execute_hook(script_name, incr, server_token, nullptr);
 }
 
 bool IndexThread::addBackupScripts(std::fstream& outfile)
@@ -5811,8 +5811,8 @@ int IndexThread::get_db_tgroup()
 
 bool IndexThread::nextLastFilelistItem(SFile& data, str_map* extra, bool with_up)
 {
-	if (last_filelist.get() == NULL
-		|| last_filelist->f==NULL)
+	if (last_filelist.get() == nullptr
+		|| last_filelist->f==nullptr)
 	{
 		return false;
 	}
@@ -5878,7 +5878,7 @@ bool IndexThread::nextLastFilelistItem(SFile& data, str_map* extra, bool with_up
 
 void IndexThread::addFromLastUpto(const std::string& fname, bool isdir, size_t depth, bool finish, std::fstream &outfile)
 {
-	if (!index_follow_last || last_filelist.get()==NULL)
+	if (!index_follow_last || last_filelist.get()==nullptr)
 	{
 		return;
 	}
@@ -5929,7 +5929,7 @@ void IndexThread::addFromLastUpto(const std::string& fname, bool isdir, size_t d
 
 void IndexThread::addFromLastLiftDepth(size_t depth, std::fstream & outfile)
 {
-	if (!index_follow_last || last_filelist.get() == NULL)
+	if (!index_follow_last || last_filelist.get() == nullptr)
 	{
 		return;
 	}
@@ -6077,7 +6077,7 @@ bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
 	}
 
 	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if (curr_settings.get() != NULL)
+	if (curr_settings.get() != nullptr)
 	{
 		std::string cbt_volumes;
 		if (curr_settings->getValue("cbt_volumes", &cbt_volumes)
@@ -6099,7 +6099,7 @@ bool IndexThread::crashPersistentCbtIsEnabled(std::string clientsubname, std::st
 	}
 
 	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if (curr_settings.get() != NULL)
+	if (curr_settings.get() != nullptr)
 	{
 		std::string cbt_crash_persistent_volumes;
 		if (curr_settings->getValue("cbt_crash_persistent_volumes", &cbt_crash_persistent_volumes)
@@ -6572,7 +6572,7 @@ void IndexThread::run_sc_refs_cleanup()
 						for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
 							it != scdirs_server.end(); ++it)
 						{
-							if (filesrv != NULL
+							if (filesrv != nullptr
 								&& filesrv->hasActiveTransfersGen(it->second->dir, it_scdirs->first.start_token, curr->cleanup_gen))
 							{
 								VSSLog(it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target + " gen="+convert(curr->cleanup_gen)+" still in use. Not releasing.", LL_DEBUG);
@@ -6605,7 +6605,7 @@ void IndexThread::run_sc_refs_cleanup()
 							for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
 								it != scdirs_server.end(); ++it)
 							{
-								if (it->second->ref != NULL
+								if (it->second->ref != nullptr
 									&& it->second->ref != curr
 									&& it->second->ref->ssetid == ssetid)
 								{
@@ -6644,7 +6644,7 @@ void IndexThread::run_sc_refs_cleanup()
 								scd.fileserv = true;
 							}
 
-							if (filesrv != NULL
+							if (filesrv != nullptr
 								&& filesrv->hasActiveTransfersGen(scd.dir, starttoken, curr->cleanup_gen))
 							{
 								VSSLog(scd.dir + " orig_target=" + scd.orig_target + " target=" + scd.target + " starttoken="+ starttoken+ " gen="+convert(curr->cleanup_gen)+" still in use. Not releasing. (2)", LL_DEBUG);
@@ -7306,7 +7306,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	std::unique_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
 	std::unique_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
 
-	if (hdat_img.get() == NULL && hdat_file.get() == NULL)
+	if (hdat_img.get() == nullptr && hdat_file.get() == nullptr)
 	{
 		VSSLog("Error opening img and file backup hdat file", LL_ERROR);
 		return false;
@@ -7322,19 +7322,19 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	std::unique_ptr<IFile> volfile(Server->openFile(orig_dev, MODE_READ_DEVICE));
 
-	if (volfile.get() == NULL)
+	if (volfile.get() == nullptr)
 	{
 		VSSLog("Error opening volume file " + orig_dev, LL_ERROR);
 		return false;
 	}
 
 
-	if (hdat_file.get() != NULL)
+	if (hdat_file.get() != nullptr)
 	{
 		hdat_file->Resize(((volfile->Size() + c_checkpoint_dist - 1) / c_checkpoint_dist) * (sizeof(_u16) + chunkhash_single_size));
 	}
 
-	if (hdat_img.get() != NULL)
+	if (hdat_img.get() != nullptr)
 	{
 		hdat_img->Resize(sizeof(shadow_id) + ((volfile->Size() + c_checkpoint_dist - 1) / c_checkpoint_dist) * SHA256_DIGEST_SIZE);
 	}
@@ -7357,7 +7357,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			}
 		}
 
-		if (hdat_img.get() != NULL)
+		if (hdat_img.get() != nullptr)
 		{
 			if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
 			{
@@ -7371,13 +7371,13 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			}
 		}
 
-		if (hdat_file.get() != NULL)
+		if (hdat_file.get() != nullptr)
 		{
 			IScopedLock lock(cbt_shadow_id_mutex);
 			++index_hdat_sequence_ids[strlower(volume)];
 		}
 
-		if (hdat_img.get() != NULL)
+		if (hdat_img.get() != nullptr)
 		{
 			if (!hdat_img->Sync())
 			{
@@ -7386,7 +7386,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			}
 		}
 
-		if (hdat_file.get() != NULL)
+		if (hdat_file.get() != nullptr)
 		{
 			if (!hdat_file->Sync())
 			{
@@ -7426,7 +7426,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	if (ret)
 	{
-		if (hdat_img.get() != NULL)
+		if (hdat_img.get() != nullptr)
 		{
 			if (!hdat_img->Sync())
 			{
@@ -7435,7 +7435,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			}
 		}
 
-		if (hdat_file.get() != NULL)
+		if (hdat_file.get() != nullptr)
 		{
 			if (!hdat_file->Sync())
 			{
@@ -7504,7 +7504,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 
 	std::unique_ptr<IFile> cowfile(Server->openFile(cbt_file, MODE_READ));
 
-	if (cowfile.get() == NULL)
+	if (cowfile.get() == nullptr)
 	{
 		VSSLog("Error opening datto cow file at " + cbt_file, LL_ERROR);
 		return false;
@@ -7540,7 +7540,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 		return false;
 	}
 
-	if (hdat_img != NULL)
+	if (hdat_img != nullptr)
 	{
 		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
 		{
@@ -7554,7 +7554,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 		}
 	}
 
-	if (hdat_file != NULL)
+	if (hdat_file != nullptr)
 	{
 		IScopedLock lock(cbt_shadow_id_mutex);
 		++index_hdat_sequence_ids[strlower(volume)];
@@ -7590,7 +7590,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 
 			int64 cbt_pos = (i * dbd_block_size) / c_checkpoint_dist;
 
-			if (block_map && hdat_img != NULL)
+			if (block_map && hdat_img != nullptr)
 			{
 				if (!punchHoleOrZero(hdat_img, sizeof(shadow_id) + cbt_pos * SHA256_DIGEST_SIZE,
 					zero_sha, zero_sha_read, sizeof(zero_sha)))
@@ -7599,7 +7599,7 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 				}
 			}
 
-			if (hdat_file != NULL)
+			if (hdat_file != nullptr)
 			{
 				bool has_bit = (block_map > 0);
 				if (has_bit
@@ -7643,10 +7643,10 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 	int64& hdat_file_era, int64& hdat_img_era)
 {
 	hdat_file_era = -1;
-	if(hdat_file!=NULL)
+	if(hdat_file!=nullptr)
 		hdat_file_era = watoi64(trim(getFile(hdat_file->getFilename() + ".era")));
 	hdat_img_era = -1;
-	if(hdat_img!=NULL)
+	if(hdat_img!=nullptr)
 		hdat_img_era = watoi64(trim(getFile(hdat_img->getFilename() + ".era")));
 
 	std::string dev_file = getMountDevice(volume);
@@ -7668,7 +7668,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 		}
 	}
 
-	if (hdat_img != NULL)
+	if (hdat_img != nullptr)
 	{
 		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
 		{
@@ -7682,7 +7682,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 		}
 	}
 
-	if (hdat_file != NULL)
+	if (hdat_file != nullptr)
 	{
 		IScopedLock lock(cbt_shadow_id_mutex);
 		++index_hdat_sequence_ids[strlower(volume)];
@@ -7697,7 +7697,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 #ifdef __ANDROID__
 	POFILE* pin = NULL;
 #endif
-	FILE* in = NULL;
+	FILE* in = nullptr;
 
 	std::string cmd = "era_dump --logical \"" + cbt_file + "\"";
 #ifdef __ANDROID__
@@ -7705,11 +7705,11 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 	if (pin != NULL) in = pin->fp;
 #else
 	in = _popen(cmd.c_str(), "re");
-	if(in==NULL)
+	if(in==nullptr)
 		in = _popen(cmd.c_str(), "r");
 #endif
 
-	if (in == NULL)
+	if (in == nullptr)
 	{
 		VSSLog("Error running command \"era_dump --logical "+cbt_file+"\"", LL_WARNING);
 		return false;
@@ -7892,7 +7892,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 
 					int64 cbt_pos = (block_nr * block_size) / c_checkpoint_dist;
 
-					if (block_era >= hdat_img_era && hdat_img != NULL)
+					if (block_era >= hdat_img_era && hdat_img != nullptr)
 					{
 						if (!punchHoleOrZero(hdat_img, sizeof(shadow_id) + cbt_pos * SHA256_DIGEST_SIZE,
 								zero_sha, zero_sha_read, sizeof(zero_sha)))
@@ -7901,7 +7901,7 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 						}
 					}
 
-					if (hdat_file != NULL)
+					if (hdat_file != nullptr)
 					{
 						bool has_bit = (block_era >= hdat_file_era);
 						if (has_bit
@@ -7959,9 +7959,9 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 		return false;
 	}
 
-	if (hdat_file != NULL)
+	if (hdat_file != nullptr)
 		hdat_file_era = current_era;
-	if (hdat_img != NULL)
+	if (hdat_img != nullptr)
 		hdat_img_era = current_era;
 
 	return true;
@@ -7970,11 +7970,11 @@ bool IndexThread::finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::strin
 
 bool IndexThread::finishCbtEra2(IFsFile* hdat, int64 hdat_era)
 {
-	if (hdat != NULL)
+	if (hdat != nullptr)
 	{
 		std::unique_ptr<IFile> hdat_file_era_new(Server->openFile(hdat->getFilename() + ".era.new", MODE_WRITE));
 
-		if (hdat_file_era_new.get() == NULL)
+		if (hdat_file_era_new.get() == nullptr)
 		{
 			VSSLog("Error opening file at " + hdat->getFilename() + ".era.new. " + os_last_error_str(), LL_ERROR);
 			return false;
@@ -8193,7 +8193,7 @@ void IndexThread::createMd5sumsFile(const std::string & path, std::string vol)
 	std::string fn = "md5sums-"+conv_filename(vol)+"-"+db->Read("SELECT strftime('%Y-%m-%d %H-%M', 'now', 'localtime') AS fn")[0]["fn"]+".txt";
 	std::unique_ptr<IFile> output_f(Server->openFile(fn, MODE_WRITE));
 
-	if (output_f.get() == NULL)
+	if (output_f.get() == nullptr)
 	{
 		Server->Log("Error opening md5sums file. " + os_last_error_str(), LL_ERROR);
 	}
@@ -8218,7 +8218,7 @@ void IndexThread::createMd5sumsFile(const std::string & path, const std::string&
 		{
 			std::unique_ptr<IFile> f(Server->openFile(os_file_prefix(path + os_file_sep() + files[i].name), MODE_READ_SEQUENTIAL_BACKUP));
 
-			if (f.get() == NULL)
+			if (f.get() == nullptr)
 			{
 				Server->Log("Error opening file \"" + path + os_file_sep() + files[i].name + "\" for creating md5sums. " + os_last_error_str(), LL_ERROR);
 			}
@@ -8468,7 +8468,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 				removeDir(starttoken, backup_dirs[i].tname);
 				removeDir(std::string(), backup_dirs[i].tname);
 
-				if(filesrv!=NULL)
+				if(filesrv!=nullptr)
 				{
 					filesrv->removeDir(backup_dirs[i].tname, starttoken);
 					filesrv->removeDir(backup_dirs[i].tname, std::string());
@@ -8702,7 +8702,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	if (scriptlocation.empty())
 	{
-		if (not_configured != NULL)
+		if (not_configured != nullptr)
 		{
 			*not_configured = true;
 		}
@@ -8762,7 +8762,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	if (trim(snapshot_target) == "none")
 	{
-		if (not_configured != NULL)
+		if (not_configured != nullptr)
 		{
 			*not_configured = true;
 		}
@@ -8779,7 +8779,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	{
 		std::string flock_fp = flock_files[i].fn;
 		std::unique_ptr<IFsFile> flock_f(Server->openFile(flock_fp, MODE_RW));
-		if (flock_f.get() == NULL)
+		if (flock_f.get() == nullptr)
 		{
 			VSSLog("Error opening file to lock: " + flock_fp + ". " + os_last_error_str(), LL_WARNING);
 		}
@@ -8885,7 +8885,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		}
 	}
 
-	if(onlyref!=NULL)
+	if(onlyref!=nullptr)
 	{
 		*onlyref=false;
 	}
@@ -8943,7 +8943,7 @@ int IndexThread::getShadowId(const std::string & volume, IFile* hdat_img)
 	}
 	else
 	{
-		if (hdat_img != NULL)
+		if (hdat_img != nullptr)
 		{
 			int shadow_id;
 			if (hdat_img->Read(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) == sizeof(shadow_id))
@@ -8989,7 +8989,7 @@ void IndexThread::addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out)
 
 void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, const std::string & volume)
 {
-	if (ref!=NULL
+	if (ref!=nullptr
 		&& ref->cbt)
 	{
 #ifdef _WIN32
@@ -9023,11 +9023,11 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 #endif
 		size_t* seq_id = &index_hdat_sequence_ids[strlower(vol)];
 		if (index_hdat_file.get()
-			&& filesrv != NULL
+			&& filesrv != nullptr
 			&& index_hdat_fs_block_size>0)
 		{
 			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DELETE);
-			if (f != NULL)
+			if (f != nullptr)
 			{
 				filesrv->setCbtHashFile(starttoken + "|" + sharename, std::string(),
 					IFileServ::CbtHashFileInfo(f, index_hdat_fs_block_size, seq_id, *seq_id));
@@ -9037,10 +9037,10 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 		client_hash.reset(new ClientHash(index_hdat_file.get(), false, index_hdat_fs_block_size,
 			seq_id, *seq_id));
 
-		if (phash_queue != NULL)
+		if (phash_queue != nullptr)
 		{
 			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DELETE);
-			if (f != NULL)
+			if (f != nullptr)
 			{
 				CWData data;
 				data.addChar(ID_CBT_DATA);
@@ -9065,9 +9065,9 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 	else
 	{
 		index_hdat_file.reset();
-		client_hash.reset(new ClientHash(NULL, false, 0, NULL, 0));
+		client_hash.reset(new ClientHash(nullptr, false, 0, nullptr, 0));
 
-		if (phash_queue != NULL)
+		if (phash_queue != nullptr)
 		{
 			CWData data;
 			data.addChar(ID_INIT_HASH);
@@ -9098,7 +9098,7 @@ void IndexThread::readSnapshotGroups()
 	file_snapshot_groups.clear();
 
 	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if (curr_settings.get() != NULL)
+	if (curr_settings.get() != nullptr)
 	{
 		readSnapshotGroup(curr_settings.get(), "image_snapshot_groups", image_snapshot_groups);
 		readSnapshotGroup(curr_settings.get(), "file_snapshot_groups", file_snapshot_groups);
@@ -9237,7 +9237,7 @@ std::vector<std::string> IndexThread::getSnapshotGroup(std::string volume, bool 
 std::string IndexThread::otherVolumeInfo(SCDirs * dir, bool onlyref)
 {
 	if (onlyref
-		|| dir->ref==NULL)
+		|| dir->ref==nullptr)
 	{
 		return std::string();
 	}
@@ -9271,8 +9271,8 @@ void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
 		std::sort(open_files.begin(), open_files.end());
 	}
 
-	if (scd!=NULL 
-		&& scd->ref != NULL)
+	if (scd!=nullptr 
+		&& scd->ref != nullptr)
 	{
 		for (size_t k = 0; k < sc_refs.size(); ++k)
 		{
@@ -9359,7 +9359,7 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 
 void IndexThread::initParallelHashing(const std::string & async_ticket)
 {
-	if (phash_queue != NULL
+	if (phash_queue != nullptr
 		&& phash_queue->deref())
 	{
 		delete phash_queue;
@@ -9374,7 +9374,7 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 
 	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	size_t client_hash_threads = 1;
-	if (curr_settings.get() != NULL)
+	if (curr_settings.get() != nullptr)
 	{
 		client_hash_threads = curr_settings->getValue("client_hash_threads", 1);
 	}
@@ -9402,8 +9402,8 @@ bool IndexThread::addToPhashQueue(CWData & data)
 
 bool IndexThread::commitPhashQueue()
 {
-	if (phash_queue == NULL
-		|| phash_queue->phash_queue==NULL)
+	if (phash_queue == nullptr
+		|| phash_queue->phash_queue==nullptr)
 		return true;
 
 	bool ret = phash_queue->phash_queue->Write(phash_queue_write_pos, phash_queue_buffer.data(), static_cast<_u32>(phash_queue_buffer.size())) == phash_queue_buffer.size();

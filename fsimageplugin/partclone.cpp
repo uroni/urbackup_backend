@@ -22,14 +22,14 @@
 #endif
 
 Partclone::Partclone(const std::string& pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
-	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
+	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(nullptr)
 {
 	init();
 	initReadahead(read_ahead, background_priority);
 }
 
 Partclone::Partclone(IFile* pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
-	:Filesystem(pDev, next_block_callback), bitmap(NULL)
+	:Filesystem(pDev, next_block_callback), bitmap(nullptr)
 {
 	init();
 	initReadahead(read_ahead, background_priority);
@@ -163,7 +163,7 @@ void Partclone::init()
 	}
 
 	cmd = "partclone."+fstype+" -o - -c -s \"" + dev->getFilename() + "\"";
-	FILE* in = NULL;
+	FILE* in = nullptr;
 #ifdef __ANDROID__
 	POFILE* pin = NULL;
 #endif
@@ -178,7 +178,7 @@ void Partclone::init()
 	in = _popen(cmd.c_str(), "r");
 #endif
 
-	if (in == NULL)
+	if (in == nullptr)
 	{
 		has_error = true;
 		return;
@@ -250,7 +250,7 @@ void Partclone::init()
 		return;
 	}
 
-	curr_crc = mz_crc32(mz_crc32(0, NULL, 0), bitmap, bitmap_bytes);
+	curr_crc = mz_crc32(mz_crc32(0, nullptr, 0), bitmap, bitmap_bytes);
 	curr_crc = ~curr_crc;
 
 	if (curr_crc != bitmap_crc)

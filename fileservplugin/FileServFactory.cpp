@@ -59,7 +59,7 @@ private:
 };
 
 
-IPermissionCallback* FileServFactory::permission_callback = NULL;
+IPermissionCallback* FileServFactory::permission_callback = nullptr;
 
 IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name, bool use_fqdn_default, bool enable_background_priority, bool enable_backup_semantics)
 {

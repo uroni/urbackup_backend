@@ -28,15 +28,15 @@
 #include "PipeFileExt.h"
 #include "FileMetadataPipe.h"
 
-IMutex *FileServ::mutex=NULL;
+IMutex *FileServ::mutex=nullptr;
 std::vector<FileServ::SIdentity> FileServ::identities;
 bool FileServ::pause=false;
 std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
-IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
+IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = nullptr;
 std::map<std::string, std::string> FileServ::fn_redirects;
 std::map<std::pair<std::string, size_t>, size_t> FileServ::active_shares;
 size_t FileServ::active_generation = 0;
-FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
+FileServ::IReadErrorCallback* FileServ::read_error_callback = nullptr;
 std::vector<std::string> FileServ::read_error_files;
 std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo> FileServ::cbt_hash_files;
 
@@ -85,7 +85,7 @@ void FileServ::stopServer(void)
 std::string FileServ::getShareDir(const std::string &name, const std::string& identity)
 {
 	bool allow_exec;
-	return map_file(name, identity, allow_exec, NULL);
+	return map_file(name, identity, allow_exec, nullptr);
 }
 
 void FileServ::addIdentity(const std::string &pIdentity, bool only_tunneled)
@@ -145,7 +145,7 @@ std::string FileServ::getServerName(void)
 
 void FileServ::runClient(IPipe *cp, std::vector<char>* extra_buffer)
 {
-	CClientThread cc(cp, NULL, extra_buffer);
+	CClientThread cc(cp, nullptr, extra_buffer);
 	cc();
 }
 
@@ -174,7 +174,7 @@ bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_da
 		std::string server_ident = getbetween("|", "|", cmd);
 		pcmd = getafter("urbackup/TAR|" + server_ident + "|", cmd);
 
-		std::string map_res = map_file(pcmd, std::string(), allow_exec, NULL);
+		std::string map_res = map_file(pcmd, std::string(), allow_exec, nullptr);
 		if (map_res.empty())
 		{
 			return false;
@@ -182,7 +182,7 @@ bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_da
 	}
 	else
 	{
-		pcmd = map_file(cmd, std::string(), allow_exec, NULL);
+		pcmd = map_file(cmd, std::string(), allow_exec, nullptr);
 	}
 
 	if (!allow_exec)
@@ -209,7 +209,7 @@ void FileServ::addScriptOutputFilenameMapping(const std::string& script_output_f
 {
 	IScopedLock lock(mutex);
 
-	script_mappings[script_output_fn] = SScriptMapping(script_fn, tar_file, NULL);
+	script_mappings[script_output_fn] = SScriptMapping(script_fn, tar_file, nullptr);
 }
 
 std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file, IPipeFile*& pipe_file)
@@ -222,7 +222,7 @@ std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, 
 		tar_file = it->second.tar_file;
 		pipe_file = it->second.pipe_file;
 		std::string script_fn = it->second.script_fn;
-		if (pipe_file != NULL)
+		if (pipe_file != nullptr)
 		{
 			script_mappings.erase(it);
 		}
@@ -231,7 +231,7 @@ std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, 
 	else
 	{
 		tar_file = false;
-		pipe_file = NULL;
+		pipe_file = nullptr;
 		return script_fn;
 	}
 }
@@ -257,9 +257,9 @@ IFileServ::ITokenCallback* FileServ::newTokenCallback()
 {
 	IScopedLock lock(mutex);
 
-	if(token_callback_factory==NULL)
+	if(token_callback_factory==nullptr)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	return token_callback_factory->getTokenCallback();
@@ -378,7 +378,7 @@ void FileServ::callErrorCallback(std::string sharename, const std::string & file
 		sharename = getuntil("/", sharename);
 	}
 
-	if (read_error_callback != NULL)
+	if (read_error_callback != nullptr)
 	{
 		read_error_callback->onReadError(sharename, filepath, pos, msg);
 	}

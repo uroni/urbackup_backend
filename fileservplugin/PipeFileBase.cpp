@@ -152,7 +152,7 @@ std::string PipeFileBase::Read(int64 spos, _u32 tr, bool * has_error)
 	size_t read_avail = getReadAvail();
 	while (read_avail<tr && !has_eof && (read_avail == 0 || Server->getTimeMS() - starttime<60000))
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(100);
 		lock.relock(buffer_mutex.get());
 
@@ -214,7 +214,7 @@ _u32 PipeFileBase::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 	while (read_avail<bsize && !has_eof && ((read_avail == 0 && Server->getTimeMS() - starttime<120000)
 		|| Server->getTimeMS() - starttime<60000))
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(100);
 		lock.relock(buffer_mutex.get());
 
@@ -297,7 +297,7 @@ void PipeFileBase::operator()()
 	if(threadidx==0)
 	{
 		++threadidx;
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		while(fillBuffer())
 		{
@@ -313,7 +313,7 @@ void PipeFileBase::operator()()
 	}
 	else
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		while(readStderr())
 		{
@@ -345,7 +345,7 @@ bool PipeFileBase::fillBuffer()
 	{
 		if(buf_r_pos-buf_w_pos<buffer_keep_free)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 			Server->wait(10);
 			return true;
 		}
@@ -356,7 +356,7 @@ bool PipeFileBase::fillBuffer()
 	{
 		if (buffer_size - buf_w_pos + buf_r_pos < buffer_keep_free)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 			Server->wait(10);
 			return true;
 		}
@@ -366,7 +366,7 @@ bool PipeFileBase::fillBuffer()
 
 	if(bsize_free==0)
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(10);
 		return true;
 	}
@@ -377,7 +377,7 @@ bool PipeFileBase::fillBuffer()
 
 	size_t cp_buf_w_pos = buf_w_pos;
 
-	lock.relock(NULL);
+	lock.relock(nullptr);
 
 	bool b = readStdoutIntoBuffer(&buffer[cp_buf_w_pos], bsize_free, read);
 
@@ -413,7 +413,7 @@ bool PipeFileBase::readStderr()
 
 		while(!has_eof && Server->getTimeMS()-starttime<10000)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 			Server->wait(100);
 			lock.relock(buffer_mutex.get());
 		}

@@ -56,7 +56,7 @@ int64 InternetClient::last_lan_connection=0;
 std::set<int> InternetClient::update_settings;
 SServerSettings InternetClient::server_settings;
 bool InternetClient::do_exit=false;
-IMutex* InternetClient::g_mutex = NULL;
+IMutex* InternetClient::g_mutex = nullptr;
 std::map<int, std::string> InternetClient::status_msgs;
 std::map<int, ICondition*> InternetClient::running_client_facets;
 
@@ -247,7 +247,7 @@ void InternetClient::operator()(void)
 			{
 				if(n_connections<spare_connections)
 				{
-					Server->getThreadPool()->execute(new InternetClientThread(this, NULL, server_settings, NULL), "internet client");
+					Server->getThreadPool()->execute(new InternetClientThread(this, nullptr, server_settings, nullptr), "internet client");
 					newConnection();
 				}
 				else
@@ -255,7 +255,7 @@ void InternetClient::operator()(void)
 					wakeup_cond->wait(&lock);
 					if(auth_err>=ic_sleep_after_auth_errs)
 					{
-						lock.relock(NULL);
+						lock.relock(nullptr);
 						Server->wait(ic_lan_timeout/2);
 					}
 				}
@@ -276,7 +276,7 @@ void InternetClient::doUpdateSettings(void)
 	server_settings.servers.clear();
 
 	ISettingsReader *settings=Server->createFileSettingsReader(settings_fn);
-	if(settings==NULL)
+	if(settings==nullptr)
 	{
 		Server->Log("Cannot open settings in InternetClient", LL_WARNING);
 		return;
@@ -418,12 +418,12 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 	{
 		SServerConnectionSettings selected_server_settings = server_settings.servers[i];
 
-		lock->relock(NULL);
+		lock->relock(nullptr);
 		Server->Log("Trying to connect to internet server "+ formatServerForLog(selected_server_settings), LL_DEBUG);
 		std::unique_ptr<CTCPStack> tcpstack(new CTCPStack(true));
 		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
-		if(cs!=NULL)
+		if(cs!=nullptr)
 		{
 			server_settings.selected_server=i;
 			Server->Log("Successfully connected.", LL_DEBUG);
@@ -541,7 +541,7 @@ void InternetClient::setStatusMsg(const std::string& msg)
 InternetClientThread::InternetClientThread(InternetClient* internet_client, IPipe *cs, const SServerSettings &server_settings, CTCPStack* tcpstack)
 	: internet_client(internet_client), cs(cs), server_settings(server_settings), tcpstack(tcpstack)
 {
-	if (this->tcpstack == NULL)
+	if (this->tcpstack == nullptr)
 		this->tcpstack = new CTCPStack(true);
 }
 
@@ -554,7 +554,7 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 {
 	int64 starttime=Server->getTimeMS();
 	char *buf = tcpstack->getPacket(&replysize);
-	if (buf != NULL)
+	if (buf != nullptr)
 		return buf;
 
 	while(Server->getTimeMS()-starttime<timeoutms)
@@ -563,14 +563,14 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 		size_t rc=pipe->Read(&ret, timeoutms);
 		if(rc==0)
 		{
-			return NULL;
+			return nullptr;
 		}
 		tcpstack->AddData((char*)ret.c_str(), ret.size());
 		buf=tcpstack->getPacket(&replysize);
-		if(buf!=NULL)
+		if(buf!=nullptr)
 			return buf;
 	}
-	return NULL;
+	return nullptr;
 }
 
 void InternetClientThread::operator()(void)
@@ -578,21 +578,21 @@ void InternetClientThread::operator()(void)
 	bool finish_ok=false;
 	bool rm_connection=true;
 
-	if(cs==NULL)
+	if(cs==nullptr)
 	{
 		int tries=10;
-		while(tries>0 && cs==NULL)
+		while(tries>0 && cs==nullptr)
 		{
 			cs = InternetClient::connect(server_settings.servers[server_settings.selected_server], *tcpstack);
 			--tries;
 			internet_client->setStatusMsg("connecting_failed");
-			if(cs==NULL && tries>0)
+			if(cs==nullptr && tries>0)
 			{
 				Server->Log("Connecting to server "+ formatServerForLog(server_settings.servers[server_settings.selected_server]) + " failed. Retrying in 30s...", LL_INFO);
 				Server->wait(30000);
 			}
 		}
-		if(cs==NULL)
+		if(cs==nullptr)
 		{
 			Server->Log("Connecting to server "+ formatServerForLog(server_settings.servers[server_settings.selected_server])
 				+ " failed", LL_INFO);
@@ -607,8 +607,8 @@ void InternetClientThread::operator()(void)
 		}
 	}
 
-	IPipe *comm_pipe=NULL;
-	IPipe *comp_pipe=NULL;
+	IPipe *comm_pipe=nullptr;
+	IPipe *comp_pipe=nullptr;
 
 	std::string challenge;
 	unsigned int server_capa;
@@ -632,7 +632,7 @@ void InternetClientThread::operator()(void)
 		char *buf;
 		size_t bufsize;
 		buf=getReply(tcpstack, cs, bufsize, ic_auth_timeout);	
-		if(buf==NULL)
+		if(buf==nullptr)
 		{
 			Server->Log("Error receiving challenge packet");
 			goto cleanup;
@@ -737,7 +737,7 @@ void InternetClientThread::operator()(void)
 		char *buf;
 		size_t bufsize;
 		buf=getReply(tcpstack, cs, bufsize, ic_auth_timeout);	
-		if(buf==NULL)
+		if(buf==nullptr)
 		{
 			Server->Log("Error receiving authentication response");
 			goto cleanup;
@@ -865,7 +865,7 @@ void InternetClientThread::operator()(void)
 		}
 
 		buf=getReply(tcpstack, comm_pipe, bufsize, ping_timeout);
-		if(buf==NULL)
+		if(buf==nullptr)
 		{
 			goto cleanup;
 		}
@@ -915,7 +915,7 @@ void InternetClientThread::operator()(void)
 			else if(service==SERVICE_FILESRV)
 			{
 				Server->Log("Started connection to SERVICE_FILESRV", LL_DEBUG);
-				IndexThread::getFileSrv()->runClient(comm_pipe, NULL);
+				IndexThread::getFileSrv()->runClient(comm_pipe, nullptr);
 				Server->Log("SERVICE_FILESRV finished", LL_DEBUG);
 				goto cleanup;
 			}
@@ -931,7 +931,7 @@ cleanup:
 	if(destroy_cs)
 	{
 		delete comp_pipe;
-		if(cs!=NULL)
+		if(cs!=nullptr)
 			Server->destroy(cs);
 		delete ics_pipe;
 	}	
@@ -950,13 +950,13 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
 	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].hostname);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
-	if(cc!=NULL)
+	if(cc!=nullptr)
 	{
 		cc->setIsInternetConnection();
 	}
 	while(true)
 	{
-		bool b=client->Run(NULL);
+		bool b=client->Run(nullptr);
 		if(!b)
 		{
 			printInfo(pipe);
@@ -967,11 +967,11 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		{
 			if(pipe->isReadable(10))
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets(nullptr);
 			}
 			else if(pipe->hasError())
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets(nullptr);
 				Server->wait(20);
 			}
 		}
@@ -993,20 +993,20 @@ void InternetClientThread::printInfo( IPipe * pipe )
 		IPipe* back_pipe= pipe;
 		CompressedPipe2* comp_pipe = dynamic_cast<CompressedPipe2*>(pipe);
 
-		if(comp_pipe!=NULL)
+		if(comp_pipe!=nullptr)
 		{
 			back_pipe=comp_pipe->getRealPipe();
 		}
 
 		int64 enc_overhead=0;
 		InternetServicePipe2* isp2 = dynamic_cast<InternetServicePipe2*>(back_pipe);
-		if(isp2!=NULL)
+		if(isp2!=nullptr)
 		{
 			enc_overhead=isp2->getEncryptionOverheadBytes();
 			Server->Log("Encryption overhead: "+PrettyPrintBytes(enc_overhead));
 		}
 
-		if(comp_pipe!=NULL)
+		if(comp_pipe!=nullptr)
 		{
 			int64 uncompr_transferred = comp_pipe->getUncompressedReceivedBytes()+comp_pipe->getUncompressedSentBytes();
 			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+convert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");

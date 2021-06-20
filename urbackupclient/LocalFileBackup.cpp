@@ -59,7 +59,7 @@ _i64 LocalFileBackup::getIncrementalSize(IFile* f, const std::vector<size_t>& di
 	{
 		for (size_t i = 0; i < read; ++i)
 		{
-			bool b = list_parser.nextEntry(buffer[i], cf, NULL);
+			bool b = list_parser.nextEntry(buffer[i], cf, nullptr);
 			if (b)
 			{
 				if (cf.isdir == true)
@@ -191,7 +191,7 @@ bool LocalFileBackup::backupMetadata(IFsFile* metadataf, const std::string& sour
 		metadata->last_modified = file_meta.last_modified;
 
 		int64 truncate_to_bytes;
-		if (!write_file_metadata(metadataf, NULL, *metadata, true, truncate_to_bytes))
+		if (!write_file_metadata(metadataf, nullptr, *metadata, true, truncate_to_bytes))
 		{
 			//Log
 			return false;

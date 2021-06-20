@@ -160,7 +160,7 @@ public:
 		fsize = sb.st_size;
 		num_entries = static_cast<size_t>(sb.st_size / sizeof(int32_t));
 
-		view = reinterpret_cast<int*>(mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, hFile, 0));
+		view = reinterpret_cast<int*>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, hFile, 0));
 		if (view == MAP_FAILED)
 		{
 			has_error = true;
@@ -359,7 +359,7 @@ public:
 		}
 		
 		map_size = fsize - start_map;
-		view_start = reinterpret_cast<char*>(mmap(NULL, fsize-start_map, PROT_READ, MAP_PRIVATE, hFile, start_map));
+		view_start = reinterpret_cast<char*>(mmap(nullptr, fsize-start_map, PROT_READ, MAP_PRIVATE, hFile, start_map));
 		if (view_start == MAP_FAILED)
 		{
 			has_error = true;

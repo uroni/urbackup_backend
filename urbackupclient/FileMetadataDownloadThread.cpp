@@ -111,7 +111,7 @@ void FileMetadataDownloadThread::operator()()
 {
 	std::unique_ptr<IFsFile> tmp_f(Server->openTemporaryFile());
 
-	if(tmp_f.get()==NULL)
+	if(tmp_f.get()==nullptr)
 	{
 		restore.log("Error creating temporary file for metadata", LL_ERROR);
 	}
@@ -143,7 +143,7 @@ bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 	buffer.resize(32768);
 	std::unique_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
 
-	if(metadata_f.get()==NULL)
+	if(metadata_f.get()==nullptr)
 	{
 		restore.log("Error opening metadata file at \""+ metadata_tmp_fn+"\". Cannot save file metadata. "+os_last_error_str(), LL_ERROR);
 		return false;
@@ -173,7 +173,7 @@ bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 				return false;
 			}
 
-			unsigned int path_checksum = urb_adler32(urb_adler32(0, NULL, 0), reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size));
+			unsigned int path_checksum = urb_adler32(urb_adler32(0, nullptr, 0), reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size));
 
 			std::string curr_fn;
 
@@ -767,7 +767,7 @@ namespace
         while(true)
         {
             ssize_t bufsize;
-            bufsize = llistxattr(fn.c_str(), NULL, 0);
+            bufsize = llistxattr(fn.c_str(), nullptr, 0);
 
             if(bufsize==-1)
             {
@@ -839,7 +839,7 @@ namespace
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
     int64 unix_magic_and_size[2];
-	unsigned int data_checksum = urb_adler32(0, NULL, 0);
+	unsigned int data_checksum = urb_adler32(0, nullptr, 0);
 
     if(metadata_f->Read(reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size))!=sizeof(unix_magic_and_size))
     {

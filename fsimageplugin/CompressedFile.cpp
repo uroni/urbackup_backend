@@ -49,7 +49,7 @@ CompressedFile::CompressedFile( std::string pFilename, int pMode, size_t n_threa
 {
 	uncompressedFile = Server->openFile(pFilename, pMode);
 
-	if(uncompressedFile==NULL)
+	if(uncompressedFile==nullptr)
 	{
 		Server->Log("Could not open compressed file \""+pFilename+"\"", LL_ERROR);
 		error=true;
@@ -95,7 +95,7 @@ CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly, si
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
 		initCompressedBuffers(n_threads);
 	}
-	if(hotCache.get()!=NULL)
+	if(hotCache.get()!=nullptr)
 	{
 		hotCache->setCacheEvictionCallback(this);
 	}
@@ -117,7 +117,7 @@ CompressedFile::~CompressedFile()
 	IScopedLock lock(mutex.get());
 	for (size_t i = 0; i < compressedBuffers.size(); ++i)
 	{
-		assert(compressedBuffers[i] != NULL);
+		assert(compressedBuffers[i] != nullptr);
 		delete[] compressedBuffers[i];
 	}
 }
@@ -225,7 +225,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize, bool *has_error)
 	size_t cacheSize;
 	char* cachePtr = hotCache->get(currentPosition, cacheSize);
 
-	if(cachePtr == NULL)
+	if(cachePtr == nullptr)
 	{
 		if(!fillCache(currentPosition, !readOnly, has_error))
 		{
@@ -234,7 +234,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize, bool *has_error)
 
 		cachePtr = hotCache->get(currentPosition, cacheSize);
 
-		if(cachePtr==NULL)
+		if(cachePtr==nullptr)
 		{
 			return 0;
 		}
@@ -420,7 +420,7 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize, bool *has_error)
 	size_t cacheSize;
 	char* cachePtr = hotCache->get(currentPosition, cacheSize);
 
-	if(cachePtr==NULL)
+	if(cachePtr==nullptr)
 	{
 		fillCache(currentPosition, false, has_error);
 	}
@@ -614,21 +614,21 @@ char* CompressedFile::getCompressedBuffer(size_t& compressed_buffer_idx)
 {
 	for (size_t i = 0; i < compressedBuffers.size(); ++i)
 	{
-		if (compressedBuffers[i] != NULL)
+		if (compressedBuffers[i] != nullptr)
 		{
 			compressed_buffer_idx = i;
 			char* ret = compressedBuffers[i];
-			compressedBuffers[i] = NULL;
+			compressedBuffers[i] = nullptr;
 			return ret;
 		}
 	}
 	assert(false);
-	return NULL;
+	return nullptr;
 }
 
 void CompressedFile::returnCompressedBuffer(char* buf, size_t compressed_buffer_idx)
 {
-	assert(compressedBuffers[compressed_buffer_idx] == NULL);
+	assert(compressedBuffers[compressed_buffer_idx] == nullptr);
 	compressedBuffers[compressed_buffer_idx] = buf;
 }
 

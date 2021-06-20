@@ -32,7 +32,7 @@ static std::string pbkdf2_sha256(const std::string& key)
 	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pkcs;
 	pkcs.DeriveKey(reinterpret_cast<byte*>(&ret[0]), CryptoPP::SHA256::DIGESTSIZE, 0,
 		(byte*)key.c_str(), key.size(),
-		NULL, 0, 100000, 0);
+		nullptr, 0, 100000, 0);
 
 	return ret;
 }

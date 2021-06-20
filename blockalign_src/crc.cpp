@@ -205,7 +205,7 @@ namespace cryptopp_crc
 	//!   In <em>all</em> cases, if <tt>CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS</tt> is defined, then the
 	//!   function returns 1.
 	template <class T>
-	inline unsigned int GetAlignmentOf(T *dummy = NULL)	// VC60 workaround
+	inline unsigned int GetAlignmentOf(T *dummy = nullptr)	// VC60 workaround
 	{
 		// GCC 4.6 (circa 2008) and above aggressively uses vectorization.
 #if defined(CRYPTOPP_ALLOW_UNALIGNED_DATA_ACCESS)

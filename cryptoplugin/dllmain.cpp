@@ -46,7 +46,7 @@ extern IServer* Server;
 #define UnloadActions UnloadActions_cryptoplugin
 #endif
 
-CCryptoPluginMgr *cryptopluginmgr=NULL;
+CCryptoPluginMgr *cryptopluginmgr=nullptr;
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {

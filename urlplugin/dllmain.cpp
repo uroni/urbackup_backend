@@ -47,7 +47,7 @@ extern IServer* Server;
 #include "pluginmgr.h"
 #include "IUrlFactory.h"
 
-CUrlPluginMgr *urlpluginmgr=NULL;
+CUrlPluginMgr *urlpluginmgr=nullptr;
 
 
 DLLEXPORT void LoadActions(IServer* pServer)

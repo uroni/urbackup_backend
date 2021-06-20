@@ -124,10 +124,10 @@ std::string trim2(const std::string &str)
 std::string getResponse(IPipe *c)
 {
 	CTCPStack tcpstack;
-	char *resp=NULL;
+	char *resp=nullptr;
 	char buffer[1024];
 	size_t packetsize;
-	while(resp==NULL)
+	while(resp==nullptr)
 	{
 		size_t rc=c->Read(buffer, 1024, 60000);
 		if(rc==0)
@@ -137,7 +137,7 @@ std::string getResponse(IPipe *c)
 		tcpstack.AddData(buffer, rc );
 
 		resp=tcpstack.getPacket(&packetsize);
-		if(resp!=NULL && packetsize==0)
+		if(resp!=nullptr && packetsize==0)
 		{
 			delete []resp;
 			return "";
@@ -159,7 +159,7 @@ std::vector<std::string> getBackupclients(int *ec)
 	*ec=0;
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
@@ -214,11 +214,11 @@ std::vector<std::string> getBackupclients(int *ec)
 IPipe* connectToService(int *ec)
 {
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
-		return NULL;
+		return nullptr;
 	}
 
 	return c;
@@ -239,7 +239,7 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *
 	std::vector<SPasswordSalt> ret;
 
 	IPipe *c=connectToService(ec);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		return ret;
 	}
@@ -312,7 +312,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	*ec=0;
 
 	IPipe *c=connectToService(ec);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		return false;
 	}
@@ -405,7 +405,7 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	*ec=0;
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
@@ -455,7 +455,7 @@ std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
 	*ec=0;
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
@@ -568,14 +568,14 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 }
 
 EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
-	DownloadStatus& dl_status, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
+	DownloadStatus& dl_status, int recur_depth=0, int64* o_imgsize=nullptr, int64* o_output_file_size=nullptr)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 
 	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==NULL)
+	if(client_pipe.get()==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		return EDownloadResult_ConnectError;
@@ -603,12 +603,12 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	std::string restore_out=outfile;
 	Server->Log("Restoring to "+restore_out);
 	std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
-	if(out_file.get()==NULL)
+	if(out_file.get()==nullptr)
 	{
 		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
 		return EDownloadResult_OpenError;
 	}
-	else if (o_output_file_size != NULL)
+	else if (o_output_file_size != nullptr)
 	{
 		*o_output_file_size = out_file->Size();
 	}
@@ -616,7 +616,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	_i64 imgsize=-1;
 	client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
 
-	if (o_imgsize != NULL)
+	if (o_imgsize != nullptr)
 	{
 		*o_imgsize = imgsize;
 	}
@@ -679,8 +679,8 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 			if( r==0 )
 			{
 				Server->Log("Read Timeout: Retrying", LL_WARNING);
-				client_pipe.reset(NULL);
-				out_file.reset(NULL);
+				client_pipe.reset(nullptr);
+				out_file.reset(nullptr);
 				if(has_data)
 				{
 					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
@@ -817,7 +817,7 @@ int downloadFiles(int backupid, std::string backup_time)
 	std::vector<SImage> ret;
 
 	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==NULL)
+	if(client_pipe.get()==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		return 10;
@@ -880,7 +880,7 @@ namespace
 			hints.ai_socktype = SOCK_STREAM;
 
 			addrinfo* hp;
-			if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
+			if(getaddrinfo(host, nullptr, &hints, &hp)==0 && hp!=nullptr)
 			{
 				if(hp->ai_addrlen<=sizeof(sockaddr_in))
 				{
@@ -1103,7 +1103,7 @@ void do_restore(void)
 		}
 			
 		IFile *f=Server->openFile(mbr_filename, MODE_READ);
-		if(f==NULL)
+		if(f==nullptr)
 		{
 			Server->Log("Could not open MBR file", LL_ERROR);
 			exit(1);
@@ -1122,7 +1122,7 @@ void do_restore(void)
 		}
 
 		IFile *dev=Server->openFile(out_device, MODE_RW);
-		if(dev==NULL)
+		if(dev==nullptr)
 		{
 			Server->Log("Could not open device file for writing", LL_ERROR);
 			delete []buf; exit(1);
@@ -1199,7 +1199,7 @@ void do_restore(void)
 			exit(1);
 		}
 		IFile *f=Server->openFile(mbr_filename, MODE_READ);
-		if(f==NULL)
+		if(f==nullptr)
 		{
 			Server->Log("Could not open MBR file", LL_ERROR);
 			exit(1);
@@ -1229,7 +1229,7 @@ void do_restore(void)
 		login_data.password = Server->getServerParameter("password");
 
 		char* pw = getenv("LOGIN_PASSWORD");
-		if (pw != NULL)
+		if (pw != nullptr)
 		{
 			login_data.password = pw;
 		}
@@ -1247,7 +1247,7 @@ void do_restore(void)
 		std::string dev_fn = Server->getServerParameter("device_fn");
 		std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
 
-		if (dev.get() == NULL)
+		if (dev.get() == nullptr)
 		{
 			Server->Log("Error opening device at " + dev_fn+". "+os_last_error_str(), LL_ERROR);
 			exit(5);
@@ -1292,7 +1292,7 @@ void do_restore(void)
 	}
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		exit(1);return;
@@ -1575,7 +1575,7 @@ bool has_internet_connection(int* ec, std::string& errstatus)
 
 	IPipe* c = connectToService(ec);
 
-	if (c == NULL)
+	if (c == nullptr)
 	{
 		return false;
 	}
@@ -2209,7 +2209,7 @@ void restore_wizard(void)
 					break;
 				}
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);
-				if(f==NULL)
+				if(f==nullptr)
 				{
 					err="cannot_read_mbr";
 					state=101;
@@ -2233,7 +2233,7 @@ void restore_wizard(void)
 				system("cat urbackup/restore/writing_mbr");
 				system("echo");
 				IFile *dev=Server->openFile(seldrive, MODE_RW);
-				if(dev==NULL)
+				if(dev==nullptr)
 				{
 					err="cannot_open_disk";
 					state=101;
@@ -2342,7 +2342,7 @@ void restore_wizard(void)
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
 				system("echo");
-				dev=NULL;
+				dev=nullptr;
 				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number);
 				if(!partpath.empty())
 				{
@@ -2350,7 +2350,7 @@ void restore_wizard(void)
 				}
 				int try_c=0;
 				int delete_parts = 0;
-				while(dev==NULL && try_c<10)
+				while(dev==nullptr && try_c<10)
 				{
 					system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 					Server->wait(10000);
@@ -2362,7 +2362,7 @@ void restore_wizard(void)
 						dev=Server->openFile(partpath, MODE_RW);
 					}
 
-					if(dev==NULL)
+					if(dev==nullptr)
 					{
 						if (!mbrdata.gpt_style)
 						{
@@ -2405,7 +2405,7 @@ void restore_wizard(void)
 
 					++try_c;
 				}
-				if(dev==NULL)
+				if(dev==nullptr)
 				{
 					err="no_restore_partition";
 					state=101;

@@ -691,7 +691,7 @@ bool LocalIncrFileBackup::run()
 					{
 						std::string touch_path = local_curr_os_path;
 						std::unique_ptr<IFile> touch_file(backup_files->openFile(touch_path, MODE_WRITE));
-						if (touch_file.get() == NULL)
+						if (touch_file.get() == nullptr)
 						{
 							log("Error touching file at \"" + touch_path + "\". " + backup_files->lastError(), LL_ERROR);
 							c_has_error = true;
@@ -767,7 +767,7 @@ bool LocalIncrFileBackup::run()
 							int64 inplace_written = 0;
 							FsExtentIterator extent_iterator(sourcef.get());
 							bool b = build_chunk_hashs(sourcef.get(),
-								metadata_f.get(), NULL, destf.get(), true,
+								metadata_f.get(), nullptr, destf.get(), true,
 								&inplace_written, last_metadataf.get(), false,
 								nullptr, &extent_iterator);
 							if (!b)
@@ -906,7 +906,7 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 	{
 		for (size_t i = 0; i < read; ++i)
 		{
-			if (list_parser.nextEntry(buffer[i], curr_file, NULL))
+			if (list_parser.nextEntry(buffer[i], curr_file, nullptr))
 			{
 				if (curr_file.isdir && curr_file.name == "..")
 				{
@@ -986,7 +986,7 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 								&& !backup_files->deleteFile(curr_fn))
 							{
 								std::unique_ptr<IFile> tf(backup_files->openFile(curr_fn, MODE_READ));
-								if (tf.get() != NULL)
+								if (tf.get() != nullptr)
 								{
 									log("Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " 
 										+ os_last_error_str(), no_error ? LL_WARNING : LL_ERROR);

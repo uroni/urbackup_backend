@@ -93,7 +93,7 @@ namespace
 	{
 		size_t out_len;
 		void* cdata = tinfl_decompress_mem_to_heap(backup_client_db_z, backup_client_db_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER|TINFL_FLAG_COMPUTE_ADLER32);
-		if (cdata == NULL)
+		if (cdata == nullptr)
 		{
 			return std::string();
 		}
@@ -170,7 +170,7 @@ namespace
 	void do_print_dm_file_extents(const std::string& fn)
 	{
 		std::unique_ptr<IFsFile> f(Server->openFile(fn, MODE_READ));
-		if (f.get() == NULL)
+		if (f.get() == nullptr)
 		{
 			std::cerr << "Error opening file " << fn << " " << os_last_error_str() << std::endl;
 			exit(1);
@@ -317,7 +317,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	str_map params;
 	crypto_fak = (ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if (crypto_fak == NULL)
+	if (crypto_fak == nullptr)
 	{
 		Server->Log("Error loading cryptoplugin", LL_ERROR);
 	}
@@ -337,7 +337,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		str_map params;
 		image_fak = (IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
-		if (image_fak == NULL)
+		if (image_fak == nullptr)
 		{
 			Server->Log("Error loading fsimageplugin", LL_ERROR);
 		}
@@ -821,7 +821,7 @@ bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
-	if(q==NULL)
+	if(q==nullptr)
 		return false;
 	db_results res_v=q->Read();
 	if(res_v.empty())

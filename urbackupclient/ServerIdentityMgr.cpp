@@ -30,8 +30,8 @@ const unsigned int ident_online_timeout=1*60*60*1000; //1h
 extern ICryptoFactory* crypto_fak;
 
 std::vector<SIdentity> ServerIdentityMgr::identities;
-IMutex *ServerIdentityMgr::mutex=NULL;
-IFileServ *ServerIdentityMgr::filesrv=NULL;
+IMutex *ServerIdentityMgr::mutex=nullptr;
+IFileServ *ServerIdentityMgr::filesrv=nullptr;
 std::vector<std::string> ServerIdentityMgr::new_identities;
 std::vector<SSessionIdentity> ServerIdentityMgr::session_identities;
 
@@ -402,7 +402,7 @@ bool ServerIdentityMgr::write_file_admin_atomic(const std::string & data, const 
 
 	{
 		std::unique_ptr<IFile> f(Server->openFile(fn + ".new", MODE_RW));
-		if (f.get() != NULL)
+		if (f.get() != nullptr)
 			f->Sync();
 	}
 

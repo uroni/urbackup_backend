@@ -69,7 +69,7 @@ unsigned int urb_adler32(unsigned int adler, const char* pbuf, unsigned int len)
     }
 
     /* initial Adler-32 value (deferred check for len == 1 speed) */
-    if (buf == 0)
+    if (buf == nullptr)
         return 1L;
 
     /* in case short lengths are provided, keep it somewhat fast */

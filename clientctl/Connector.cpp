@@ -179,10 +179,10 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	CTCPStack tcpstack;
 	tcpstack.Send(p, cmd+"#pw="+pw+t_args);
 
-	char *resp=NULL;
+	char *resp=nullptr;
 	char buffer[1024];
 	size_t packetsize;
-	while(resp==NULL)
+	while(resp==nullptr)
 	{
         int rc=recv(p, buffer, 1024, MSG_NOSIGNAL);
 		
@@ -552,7 +552,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, cons
 		params+="&path="+EscapeParamString(path);
 	}
 
-	if(backupid!=NULL)
+	if(backupid!=nullptr)
 	{
 		params+="&backupid="+convert(*backupid);
 	}

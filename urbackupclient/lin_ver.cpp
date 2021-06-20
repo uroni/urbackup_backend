@@ -8,7 +8,7 @@ namespace
 	std::string run_cmd(const std::string& cmd)
 	{
 		FILE* f=popen(cmd.c_str(), "r");
-		if(f!=NULL)
+		if(f!=nullptr)
 		{
 			std::string data;
 			char buf[1024];

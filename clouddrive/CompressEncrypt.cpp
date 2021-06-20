@@ -122,7 +122,7 @@ ICompressAndEncrypt* CompressEncryptFactory::createCompressAndEncrypt(const std:
 		compressor = nullptr;
 		break;
 	default: 
-		return NULL;
+		return nullptr;
 	}
     return new CompressAndEncrypt(encryption_key, file, online_kv_store, compressor);
 }
@@ -234,7 +234,7 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 		{
 			_u32 file_read;
 			if( (!compressor || compressor->getAvailIn()==0 )
-				&& file!=NULL)
+				&& file!=nullptr)
 			{
 				bool has_read_error = false;
 				size_t toread = (std::min)(static_cast<size_t>(input_file_size - file_pos), buffer_size);
@@ -276,14 +276,14 @@ size_t CompressAndEncrypt::read( char* buffer, size_t buffer_size )
 							msg, LL_ERROR);
 						return std::string::npos;
 					}
-					file=NULL;
+					file=nullptr;
 				}
 			}
 
 			int code;
 			CompressResult ret;
 			if (compressor)
-				ret = compressor->compress(file == NULL, code);
+				ret = compressor->compress(file == nullptr, code);
 			else
 				ret = file==nullptr ? CompressResult_End : CompressResult_Ok;
 

@@ -125,7 +125,7 @@ std::string map_file(std::string fn, const std::string& identity, bool& allow_ex
 	    	
 		mapcs.Leave();
 
-		if (cbt_hash_file_info != NULL)
+		if (cbt_hash_file_info != nullptr)
 		{
 			*cbt_hash_file_info = FileServ::getCbtHashFile(ts, std::string());
 		}

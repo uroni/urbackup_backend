@@ -39,7 +39,7 @@
 #include "PassThroughFileSystem.h"
 #endif
 #include "Auto.h"
-#ifndef _WIN32
+#ifdef WITH_MIGRATION
 #include "KvStoreBackendS3.h"
 #include "KvStoreBackendAzure.h"
 #endif
@@ -51,7 +51,7 @@
 #ifdef HAS_ASYNC
 #include "fuse_kernel.h"
 #endif
-#ifndef _WIN32
+#ifdef HAS_LINUX_MEMORY_FILE
 #include "LinuxMemFile.h"
 #endif
 
@@ -817,7 +817,7 @@ namespace
 
 			char** res = cache.get(block);
 
-			if(res!=NULL)
+			if(res!=nullptr)
 			{
 				return *res;
 			}
@@ -1347,7 +1347,7 @@ CloudFile::CloudFile(const std::string& cache_path,
 	cf_pos(0), active_big_block(-1),
 	last_stat_update_time(0), used_bytes(0), last_flush_check(0),
 	mutex(Server->createMutex()),
-	new_big_blocks_bitmap_file(NULL),
+	new_big_blocks_bitmap_file(nullptr),
 	cloudfile_size(p_cloudfile_size),
 	writeback_count(0), io_alignment(512),
 	locked_extents_max_alive(0), exit_thread(false), thread_cond(Server->createCondition()),
@@ -1376,7 +1376,7 @@ CloudFile::CloudFile(const std::string& cache_path,
 	IFile* f_cloudfile_size = kv_store.get("cloudfile_size", TransactionalKvStore::BitmapInfo::Unknown,
 		TransactionalKvStore::Flag::disable_fd_cache|TransactionalKvStore::Flag::disable_throttling, -1);
 
-	if (f_cloudfile_size == NULL)
+	if (f_cloudfile_size == nullptr)
 	{
 		throw std::runtime_error("Cannot open cloudfile_size");
 	}
@@ -1610,7 +1610,7 @@ _u32 CloudFile::Read(char* buffer, _u32 bsize, bool* has_error)
 
 _u32 CloudFile::Read(int64 pos, char* buffer, _u32 bsize, bool* has_error)
 {
-	return ReadInt(pos, buffer, bsize, NULL, 
+	return ReadInt(pos, buffer, bsize, nullptr, 
 		TransactionalKvStore::Flag::prioritize_read|
 		TransactionalKvStore::Flag::read_random, has_error);
 }
@@ -1810,9 +1810,9 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 	if (is_async)
 		abort();
 
-	IScopedLock lock(NULL);
+	IScopedLock lock(nullptr);
 
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		lock.relock(mutex.get());
 	}
@@ -1837,7 +1837,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 	}
 	
 	int64 orig_pos=pos;
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		lock_extent(lock, orig_pos, bsize, false);
 	}
@@ -1874,13 +1874,13 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 
 		int64 toread = (std::min)((curr_block_size - pos%curr_block_size), target-pos);
 
-		if (ext_lock == NULL)
+		if (ext_lock == nullptr)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 		}
 		else
 		{
-			ext_lock->relock(NULL);
+			ext_lock->relock(nullptr);
 		}
 
 		unsigned int curr_flags = flags;
@@ -1895,7 +1895,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 		_u32 read=0;
 
 		bool has_read_error;
-		if(block!=NULL)
+		if(block!=nullptr)
 		{
 			_u32 last_read;
 			do
@@ -1948,7 +1948,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 			read=static_cast<_u32>(toread);			
 		}
 
-		if(block!=NULL)
+		if(block!=nullptr)
 		{
 			kv_store.release(key);
 		}
@@ -1963,7 +1963,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 					"Error reading from block file on cache",
 					"Error reading from block file at " + cachefs->getName() + " (read only " + convert(read) + " of " + convert(toread) + " bytes)", LL_ERROR);
 			}
-			if (ext_lock==NULL)
+			if (ext_lock==nullptr)
 			{
 				lock.relock(mutex.get());
 				unlock_extent(lock, orig_pos, bsize, false);
@@ -1981,7 +1981,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 		pos+=read;
 		read_bytes += read;
 
-		if(ext_lock==NULL)
+		if(ext_lock==nullptr)
 		{
 			lock.relock(mutex.get());
 		}
@@ -1991,7 +1991,7 @@ _u32 CloudFile::ReadInt(int64 pos, char* buffer, _u32 bsize, IScopedLock* ext_lo
 		}
 	}
 	
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		unlock_extent(lock, orig_pos, bsize, false);
 	}
@@ -2043,21 +2043,21 @@ _u32 CloudFile::Write(int64 pos, const std::string &tw, bool* has_error)
 
 _u32 CloudFile::Write( const char* buffer, _u32 bsize, bool* has_error)
 {
-	_u32 ret = WriteInt(cf_pos, buffer, bsize, false, NULL, true, has_error);
+	_u32 ret = WriteInt(cf_pos, buffer, bsize, false, nullptr, true, has_error);
 	cf_pos += ret;
 	return ret;
 }
 
 _u32 CloudFile::Write( int64 pos, const char* buffer, _u32 bsize, bool* has_error)
 {
-	_u32 rc = WriteInt(pos, buffer, bsize, false, NULL, true, has_error);
+	_u32 rc = WriteInt(pos, buffer, bsize, false, nullptr, true, has_error);
 	return rc;
 }
 
 _u32 CloudFile::WriteNonBlocking( int64 pos, const char* buffer, _u32 bsize, bool* has_error)
 {
 	EXTENSIVE_DEBUG_LOG(Server->Log("Non-blocking write at pos "+convert(pos)+" size "+convert(bsize));)
-	_u32 rc = WriteInt(pos, buffer, bsize, false, NULL, false, has_error);
+	_u32 rc = WriteInt(pos, buffer, bsize, false, nullptr, false, has_error);
 	return rc;
 }
 
@@ -2226,7 +2226,7 @@ void CloudFile::preload_items(const std::string & fn, size_t n_threads, int tag,
 
 				while (pipe->getNumElements() > n_threads * 3)
 				{
-					lock.relock(NULL);
+					lock.relock(nullptr);
 					Server->wait(100);
 					lock.relock(mutex.get());
 				}
@@ -2236,7 +2236,7 @@ void CloudFile::preload_items(const std::string & fn, size_t n_threads, int tag,
 		}
 	}
 
-	lock.relock(NULL);
+	lock.relock(nullptr);
 
 	pipe->Write(std::string());
 
@@ -2375,7 +2375,7 @@ bool CloudFile::has_preload_item(int64 offset_start, int64 offset_end)
 
 		int64 toread = (std::min)((curr_block_size - offset_start%curr_block_size), offset_end - offset_start);
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		if (!kv_store.has_item_cached(key))
 		{
@@ -3048,7 +3048,7 @@ bool CloudFile::replay_slog()
 std::string CloudFile::get_mirror_stats()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->mirror_stats();
 	}
@@ -3469,7 +3469,7 @@ bool CloudFile::is_metadata(int64 offset, const std::string& key)
 		if (timems - last_fs_chunks_update>60*60*1000
 			&& !updating_fs_chunks)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 			{
 				IScopedWriteLock lock(nullptr);
 				update_fs_chunks(true, lock);
@@ -4171,9 +4171,9 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 	if (is_async)
 		abort();
 
-	IScopedLock lock(NULL);
+	IScopedLock lock(nullptr);
 
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		lock.relock(mutex.get());
 	}
@@ -4197,7 +4197,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 	
 	const char* orig_buffer = buffer;
 	int64 orig_pos = pos;
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		lock_extent(lock, orig_pos, bsize, false);
 	}
@@ -4210,7 +4210,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 	}
 
 	bool slog_needs_reset = false;
-	if (ext_lock == NULL)
+	if (ext_lock == nullptr)
 	{		
 		if (!slog_write(pos, buffer, bsize, slog_needs_reset))
 		{
@@ -4261,7 +4261,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 			bool waited = false;
 			while (in_write_retrieval.find(key) != in_write_retrieval.end())
 			{
-				if (ext_lock == NULL)
+				if (ext_lock == nullptr)
 				{
 					in_write_retrieval_cond->wait(&lock);
 				}
@@ -4281,13 +4281,13 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 			in_write_retrieval.insert(key);
 		}
 
-		if(ext_lock==NULL)
+		if(ext_lock==nullptr)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 		}
 		else
 		{
-			ext_lock->relock(NULL);
+			ext_lock->relock(nullptr);
 		}
 
 		unsigned int flags = TransactionalKvStore::Flag::read_random;
@@ -4308,7 +4308,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 										: TransactionalKvStore::BitmapInfo::NotPresent) ,
 			flags, curr_block_size);
 		
-		assert(block!=NULL);
+		assert(block!=nullptr);
 
 		int64 file_block_size = block->Size();
 		if(file_block_size <pos%curr_block_size)
@@ -4367,7 +4367,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 			{
 				migrate_to_cf->unlock_extent(migration_lock, orig_pos, bsize, false);
 			}
-			if(ext_lock==NULL)
+			if(ext_lock==nullptr)
 			{
 				lock.relock(mutex.get());
 				unlock_extent(lock, orig_pos, bsize, false);
@@ -4386,7 +4386,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 			return 0;
 		}
 
-		if(ext_lock==NULL)
+		if(ext_lock==nullptr)
 		{
 			lock.relock(mutex.get());
 		}
@@ -4427,7 +4427,7 @@ _u32 CloudFile::WriteInt( int64 pos, const char* buffer, _u32 bsize, bool new_bl
 		migrate_to_cf->unlock_extent(migration_lock, orig_pos, bsize, false);
 	}
 	
-	if(ext_lock==NULL)
+	if(ext_lock==nullptr)
 	{
 		unlock_extent(lock, orig_pos, bsize, false);
 	}
@@ -4452,7 +4452,7 @@ _u32 CloudFile::WriteAligned(IFile* block, int64 pos, const char* buffer, _u32 t
 	_u32 alignendadd = io_alignment - (towrite+alignstartadd)%io_alignment;
 	_u32 alignwrite = towrite + alignstartadd + alignendadd;
 	char *buf = reinterpret_cast<char*>(aligned_alloc(io_alignment, alignwrite));
-	if(buf==NULL)
+	if(buf==nullptr)
 	{
 		return 0;
 	}
@@ -4668,7 +4668,7 @@ bool CloudFile::PunchHole( _i64 spos, _i64 size )
 			if (!has_block)
 			{
 				{
-					lock.relock(NULL);
+					lock.relock(nullptr);
 
 					kv_store.del(key);
 
@@ -5001,7 +5001,7 @@ std::string CloudFile::get_raid_groups()
 std::string CloudFile::scrub_stats()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->scrub_stats();
 	}
@@ -5012,7 +5012,7 @@ std::string CloudFile::scrub_stats()
 void CloudFile::start_scrub(ScrubAction action)
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		frontend->start_scrub(action, std::string());
 	}
@@ -5021,7 +5021,7 @@ void CloudFile::start_scrub(ScrubAction action)
 void CloudFile::stop_scrub()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		frontend->stop_scrub();
 	}
@@ -5157,7 +5157,7 @@ bool CloudFile::set_target_overhead(double t)
 std::string CloudFile::get_scrub_position()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->scrub_position();
 	}
@@ -5241,7 +5241,7 @@ void CloudFile::operator()()
 					
 					if (success)
 					{
-						lock.relock(NULL);
+						lock.relock(nullptr);
 
 						kv_store.del(big_block_key(big_block_num));
 
@@ -5394,7 +5394,7 @@ void CloudFile::run_cd_fracture()
 bool CloudFile::start_raid_defrag(const std::string& settings)
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->start_defrag(settings);
 	}
@@ -6219,7 +6219,7 @@ void CloudFile::cmd(const std::string & c)
 	else if (action == "set_background_throttle_limit")
 	{
 		KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-		if (frontend != NULL)
+		if (frontend != nullptr)
 		{
 #ifdef HAS_LOCAL_BACKEND
 			KvStoreBackendLocal* backend = dynamic_cast<KvStoreBackendLocal*>(frontend->getBackend());
@@ -6233,7 +6233,7 @@ void CloudFile::cmd(const std::string & c)
 	else if (action == "set_all_mirrored")
 	{
 		KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-		if (frontend != NULL)
+		if (frontend != nullptr)
 		{
 			frontend->set_all_mirrored(true);
 		}
@@ -6241,7 +6241,7 @@ void CloudFile::cmd(const std::string & c)
 	else if (action == "set_all_unmirrored")
 	{
 		KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-		if (frontend != NULL)
+		if (frontend != nullptr)
 		{
 			frontend->set_all_mirrored(false);
 		}
@@ -6740,7 +6740,7 @@ int64 CloudFile::get_total_dirty_ops()
 int64 CloudFile::get_total_balance_ops()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->get_total_balance_ops();
 	}
@@ -6750,7 +6750,7 @@ int64 CloudFile::get_total_balance_ops()
 int64 CloudFile::get_total_del_ops()
 {
 	KvStoreFrontend* frontend = dynamic_cast<KvStoreFrontend*>(online_kv_store.get());
-	if (frontend != NULL)
+	if (frontend != nullptr)
 	{
 		return frontend->get_total_del_ops();
 	}
@@ -6945,7 +6945,7 @@ bool CloudFile::Flush(bool do_submit, bool for_slog)
 
 		if (writeback_count == 0)
 		{
-			lock.relock(NULL);
+			lock.relock(nullptr);
 
 			doublefork_writestring("writeback", "/sys/block/" + bdev_name + "/bcache/cache_mode");
 
@@ -7231,14 +7231,14 @@ void CloudFile::open_bitmaps()
 		TransactionalKvStore::Flag::disable_fd_cache|TransactionalKvStore::Flag::disable_throttling|
 		TransactionalKvStore::Flag::disable_memfiles, -1);
 
-	if(big_blocks_bitmap_file==NULL)
+	if(big_blocks_bitmap_file==nullptr)
 	{
 		throw std::runtime_error("Cannot open big_blocks_bitmap");
 	}
 
 	bitmaps_file_size += big_blocks_bitmap_file->Size();	
 	
-	if(new_big_blocks_bitmap_file!=NULL)
+	if(new_big_blocks_bitmap_file!=nullptr)
 	{
 		std::string fn = new_big_blocks_bitmap_file->getFilename();
 		Server->destroy(new_big_blocks_bitmap_file);
@@ -7247,7 +7247,7 @@ void CloudFile::open_bitmaps()
 	
 	new_big_blocks_bitmap_file = Server->openTemporaryFile();
 
-	if(new_big_blocks_bitmap_file==NULL)
+	if(new_big_blocks_bitmap_file==nullptr)
 	{
 		throw std::runtime_error("Cannot open new_big_blocks_bitmap");
 	}
@@ -7256,7 +7256,7 @@ void CloudFile::open_bitmaps()
 		TransactionalKvStore::Flag::disable_fd_cache | TransactionalKvStore::Flag::disable_throttling |
 		TransactionalKvStore::Flag::disable_memfiles, -1);
 
-	if(old_big_blocks_bitmap_file==NULL)
+	if(old_big_blocks_bitmap_file==nullptr)
 	{
 		throw std::runtime_error("Cannot open old_big_blocks_bitmap");
 	}
@@ -7279,7 +7279,7 @@ void CloudFile::open_bitmaps()
 		TransactionalKvStore::Flag::disable_fd_cache | TransactionalKvStore::Flag::disable_throttling|
 		TransactionalKvStore::Flag::disable_memfiles, -1);
 
-	if(bitmap_file==NULL)
+	if(bitmap_file==nullptr)
 	{
 		throw std::runtime_error("Cannot open bitmap");
 	}
@@ -7457,7 +7457,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 	while (!exclusive
 		&& wait_for_exclusive>0)
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(1);
 		lock.relock(mutex.get());
 	}
@@ -7483,7 +7483,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 				continue;
 			}
 
-			if(!exclusive && extent.cond==NULL && extent.start==start
+			if(!exclusive && extent.cond==nullptr && extent.start==start
 				&& extent.length==length)
 			{
 				++extent.refcount;
@@ -7494,7 +7494,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 				|| (start>=extent.start && start<extent.start+extent.length)
 				|| (start+length>extent.start && start+length<=extent.start+extent.length) )
 			{
-				if(extent.cond!=NULL)
+				if(extent.cond!=nullptr)
 				{
 					retry=true;
 					++extent.refcount;
@@ -7510,7 +7510,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 							{
 								assert(!locked_extents[j].alive);
 								Server->destroy(locked_extents[j].cond);
-								locked_extents[j].cond = NULL;
+								locked_extents[j].cond = nullptr;
 								if (j == locked_extents_max_alive
 									&& locked_extents_max_alive>0)
 								{
@@ -7531,7 +7531,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 				else if(exclusive)
 				{
 					retry=true;
-					lock.relock(NULL);
+					lock.relock(nullptr);
 					Server->wait(1);
 					lock.relock(mutex.get());
 					break;
@@ -7565,7 +7565,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
 		}
 		else
 		{
-			extent.cond = NULL;
+			extent.cond = nullptr;
 		}
 		extent.refcount = 1;
 		extent.alive = true;
@@ -7586,7 +7586,7 @@ void CloudFile::lock_extent(IScopedLock& lock, int64 start, int64 length, bool e
     }
 	else
 	{
-		new_extent.cond = NULL;
+		new_extent.cond = nullptr;
 	}
     new_extent.refcount = 1;
 	new_extent.alive = true;
@@ -7606,7 +7606,7 @@ void CloudFile::unlock_extent(IScopedLock& lock, int64 start, int64 length, bool
 
 		if(extent.start==start && extent.length==length)
 		{
-			assert(!exclusive || extent.cond!=NULL);
+			assert(!exclusive || extent.cond!=nullptr);
 
 			--extent.refcount;
 			if (exclusive)
@@ -7617,7 +7617,7 @@ void CloudFile::unlock_extent(IScopedLock& lock, int64 start, int64 length, bool
 			if(extent.refcount<=0)
 			{
 				Server->destroy(extent.cond);
-				extent.cond = NULL;
+				extent.cond = nullptr;
 				extent.alive = false;
 				if (i == locked_extents_max_alive
 					&& locked_extents_max_alive>0)
@@ -7631,7 +7631,7 @@ void CloudFile::unlock_extent(IScopedLock& lock, int64 start, int64 length, bool
 					}
 				}
 			}
-			else if (extent.cond != NULL)
+			else if (extent.cond != nullptr)
 			{
 				extent.cond->notify_all();
 			}
@@ -7824,7 +7824,7 @@ bool CloudFile::Resize(int64 nsize)
 	IFile* f_cloudfile_size = kv_store.get("cloudfile_size", TransactionalKvStore::BitmapInfo::Unknown, 
 		TransactionalKvStore::Flag::disable_fd_cache | TransactionalKvStore::Flag::disable_throttling, -1);
 
-	if (f_cloudfile_size == NULL)
+	if (f_cloudfile_size == nullptr)
 	{
 		Server->Log("Cannot open cloudfile_size", LL_ERROR);
 		unlock_extent(lock, 0, orig_cloudfile_size, true);

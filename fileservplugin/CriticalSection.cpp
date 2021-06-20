@@ -23,23 +23,23 @@
 
     CriticalSection::CriticalSection()
     {
-		if(Server!=NULL)
+		if(Server!=nullptr)
 			mutex=Server->createMutex();
 		else
-			mutex=NULL;
+			mutex=nullptr;
         //::InitializeCriticalSection(&cs);
     }
 
     CriticalSection::~CriticalSection()
     {
         //::DeleteCriticalSection(&cs);
-    	if(mutex!=NULL)
+    	if(mutex!=nullptr)
     		mutex->Remove();
     }
 
     void CriticalSection::Enter()
     {
-		if(mutex==NULL)
+		if(mutex==nullptr)
 			mutex=Server->createMutex();
         //::EnterCriticalSection(&cs);
 		mutex->Lock();

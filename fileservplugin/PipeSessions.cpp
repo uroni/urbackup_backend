@@ -31,8 +31,8 @@
 #include "map_buffer.h"
 
 volatile bool PipeSessions::do_stop = false;
-IMutex* PipeSessions::mutex = NULL;
-IMutex* PipeSessions::active_shares_mutex = NULL;
+IMutex* PipeSessions::mutex = nullptr;
+IMutex* PipeSessions::active_shares_mutex = nullptr;
 std::map<std::string, SPipeSession> PipeSessions::pipe_files;
 std::map<std::string, SExitInformation> PipeSessions::exit_information;
 std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
@@ -49,7 +49,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 {
 	if(cmd.empty())
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	IScopedLock lock(mutex);
@@ -73,18 +73,18 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			it->second.metadata.clear();
 		}
 
-		if (it->second.file == NULL)
+		if (it->second.file == nullptr)
 		{
-			if (sent_metadata != NULL)
+			if (sent_metadata != nullptr)
 			{
 				*sent_metadata = true;
 			}
-			return NULL;
+			return nullptr;
 		}
 
-		if (tar_file != NULL)
+		if (tar_file != nullptr)
 		{
-			*tar_file = dynamic_cast<PipeFileTar*>(it->second.file)!=NULL;
+			*tar_file = dynamic_cast<PipeFileTar*>(it->second.file)!=nullptr;
 		}
 
 		pipe_file_user.reset(it->second.file);
@@ -112,19 +112,19 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
 
 			bool l_tar_file = false;
-			IPipeFile* pipe_file = NULL;
+			IPipeFile* pipe_file = nullptr;
 			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, l_tar_file, pipe_file);
 
 			script_cmd = "\"" + script_cmd + script_filename +
 				"\" \"" + output_filename + "\" "+convert(backupnum);
 
-			if (tar_file != NULL)
+			if (tar_file != nullptr)
 			{
 				*tar_file = l_tar_file;
 			}
 
 			IPipeFile* nf;
-			if (pipe_file != NULL)
+			if (pipe_file != nullptr)
 			{
 				nf = pipe_file;
 			}
@@ -140,17 +140,17 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			if(nf->getHasError())
 			{
 				delete nf;
-				return NULL;
+				return nullptr;
 			}
 
-			pipe_files.insert(std::make_pair(session_key, SPipeSession(nf, NULL, backupnum, std::string())));
+			pipe_files.insert(std::make_pair(session_key, SPipeSession(nf, nullptr, backupnum, std::string())));
 
 			pipe_file_user.reset(nf);
 			return nf;
 		}		
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void PipeSessions::injectPipeSession(const std::string & session_key, int backupnum, IPipeFile * pipe_file, const std::string& metadata)
@@ -169,7 +169,7 @@ void PipeSessions::injectPipeSession(const std::string & session_key, int backup
 		return;
 	}
 
-	pipe_files.insert(std::make_pair(session_key, SPipeSession(pipe_file, NULL, backupnum, metadata)));
+	pipe_files.insert(std::make_pair(session_key, SPipeSession(pipe_file, nullptr, backupnum, metadata)));
 }
 
 void PipeSessions::init()
@@ -208,7 +208,7 @@ void PipeSessions::removeFile(const std::string& cmd)
 
 		while (it->second.retrieving_exit_info)
 		{
-			if (it->second.retrieval_cond == NULL)
+			if (it->second.retrieval_cond == nullptr)
 			{
 				it->second.retrieval_cond = Server->createCondition();
 			}
@@ -216,7 +216,7 @@ void PipeSessions::removeFile(const std::string& cmd)
 		}
 
 		if(!it->second.retrieved_exit_info
-			&& it->second.file!=NULL)
+			&& it->second.file!=nullptr)
 		{
 			int exit_code = -1;
 			it->second.file->getExitCode(exit_code);
@@ -230,7 +230,7 @@ void PipeSessions::removeFile(const std::string& cmd)
 			Server->Log("Pipe file has exit code "+convert(exit_code), LL_DEBUG);
 		}		
 
-		if(it->second.file!=NULL)
+		if(it->second.file!=nullptr)
 		{ 
 			it->second.file->forceExitWait();
 
@@ -266,7 +266,7 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 	{
 		while (it->second.retrieving_exit_info)
 		{
-			if (it->second.retrieval_cond== NULL)
+			if (it->second.retrieval_cond== nullptr)
 			{
 				it->second.retrieval_cond = Server->createCondition();
 			}
@@ -294,7 +294,7 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 			int exit_code = -1;
 			IPipeFile* f = it->second.file;
 
-			lock.relock(NULL);
+			lock.relock(nullptr);
 
 			f->waitForStderr(10000);
 			std::string stderr_output = f->getStdErr();
@@ -302,7 +302,7 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 			lock.relock(mutex);
 
 			it->second.retrieving_exit_info = false;
-			if (it->second.retrieval_cond!= NULL)
+			if (it->second.retrieval_cond!= nullptr)
 			{
 				it->second.retrieval_cond->notify_all();
 			}
@@ -343,10 +343,10 @@ void PipeSessions::operator()()
 			it!=pipe_files.end();)
 		{
 			if( !it->second.retrieving_exit_info
-				 && (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_read_timeout)
-					 || (it->second.file==NULL && currtime - it->second.addtime > pipe_file_timeout) )
+				 && (it->second.file!=nullptr && currtime - it->second.file->getLastRead() > pipe_file_read_timeout)
+					 || (it->second.file==nullptr && currtime - it->second.addtime > pipe_file_timeout) )
 			{
-				if (it->second.file != NULL)
+				if (it->second.file != nullptr)
 				{
 					it->second.file->forceExitWait();
 
@@ -391,7 +391,7 @@ IFileServ::IMetadataCallback* PipeSessions::transmitFileMetadata( const std::str
 {
 	if(public_fn.empty() || next(public_fn, 0, "urbackup/"))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	std::string sharename = getuntil("/", public_fn);
@@ -410,11 +410,11 @@ IFileServ::IMetadataCallback* PipeSessions::transmitFileMetadata( const std::str
 
 	IScopedLock lock(mutex);
 
-	IFileServ::IMetadataCallback* ret = NULL;
+	IFileServ::IMetadataCallback* ret = nullptr;
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
 
-	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
+	if(it!=pipe_files.end() && it->second.input_pipe!=nullptr)
 	{
 		{
 			IScopedLock alock(active_shares_mutex);
@@ -464,7 +464,7 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|" + server_token);
 
-	if (it != pipe_files.end() && it->second.input_pipe != NULL)
+	if (it != pipe_files.end() && it->second.input_pipe != nullptr)
 	{
 		{
 			IScopedLock alock(active_shares_mutex);
@@ -511,7 +511,7 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|" + server_token);
 
-	if (it != pipe_files.end() && it->second.input_pipe != NULL)
+	if (it != pipe_files.end() && it->second.input_pipe != nullptr)
 	{
 		{
 			IScopedLock alock(active_shares_mutex);
@@ -524,7 +524,7 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 
 		it->second.input_pipe->Write(metadatamsg.getDataPtr(), metadatamsg.getDataSize());
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		std::string read_ret;
 		waitpipe->Read(&read_ret);
 	}
@@ -599,7 +599,7 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
 
-	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
+	if(it!=pipe_files.end() && it->second.input_pipe!=nullptr)
 	{
 		CWData data;
 		data.addChar(METADATA_PIPE_EXIT);
@@ -613,7 +613,7 @@ void PipeSessions::phashEnd(const std::string & server_token, const std::string 
 	IScopedLock lock(mutex);
 
 	bool allow_exec;
-	std::string fn = map_file("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + phash_fn, std::string(), allow_exec, NULL);
+	std::string fn = map_file("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + phash_fn, std::string(), allow_exec, nullptr);
 
 	if (fn.empty())
 		return;
@@ -623,7 +623,7 @@ void PipeSessions::phashEnd(const std::string & server_token, const std::string 
 	if (it != pipe_files.end())
 	{
 		PipeFileExt* pext = dynamic_cast<PipeFileExt*>(it->second.file);
-		if(pext!=NULL)
+		if(pext!=nullptr)
 			pext->forceExit();
 	}
 }

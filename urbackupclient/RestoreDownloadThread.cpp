@@ -145,8 +145,8 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remote
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
 	ni.is_script = is_script;
-	ni.patch_dl_files.chunkhashes=NULL;
-	ni.patch_dl_files.orig_file=NULL;
+	ni.patch_dl_files.chunkhashes=nullptr;
+	ni.patch_dl_files.orig_file=nullptr;
 	ni.metadata_only = metadata_only;
 	ni.folder_items = folder_items;
 	ni.patch_dl_files.orig_file = orig_file;
@@ -209,7 +209,7 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 	
     if(!todl.metadata_only)
 	{
-		if (todl.patch_dl_files.orig_file == NULL)
+		if (todl.patch_dl_files.orig_file == nullptr)
 		{
 			dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
 		}
@@ -244,7 +244,7 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 			}
 		}
 #endif
-		if(dest_f.get()==NULL)
+		if(dest_f.get()==nullptr)
 		{
 			log("Cannot open \""+todl.destfn+"\" for writing. "+os_last_error_str(), LL_ERROR);
 			download_nok_ids.push_back(todl.id);
@@ -283,18 +283,18 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 	ScopedDeleteFile del_3(todl.patch_dl_files.chunkhashes);
 
 
-	IFile* sparse_extents_f = NULL;
-	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
+	IFile* sparse_extents_f = nullptr;
+	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, nullptr, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		todl.patch_dl_files.orig_file->Seek(0);
-		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
+		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, nullptr, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
 		--hash_retries;
 	}
 
-	if (sparse_extents_f != NULL)
+	if (sparse_extents_f != nullptr)
 	{
 		ExtentIterator extent_iterator(sparse_extents_f);
 		IFsFile::SSparseExtent sparse_extent;
@@ -331,7 +331,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 	int64 fsize = todl.patch_dl_files.orig_file->Size();
 
 	delete todl.patch_dl_files.orig_file;
-	todl.patch_dl_files.orig_file=NULL;
+	todl.patch_dl_files.orig_file=nullptr;
 
 	if(rc==ERR_SUCCESS && fsize>todl.predicted_filesize)
 	{
@@ -426,9 +426,9 @@ bool RestoreDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*&
 
 			it->queued=true;
 			orig_file = it->patch_dl_files.orig_file;
-			patchfile = NULL;
+			patchfile = nullptr;
 			chunkhashes = it->patch_dl_files.chunkhashes;
-			hashoutput = NULL;
+			hashoutput = nullptr;
 			predicted_filesize = it->predicted_filesize;
 			file_id=it->id+1;
 			is_script = false;
@@ -482,7 +482,7 @@ void RestoreDownloadThread::sleepQueue(IScopedLock& lock)
 {
 	while(queue_size>max_queue_size)
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(1000);
 		lock.relock(mutex.get());
 	}

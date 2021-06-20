@@ -77,7 +77,7 @@ bool ParallelHash::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & r
 				return false;
 			}
 
-			lock.relock(NULL);
+			lock.relock(nullptr);
 			Server->wait(1000);
 		}
 	}
@@ -130,7 +130,7 @@ void ParallelHash::operator()()
 	std::unique_ptr<IFile> phashf(Server->openFile(phash_queue->phash_queue->getFilename(), mode));
 
 	while (!do_quit
-		&& phashf.get()!=NULL)
+		&& phashf.get()!=nullptr)
 	{
 		bool had_msg = false;
 		if (phashf->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)))
@@ -158,7 +158,7 @@ void ParallelHash::operator()()
 					}
 					else
 					{
-						lock.relock(NULL);
+						lock.relock(nullptr);
 
 						CRData data(msg.data(), msg.size());
 						hashFile(working_file_id, data, clientdao);
@@ -208,7 +208,7 @@ void ParallelHash::operator()()
 	if (phash_queue->deref())
 	{
 		delete phash_queue;
-		phash_queue = NULL;
+		phash_queue = nullptr;
 	}
 }
 
@@ -278,7 +278,7 @@ bool ParallelHash::hashFile(int64 working_file_id, CRData & data, ClientDAO& cli
 	}
 	else if (id == ID_INIT_HASH)
 	{
-		client_hash.reset(new ClientHash(NULL, false, 0, NULL, 0));
+		client_hash.reset(new ClientHash(nullptr, false, 0, nullptr, 0));
 		return true;
 	}
 	else if (id == ID_CBT_DATA)
@@ -344,7 +344,7 @@ bool ParallelHash::hashFile(int64 working_file_id, CRData & data, ClientDAO& cli
 
 	SFileAndHash fandhash;
 	std::string ph_action;
-	if (f.get() != NULL && f->Size() < link_file_min_size)
+	if (f.get() != nullptr && f->Size() < link_file_min_size)
 	{
 		f.reset();
 		ph_action = " (Not hashing. File too small)";
@@ -368,7 +368,7 @@ bool ParallelHash::hashFile(int64 working_file_id, CRData & data, ClientDAO& cli
 	{
 		f.reset();
 
-		TreeHash treehash(client_hash->hasCbtFile() ? client_hash.get() : NULL);
+		TreeHash treehash(client_hash->hasCbtFile() ? client_hash.get() : nullptr);
 		if (!client_hash->getShaBinary(full_path, treehash, client_hash->hasCbtFile()))
 		{
 			Server->Log("Error hashing file (1) " + full_path+". "+os_last_error_str(), LL_DEBUG);
@@ -520,7 +520,7 @@ bool ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
 	while (stdout_buf_size + size > 32 * 1024
 		&& !do_quit)
 	{
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(1000);
 		lock.relock(mutex.get());
 	}
@@ -570,7 +570,7 @@ void ParallelHash::runExtraThread()
 		std::pair<int64, std::string> msg = extra_queue.front();
 		extra_queue.pop_front();
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 
 		lock.relock(extra_mutex.get());

@@ -95,25 +95,25 @@ void ClientDAO::destroyQueries(void)
 //@-SQLGenSetup
 void ClientDAO::prepareQueriesGen(void)
 {
-	q_updateShadowCopyStarttime=NULL;
-	q_updateFileAccessToken=NULL;
-	q_getFileAccessTokens=NULL;
-	q_getFileAccessTokenId2Alts=NULL;
-	q_getFileAccessTokenId=NULL;
-	q_removeGroupMembership=NULL;
-	q_updateGroupMembership=NULL;
-	q_getGroupMembership=NULL;
-	q_addBackupDir=NULL;
-	q_delBackupDir=NULL;
-	q_setResetKeep=NULL;
-	q_resetHardlink=NULL;
-	q_hasHardLink=NULL;
-	q_addHardlink=NULL;
-	q_resetAllHardlinks=NULL;
-	q_getClientFacet=NULL;
-	q_getClientFacetByName=NULL;
-	q_addClientFacet=NULL;
-	q_updateClientFacet=NULL;
+	q_updateShadowCopyStarttime=nullptr;
+	q_updateFileAccessToken=nullptr;
+	q_getFileAccessTokens=nullptr;
+	q_getFileAccessTokenId2Alts=nullptr;
+	q_getFileAccessTokenId=nullptr;
+	q_removeGroupMembership=nullptr;
+	q_updateGroupMembership=nullptr;
+	q_getGroupMembership=nullptr;
+	q_addBackupDir=nullptr;
+	q_delBackupDir=nullptr;
+	q_setResetKeep=nullptr;
+	q_resetHardlink=nullptr;
+	q_hasHardLink=nullptr;
+	q_addHardlink=nullptr;
+	q_resetAllHardlinks=nullptr;
+	q_getClientFacet=nullptr;
+	q_getClientFacetByName=nullptr;
+	q_addClientFacet=nullptr;
+	q_updateClientFacet=nullptr;
 }
 
 //@-SQLGenDestruction
@@ -663,7 +663,7 @@ void ClientDAO::updateMiscValue(const std::string& key, const std::string& value
 */
 void ClientDAO::updateShadowCopyStarttime(int id)
 {
-	if(q_updateShadowCopyStarttime==NULL)
+	if(q_updateShadowCopyStarttime==nullptr)
 	{
 		q_updateShadowCopyStarttime=db->Prepare("UPDATE shadowcopies SET starttime=CURRENT_TIMESTAMP WHERE id=?", false);
 	}
@@ -683,7 +683,7 @@ void ClientDAO::updateShadowCopyStarttime(int id)
 */
 void ClientDAO::updateFileAccessToken(const std::string& accountname, const std::string& token, int is_user)
 {
-	if(q_updateFileAccessToken==NULL)
+	if(q_updateFileAccessToken==nullptr)
 	{
 		q_updateFileAccessToken=db->Prepare("INSERT OR REPLACE INTO fileaccess_tokens (accountname, token, is_user) VALUES (?, ?, ?)", false);
 	}
@@ -704,7 +704,7 @@ void ClientDAO::updateFileAccessToken(const std::string& accountname, const std:
 */
 std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 {
-	if(q_getFileAccessTokens==NULL)
+	if(q_getFileAccessTokens==nullptr)
 	{
 		q_getFileAccessTokens=db->Prepare("SELECT id, accountname, token, is_user FROM fileaccess_tokens", false);
 	}
@@ -732,7 +732,7 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 */
 ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::string& accountname, int is_user_alt1, int is_user_alt2)
 {
-	if(q_getFileAccessTokenId2Alts==NULL)
+	if(q_getFileAccessTokenId2Alts==nullptr)
 	{
 		q_getFileAccessTokenId2Alts=db->Prepare("SELECT id FROM fileaccess_tokens WHERE accountname = ? AND (is_user = ? OR is_user = ?)", false);
 	}
@@ -761,7 +761,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::string& acc
 */
 ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::string& accountname, int is_user)
 {
-	if(q_getFileAccessTokenId==NULL)
+	if(q_getFileAccessTokenId==nullptr)
 	{
 		q_getFileAccessTokenId=db->Prepare("SELECT id FROM fileaccess_tokens WHERE accountname = ? AND is_user = ?", false);
 	}
@@ -786,7 +786,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::string& accountn
 */
 void ClientDAO::removeGroupMembership(int64 uid)
 {
-	if(q_removeGroupMembership==NULL)
+	if(q_removeGroupMembership==nullptr)
 	{
 		q_removeGroupMembership=db->Prepare("DELETE FROM token_group_memberships WHERE uid=?", false);
 	}
@@ -806,7 +806,7 @@ void ClientDAO::removeGroupMembership(int64 uid)
 */
 void ClientDAO::updateGroupMembership(int64 uid, const std::string& accountname)
 {
-	if(q_updateGroupMembership==NULL)
+	if(q_updateGroupMembership==nullptr)
 	{
 		q_updateGroupMembership=db->Prepare("INSERT OR REPLACE INTO token_group_memberships (uid, gid) VALUES (?, (SELECT id FROM fileaccess_tokens WHERE accountname = ? AND is_user=0) )", false);
 	}
@@ -827,7 +827,7 @@ void ClientDAO::updateGroupMembership(int64 uid, const std::string& accountname)
 */
 std::vector<int> ClientDAO::getGroupMembership(int uid)
 {
-	if(q_getGroupMembership==NULL)
+	if(q_getGroupMembership==nullptr)
 	{
 		q_getGroupMembership=db->Prepare("SELECT gid FROM token_group_memberships WHERE uid = ?", false);
 	}
@@ -855,7 +855,7 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 **/
 void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked, int facet)
 {
-	if(q_addBackupDir==NULL)
+	if(q_addBackupDir==nullptr)
 	{
 		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked, facet) VALUES (?, ?, ?, ?, ?, ?, ? )", false);
 	}
@@ -878,7 +878,7 @@ void ClientDAO::addBackupDir(const std::string& name, const std::string& path, i
 **/
 void ClientDAO::delBackupDir(int64 id)
 {
-	if(q_delBackupDir==NULL)
+	if(q_delBackupDir==nullptr)
 	{
 		q_delBackupDir=db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
 	}
@@ -895,7 +895,7 @@ void ClientDAO::delBackupDir(int64 id)
 **/
 void ClientDAO::setResetKeep(int val, int64 id)
 {
-	if(q_setResetKeep==NULL)
+	if(q_setResetKeep==nullptr)
 	{
 		q_setResetKeep=db->Prepare("UPDATE backupdirs SET reset_keep=? WHERE id=?", false);
 	}
@@ -913,7 +913,7 @@ void ClientDAO::setResetKeep(int val, int64 id)
 **/
 void ClientDAO::resetHardlink(const std::string& vol, int64 frn_high, int64 frn_low)
 {
-	if(q_resetHardlink==NULL)
+	if(q_resetHardlink==nullptr)
 	{
 		q_resetHardlink=db->Prepare("DELETE FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
 	}
@@ -933,7 +933,7 @@ void ClientDAO::resetHardlink(const std::string& vol, int64 frn_high, int64 frn_
 **/
 ClientDAO::CondInt64 ClientDAO::hasHardLink(const std::string& vol, int64 frn_high, int64 frn_low)
 {
-	if(q_hasHardLink==NULL)
+	if(q_hasHardLink==nullptr)
 	{
 		q_hasHardLink=db->Prepare("SELECT frn_low FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=? LIMIT 1", false);
 	}
@@ -960,7 +960,7 @@ ClientDAO::CondInt64 ClientDAO::hasHardLink(const std::string& vol, int64 frn_hi
 **/
 void ClientDAO::addHardlink(const std::string& vol, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low)
 {
-	if(q_addHardlink==NULL)
+	if(q_addHardlink==nullptr)
 	{
 		q_addHardlink=db->Prepare("INSERT OR IGNORE INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low) VALUES (?, ?, ?, ?, ?)", false);
 	}
@@ -981,7 +981,7 @@ void ClientDAO::addHardlink(const std::string& vol, int64 frn_high, int64 frn_lo
 **/
 void ClientDAO::resetAllHardlinks(void)
 {
-	if(q_resetAllHardlinks==NULL)
+	if(q_resetAllHardlinks==nullptr)
 	{
 		q_resetAllHardlinks=db->Prepare("DELETE FROM hardlinks", false);
 	}
@@ -997,7 +997,7 @@ void ClientDAO::resetAllHardlinks(void)
 **/
 ClientDAO::SClientFacet ClientDAO::getClientFacet(const std::string& server_identity)
 {
-	if(q_getClientFacet==NULL)
+	if(q_getClientFacet==nullptr)
 	{
 		q_getClientFacet=db->Prepare("SELECT id, name, server_identity FROM client_facets WHERE server_identity=?", false);
 	}
@@ -1024,7 +1024,7 @@ ClientDAO::SClientFacet ClientDAO::getClientFacet(const std::string& server_iden
 **/
 ClientDAO::SClientFacet ClientDAO::getClientFacetByName(const std::string& name)
 {
-	if(q_getClientFacetByName==NULL)
+	if(q_getClientFacetByName==nullptr)
 	{
 		q_getClientFacetByName=db->Prepare("SELECT id, name, server_identity FROM client_facets WHERE name=?", false);
 	}
@@ -1050,7 +1050,7 @@ ClientDAO::SClientFacet ClientDAO::getClientFacetByName(const std::string& name)
 **/
 void ClientDAO::addClientFacet(const std::string& name, const std::string& server_identity)
 {
-	if(q_addClientFacet==NULL)
+	if(q_addClientFacet==nullptr)
 	{
 		q_addClientFacet=db->Prepare("INSERT INTO client_facets (name, server_identity) VALUES (?, ?)", false);
 	}
@@ -1068,7 +1068,7 @@ void ClientDAO::addClientFacet(const std::string& name, const std::string& serve
 **/
 void ClientDAO::updateClientFacet(const std::string& server_identity, int id)
 {
-	if(q_updateClientFacet==NULL)
+	if(q_updateClientFacet==nullptr)
 	{
 		q_updateClientFacet=db->Prepare("UPDATE client_facets SET server_identity=? WHERE id=?", false);
 	}

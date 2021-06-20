@@ -273,7 +273,7 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool continue_on_failure, 
 	const std::vector<VSS_ID>& critical_writers, bool* critical_failure, bool* retryable_error)
 {
-	if (critical_failure != NULL)
+	if (critical_failure != nullptr)
 		*critical_failure = false;
 
 	IVssAsync *pb_result;
@@ -472,7 +472,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 	const int max_tries = 3;
 	int tries = max_tries;
 	bool retryable_error = true;
-	IVssBackupComponents *backupcom = NULL;
+	IVssBackupComponents *backupcom = nullptr;
 	while (tries>0 && retryable_error)
 	{
 		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
@@ -513,7 +513,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			{
 				VSSLog("Selecting components to backup failed", LL_ERROR);
 				backupcom->Release();
-				backupcom = NULL;
+				backupcom = nullptr;
 				return false;
 			}
 
@@ -521,7 +521,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			{
 				VSSLog("Selected no components to backup", LL_INFO);
 				backupcom->Release();
-				backupcom = NULL;
+				backupcom = nullptr;
 				return true;
 			}
 
@@ -731,7 +731,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 #endif
 #endif
 			backupcom->Release();
-			backupcom = NULL;
+			backupcom = nullptr;
 
 			Server->wait(30000);
 		}
@@ -1040,7 +1040,7 @@ void IndexThread::initVss()
 
 bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext& context)
 {
-	IVssBackupComponents *backupcom = NULL;
+	IVssBackupComponents *backupcom = nullptr;
 	if (context.backupcom == NULL)
 	{
 		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
@@ -1589,7 +1589,7 @@ std::string IndexThread::getVolPath(const std::string& bpath)
 
 bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vector<SCRef*>& past_refs, std::fstream &outfile)
 {
-	IVssBackupComponents* backupcom = NULL;
+	IVssBackupComponents* backupcom = nullptr;
 	for (size_t i = 0; i < sc_refs.size(); ++i)
 	{
 		if (sc_refs[i]->ssetid == ssetid)
@@ -1599,7 +1599,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		}
 	}
 
-	if (backupcom == NULL)
+	if (backupcom == nullptr)
 	{
 		VSSLog("Could not find backupcom for snapshot set " + convert(ssetid), LL_ERROR);
 		return false;
@@ -2235,7 +2235,7 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 
 		backup_dir.id = static_cast<int>(db->getLastInsertID());
 
-		if (dwt != NULL)
+		if (dwt != nullptr)
 		{
 			std::string msg = "A" + path;
 			dwt->getPipe()->Write(msg);
@@ -2418,7 +2418,7 @@ void IndexThread::removeUnconfirmedVssDirs()
 			{
 				VSSLog("Removing unconfirmed VSS path \"" + backup_dirs[i].tname + "\" to \"" + backup_dirs[i].path, LL_INFO);
 
-				if (dwt != NULL)
+				if (dwt != nullptr)
 				{
 					std::string msg = "D" + backup_dirs[i].path;
 					dwt->getPipe()->Write(msg);
@@ -2428,7 +2428,7 @@ void IndexThread::removeUnconfirmedVssDirs()
 
 				removeDir(starttoken, backup_dirs[i].tname);
 
-				if (filesrv != NULL)
+				if (filesrv != nullptr)
 				{
 					filesrv->removeDir(backup_dirs[i].tname, starttoken);
 				}

@@ -93,7 +93,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 	}
 
 	bool destroy_server=false;
-	if(Server==NULL)
+	if(Server==nullptr)
 	{
 		Server = new CServer;
 		destroy_server=true;

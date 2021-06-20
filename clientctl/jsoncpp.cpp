@@ -322,8 +322,8 @@ Reader::parse( const char *beginDoc, const char *endDoc,
    end_ = endDoc;
    collectComments_ = collectComments;
    current_ = begin_;
-   lastValueEnd_ = 0;
-   lastValue_ = 0;
+   lastValueEnd_ = nullptr;
+   lastValue_ = nullptr;
    commentsBefore_ = "";
    errors_.clear();
    while ( !nodes_.empty() )
@@ -571,7 +571,7 @@ Reader::addComment( Location begin,
    assert( collectComments_ );
    if ( placement == commentAfterOnSameLine )
    {
-      assert( lastValue_ != 0 );
+      assert( lastValue_ != nullptr );
       lastValue_->setComment( std::string( begin, end ), placement );
    }
    else
@@ -1597,7 +1597,7 @@ duplicateStringValue( const char *value,
    if ( length == unknown )
       length = (unsigned int)strlen(value);
    char *newString = static_cast<char *>( malloc( length + 1 ) );
-   JSON_ASSERT_MESSAGE( newString != 0, "Failed to allocate string value buffer" );
+   JSON_ASSERT_MESSAGE( newString != nullptr, "Failed to allocate string value buffer" );
    memcpy( newString, value, length );
    newString[length] = 0;
    return newString;
@@ -1644,7 +1644,7 @@ namespace Json {
 
 
 Value::CommentInfo::CommentInfo()
-   : comment_( 0 )
+   : comment_( nullptr )
 {
 }
 
@@ -1660,7 +1660,7 @@ Value::CommentInfo::setComment( const char *text )
 {
    if ( comment_ )
       releaseStringValue( comment_ );
-   JSON_ASSERT( text != 0 );
+   JSON_ASSERT( text != nullptr );
    JSON_ASSERT_MESSAGE( text[0]=='\0' || text[0]=='/', "Comments must start with /");
    // It seems that /**/ style comments are acceptable as well.
    comment_ = duplicateStringValue( text );
@@ -1680,7 +1680,7 @@ Value::CommentInfo::setComment( const char *text )
 // a string is stored.
 
 Value::CZString::CZString( ArrayIndex index )
-   : cstr_( 0 )
+   : cstr_( nullptr )
    , index_( index )
 {
 }
@@ -1693,7 +1693,7 @@ Value::CZString::CZString( const char *cstr, DuplicationPolicy allocate )
 }
 
 Value::CZString::CZString( const CZString &other )
-: cstr_( other.index_ != noDuplication &&  other.cstr_ != 0
+: cstr_( other.index_ != noDuplication &&  other.cstr_ != nullptr
                 ?  duplicateStringValue( other.cstr_ )
                 : other.cstr_ )
    , index_( other.cstr_ ? (other.index_ == noDuplication ? noDuplication : duplicate)
@@ -1776,7 +1776,7 @@ Value::CZString::isStaticString() const
 Value::Value( ValueType type )
    : type_( type )
    , allocated_( 0 )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1793,7 +1793,7 @@ Value::Value( ValueType type )
       value_.real_ = 0.0;
       break;
    case stringValue:
-      value_.string_ = 0;
+      value_.string_ = nullptr;
       break;
 #ifndef JSON_VALUE_USE_INTERNAL_MAP
    case arrayValue:
@@ -1820,7 +1820,7 @@ Value::Value( ValueType type )
 #if defined(JSON_HAS_INT64)
 Value::Value( UInt value )
    : type_( uintValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1830,7 +1830,7 @@ Value::Value( UInt value )
 
 Value::Value( Int value )
    : type_( intValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1843,7 +1843,7 @@ Value::Value( Int value )
 
 Value::Value( Int64 value )
    : type_( intValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1854,7 +1854,7 @@ Value::Value( Int64 value )
 
 Value::Value( UInt64 value )
    : type_( uintValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1864,7 +1864,7 @@ Value::Value( UInt64 value )
 
 Value::Value( double value )
    : type_( realValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1875,7 +1875,7 @@ Value::Value( double value )
 Value::Value( const char *value )
    : type_( stringValue )
    , allocated_( true )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1888,7 +1888,7 @@ Value::Value( const char *beginValue,
               const char *endValue )
    : type_( stringValue )
    , allocated_( true )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1901,7 +1901,7 @@ Value::Value( const char *beginValue,
 Value::Value( const std::string &value )
    : type_( stringValue )
    , allocated_( true )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1914,7 +1914,7 @@ Value::Value( const std::string &value )
 Value::Value( const StaticString &value )
    : type_( stringValue )
    , allocated_( false )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1938,7 +1938,7 @@ Value::Value( const CppTL::ConstString &value )
 
 Value::Value( bool value )
    : type_( booleanValue )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1949,7 +1949,7 @@ Value::Value( bool value )
 
 Value::Value( const Value &other )
    : type_( other.type_ )
-   , comments_( 0 )
+   , comments_( nullptr )
 # ifdef JSON_VALUE_USE_INTERNAL_MAP
    , itemIsUsed_( 0 )
 #endif
@@ -1970,7 +1970,7 @@ Value::Value( const Value &other )
          allocated_ = true;
       }
       else
-         value_.string_ = 0;
+         value_.string_ = nullptr;
       break;
 #ifndef JSON_VALUE_USE_INTERNAL_MAP
    case arrayValue:
@@ -2093,7 +2093,7 @@ Value::operator <( const Value &other ) const
    case booleanValue:
       return value_.bool_ < other.value_.bool_;
    case stringValue:
-      return ( value_.string_ == 0  &&  other.value_.string_ )
+      return ( value_.string_ == nullptr  &&  other.value_.string_ )
              || ( other.value_.string_  
                   &&  value_.string_  
                   && strcmp( value_.string_, other.value_.string_ ) < 0 );
@@ -2995,7 +2995,7 @@ Value::setComment( const std::string &comment,
 bool 
 Value::hasComment( CommentPlacement placement ) const
 {
-   return comments_ != 0  &&  comments_[placement].comment_ != 0;
+   return comments_ != nullptr  &&  comments_[placement].comment_ != nullptr;
 }
 
 std::string 
@@ -3503,7 +3503,7 @@ std::string valueToString( bool value )
 std::string valueToQuotedString( const char *value )
 {
    // Not sure how to handle unicode...
-   if (strpbrk(value, "\"\\\b\f\n\r\t") == NULL && !containsControlCharacter( value ))
+   if (strpbrk(value, "\"\\\b\f\n\r\t") == nullptr && !containsControlCharacter( value ))
       return std::string("\"") + value + "\"";
    // We have to walk value and escape any special characters.
    // Appending to std::string is not efficient, but this should be rare.
@@ -3934,7 +3934,7 @@ StyledWriter::normalizeEOL( const std::string &text )
 // //////////////////////////////////////////////////////////////////
 
 StyledStreamWriter::StyledStreamWriter( std::string indentation )
-   : document_(NULL)
+   : document_(nullptr)
    , rightMargin_( 74 )
    , indentation_( indentation )
 {
@@ -3951,7 +3951,7 @@ StyledStreamWriter::write( std::ostream &out, const Value &root )
    writeValue( root );
    writeCommentAfterValueOnSameLine( root );
    *document_ << "\n";
-   document_ = NULL; // Forget the stream, for safety.
+   document_ = nullptr; // Forget the stream, for safety.
 }
 
 

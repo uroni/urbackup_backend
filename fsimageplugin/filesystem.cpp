@@ -146,8 +146,8 @@ public:
 			if (current_block != -1)
 			{
 				int64 l_current_block = current_block;
-				lock.relock(NULL);
-				IFilesystem::IFsBuffer* buf = fs.readBlockInt(l_current_block, false, NULL);
+				lock.relock(nullptr);
+				IFilesystem::IFsBuffer* buf = fs.readBlockInt(l_current_block, false, nullptr);
 				lock.relock(mutex.get());
 
 				read_blocks[l_current_block] = buf;
@@ -174,8 +174,8 @@ public:
 
 		clearUnusedReadahead(block);
 
-		IFilesystem::IFsBuffer* ret = NULL;
-		while (ret == NULL)
+		IFilesystem::IFsBuffer* ret = nullptr;
+		while (ret == nullptr)
 		{
 			std::map<int64, IFilesystem::IFsBuffer*>::iterator it = read_blocks.find(block);
 
@@ -261,7 +261,7 @@ Filesystem::Filesystem(const std::string &pDev, IFSImageFactory::EReadaheadMode 
 	{
 		dev = Server->openFile(pDev, MODE_READ_DEVICE);
 	}
-	if(dev==NULL)
+	if(dev==nullptr)
 	{
 		errcode = getLastSystemError();
 		Server->Log("Error opening device file. Errorcode: "+convert(errcode), LL_ERROR);
@@ -280,9 +280,9 @@ Filesystem::Filesystem(IFile *pDev, IFsNextBlockCallback* next_block_callback)
 
 Filesystem::~Filesystem()
 {
-	assert(readahead_thread.get()==NULL);
+	assert(readahead_thread.get()==nullptr);
 
-	if(dev!=NULL && own_dev)
+	if(dev!=nullptr && own_dev)
 	{
 		Server->destroy(dev);
 	}
@@ -323,7 +323,7 @@ bool Filesystem::hasBlock(int64 pBlock)
 
 IFilesystem::IFsBuffer* Filesystem::readBlock(int64 pBlock, bool* p_has_error)
 {
-	return readBlockInt(pBlock, readahead_thread.get()!=NULL, p_has_error);
+	return readBlockInt(pBlock, readahead_thread.get()!=nullptr, p_has_error);
 }
 
 IFilesystem::IFsBuffer* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error)
@@ -339,13 +339,13 @@ IFilesystem::IFsBuffer* Filesystem::readBlockInt(int64 pBlock, bool use_readahea
 	bool has_bit=((b & (1<<bitmap_bit))>0);
 
 	if(!has_bit)
-		return NULL;
+		return nullptr;
 	
 	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 	{
 		SBlockBuffer* block_buf = completionGetBlock(pBlock, p_has_error);
-		if (block_buf == NULL)
-			return NULL;
+		if (block_buf == nullptr)
+			return nullptr;
 		return block_buf;
 	}
 	else if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Thread)
@@ -359,14 +359,14 @@ IFilesystem::IFsBuffer* Filesystem::readBlockInt(int64 pBlock, bool use_readahea
 		{
 			Server->Log("Seeking in device failed -1", LL_ERROR);
 			has_error=true;
-			return NULL;
+			return nullptr;
 		}
 		IFsBuffer* buf = getBuffer();
 		if(!readFromDev(buf->getBuf(), (_u32)blocksize) )
 		{
 			Server->Log("Reading from device failed -1", LL_ERROR);
 			has_error=true;
-			return NULL;
+			return nullptr;
 		}
 
 		return buf;
@@ -457,8 +457,8 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 		{
 			if (hasBlock(i))
 			{
-				SBlockBuffer* block_buf = completionGetBlock(i, NULL);
-				if (block_buf != NULL)
+				SBlockBuffer* block_buf = completionGetBlock(i, nullptr);
+				if (block_buf != nullptr)
 				{
 					memcpy(buffers[currbuf] + buffer_offset, block_buf->buffer, blocksize);
 					++currbuf;
@@ -475,7 +475,7 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 		else
 		{
 			IFsBuffer* buf = readBlock(i);
-			if (buf != NULL)
+			if (buf != nullptr)
 			{
 				memcpy(buffers[currbuf] + buffer_offset, buf->getBuf(), blocksize);
 				++currbuf;
@@ -571,7 +571,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 #else
 			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*fs_readahead_n_max_buffers];
 #endif
-			if (next_blocks[i].buffers[0].buffer == NULL)
+			if (next_blocks[i].buffers[0].buffer == nullptr)
 			{
 				has_error = true;
 			}
@@ -597,7 +597,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 	}
 
 	if (read_ahead != IFSImageFactory::EReadaheadMode_None
-		&& next_block_callback==NULL)
+		&& next_block_callback==nullptr)
 	{
 		next_block_callback = this;
 	}
@@ -725,18 +725,18 @@ SBlockBuffer* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 		}
 		if (nwait >= max_read_wait_seconds)
 		{
-			if (p_has_error != NULL) *p_has_error = true;
+			if (p_has_error != nullptr) *p_has_error = true;
 			errcode = fs_error_read_timeout;
 			has_error = true;
-			return NULL;
+			return nullptr;
 		}
 	}
 
 	if (next_block->state != ENextBlockState_Ready)
 	{
-		if (p_has_error != NULL) *p_has_error = true;
+		if (p_has_error != nullptr) *p_has_error = true;
 		completionFreeBuffer(next_block);
-		return NULL;
+		return nullptr;
 	}
 
 	return next_block;
@@ -831,7 +831,7 @@ void Filesystem::releaseBuffer(IFsBuffer* buf)
 
 void Filesystem::shutdownReadahead()
 {
-	if(readahead_thread.get()!=NULL)
+	if(readahead_thread.get()!=nullptr)
 	{
 		readahead_thread->stop();
 		Server->getThreadPool()->waitFor(readahead_thread_ticket);
@@ -926,7 +926,7 @@ bool Filesystem::excludeFile(const std::string& path)
 	}
 #else
 	std::unique_ptr<IFsFile> f(Server->openFile(path, MODE_READ));
-	if (f.get() == NULL)
+	if (f.get() == nullptr)
 	{
 		Server->Log("Error opening file " + path + ". " + os_last_error_str(), LL_DEBUG);
 		return false;

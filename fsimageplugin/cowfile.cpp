@@ -205,7 +205,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 	{
 		std::unique_ptr<IFile> parentf(Server->openFile(parent_fn, MODE_READ));
-		if (parentf.get() != NULL)
+		if (parentf.get() != nullptr)
 		{
 			filesize = parentf->Size();
 			is_open = true;
@@ -833,7 +833,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 	{
 		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
 
-		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, NULL));
+		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, nullptr));
 	}
 
 	if (bitmap_source->hasError())
@@ -901,7 +901,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 					Server->Log("Trimming syscall failed. Stopping trimming.", LL_WARNING);
 					return false;
 				}
-				if(trim_callback!=NULL)
+				if(trim_callback!=nullptr)
 				{
 					trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
 				}
@@ -922,7 +922,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 				Server->Log("Trimming syscall failed. Stopping trimming (end).", LL_WARNING);
 				return false;
 			}
-			if(trim_callback!=NULL)
+			if(trim_callback!=nullptr)
 			{
 				trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
 			}
@@ -943,7 +943,7 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 	{
 		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
 
-		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, NULL));
+		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, nullptr));
 	}
 
 	if (bitmap_source->hasError())

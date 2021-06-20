@@ -114,7 +114,7 @@ namespace
 		}
 
 		std::unique_ptr<IFile> f(cachefs->openFile(dest + ".tmp", MODE_RW));
-		if (f.get() == NULL)
+		if (f.get() == nullptr)
 		{
 			return false;
 		}
@@ -131,7 +131,7 @@ namespace
 	{
 		std::unique_ptr<IFile> fa(cachefs->openFile(filea, MODE_READ));
 
-		if (fa.get() == NULL)
+		if (fa.get() == nullptr)
 		{
 			Server->Log("Could not open " + filea, LL_ERROR);
 			return false;
@@ -638,45 +638,45 @@ namespace
 
 		}
 
-		virtual std::string Read( _u32 tr, bool* has_error=NULL)
+		virtual std::string Read( _u32 tr, bool* has_error=nullptr)
 		{
 			return wrapped_file->Read(tr, has_error);
 		}
 
-		virtual std::string Read(int64 spos, _u32 tr, bool* has_error = NULL)
+		virtual std::string Read(int64 spos, _u32 tr, bool* has_error = nullptr)
 		{
 			return wrapped_file->Read(spos, tr, has_error);
 		}
 
-		virtual _u32 Read( char* buffer, _u32 bsize, bool* has_error = NULL)
+		virtual _u32 Read( char* buffer, _u32 bsize, bool* has_error = nullptr)
 		{
 			return wrapped_file->Read(buffer, bsize, has_error);
 		}
 
-		virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool* has_error = NULL)
+		virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool* has_error = nullptr)
 		{
 			return wrapped_file->Read(spos, buffer, bsize, has_error);
 		}
 
-		virtual _u32 Write( const std::string &tw, bool* has_error = NULL)
+		virtual _u32 Write( const std::string &tw, bool* has_error = nullptr)
 		{
 			assert(false);
 			return 0;
 		}
 
-		virtual _u32 Write(int64 spos, const std::string &tw, bool* has_error = NULL)
+		virtual _u32 Write(int64 spos, const std::string &tw, bool* has_error = nullptr)
 		{
 			assert(false);
 			return 0;
 		}
 
-		virtual _u32 Write( const char* buffer, _u32 bsize, bool* has_error = NULL)
+		virtual _u32 Write( const char* buffer, _u32 bsize, bool* has_error = nullptr)
 		{
 			assert(false);
 			return 0;
 		}
 
-		virtual _u32 Write( int64 spos, const char* buffer, _u32 bsize, bool* has_error = NULL)
+		virtual _u32 Write( int64 spos, const char* buffer, _u32 bsize, bool* has_error = nullptr)
 		{
 			assert(false);
 			return 0;
@@ -1363,7 +1363,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 	}
 
 	if (!read_only
-		|| (remaining_gets==0 && can_block && cache_get(lru_cache, key, lock, false)==NULL ) )
+		|| (remaining_gets==0 && can_block && cache_get(lru_cache, key, lock, false)==nullptr ) )
 	{
 		while (remaining_gets == 0
 			&& can_block)
@@ -1466,13 +1466,13 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 		++total_hits;
 	}
 
-	SFdKey* res=NULL;
+	SFdKey* res=nullptr;
 
 	if(it_open_file==open_files.end())
 	{
 		res = fd_cache.get(key);
 
-		if(res!=NULL)
+		if(res!=nullptr)
 		{
 			if(read_only || !res->read_only)
 			{
@@ -1509,8 +1509,8 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 	}
 
 	SCacheVal* dirty = cache_get(lru_cache, key, lock);
-	IFsFile* nf = NULL;
-	if(dirty!=NULL)
+	IFsFile* nf = nullptr;
+	if(dirty!=nullptr)
 	{
 		bool new_dirty = false;
 		if(!read_only && !dirty->dirty )
@@ -1564,7 +1564,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 				it_open_file->second.read_only = false;
 			}
 		}
-		else if(res!=NULL)
+		else if(res!=nullptr)
 		{
 			nf = res->fd;
 			assert(dynamic_cast<IMemFile*>(nf)==nullptr);
@@ -1623,7 +1623,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 		}
 		
 
-		if(nf==NULL)
+		if(nf==nullptr)
 		{
 			std::string err;
 			std::string msg = "Could not open cached file " + keypath2(key, transid) + ". " + os_last_error_str();
@@ -1669,7 +1669,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 		nf = get_retrieve(key, bitmap_present, flags, size_hint, res, cache_fd, lock);
 	}
 
-	assert(nf!=NULL);
+	assert(nf!=nullptr);
 
 	std::vector<IFsFile*> cache_free_list;
 	if(cache_fd && it_open_file==open_files.end()
@@ -1697,7 +1697,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 		}
 	}
 
-	IFsFile* ret = NULL;
+	IFsFile* ret = nullptr;
 	if(read_only)
 	{
 		if(it_open_file!=open_files.end())
@@ -1709,7 +1709,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 			}
 		}
 
-		if (ret == NULL)
+		if (ret == nullptr)
 		{
 			ReadOnlyFileWrapper* nf_rdonly = new ReadOnlyFileWrapper(nf);
 			read_only_open_files[nf] = nf_rdonly;
@@ -1840,7 +1840,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 
 		if (!retrieve_file)
 		{
-			if (res != NULL)
+			if (res != nullptr)
 			{
 				nf = res->fd;
 				if (!read_only)
@@ -1905,8 +1905,8 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 				&& !read_only)
 			{
 				addDirtyItem(transid, key);
-				assert(nf != NULL);
-				if (nf != NULL)
+				assert(nf != nullptr);
+				if (nf != nullptr)
 				{
 					add_dirty_bytes(transid, key, nf->Size());
 				}
@@ -1921,15 +1921,15 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 			lock_evict.unlock();
 
 		bool not_found = false;
-		IFsFile* online_file = NULL;
+		IFsFile* online_file = nullptr;
 		bool decompressed_ok = false;
 		bool evicted_dirty = false;
 		SCacheVal curr_cache_val;
 
 		SCacheVal* compressed_orig = cache_get(compressed_items, key, cache_lock);
 		SCacheVal compressed_src;
-		SCacheVal* compressed = NULL;
-		if (compressed_orig != NULL)
+		SCacheVal* compressed = nullptr;
+		if (compressed_orig != nullptr)
 		{
 			compressed = &compressed_src;
 			*compressed = *compressed_orig;
@@ -1996,7 +1996,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 					{
 						online_file = cachefs->openFile(keypath2(key, transid), OPEN_DIRECT);
 
-						if (online_file == NULL)
+						if (online_file == nullptr)
 						{
 							std::string syserr = os_last_error_str();
 							Server->Log("Error opening decompressed file " + keypath2(key, transid) + ". " + syserr, LL_ERROR);
@@ -2205,12 +2205,12 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 					prioritize_read, memfile, retry_n > retry_log_n, not_found);
 				assert(online_file == nullptr || memfile == nullptr || online_file == memfile);
 
-				if (online_file != NULL)
+				if (online_file != nullptr)
 				{
 					FILE_SIZE_CACHE(online_file->setCachedSize(online_file->Size()));
 				}
 
-				if (online_file == NULL)
+				if (online_file == nullptr)
 				{
 					std::string reset_retries = readCacheFile("clouddrive_reset_retries");
 
@@ -2238,7 +2238,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 				}
 				else if (not_found && bitmap_present == BitmapInfo::Present)
 				{
-					if (online_file != NULL)
+					if (online_file != nullptr)
 					{
 						std::string reset_retries = readCacheFile("clouddrive_reset_retries");
 
@@ -2278,7 +2278,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 								Server->destroy(online_file);
 								cachefs->deleteFile(fname);
 							}
-							online_file = NULL;
+							online_file = nullptr;
 						}
 					}
 					if (retry_n + 1 > 5)
@@ -2292,7 +2292,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 					retryWait(++retry_n);
 				}
 
-			} while (online_file == NULL);
+			} while (online_file == nullptr);
 
 			if (read_random
 				&& online_file != nullptr
@@ -2312,7 +2312,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 					&& memfile == nullptr)
 				{
 					std::unique_ptr<IFsFile> base_file(cachefs->openFile(keypath2(key, basetrans), MODE_READ));
-					if (base_file.get() == NULL)
+					if (base_file.get() == nullptr)
 					{
 						online_file->Sync();
 
@@ -2346,7 +2346,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 				sub_lock.unlock();
 			}
 
-			curr_cache_val = cache_val(key, !read_only || (compressed != NULL && compressed->dirty) || evicted_dirty);
+			curr_cache_val = cache_val(key, !read_only || (compressed != nullptr && compressed->dirty) || evicted_dirty);
 		}
 		else if (!decompressed_ok)
 		{
@@ -2386,7 +2386,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 				{
 					online_file = cachefs->openFile(path, CREATE_DIRECT);
 
-					if (online_file == NULL)
+					if (online_file == nullptr)
 					{
 						Server->Log("Error creating file. Retrying...", LL_WARNING);
 						retryWait(++retry_n);
@@ -2394,7 +2394,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 					FILE_SIZE_CACHE(online_file->setCachedSize(0));
 				}
 
-			} while (online_file == NULL);
+			} while (online_file == nullptr);
 
 			if (read_random
 				&& online_file != nullptr
@@ -2403,7 +2403,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 				set_read_random(online_file);
 			}
 
-			curr_cache_val = cache_val(key, !read_only || (compressed != NULL && compressed->dirty) || evicted_dirty);
+			curr_cache_val = cache_val(key, !read_only || (compressed != nullptr && compressed->dirty) || evicted_dirty);
 		}
 
 		if (read_only && not_found)
@@ -2432,7 +2432,7 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 #endif
 				rm_mem_file(nullptr, transid, key, false);
 			}
-			return NULL;
+			return nullptr;
 		}
 		else if (!decompressed_ok && (!read_only || evicted_dirty))
 		{
@@ -2479,11 +2479,11 @@ bool TransactionalKvStore::del( const std::string& key )
 		lock.lock();
 	}
 
-	IFsFile* fd = NULL;
+	IFsFile* fd = nullptr;
 	bool is_memfile = false;
 
 	SFdKey* res = fd_cache.get(key);
-	if(res!=NULL)
+	if(res!=nullptr)
 	{
 		if (cachefs->filePath(res->fd) != keypath2(key, transid))
 		{
@@ -2523,14 +2523,14 @@ bool TransactionalKvStore::del( const std::string& key )
 	bool accounted_for=false;
 
 	SCacheVal* dirty = cache_get(lru_cache, key, lock, false);
-	SCacheVal* compressed = NULL;
-	if(dirty!=NULL)
+	SCacheVal* compressed = nullptr;
+	if(dirty!=nullptr)
 	{
-		assert(fd != NULL);
+		assert(fd != nullptr);
 		if(dirty->dirty)
 		{
 			removeDirtyItem(transid, key);
-			if(fd!=NULL)
+			if(fd!=nullptr)
 			{
 				rm_dirty_bytes(transid, key, fd->Size(), true);
 				sub_cachesize(fd->Size());
@@ -2543,20 +2543,20 @@ bool TransactionalKvStore::del( const std::string& key )
 	else
 	{
 		compressed = cache_get(compressed_items, key, lock, false);
-		if (compressed != NULL)
+		if (compressed != nullptr)
 		{
-			assert(fd == NULL);
+			assert(fd == nullptr);
 			{
 				RetrievalOperation retrieval_operation(lock, *this, key);
 
 				fd = cachefs->openFile(keypath2(key, transid) + ".comp", MODE_RW);
-				assert(fd != NULL);
+				assert(fd != nullptr);
 			}
 
 			if (compressed->dirty)
 			{
 				removeDirtyItem(transid, key);
-				if (fd != NULL)
+				if (fd != nullptr)
 				{
 					rm_dirty_bytes(transid, key, fd->Size(), true);
 					sub_cachesize(fd->Size());
@@ -2615,7 +2615,7 @@ bool TransactionalKvStore::del( const std::string& key )
 	}
 
 	if (!accounted_for
-		&& fd!=NULL)
+		&& fd!=nullptr)
 	{
 		sub_cachesize(fd->Size());
 	}
@@ -2629,7 +2629,7 @@ bool TransactionalKvStore::del( const std::string& key )
 
 	if (delete_it)
 	{
-		delete_item(nullptr, key, compressed != NULL, lock,
+		delete_item(nullptr, key, compressed != nullptr, lock,
 			0, 0, DeleteImm::None, allow_evict ? 0 : transid);
 	}
 
@@ -3961,7 +3961,7 @@ void TransactionalKvStore::read_keys(std::unique_lock<cache_mutex_t>& cache_lock
 				bool not_found = false;
 				IFile* online_file = online_kv_store->get(key, transid, tmpfn, false, nullptr, true, not_found);
 
-				if (online_file == NULL || not_found)
+				if (online_file == nullptr || not_found)
 				{
 					Server->Log("Could not get " + keypath2(key, transid) + " from online store", LL_ERROR);
 					assert(false);
@@ -4135,7 +4135,7 @@ bool TransactionalKvStore::evict_one(std::unique_lock<cache_mutex_t>& cache_lock
 		if (!compressed)
 		{
 			SFdKey* res = fd_cache.get(*evict_it->first);
-			if (res != NULL)
+			if (res != nullptr)
 			{
 				if (cachefs->filePath(res->fd) != keypath2(*evict_it->first, transid))
 				{
@@ -4200,15 +4200,15 @@ void TransactionalKvStore::evict_item(const std::string & key, bool dirty,
 
 				bool base_compressed = compressed;
 
-				if (file_base.get() == NULL)
+				if (file_base.get() == nullptr)
 				{
 					file_base.reset(cachefs->openFile(basepath2() + cachefs->fileSep() + hexpath(key) + ((!compressed) ? ".comp" : ""), MODE_READ));
 					base_compressed = !compressed;
 				}
 
-				assert(file_base.get() != NULL);
+				assert(file_base.get() != nullptr);
 
-				if (file_base.get() != NULL)
+				if (file_base.get() != nullptr)
 				{
 					Server->Log("Evicting dirty base cache item " + basepath2() + cachefs->fileSep() + hexpath(key) + (base_compressed ? ".comp" : "") + " via submission first" + from, LL_INFO);
 
@@ -4452,7 +4452,7 @@ bool TransactionalKvStore::evict_memfiles(std::unique_lock<cache_mutex_t>& cache
 
 			SCacheVal* dirty = cache_get(lru_cache, it->first->second, cache_lock, false);
 
-			if (dirty != NULL
+			if (dirty != nullptr
 				&& dirty->chances > 0)
 			{
 				--dirty->chances;
@@ -4475,7 +4475,7 @@ bool TransactionalKvStore::evict_memfiles(std::unique_lock<cache_mutex_t>& cache
 					assert(it->first->second != std::string());
 				}
 			}
-			else if (dirty != NULL)
+			else if (dirty != nullptr)
 			{
 				int64 freed_space;
 
@@ -4572,7 +4572,7 @@ bool TransactionalKvStore::compress_one(std::unique_lock<cache_mutex_t>& cache_l
 	}
 
 	SFdKey* res = fd_cache.get(*compress_it->first);
-	if(res!=NULL)
+	if(res!=nullptr)
 	{
 		if (cachefs->filePath(res->fd) != keypath2(*compress_it->first, transid))
 		{
@@ -4888,7 +4888,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 			std::unique_ptr<IFsFile> invalid(cachefs->openFile("trans_" + convert(it->transid) + cachefs->fileSep() + "invalid", MODE_READ));
 			lock.unlock();
 
-			if (invalid.get() == NULL)
+			if (invalid.get() == nullptr)
 			{
 				std::unique_ptr<IFsFile> nosubmit(cachefs->openFile("trans_" + convert(it->transid) + cachefs->fileSep() + "dirty.nosubmit", MODE_READ));
 				if (nosubmit.get() == nullptr
@@ -4995,7 +4995,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 					std::unique_ptr<IFsFile> invalid(cachefs->openFile("trans_"+convert(it->transid)+ cachefs->fileSep() + "invalid", MODE_READ));
 					lock.unlock();
 
-					if(invalid.get()==NULL)
+					if(invalid.get()==nullptr)
 					{
 						online_kv_store->sync();
 						if(online_kv_store->transaction_finalize(it->transid, true, true))
@@ -5054,7 +5054,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 		
 		SCacheVal* dirty = cache_get(*target_cache, it->key, lock, false);
 		
-		if(dirty==NULL)
+		if(dirty==nullptr)
 		{
 			compressed = !compressed;
 			dirty = cache_get(*other_target_cache, it->key, lock, false);
@@ -5063,7 +5063,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 		
 		bool del_item = false;
 		if( do_evict
-			&& dirty!=NULL && !dirty->dirty
+			&& dirty!=nullptr && !dirty->dirty
 			&& it->keys.empty()
 			&& open_files.find(it->key)==open_files.end()
 			&& in_retrieval.find(it->key)==in_retrieval.end() )
@@ -5093,7 +5093,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 				if(!compressed)
 				{
 					SFdKey* res = fd_cache.get(it->key);
-					if(res!=NULL)
+					if(res!=nullptr)
 					{
 						if (cachefs->filePath(res->fd) != keypath2(it->key, transid))
 						{
@@ -5167,7 +5167,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 			}
 		}	
 		else if (do_evict
-			|| (dirty == NULL
+			|| (dirty == nullptr
 				&& allow_evict) )
 		{
 			del_item = true;
@@ -5294,7 +5294,7 @@ bool TransactionalKvStore::item_compressed( std::list<SSubmissionItem>::iterator
 							+ PrettyPrintBytes(submitted_comp_bytes) + " now=" + PrettyPrintBytes(add_comp_bytes)
 							+ ". Dirtying item " + hex(it->key) + " transid " + convert(it->transid) + " for resubmission.", LL_INFO);
 						std::unique_lock lock2(cache_mutex);
-						if (cache_get(compressed_items, it->key, lock2, false) != NULL)
+						if (cache_get(compressed_items, it->key, lock2, false) != nullptr)
 						{
 							cache_put(compressed_items, it->key, cache_val(it->key, true), lock2);
 							addDirtyItem(it->transid, it->key);
@@ -5317,7 +5317,7 @@ bool TransactionalKvStore::item_compressed( std::list<SSubmissionItem>::iterator
 				}
 
 				std::unique_ptr<IFsFile> base_file(cachefs->openFile(keypath2(local_key, curr_basetrans) + ".comp", MODE_READ));
-				if (base_file.get() == NULL)
+				if (base_file.get() == nullptr)
 				{
 					std::string path = keypath2(local_key, curr_basetrans) + ".comp";
 					if (!sync_link(cachefs, keypath2(local_key, curr_transid) + ".comp", path))
@@ -5647,7 +5647,7 @@ bool TransactionalKvStore::read_from_dirty_file(std::unique_lock<cache_mutex_t>&
 
 	std::unique_ptr<IFsFile> file(cachefs->openFile(fn, MODE_READ));
 
-	if(file.get()==NULL)
+	if(file.get()==nullptr)
 	{
 		Server->Log("Cannot open \""+fn+"\". " + os_last_error_str(), LL_ERROR);
 		return false;
@@ -5713,11 +5713,11 @@ bool TransactionalKvStore::read_from_dirty_file(std::unique_lock<cache_mutex_t>&
 		{
 			file.reset(cachefs->openFile(keypath2(key, transaction_id) + (compressed != 0 ? ".comp" : ""), MODE_READ));
 			
-			if(file.get()==NULL)
+			if(file.get()==nullptr)
 			{
 				file.reset(cachefs->openFile(keypath2(key, transaction_id) + (compressed == 0 ? ".comp" : ""), MODE_READ));
 				
-				if(file.get()!=NULL)
+				if(file.get()!=nullptr)
 				{
 					compressed = compressed == 0 ? 1 : 0;
 				}
@@ -5848,7 +5848,7 @@ bool TransactionalKvStore::write_to_dirty_file(std::unique_lock<cache_mutex_t>& 
 	std::unique_ptr<IFsFile> file(cachefs->openFile(fn+".new", MODE_WRITE));
 	int64 file_pos=0;
 
-	if(file.get()==NULL)
+	if(file.get()==nullptr)
 	{
 		Server->Log("Error opening submission file for writing", LL_ERROR);
 		return false;
@@ -5934,7 +5934,7 @@ bool TransactionalKvStore::write_to_dirty_file(std::unique_lock<cache_mutex_t>& 
 						if (memf == nullptr)
 						{
 							std::unique_ptr<IFsFile> input_file(cachefs->openFile(keypath2(*it->first, transid) + (compressed ? ".comp" : ""), MODE_READ));
-							if (input_file.get() == NULL)
+							if (input_file.get() == nullptr)
 							{
 								Server->Log("Error opening file to submit", LL_ERROR);
 								assert(false);
@@ -6089,7 +6089,7 @@ bool TransactionalKvStore::read_from_deleted_file( const std::string& fn, int64 
 {
 	std::unique_ptr<IFsFile> file(cachefs->openFile(fn, MODE_READ));
 
-	if(file.get()==NULL)
+	if(file.get()==nullptr)
 	{
 		Server->Log("Cannot open \""+fn+"\". " + os_last_error_str(), LL_INFO);
 		return true;
@@ -6168,7 +6168,7 @@ bool TransactionalKvStore::write_to_deleted_file(const std::string& fn, bool do_
 	std::unique_ptr<IFsFile> file(cachefs->openFile(fn, MODE_WRITE));
 	int64 file_pos=0;
 
-	if(file.get()==NULL)
+	if(file.get()==nullptr)
 	{
 		Server->Log("Error opening deleted file for writing", LL_ERROR);
 		return false;
@@ -6367,7 +6367,7 @@ void TransactionalKvStore::run_del_file_queue()
 			is_begin = true;
 		}
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		cachefs->deleteFile(fn);
 		lock.relock(del_file_mutex.get());
 		if (is_begin
@@ -6622,7 +6622,7 @@ void TransactionalKvStore::reset()
 
 				std::unique_ptr<IFsFile> input_file(cachefs->openFile(keypath2(*it->first, transid) + (compressed?".comp":""), MODE_READ));
 
-				if(input_file.get()==NULL)
+				if(input_file.get()==nullptr)
 				{
 					Server->Log("Error opening file to reset", LL_ERROR);
 					continue;
@@ -6878,12 +6878,12 @@ std::string TransactionalKvStore::meminfo()
 				if (it.second.file != nullptr)
 				{
 					SCacheVal* dirty = cache_get(lru_cache, it.first->second, cache_lock, false);
-					if (dirty != NULL
+					if (dirty != nullptr
 						&& !dirty->dirty)
 					{
 						memfile_size_non_dirty += it.second.file->Size();
 					}
-					else if (dirty != NULL
+					else if (dirty != nullptr
 						&& dirty->dirty)
 					{
 						memfile_size_dirty+= it.second.file->Size();
@@ -7079,7 +7079,7 @@ int64 TransactionalKvStore::set_active_transactions(std::unique_lock<cache_mutex
 				&& (mintrans==-1 || ctransid<mintrans) )
 			{
 				std::unique_ptr<IFsFile> nosubmit(cachefs->openFile(files[i].name+ cachefs->fileSep()+"dirty.nosubmit", MODE_READ));
-				if(nosubmit.get()==NULL)
+				if(nosubmit.get()==nullptr)
 				{
 					dirty.reset();
 
@@ -7314,14 +7314,14 @@ bool TransactionalKvStore::compress_item( const std::string& key, int64 transact
 
 	IFsFile* dst = cachefs->openFile(keypath2(key, transaction_id)+".comp", MODE_WRITE);
 
-	if(dst==NULL)
+	if(dst==nullptr)
 	{
 		if (!cachefs->directoryExists(ExtractFilePath(keypath2(key, transaction_id) + ".comp")))
 		{
 			cachefs->createDir(ExtractFilePath(keypath2(key, transaction_id) + ".comp"));
 			dst = cachefs->openFile(keypath2(key, transaction_id) + ".comp", MODE_WRITE);
 		}
-		if (dst == NULL)
+		if (dst == nullptr)
 		{
 			Server->Log("Error opening dest file " + keypath2(key, transaction_id) + ".comp in compress_item. " + os_last_error_str(), LL_ERROR);
 			assert(false);
@@ -7416,7 +7416,7 @@ bool TransactionalKvStore::decompress_item( const std::string& key, int64 transa
 		dst = tmpl_file;
 	}
 
-	if(dst==NULL)
+	if(dst==nullptr)
 	{
 		std::string errmsg;
 		int64 err = os_last_error(errmsg);
@@ -8526,7 +8526,7 @@ void TransactionalKvStore::RegularSubmitBundleThread::regular_submit_bundle(std:
 
 				SCacheVal* dirty = cache_get(*target_cache, it->key, cache_lock, false);
 
-				if (dirty == NULL)
+				if (dirty == nullptr)
 				{
 					compressed = !compressed;
 					dirty = cache_get(*other_target_cache, it->key, cache_lock, false);
@@ -8534,7 +8534,7 @@ void TransactionalKvStore::RegularSubmitBundleThread::regular_submit_bundle(std:
 				}
 
 				bool del_item = false;
-				if (dirty != NULL && !dirty->dirty
+				if (dirty != nullptr && !dirty->dirty
 					&& kv_store->open_files.find(it->key) == kv_store->open_files.end()
 					&& kv_store->in_retrieval.find(it->key) == kv_store->in_retrieval.end())
 				{
@@ -8562,7 +8562,7 @@ void TransactionalKvStore::RegularSubmitBundleThread::regular_submit_bundle(std:
 						if (!compressed)
 						{
 							SFdKey* res = kv_store->fd_cache.get(it->key);
-							if (res != NULL)
+							if (res != nullptr)
 							{
 								if (kv_store->cachefs->filePath(res->fd) != kv_store->keypath2(it->key, kv_store->transid))
 								{

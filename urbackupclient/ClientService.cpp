@@ -86,15 +86,15 @@ void ClientService::destroyClient( ICustomClient * pClient)
 std::vector<SRunningProcess> ClientConnector::running_processes;
 std::vector<SFinishedProcess> ClientConnector::finished_processes;
 int64 ClientConnector::curr_backup_running_id = 0;
-IMutex *ClientConnector::backup_mutex=NULL;
-IMutex *ClientConnector::process_mutex = NULL;
+IMutex *ClientConnector::backup_mutex=nullptr;
+IMutex *ClientConnector::process_mutex = nullptr;
 int ClientConnector::backup_interval=6*60*60;
 int ClientConnector::backup_alert_delay=5*60;
 std::vector<SChannel> ClientConnector::channel_pipes;
 db_results ClientConnector::cached_status;
 std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
-IMutex *ClientConnector::ident_mutex=NULL;
+IMutex *ClientConnector::ident_mutex=nullptr;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::pair<std::string, std::string>, ClientConnector::SChallenge> ClientConnector::challenges;
@@ -102,7 +102,7 @@ bool ClientConnector::has_file_changes = false;
 std::vector < ClientConnector::SFilesrvConnection > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
-RestoreFiles* ClientConnector::restore_files = NULL;
+RestoreFiles* ClientConnector::restore_files = nullptr;
 size_t ClientConnector::needs_restore_restart = 0;
 size_t ClientConnector::ask_restore_ok = 0;
 int64 ClientConnector::service_starttime = 0;
@@ -226,7 +226,7 @@ namespace
 
 void ClientConnector::init_mutex(void)
 {
-	if(backup_mutex==NULL)
+	if(backup_mutex==nullptr)
 	{
 		backup_mutex=Server->createMutex();
 		ident_mutex=Server->createMutex();
@@ -291,7 +291,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	pipe=pPipe;
 	state=CCSTATE_NORMAL;
 	image_inf.thread_action=TA_NONE;
-	image_inf.image_thread=NULL;
+	image_inf.image_thread=nullptr;
 	image_inf.clientsubname.clear();
 	lasttime=Server->getTimeMS();
 	do_quit=false;
@@ -305,9 +305,9 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	endpoint_name = pEndpointName;
 	make_fileserv=false;
 	local_backup_running_id = 0;
-	run_other = NULL;
+	run_other = nullptr;
 	idle_timeout = 10000;
-	bitmapfile = NULL;
+	bitmapfile = nullptr;
 	retrieved_has_components=false;
 	status_has_components=false;
 	curr_result_id = 0;
@@ -348,7 +348,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 		IndexThread::unrefResult(curr_result_id);
 		curr_result_id = 0;
 		delete image_inf.image_thread;
-		image_inf.image_thread=NULL;
+		image_inf.image_thread=nullptr;
 		return false;
 	}
 
@@ -506,7 +506,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				want_receive = true;
 			}
 
-			bool has_ping = chan != NULL && chan->state == SChannel::EChannelState_Pinging;
+			bool has_ping = chan != nullptr && chan->state == SChannel::EChannelState_Pinging;
 
 			int64 timeout_interval = 180000;
 
@@ -539,7 +539,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 				return false;
 			}
-			if(chan!=NULL && chan->state==SChannel::EChannelState_Exit)
+			if(chan!=nullptr && chan->state==SChannel::EChannelState_Exit)
 			{
 				do_quit=true;
 				break;
@@ -583,7 +583,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			if(!Server->getThreadPool()->isRunning(image_inf.thread_ticket))
 			{
 				delete image_inf.image_thread;
-				image_inf.image_thread=NULL;
+				image_inf.image_thread=nullptr;
 				IndexThread::unrefResult(curr_result_id);
 				curr_result_id = 0;
 				return false;
@@ -616,7 +616,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					Server->destroy(hashdatafile);
 					Server->deleteFile(hashdatafile_fn);
 
-					if(crypto_fak!=NULL)
+					if(crypto_fak!=nullptr)
 					{
 #if defined(__APPLE__)
 						// ./UrBackup\ Client.app/Contents/MacOS/sbin/../share/urbackup/urbackup_ecdsa409k1.pub
@@ -628,7 +628,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 							UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 						{
 							std::unique_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
-							if(updatefile.get()!=NULL)
+							if(updatefile.get()!=nullptr)
 							{
 								if(checkHash(getSha512Hash(updatefile.get()))
 									&& checkVersion(updatefile.get()) )
@@ -800,7 +800,7 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 		return false;
 
 	IFile *out=Server->openFile(outfn, MODE_WRITE);
-	if(out==NULL)
+	if(out==nullptr)
 		return false;
 
 	size_t read=0;
@@ -839,7 +839,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		return;
 	}
 
-	IMutex *l_mutex=NULL;
+	IMutex *l_mutex=nullptr;
 	if(is_channel)
 	{
 		l_mutex=backup_mutex;
@@ -849,7 +849,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 	if (is_channel)
 	{
 		SChannel* chan = getCurrChannel();
-		if (chan != NULL
+		if (chan != nullptr
 			&& chan->state == SChannel::EChannelState_Used)
 		{
 			want_receive = false;
@@ -922,7 +922,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			if (state == CCSTATE_IMAGE_HASHDATA
 				|| state == CCSTATE_UPDATE_DATA)
 			{
-				if (bitmapfile == NULL)
+				if (bitmapfile == nullptr)
 				{
 					hashdataok = true;
 					if (state == CCSTATE_IMAGE_HASHDATA)
@@ -1029,7 +1029,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		}
 		else if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
 		{
-			if(!ServerIdentityMgr::hasPublicKey(identity, true) || crypto_fak==NULL)
+			if(!ServerIdentityMgr::hasPublicKey(identity, true) || crypto_fak==nullptr)
 			{
 				ident_ok=true;
 			}
@@ -1825,7 +1825,7 @@ void ClientConnector::updateLastBackup(void)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("UPDATE status SET last_backup=CURRENT_TIMESTAMP WHERE id=1");
 	IQuery *q2=db->Prepare("SELECT last_backup FROM status WHERE id=1");
-	if(q!=NULL && q2!=NULL)
+	if(q!=nullptr && q2!=nullptr)
 	{
 		if(q2->Read().size()>0)
 		{
@@ -1834,7 +1834,7 @@ void ClientConnector::updateLastBackup(void)
 		else
 		{
 			q=db->Prepare("INSERT INTO status (last_backup, id) VALUES (CURRENT_TIMESTAMP, 1)");
-			if(q!=NULL)
+			if(q!=nullptr)
 				q->Write();
 		}
 	}
@@ -1978,7 +1978,7 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 		|| getFile(settings_fn)!= pData)
 	{
 		std::unique_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
-		if (newf.get() != NULL
+		if (newf.get() != nullptr
 			&& newf->Write(pData+ settings_add) == pData.size()+settings_add.size()
 			&& newf->Sync())
 		{
@@ -2029,7 +2029,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 	std::vector<std::string> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
-	if(old_settings.get()!=NULL)
+	if(old_settings.get()!=nullptr)
 	{
 		modified_settings=false;
 		std::vector<std::string> old_keys = old_settings->getKeys();
@@ -2074,7 +2074,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 			}
 		}
 
-		if (old_settings.get() != NULL)
+		if (old_settings.get() != nullptr)
 		{
 			std::vector<std::string> old_keys = old_settings->getKeys();
 
@@ -2189,14 +2189,14 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 bool ClientConnector::sendFullImage(void)
 {
 	image_inf.thread_action=TA_FULL_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, curr_result_id, &image_inf, server_token, hashdatafile, NULL);
+	image_inf.image_thread=new ImageThread(this, pipe, curr_result_id, &image_inf, server_token, hashdatafile, nullptr);
 
 	IScopedLock lock(backup_mutex);
 
 	{
 		IScopedLock process_lock(process_mutex);
 		SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-		if (cproc != NULL
+		if (cproc != nullptr
 			&& cproc->action == RUNNING_FULL_IMAGE)
 		{
 			local_backup_running_id = cproc->id;
@@ -2237,7 +2237,7 @@ bool ClientConnector::sendIncrImage(void)
 		IScopedLock process_lock(process_mutex);
 
 		SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-		if (cproc != NULL
+		if (cproc != nullptr
 			&& cproc->action == RUNNING_INCR_IMAGE)
 		{
 			local_backup_running_id = cproc->id;
@@ -2336,9 +2336,9 @@ namespace
 		}
 
 		std::string dl_devnum;
-		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
+		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", nullptr };
 
-		for (const char* const * devname = devnames; *devname != NULL; ++devname)
+		for (const char* const * devname = devnames; *devname != nullptr; ++devname)
 		{
 			if (next(volfn, 0, std::string("/dev/") + *devname))
 			{
@@ -2761,14 +2761,14 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	parseDevicePartNumber(dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
 
 	IFile* dev = Server->openFile(dev_fn, MODE_READ_DEVICE);
-	if (dev == NULL)
+	if (dev == nullptr)
 	{
 		errmsg = "Error opening Device " + dev_fn + ". " + os_last_error_str();
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
 
-	std::string gpt_header = dev->Read(512LL, 512, NULL);
+	std::string gpt_header = dev->Read(512LL, 512, nullptr);
 
 	if (next(gpt_header, 0, "EFI PART"))
 	{
@@ -3088,7 +3088,7 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 			}
 		}
 
-		backup_mutex_lock.relock(NULL);
+		backup_mutex_lock.relock(nullptr);
 		
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
@@ -3246,9 +3246,9 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 	Server->Log("Waiting for pings...", LL_DEBUG);
 	while(hasChannelPing())
 	{
-		lock->relock(NULL);
+		lock->relock(nullptr);
 		Server->wait(10);
-		if (run_other != NULL)
+		if (run_other != nullptr)
 		{
 			run_other->runOther();
 		}
@@ -3301,13 +3301,13 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 	IScopedLock lock(backup_mutex);
 	IScopedLock lock_process(process_mutex);
 	lasttime=Server->getTimeMS();
-	if (getActiveProcess(x_pingtimeout) != NULL)
+	if (getActiveProcess(x_pingtimeout) != nullptr)
 	{
 		tcpstack.Send(pipe, "RUNNING");
 	}
 	else
 	{
-		lock_process.relock(NULL);
+		lock_process.relock(nullptr);
 
 		size_t selidx = 0;
 		for (size_t i = 0; i < channel_pipes.size(); ++i)
@@ -3395,7 +3395,7 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 		}
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
-		if (curr_settings == NULL)
+		if (curr_settings == nullptr)
 			return false;
 
 		std::string val;
@@ -3547,7 +3547,7 @@ int ClientConnector::getCapabilities(IDatabase* db)
 		{
 			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
-			if(cq!=NULL)
+			if(cq!=nullptr)
 			{
 				cq->Bind(capa);
 				if(cq->Write(0))
@@ -3685,7 +3685,7 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 	{
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if(channel_pipes[i].make_fileserv!=NULL &&
+			if(channel_pipes[i].make_fileserv!=nullptr &&
 				channel_pipes[i].token==server_token &&
 				!(*channel_pipes[i].make_fileserv))
 			{
@@ -3693,7 +3693,7 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 			}
 		}
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(100);
 		lock.relock(backup_mutex);
 
@@ -3711,7 +3711,7 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 
 	Server->Log("Timeout while getting a fileserv connection");
 
-	return NULL;	
+	return nullptr;	
 }
 
 bool ClientConnector::closeSocket( void )
@@ -3781,7 +3781,7 @@ void ClientConnector::sendStatus()
 	{
 		ret+="&restore_ask="+convert(ask_restore_ok);
 
-		if (restore_files != NULL)
+		if (restore_files != nullptr)
 		{
 			if (restore_files->is_single_file())
 			{
@@ -3824,7 +3824,7 @@ void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, 
 
 		SRunningProcess* proc = getRunningProcess(local_process_id);
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			if (nv > 100)
 			{
@@ -3859,7 +3859,7 @@ void ClientConnector::updateLocalBackupPc(int64 local_process_id, int backupid, 
 
 		SRunningProcess* proc = getRunningProcess(local_process_id);
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			if (nv > 100)
 			{
@@ -3901,7 +3901,7 @@ void ClientConnector::updateLocalBackupPc(int64 local_process_id, int64 backup_i
 
 		SRunningProcess* proc = getRunningProcess(local_process_id);
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			if (nv > 100)
 			{
@@ -3958,7 +3958,7 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 		if (timeoutms == 0)
 			return false;
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 		Server->wait(100);
 		lock.relock(backup_mutex);
 	} while(Server->getTimeMS()-starttime<timeoutms);
@@ -4350,7 +4350,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 		std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
-		if (curr_settings.get() != NULL)
+		if (curr_settings.get() != nullptr)
 		{
 			str_map settings_repl;
 
@@ -4410,7 +4410,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 				std::unique_ptr<IFile> settings_f(Server->openFile(settings_fn+".new_2", MODE_WRITE));
 
-				if (settings_f.get() != NULL)
+				if (settings_f.get() != nullptr)
 				{
 					if (settings_f->Write(new_data) == new_data.size()
 						&& settings_f->Sync())
@@ -4468,7 +4468,7 @@ SRunningProcess * ClientConnector::getRunningProcess(RunningAction action, std::
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 SRunningProcess * ClientConnector::getRunningFileBackupProcess(std::string server_token, int64 server_id)
@@ -4484,7 +4484,7 @@ SRunningProcess * ClientConnector::getRunningFileBackupProcess(std::string serve
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 SRunningProcess * ClientConnector::getRunningBackupProcess(std::string server_token, int64 server_id)
@@ -4499,7 +4499,7 @@ SRunningProcess * ClientConnector::getRunningBackupProcess(std::string server_to
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 SRunningProcess * ClientConnector::getRunningProcess(int64 id)
@@ -4513,7 +4513,7 @@ SRunningProcess * ClientConnector::getRunningProcess(int64 id)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 SRunningProcess * ClientConnector::getActiveProcess(int64 timeout)
@@ -4528,7 +4528,7 @@ SRunningProcess * ClientConnector::getActiveProcess(int64 timeout)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 bool ClientConnector::removeRunningProcess(int64 id, bool success, bool consider_refs)
@@ -4610,7 +4610,7 @@ void ClientConnector::timeoutBackupImmediate(int64 start_timeout, int64 resume_t
 		}
 	}
 
-	lock.relock(NULL);
+	lock.relock(nullptr);
 
 	if (found)
 	{
@@ -4640,7 +4640,7 @@ bool ClientConnector::updateRunningPc(int64 id, int pcdone)
 	IScopedLock lock(process_mutex);
 
 	SRunningProcess* proc = getRunningProcess(id);
-	if (proc == NULL)
+	if (proc == nullptr)
 	{
 		return false;
 	}

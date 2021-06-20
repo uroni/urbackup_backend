@@ -279,7 +279,7 @@ PersistentOpenFiles::PersistentOpenFiles() : curr_id(0), bytes_written(0), bytes
 		change_file_permissions_admin_only(persistent_open_files_fn);
 #endif
 
-		if(persistf==NULL)
+		if(persistf==nullptr)
 		{
 			Server->Log(std::string("Error opening open write file at ")+persistent_open_files_fn, LL_ERROR);
 		}

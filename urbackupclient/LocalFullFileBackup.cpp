@@ -132,7 +132,7 @@ bool LocalFullFileBackup::run()
 		return false;
 
 	std::unique_ptr<IFile> curr_file_list(Server->openFile(filelistpath, MODE_READ));
-	if (curr_file_list.get() == NULL)
+	if (curr_file_list.get() == nullptr)
 	{
 		log("Error opening current file list. " + os_last_error_str(), LL_ERROR);
 		return false;
@@ -215,7 +215,7 @@ bool LocalFullFileBackup::run()
 
 						std::unique_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
 
-						if (metadataf.get() == NULL)
+						if (metadataf.get() == nullptr)
 						{
 							log("Error opening metadata file \"" + metadatapath + "\"", LL_ERROR);
 							return false;
@@ -279,7 +279,7 @@ bool LocalFullFileBackup::run()
 
 					std::unique_ptr<IFsFile> metadataf(backup_files->openFile(metadatapath, MODE_WRITE));
 
-					if (metadataf.get() == NULL)
+					if (metadataf.get() == nullptr)
 					{
 						log("Error opening metadata file at \"" + metadatapath + "\"", LL_ERROR);
 						return false;
@@ -293,7 +293,7 @@ bool LocalFullFileBackup::run()
 
 					std::unique_ptr<IFile> sourcef(Server->openFile(sourcepath, MODE_READ_SEQUENTIAL_BACKUP));
 
-					if (sourcef.get() == NULL)
+					if (sourcef.get() == nullptr)
 					{
 						log("Error opening \"" + sourcepath + "\" for backup. " + os_last_error_str(), LL_ERROR);
 						return false;
@@ -305,7 +305,7 @@ bool LocalFullFileBackup::run()
 					std::unique_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
 
 					bool b = build_chunk_hashs(sourcef.get(),
-						metadataf.get(), NULL, destf.get(), false);
+						metadataf.get(), nullptr, destf.get(), false);
 
 					if (!b)
 					{

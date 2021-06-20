@@ -46,7 +46,7 @@ bool write_tokens()
 	chmod(tokens_path, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
 #endif
 
-	std::vector<SFile> files = getFilesWin(tokens_path, NULL, false, false);
+	std::vector<SFile> files = getFilesWin(tokens_path, nullptr, false, false);
 
 	for(size_t i=0;i<users.size();++i)
 	{

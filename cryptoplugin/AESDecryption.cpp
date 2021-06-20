@@ -33,7 +33,7 @@ AESDecryption::AESDecryption(const std::string &password, bool hash_password)
 		memcpy(m_sbbKey.BytePtr(), password.c_str(), password.size());
 	}
 
-	dec=NULL;
+	dec=nullptr;
 }
 
 AESDecryption::~AESDecryption()
@@ -43,7 +43,7 @@ AESDecryption::~AESDecryption()
 
 std::string AESDecryption::decrypt(const std::string &data)
 {
-	if(dec==NULL)
+	if(dec==nullptr)
 	{
 		size_t done=0;
 		if(!iv_buffer.empty() &&  iv_buffer.size()+data.size()>=CryptoPP::AES::BLOCKSIZE)
@@ -92,7 +92,7 @@ std::string AESDecryption::decrypt(const std::string &data)
 size_t AESDecryption::decrypt(char *data, size_t data_size)
 {
 	size_t offset=0;
-	if(dec==NULL)
+	if(dec==nullptr)
 	{
 		size_t done=0;
 		if(!iv_buffer.empty() &&  iv_buffer.size()+data_size>=CryptoPP::AES::BLOCKSIZE)

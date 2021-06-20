@@ -307,7 +307,7 @@ void RestoreFiles::operator()()
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	FileClient fc(false, client_token, 3,
-		true, this, NULL);
+		true, this, nullptr);
 
 	log("Starting restore...", LL_INFO);
 
@@ -342,7 +342,7 @@ void RestoreFiles::operator()()
 		}
 
 		FileClient fc_metadata(false, client_token, 3,
-			true, this, NULL);
+			true, this, nullptr);
 
 		if (!connectFileClient(fc_metadata))
 		{
@@ -421,7 +421,7 @@ void RestoreFiles::operator()()
 			return;
 		}
 
-		curr_restore_updater = NULL;
+		curr_restore_updater = nullptr;
 
 		int64 transferred_bytes = metadata_thread->getTransferredBytes();
 
@@ -492,7 +492,7 @@ bool RestoreFiles::connectFileClient( FileClient& fc )
 {
 	IPipe* np = new_fileclient_connection();
 
-	if(np!=NULL)
+	if(np!=nullptr)
 	{
 		fc.Connect(np);
 		return true;
@@ -508,7 +508,7 @@ bool RestoreFiles::downloadFilelist( FileClient& fc )
 	filelist = Server->openTemporaryFile();
 	filelist_del.reset(filelist);
 
-	if(filelist==NULL)
+	if(filelist==nullptr)
 	{
 		return false;
 	}
@@ -906,7 +906,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 						{
 							std::unique_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
 
-							if (orig_file.get() == NULL)
+							if (orig_file.get() == nullptr)
 							{
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 								{
@@ -930,7 +930,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 					{
 						std::unique_ptr<IFsFile> restore_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 
-						if (restore_file.get() == NULL)
+						if (restore_file.get() == nullptr)
 						{
 							log("Error opening new file \"" + local_fn + "\" for restore. " + os_last_error_str(), LL_ERROR);
 							return false;
@@ -960,7 +960,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	std::unique_ptr<FileClientChunked> fc_chunked = createFcChunked();
 
-	if(fc_chunked.get()==NULL)
+	if(fc_chunked.get()==nullptr)
 	{
 		return false;
 	}
@@ -1326,7 +1326,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						--depth;			
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
-                            metadata, false, true, folder_items.back(), NULL);
+                            metadata, false, true, folder_items.back(), nullptr);
 
 						server_path = ExtractFilePath(server_path, "/");
 						restore_path = ExtractFilePath(restore_path, os_file_sep());
@@ -1557,7 +1557,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}
 						}
 #else
-						if (orig_file.get() == NULL
+						if (orig_file.get() == nullptr
 							&& use_open_fallback)
 						{
 							log("Cannot open file \"" + local_fn + "\" for writing. Unlinking file and creating new one. " + os_last_error_str(), LL_INFO);
@@ -1576,7 +1576,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						}
 #endif
 
-						if(orig_file.get()==NULL)
+						if(orig_file.get()==nullptr)
 						{
 							int ll = LL_ERROR;
 							if (!(restore_flags & restore_flag_ignore_overwrite_failures))
@@ -1601,13 +1601,13 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							orig_file.reset();
 
 							restore_download->addToQueueFull(line, server_fn, local_fn,
-								data.size, metadata, false, true, 0, NULL);
+								data.size, metadata, false, true, 0, nullptr);
 						}
 						else
 						{		
 							IFile* chunkhashes = Server->openTemporaryFile();
 
-							if(chunkhashes==NULL)
+							if(chunkhashes==nullptr)
 							{
 								log("Cannot open temporary file for chunk hashes of file \""+local_fn+"\". Not restoring file. " + os_last_error_str(), LL_ERROR);
 								has_error=true;
@@ -1627,8 +1627,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								}
 								else
 								{
-									hashf.reset(new TreeHash(NULL));
-									hashf2.reset(new TreeHash(NULL));
+									hashf.reset(new TreeHash(nullptr));
+									hashf2.reset(new TreeHash(nullptr));
 									hash_key = "thash";
 								}
 
@@ -1644,8 +1644,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 										cbt_hash_file = getCbtHashFile(local_fn);
 									}
 
-									if (build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL,
-										NULL, false, hashf.get(), &extent_iterator, cbt_hash_file))
+									if (build_chunk_hashs(orig_file.get(), chunkhashes, nullptr, nullptr, false, nullptr,
+										nullptr, false, hashf.get(), &extent_iterator, cbt_hash_file))
 									{
 										calc_hashes = true;
 										shahash = hashf->finalize();
@@ -1653,7 +1653,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 												
 									IFile* tmp_f = Server->openTemporaryFile();
 									ScopedDeleteFile del_tmp_f(tmp_f);
-									if (build_chunk_hashs(orig_file.get(), tmp_f, NULL, NULL, false, NULL, NULL, false, hashf2.get()))
+									if (build_chunk_hashs(orig_file.get(), tmp_f, nullptr, nullptr, false, nullptr, nullptr, false, hashf2.get()))
 									{
 										assert(shahash == hashf2->finalize());
 									}
@@ -1672,12 +1672,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 										}
 
 										FsExtentIterator extent_iterator(orig_file.get());
-                                        build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL, NULL,
+                                        build_chunk_hashs(orig_file.get(), chunkhashes, nullptr, nullptr, false, nullptr, nullptr,
 											false, hashf.get(), &extent_iterator, cbt_hash_file);
 
 										IFile* tmp_f = Server->openTemporaryFile();
 										ScopedDeleteFile del_tmp_f(tmp_f);
-										if (build_chunk_hashs(orig_file.get(), tmp_f, NULL, NULL, false, NULL, NULL, false, hashf2.get()))
+										if (build_chunk_hashs(orig_file.get(), tmp_f, nullptr, nullptr, false, nullptr, nullptr, false, hashf2.get()))
 										{
 											assert(hashf->finalize() == hashf2->finalize());
 										}
@@ -1692,7 +1692,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									skipped_bytes += data.size;
 
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-                                        data.size, metadata, false, true, 0, NULL);
+                                        data.size, metadata, false, true, 0, nullptr);
 
 									std::string tmpfn = chunkhashes->getFilename();
 									delete chunkhashes;
@@ -1703,7 +1703,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 					else
 					{
-						IFsFile* orig_file = NULL;
+						IFsFile* orig_file = nullptr;
 						if (restore_flags & restore_flag_open_all_files_first)
 						{
 							std::map<std::string, IFsFile*>::iterator it = open_files.find(local_fn);
@@ -1721,7 +1721,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						if (data.size == 0)
 						{
 							std::unique_ptr<IFile> touch_file;
-							if (orig_file == NULL)
+							if (orig_file == nullptr)
 							{
 								touch_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 							}
@@ -1730,7 +1730,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								touch_file.reset(orig_file);
 							}
 
-							if (touch_file.get() == NULL)
+							if (touch_file.get() == nullptr)
 							{
 								log("Cannot touch file \"" + local_fn + "\". " + os_last_error_str(), LL_ERROR);
 								has_error = true;
@@ -1738,7 +1738,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							else
 							{
 								restore_download->addToQueueFull(line, server_fn, local_fn,
-									data.size, metadata, false, true, 0, NULL);
+									data.size, metadata, false, true, 0, nullptr);
 							}
 						}
 						else
@@ -1852,13 +1852,13 @@ std::unique_ptr<FileClientChunked> RestoreFiles::createFcChunked()
 {
 	IPipe* conn = new_fileclient_connection();
 
-	if(conn==NULL)
+	if(conn==nullptr)
 	{
 		return std::unique_ptr<FileClientChunked>();
 	}
 
 	return std::unique_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
-		NULL, client_token, NULL));
+		nullptr, client_token, nullptr));
 }
 
 void RestoreFiles::log_progress(const std::string & fn, int64 total, int64 downloaded, int64 speed_bps)
@@ -1932,8 +1932,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				}
 				
 				bool is_included = true;
-				if (!IndexThread::isIncluded(include_dirs, cpath, NULL)
-					&& !IndexThread::isIncluded(include_dirs, csharepath, NULL))
+				if (!IndexThread::isIncluded(include_dirs, cpath, nullptr)
+					&& !IndexThread::isIncluded(include_dirs, csharepath, nullptr))
 				{
 					has_include_exclude = true;
 					is_included = false;
@@ -2044,7 +2044,7 @@ bool RestoreFiles::deleteFileOnRestart( const std::string& fpath )
 
 bool RestoreFiles::deleteFolderOnRestart( const std::string& fpath )
 {
-	std::vector<SFile> files = getFiles(os_file_prefix(fpath), NULL, ignore_other_fs);
+	std::vector<SFile> files = getFiles(os_file_prefix(fpath), nullptr, ignore_other_fs);
 
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -2105,7 +2105,7 @@ void RestoreFiles::calculateDownloadSpeed(FileClient & fc, FileClientChunked * f
 
 	if (ctime - speed_set_time>10000)
 	{
-		int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked != NULL ? fc_chunked->getTransferredBytes() : 0);
+		int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked != nullptr ? fc_chunked->getTransferredBytes() : 0);
 
 		int64 new_bytes = received_data_bytes - last_speed_received_bytes;
 		int64 passed_time = ctime - speed_set_time;
@@ -2206,7 +2206,7 @@ std::pair<IFile*, int64> RestoreFiles::getCbtHashFile(const std::string & fn)
 	}
 	else
 	{
-		IFile* nf = NULL;
+		IFile* nf = nullptr;
 		cbt_hash_files[vol] = std::make_pair(nf, -1);
 		return std::make_pair(nf, -1);
 	}

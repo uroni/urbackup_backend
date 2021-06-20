@@ -138,9 +138,9 @@ std::string getSystemServerName(bool use_fqdn)
 	addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
-	if(getaddrinfo(hostname, NULL, NULL, &h)==0)
+	if(getaddrinfo(hostname, nullptr, nullptr, &h)==0)
 	{
-		if(h->ai_canonname==NULL ||
+		if(h->ai_canonname==nullptr ||
 			strlower(h->ai_canonname)==strlower(hostname))
 		{
 			ret = hostname;

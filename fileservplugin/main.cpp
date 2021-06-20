@@ -30,7 +30,7 @@
 #include "log.h"
 
 std::fstream logfile;
-CTCPFileServ *TCPServer=NULL;
+CTCPFileServ *TCPServer=nullptr;
 
 #ifdef LINUX
 #include <sys/types.h>
@@ -336,7 +336,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if(suc==false)
 	{
 		delete TCPServer;
-		TCPServer=NULL;
+		TCPServer=nullptr;
 
 #ifdef _WIN32
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);

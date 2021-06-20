@@ -102,7 +102,7 @@ namespace
 		IFile* out = Server->openFile(tmp_output, MODE_WRITE);
 		ObjectScope out_file(out);
 
-		if(out==NULL)
+		if(out==nullptr)
 		{
 			Server->Log("Error opening output file \""+output+"\"", LL_ERROR);
 			return false;
@@ -112,7 +112,7 @@ namespace
 		{
 			std::unique_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
 
-			if(vhdfile->isOpen() && vhdfile->getParent()!=NULL)
+			if(vhdfile->isOpen() && vhdfile->getParent()!=nullptr)
 			{
 				if(vhdfile->isCompressed())
 				{
@@ -217,7 +217,7 @@ namespace
 		else
 		{
 			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);
-			return NULL;
+			return nullptr;
 		}
 	}
 	
@@ -263,7 +263,7 @@ namespace
 		for(size_t i=0;i<fn.size();++i)
 		{
 			std::unique_ptr<IFile> f(Server->openFile(fn[i]+".mbr", MODE_READ));
-			if(f.get()==NULL)
+			if(f.get()==nullptr)
 			{
 				Server->Log("Could not open MBR file "+fn[i]+".mbr", LL_ERROR);
 				exit(1);
@@ -329,7 +329,7 @@ namespace
 
 			input_files[i] = new FileWrapper(in, skip);
 
-			FSNTFS *ntfs = new FSNTFS(input_files[i], IFSImageFactory::EReadaheadMode_None, false, NULL);
+			FSNTFS *ntfs = new FSNTFS(input_files[i], IFSImageFactory::EReadaheadMode_None, false, nullptr);
 
 			if(!ntfs->hasError())
 			{
@@ -384,7 +384,7 @@ namespace
 			int64 out_pos = cpart->start_sector*c_sector_size;
 			int64 max_pos = out_pos + cpart->nr_sector*c_sector_size;
 
-			if(input_fs[i]!=NULL)
+			if(input_fs[i]!=nullptr)
 			{
 				Server->Log("Optimized by only writing used NTFS sectors...");
 
@@ -394,7 +394,7 @@ namespace
 				for(int64 block=0;block<numblocks;++block)
 				{
 					IFilesystem::IFsBuffer* buf = input_fs[i]->readBlock(block);
-					if(buf!=NULL)
+					if(buf!=nullptr)
 					{
 						fs_buffer fsb(input_fs[i], buf);
 
@@ -580,7 +580,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!compress_file.empty())
 	{
 		IFile* in = Server->openFile(compress_file, MODE_READ_SEQUENTIAL);
-		if(in==NULL)
+		if(in==nullptr)
 		{
 			Server->Log("Cannot open file \""+compress_file+"\" to compress", LL_ERROR);
 			exit(1);
@@ -752,7 +752,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs("\\\\.\\"+devinfo+":", IFSImageFactory::EReadaheadMode_None, false, NULL);
+		FSNTFS ntfs("\\\\.\\"+devinfo+":", IFSImageFactory::EReadaheadMode_None, false, nullptr);
 	
 		if(!ntfs.hasError())
 		{
@@ -766,7 +766,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		Server->Log("VHDCopy.");
 		IVHDFile* in = open_device_file(vhdcopy_in);
-		if(in==NULL || in->isOpen()==false)
+		if(in==nullptr || in->isOpen()==false)
 		{
 			Server->Log("Error opening image file \""+vhdcopy_in+"\"", LL_ERROR);
 			exit(4);
@@ -785,7 +785,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else
 		{
 			IFile *out=Server->openFile(vhdcopy_out, MODE_RW);
-			if(out==NULL)
+			if(out==nullptr)
 			{
 				Server->Log("Couldn't open output file", LL_ERROR);
 				exit(6);
@@ -1034,7 +1034,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		IFile *hf1=Server->openFile(hashfilecomp_1, MODE_READ);
 		IFile *hf2=Server->openFile(Server->getServerParameter("hashfilecomp_2"), MODE_READ);
 		
-		if(hf1==NULL || hf2==NULL )
+		if(hf1==nullptr || hf2==nullptr )
 		{
 			Server->Log("Error opening hashfile", LL_ERROR);
 		}
@@ -1104,7 +1104,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		std::unique_ptr<IVHDFile> in(open_device_file(image_verify));
 
-		if(in.get()==NULL || in->isOpen()==false)
+		if(in.get()==nullptr || in->isOpen()==false)
 		{
 			Server->Log("Error opening Image-File \""+image_verify+"\"", LL_ERROR);
 			exit(4);
@@ -1119,7 +1119,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
-		if(hashfile==NULL)
+		if(hashfile==nullptr)
 		{
 			Server->Log("Error opening hashfile");
 			exit(5);
@@ -1233,7 +1233,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		std::unique_ptr<IVHDFile> in(open_device_file(device_verify));
 
-		if(in.get()==NULL || in->isOpen()==false)
+		if(in.get()==nullptr || in->isOpen()==false)
 		{
 			Server->Log("Error opening Image-File \""+device_verify+"\"", LL_ERROR);
 			exit(4);
@@ -1241,7 +1241,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		int skip=1024*512;
 		FileWrapper wrapper(in.get(), skip);
-		FSNTFS fs(&wrapper, IFSImageFactory::EReadaheadMode_None, false, NULL);
+		FSNTFS fs(&wrapper, IFSImageFactory::EReadaheadMode_None, false, nullptr);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -1257,7 +1257,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
-		if(hashfile==NULL)
+		if(hashfile==nullptr)
 		{
 			Server->Log("Error opening hashfile "+s_hashfile);
 			exit(7);
@@ -1285,7 +1285,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				fs_buffer buf(&fs, fs.readBlock(currpos/ntfs_blocksize));
 
-				if(buf.get()==NULL)
+				if(buf.get()==nullptr)
 				{
 					Server->Log("Could not read block "+convert(currpos/ntfs_blocksize), LL_ERROR);
 				}
@@ -1477,7 +1477,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(Server->getServerParameter("fix")!="true")
 		{
-			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, NULL);
+			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, nullptr);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);
@@ -1486,7 +1486,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else
 		{
-			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, NULL);
+			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, nullptr);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);

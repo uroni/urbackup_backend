@@ -151,7 +151,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 
 	bool local_encrypted = false;
 	bool local_compressed = false;
-	IECDHKeyExchange* shared_key_exchange = NULL;
+	IECDHKeyExchange* shared_key_exchange = nullptr;
 	std::string ret_params;
 
 	if (!internet_conn)
@@ -204,7 +204,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 		tcpstack.Send(pipe, "empty identity");
 		return;
 	}
-	if(crypto_fak==NULL)
+	if(crypto_fak==nullptr)
 	{
 		Server->Log("Signature error: No crypto module", LL_ERROR);
 		tcpstack.Send(pipe, "no crypto");
@@ -264,7 +264,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	if( (!pubkeys.ecdsa409k1_key.empty() && crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge, signature_ecdsa409k1))
 		|| (pubkeys.ecdsa409k1_key.empty() && !pubkeys.dsa_key.empty() && crypto_fak->verifyDataDSA(pubkeys.dsa_key, challenge, signature)) )
 	{
-		if (challenge_it->second.shared_key_exchange==NULL ||
+		if (challenge_it->second.shared_key_exchange==nullptr ||
 			(crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge + pubkey_ecdh233k1, signature_ecdh233k1) &&
 				!(ecdh_shared_key = challenge_it->second.shared_key_exchange->getSharedKey(pubkey_ecdh233k1)).empty() &&
 				!(secret_session_key_decrypted = crypto_fak->decryptAuthenticatedAES(secret_session_key,
@@ -475,7 +475,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 	}
 	else
 	{
-		process_lock.relock(NULL);
+		process_lock.relock(nullptr);
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
@@ -486,7 +486,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 
 		async_file_index[async_id] = new_async_file_list;
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		IndexThread::refResult(curr_result_id);
 
@@ -654,7 +654,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 	}
 	else
 	{
-		process_lock.relock(NULL);
+		process_lock.relock(nullptr);
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
@@ -666,7 +666,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 		async_file_index[async_id] = new_async_file_list;
 		Server->Log("Async index " + bytesToHex(async_id), LL_DEBUG);
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		IndexThread::refResult(curr_result_id);
 
@@ -705,7 +705,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 			}
 		}
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		Server->Log("Async index " + async_id + " not found", LL_DEBUG);
 
@@ -715,7 +715,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	{
 		unsigned int result_id = it->second.result_id;
 		async_file_index.erase(it);
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		IndexThread::removeResult(result_id);
 
@@ -981,7 +981,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 
 		SRunningProcess* proc = getRunningFileBackupProcess(std::string(), 0);
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			removeRunningProcess(proc->id, true);
 		}
@@ -1016,7 +1016,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 
 		SRunningProcess* proc = getRunningFileBackupProcess(server_token, watoi64(params["status_id"]));
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			removeRunningProcess(proc->id, true);
 		}
@@ -1050,7 +1050,7 @@ void ClientConnector::CMD_BACKUP_FAILED(const std::string & cmd)
 
 		SRunningProcess* proc = getRunningFileBackupProcess(server_token, watoi64(params["status_id"]));
 
-		if (proc != NULL)
+		if (proc != nullptr)
 		{
 			removeRunningProcess(proc->id, false);
 		}
@@ -1068,7 +1068,7 @@ int64 ClientConnector::getLastBackupTime()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT strftime('%s',last_backup) AS last_backup FROM status", false);
-	if (q == NULL)
+	if (q == nullptr)
 		return 0;
 
 	int timeoutms=300;
@@ -1099,9 +1099,9 @@ std::string ClientConnector::getCurrRunningJob(bool reset_done, int& pcdone)
 
 	SRunningProcess* proc = getActiveProcess(x_pingtimeout);
 
-	if(proc==NULL )
+	if(proc==nullptr )
 	{
-		lock_process.relock(NULL);
+		lock_process.relock(nullptr);
 		return getHasNoRecentBackup();
 	}
 	else
@@ -1120,7 +1120,7 @@ SChannel * ClientConnector::getCurrChannel()
 			return &channel_pipes[i];
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 void ClientConnector::CMD_STATUS(const std::string &cmd)
@@ -1251,7 +1251,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 
 	SRunningProcess* proc = getRunningFileBackupProcess(server_token, 0);
 
-	if (proc == NULL)
+	if (proc == nullptr)
 	{
 		return;
 	}
@@ -1303,7 +1303,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	
 	SRunningProcess* proc = getRunningBackupProcess(server_token, watoi64(params["status_id"]));
 
-	if (proc == NULL)
+	if (proc == nullptr)
 	{
 		return;
 	}
@@ -1342,7 +1342,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 
 		SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
 
-		img_download_running = proc != NULL;
+		img_download_running = proc != nullptr;
 	}
 
 	if(!img_download_running)
@@ -1396,7 +1396,7 @@ void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd, const std::string
 	lasttime=Server->getTimeMS();
 	IScopedLock lock(backup_mutex);
 	SChannel* chan = getCurrChannel();
-	if (chan != NULL && chan->state == SChannel::EChannelState_Pinging)
+	if (chan != nullptr && chan->state == SChannel::EChannelState_Pinging)
 	{
 		chan->state = SChannel::EChannelState_Idle;
 	}
@@ -1712,7 +1712,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				bitmapleft = watoi(f_cbitmapsize->second);
 
 				bitmapfile = Server->openTemporaryFile();
-				if (bitmapfile == NULL)
+				if (bitmapfile == nullptr)
 				{
 					Server->Log("Error creating temporary bitmap file in CMD_INCR_IMAGE", LL_ERROR);
 					do_quit = true;
@@ -1721,7 +1721,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 			else
 			{
-				bitmapfile = NULL;
+				bitmapfile = nullptr;
 			}
 
 			int running_jobs = 2;
@@ -1756,7 +1756,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 
 			hashdatafile=Server->openTemporaryFile();
-			if(hashdatafile==NULL)
+			if(hashdatafile==nullptr)
 			{
 				Server->Log("Error creating temporary file in CMD_INCR_IMAGE", LL_ERROR);
 				do_quit=true;
@@ -1785,7 +1785,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 
 				if(*dataleft == 0)
 				{
-					if (bitmapfile == NULL
+					if (bitmapfile == nullptr
 						|| datafile==bitmapfile)
 					{
 						hashdataok = true;
@@ -2406,7 +2406,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 	{
 		IScopedLock lock(process_mutex);
 		SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
-		img_download_running = proc != NULL;
+		img_download_running = proc != nullptr;
 	}
 
 	if(!img_download_running)
@@ -2423,7 +2423,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 				{
 					IScopedLock lock(process_mutex);
 					SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
-					if (proc != NULL)
+					if (proc != nullptr)
 					{
 						progress = proc->pcdone;
 					}
@@ -2591,7 +2591,7 @@ void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 {
 	hashdatafile=Server->openTemporaryFile();
-	if(hashdatafile==NULL)
+	if(hashdatafile==nullptr)
 	{
 		Server->Log("Error creating temporary file in CMD_CLIENT_UPDATE", LL_ERROR);
 		do_quit=true;
@@ -2827,7 +2827,7 @@ void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
 
 void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 {
-	if(crypto_fak==NULL)
+	if(crypto_fak==nullptr)
 	{
 		Server->Log("No cryptoplugin present. Action not possible.", LL_ERROR);
 		tcpstack.Send(pipe, "");
@@ -2956,13 +2956,13 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		restore_process_id = ++curr_backup_running_id;
 	}
 
-	if (crypto_fak != NULL
+	if (crypto_fak != nullptr
 		&& client_token_encrypted)
 	{
 		std::unique_ptr<ISettingsReader> access_keys(
 			Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
-		if (access_keys.get() != NULL)
+		if (access_keys.get() != nullptr)
 		{
 			std::string access_key;
 			if (access_keys->getValue("key." + server_token, &access_key))
@@ -3006,7 +3006,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		++ask_restore_ok;
 		status_updated = true;
 
-		if(restore_files!=NULL)
+		if(restore_files!=nullptr)
 		{
 			delete restore_files;
 		}
@@ -3031,28 +3031,28 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 
 		ret.set("accepted", true);
 
-		if(restore_files!=NULL)
+		if(restore_files!=nullptr)
 		{
 			ret.set("process_id", restore_files->get_local_process_id());
 
 			Server->createThread(restore_files, "file restore", IServer::CreateThreadFlags_LargeStackSize);
-			restore_files=NULL;
+			restore_files=nullptr;
 		}
 	}
 	else
 	{
 		restore_ok_status = RestoreOk_Declined;
 
-		if (restore_files != NULL)
+		if (restore_files != nullptr)
 		{
 			restore_files->set_restore_declined(true);
 			Server->createThread(restore_files, "file restore", IServer::CreateThreadFlags_LargeStackSize);
-			restore_files = NULL;
+			restore_files = nullptr;
 		}
 	}
 
 	delete restore_files;
-	restore_files=NULL;
+	restore_files=nullptr;
 
 	ret.set("ok", true);
 	tcpstack.Send(pipe, ret.stringify(false));
@@ -3132,7 +3132,7 @@ void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
 
 	async_file_index[async_id] = new_async_file_list;
 
-	lock.relock(NULL);
+	lock.relock(nullptr);
 
 	tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
 }

@@ -63,7 +63,7 @@ void register_token_callback()
 {
 	static TokenCallbackFactory* token_callback_factory = new TokenCallbackFactory();
 	IFileServ* filesrv = IndexThread::getFileSrv();
-	if(filesrv!=NULL)
+	if(filesrv!=nullptr)
 	{
 		filesrv->registerTokenCallbackFactory(token_callback_factory);
 	}

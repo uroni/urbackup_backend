@@ -327,13 +327,13 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 	if(pDev.empty())
 	{
 		Server->Log("Error reading device file name from "+pDevOrig+"-dev", LL_ERROR);
-		return NULL;
+		return nullptr;
 	}
 #endif
 
 	IFile *dev = Server->openFile(pDev, MODE_READ_DEVICE);
 
-	if(dev==NULL)
+	if(dev==nullptr)
 	{
 		int last_error;
 #ifdef _WIN32
@@ -342,7 +342,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 		last_error=errno;
 #endif
 		Server->Log("Error opening device file ("+pDev+") Errorcode: "+convert(last_error), LL_ERROR);
-		return NULL;
+		return nullptr;
 	}
 	char buffer[4096];
 	_u32 rc=dev->Read(buffer, 4096);
@@ -355,7 +355,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 		last_error = errno;
 #endif
 		Server->Log("Error reading data from device ("+pDev+"). Errorcode: " + convert(last_error), LL_ERROR);
-		return NULL;
+		return nullptr;
 	}
 
 	Server->destroy(dev);
@@ -474,7 +474,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 			if(fs2->hasError())
 			{
 				delete fs2;
-				return NULL;
+				return nullptr;
 			}
 			PrintInfo(fs2);
 			return fs2;
@@ -506,7 +506,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 			if (fs->hasError())
 			{
 				delete fs;
-				return NULL;
+				return nullptr;
 			}
 		}
 		PrintInfo(fs);
@@ -556,7 +556,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, 
 		return NULL;
 #endif
 	}
-	return NULL;
+	return nullptr;
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string &parent_fn,
@@ -578,7 +578,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string
 #endif
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)
@@ -629,8 +629,8 @@ std::vector<FSImageFactory::SPartition> FSImageFactory::readPartitions(IFile* de
 {
 	gpt_style = false;
 
-	std::string mbr = dev->Read(0LL, 512, NULL);
-	std::string gpt_header = dev->Read(512LL, 512, NULL);
+	std::string mbr = dev->Read(0LL, 512, nullptr);
+	std::string gpt_header = dev->Read(512LL, 512, nullptr);
 
 	if (next(gpt_header, 0, "EFI PART"))
 	{

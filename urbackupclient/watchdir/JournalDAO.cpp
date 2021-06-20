@@ -19,27 +19,27 @@ JournalDAO::~JournalDAO()
 //@-SQLGenSetup
 void JournalDAO::prepareQueries()
 {
-	q_getDeviceInfo=NULL;
-	q_getRootId=NULL;
-	q_addFrn=NULL;
-	q_resetRoot=NULL;
-	q_getFrnEntryId=NULL;
-	q_getFrnChildren=NULL;
-	q_delFrnEntry=NULL;
-	q_getNameAndPid=NULL;
-	q_insertJournal=NULL;
-	q_updateJournalId=NULL;
-	q_updateJournalLastUsn=NULL;
-	q_updateFrnNameAndPid=NULL;
-	q_insertJournalData=NULL;
-	q_getJournalData=NULL;
-	q_getJournalDataSingle=NULL;
-	q_updateSetJournalIndexDone=NULL;
-	q_delJournalData=NULL;
-	q_delFrnEntryViaFrn=NULL;
-	q_delJournalDeviceId=NULL;
-	q_getHardLinkParents=NULL;
-	q_deleteHardlink=NULL;
+	q_getDeviceInfo=nullptr;
+	q_getRootId=nullptr;
+	q_addFrn=nullptr;
+	q_resetRoot=nullptr;
+	q_getFrnEntryId=nullptr;
+	q_getFrnChildren=nullptr;
+	q_delFrnEntry=nullptr;
+	q_getNameAndPid=nullptr;
+	q_insertJournal=nullptr;
+	q_updateJournalId=nullptr;
+	q_updateJournalLastUsn=nullptr;
+	q_updateFrnNameAndPid=nullptr;
+	q_insertJournalData=nullptr;
+	q_getJournalData=nullptr;
+	q_getJournalDataSingle=nullptr;
+	q_updateSetJournalIndexDone=nullptr;
+	q_delJournalData=nullptr;
+	q_delFrnEntryViaFrn=nullptr;
+	q_delJournalDeviceId=nullptr;
+	q_getHardLinkParents=nullptr;
+	q_deleteHardlink=nullptr;
 }
 
 //@-SQLGenDestruction
@@ -78,7 +78,7 @@ void JournalDAO::destroyQueries()
 */
 JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::string& device_name)
 {
-	if(q_getDeviceInfo==NULL)
+	if(q_getDeviceInfo==nullptr)
 	{
 		q_getDeviceInfo=db->Prepare("SELECT journal_id, last_record, index_done FROM journal_ids WHERE device_name=?", false);
 	}
@@ -105,7 +105,7 @@ JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::string& device_name
 */
 JournalDAO::CondInt64 JournalDAO::getRootId(const std::string& name)
 {
-	if(q_getRootId==NULL)
+	if(q_getRootId==nullptr)
 	{
 		q_getRootId=db->Prepare("SELECT id FROM map_frn WHERE rid=-1 AND name=?", false);
 	}
@@ -131,7 +131,7 @@ JournalDAO::CondInt64 JournalDAO::getRootId(const std::string& name)
 */
 void JournalDAO::addFrn(const std::string& name, int64 pid, int64 pid_high, int64 frn, int64 frn_high, int64 rid)
 {
-	if(q_addFrn==NULL)
+	if(q_addFrn==nullptr)
 	{
 		q_addFrn=db->Prepare("INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?, ?, ? )", false);
 	}
@@ -153,7 +153,7 @@ void JournalDAO::addFrn(const std::string& name, int64 pid, int64 pid_high, int6
 */
 void JournalDAO::resetRoot(int64 rid)
 {
-	if(q_resetRoot==NULL)
+	if(q_resetRoot==nullptr)
 	{
 		q_resetRoot=db->Prepare("DELETE FROM map_frn WHERE rid=?", false);
 	}
@@ -171,7 +171,7 @@ void JournalDAO::resetRoot(int64 rid)
 */
 JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 frn_high, int64 rid)
 {
-	if(q_getFrnEntryId==NULL)
+	if(q_getFrnEntryId==nullptr)
 	{
 		q_getFrnEntryId=db->Prepare("SELECT id FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
@@ -198,7 +198,7 @@ JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 frn_high, int64
 */
 std::vector<JournalDAO::SFrn> JournalDAO::getFrnChildren(int64 pid, int64 pid_high, int64 rid)
 {
-	if(q_getFrnChildren==NULL)
+	if(q_getFrnChildren==nullptr)
 	{
 		q_getFrnChildren=db->Prepare("SELECT frn, frn_high FROM map_frn WHERE pid=? AND pid_high=? AND rid=?", false);
 	}
@@ -225,7 +225,7 @@ std::vector<JournalDAO::SFrn> JournalDAO::getFrnChildren(int64 pid, int64 pid_hi
 */
 void JournalDAO::delFrnEntry(int64 id)
 {
-	if(q_delFrnEntry==NULL)
+	if(q_delFrnEntry==nullptr)
 	{
 		q_delFrnEntry=db->Prepare("DELETE FROM map_frn WHERE id=?", false);
 	}
@@ -243,7 +243,7 @@ void JournalDAO::delFrnEntry(int64 id)
 */
 JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 frn_high, int64 rid)
 {
-	if(q_getNameAndPid==NULL)
+	if(q_getNameAndPid==nullptr)
 	{
 		q_getNameAndPid=db->Prepare("SELECT name, pid, pid_high FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
@@ -272,7 +272,7 @@ JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 frn_high, int
 */
 void JournalDAO::insertJournal(int64 journal_id, const std::string& device_name, int64 last_record)
 {
-	if(q_insertJournal==NULL)
+	if(q_insertJournal==nullptr)
 	{
 		q_insertJournal=db->Prepare("INSERT INTO journal_ids (journal_id, device_name, last_record, index_done) VALUES (?, ?, ?, 0)", false);
 	}
@@ -291,7 +291,7 @@ void JournalDAO::insertJournal(int64 journal_id, const std::string& device_name,
 */
 void JournalDAO::updateJournalId(int64 journal_id, const std::string& device_name)
 {
-	if(q_updateJournalId==NULL)
+	if(q_updateJournalId==nullptr)
 	{
 		q_updateJournalId=db->Prepare("UPDATE journal_ids SET journal_id=? WHERE device_name=?", false);
 	}
@@ -309,7 +309,7 @@ void JournalDAO::updateJournalId(int64 journal_id, const std::string& device_nam
 */
 void JournalDAO::updateJournalLastUsn(int64 last_record, const std::string& device_name)
 {
-	if(q_updateJournalLastUsn==NULL)
+	if(q_updateJournalLastUsn==nullptr)
 	{
 		q_updateJournalLastUsn=db->Prepare("UPDATE journal_ids SET last_record=? WHERE device_name=?", false);
 	}
@@ -327,7 +327,7 @@ void JournalDAO::updateJournalLastUsn(int64 last_record, const std::string& devi
 */
 void JournalDAO::updateFrnNameAndPid(const std::string& name, int64 pid, int64 pid_high, int64 id)
 {
-	if(q_updateFrnNameAndPid==NULL)
+	if(q_updateFrnNameAndPid==nullptr)
 	{
 		q_updateFrnNameAndPid=db->Prepare("UPDATE map_frn SET name=?, pid=?, pid_high=? WHERE id=?", false);
 	}
@@ -349,7 +349,7 @@ void JournalDAO::updateFrnNameAndPid(const std::string& name, int64 pid, int64 p
 */
 void JournalDAO::insertJournalData(const std::string& device_name, int64 journal_id, int64 usn, int64 reason, const std::string& filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes)
 {
-	if(q_insertJournalData==NULL)
+	if(q_insertJournalData==nullptr)
 	{
 		q_insertJournalData=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )", false);
 	}
@@ -378,7 +378,7 @@ void JournalDAO::insertJournalData(const std::string& device_name, int64 journal
 */
 std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::string& device_name)
 {
-	if(q_getJournalData==NULL)
+	if(q_getJournalData==nullptr)
 	{
 		q_getJournalData=db->Prepare("SELECT usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
 	}
@@ -412,7 +412,7 @@ std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::stri
 */
 JournalDAO::CondInt JournalDAO::getJournalDataSingle(const std::string& device_name)
 {
-	if(q_getJournalDataSingle==NULL)
+	if(q_getJournalDataSingle==nullptr)
 	{
 		q_getJournalDataSingle=db->Prepare("SELECT id FROM journal_data WHERE device_name=? LIMIT 1", false);
 	}
@@ -436,7 +436,7 @@ JournalDAO::CondInt JournalDAO::getJournalDataSingle(const std::string& device_n
 */
 void JournalDAO::updateSetJournalIndexDone(int index_done, const std::string& device_name)
 {
-	if(q_updateSetJournalIndexDone==NULL)
+	if(q_updateSetJournalIndexDone==nullptr)
 	{
 		q_updateSetJournalIndexDone=db->Prepare("UPDATE journal_ids SET index_done=? WHERE device_name=?", false);
 	}
@@ -454,7 +454,7 @@ void JournalDAO::updateSetJournalIndexDone(int index_done, const std::string& de
 */
 void JournalDAO::delJournalData(const std::string& device_name)
 {
-	if(q_delJournalData==NULL)
+	if(q_delJournalData==nullptr)
 	{
 		q_delJournalData=db->Prepare("DELETE FROM journal_data WHERE device_name=?", false);
 	}
@@ -471,7 +471,7 @@ void JournalDAO::delJournalData(const std::string& device_name)
 */
 void JournalDAO::delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid)
 {
-	if(q_delFrnEntryViaFrn==NULL)
+	if(q_delFrnEntryViaFrn==nullptr)
 	{
 		q_delFrnEntryViaFrn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
@@ -490,7 +490,7 @@ void JournalDAO::delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid)
 */
 void JournalDAO::delJournalDeviceId(const std::string& device_name)
 {
-	if(q_delJournalDeviceId==NULL)
+	if(q_delJournalDeviceId==nullptr)
 	{
 		q_delJournalDeviceId=db->Prepare("DELETE FROM journal_ids WHERE device_name=?", false);
 	}
@@ -508,7 +508,7 @@ void JournalDAO::delJournalDeviceId(const std::string& device_name)
 */
 std::vector<JournalDAO::SParentFrn> JournalDAO::getHardLinkParents(const std::string& volume, int64 frn_high, int64 frn_low)
 {
-	if(q_getHardLinkParents==NULL)
+	if(q_getHardLinkParents==nullptr)
 	{
 		q_getHardLinkParents=db->Prepare("SELECT parent_frn_high, parent_frn_low FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
 	}
@@ -536,7 +536,7 @@ std::vector<JournalDAO::SParentFrn> JournalDAO::getHardLinkParents(const std::st
 **/
 void JournalDAO::deleteHardlink(const std::string& vol, int64 frn_high, int64 frn_low)
 {
-	if(q_deleteHardlink==NULL)
+	if(q_deleteHardlink==nullptr)
 	{
 		q_deleteHardlink=db->Prepare("DELETE FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
 	}
@@ -549,7 +549,7 @@ void JournalDAO::deleteHardlink(const std::string& vol, int64 frn_high, int64 fr
 
 IQuery * JournalDAO::getJournalDataQ()
 {
-	if (q_getJournalData == NULL)
+	if (q_getJournalData == nullptr)
 	{
 		//Keep in sync with getJournalData()
 		q_getJournalData = db->Prepare("SELECT usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);

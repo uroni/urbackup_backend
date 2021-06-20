@@ -630,7 +630,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		IQuery *q=db->Prepare("EXPLAIN "+parsedSql, true);
 
-		if(q==NULL)
+		if(q==nullptr)
 		{
 			std::cout << "ERROR preparing statement: " << parsedSql << " Function: " << func << std::endl;
 			return AnnotatedCode(input.annotations, "");
@@ -775,10 +775,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 	gen_data.funcdecls+="\t"+funcdecl+"\r\n";
 	gen_data.variables+="\tIQuery* "+query_name+";\r\n";
-	gen_data.createQueriesCode+="\t"+query_name+"=NULL;\r\n";
+	gen_data.createQueriesCode+="\t"+query_name+"=nullptr;\r\n";
 	gen_data.destroyQueriesCode+="\tdb->destroyQuery("+query_name+");\r\n";
 
-	code+="\tif("+query_name+"==NULL)\r\n\t{\r\n\t";
+	code+="\tif("+query_name+"==nullptr)\r\n\t{\r\n\t";
 	code+="\t"+query_name+"=db->Prepare(\""+parsedSql+"\", false);\r\n";
 	code+="\t}\r\n";
 

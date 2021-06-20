@@ -162,7 +162,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 	bool background_worker_multi_trans_delete, IBackupFileSystem* cachefs)
 	: backend(backend), background_worker(backend, this, background_worker_manual_run,
 		background_worker_multi_trans_delete), with_prefix(false),
-	scrub_worker(NULL), scrub_mutex(Server->createMutex()), gen_mutex(Server->createMutex()),
+	scrub_worker(nullptr), scrub_mutex(Server->createMutex()), gen_mutex(Server->createMutex()),
 	unsynced_keys_mutex(Server->createMutex()),
 	curr_unsynced_keys(&unsynced_keys_a), other_unsynced_keys(&unsynced_keys_b),
 	put_shared_mutex(Server->createSharedMutex()),
@@ -192,7 +192,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 	IDatabase* db = getDatabase();
 	str_map params;
 	params["wal_autocheckpoint"] = "0";
-	if (db == NULL
+	if (db == nullptr
 		&& !Server->openDatabase(db_path, CLOUDDRIVE_DB, params))
 	{
 		std::string err = "Error opening database at " + db_path;
@@ -469,7 +469,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 	if (!scrub_obj.empty())
 	{
 		std::unique_ptr<IFile> tmpf(Server->openTemporaryFile());
-		IFsFile* ret_file = NULL;
+		IFsFile* ret_file = nullptr;
 		ScopedFreeObjRef<IFsFile*> free_get_file(ret_file);
 		std::string ret_md5sum;
 		unsigned int get_status;
@@ -522,7 +522,7 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 				addSystemEvent("cache_err_retry",
 						"Error creating directory for get file on cache",
 					"Error creating directory for GET-file with key " + bytesToHex(key) + " path " + ExtractFilePath(path) + ". " + syserr, LL_ERROR);
-                return NULL;
+                return nullptr;
             }
     }
 
@@ -693,7 +693,7 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 					return tmpl_file;
 				return cachefs->openFile(path, MODE_RW_CREATE);
 			}
-			return NULL;
+			return nullptr;
 		}
 		else if (backend_mirror != nullptr)
 		{
@@ -1148,7 +1148,7 @@ bool KvStoreFrontend::del(int64 cd_id, const std::vector<std::string>& keys, int
 	Server->Log("Deleting objects "+ hexkey+" (cd_id="+convert(cd_id)+")", LL_INFO);
 	hexkey = std::string();
 
-	if(scrub_worker!=NULL)
+	if(scrub_worker!=nullptr)
 	{
 		std::vector<std::pair<int64, std::string> > deleted_objects;
 		deleted_objects.resize(keys.size());
@@ -1158,7 +1158,7 @@ bool KvStoreFrontend::del(int64 cd_id, const std::vector<std::string>& keys, int
 			deleted_objects[i].second = keys[i];
 		}
 		IScopedLock lock(scrub_mutex.get());
-		if (scrub_worker != NULL)
+		if (scrub_worker != nullptr)
 		{
 			scrub_worker->add_deleted_objects(cd_id, deleted_objects);
 		}
@@ -1734,13 +1734,13 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 		std::string temp_file_path = temp_file->getFilename();
 		temp_file.reset();
 
-		IFsFile* last_f = NULL;
+		IFsFile* last_f = nullptr;
 		std::string md5sum_ret;
 		unsigned int get_status;
 		bool b = backend->get(import_callback.lastModifiedKey(), temp_file_path, import_callback.lastModifiedMd5sum(), 0, true, last_f, md5sum_ret, get_status);
 		ScopedDeleteFile delete_last_f(last_f);
 
-		if(!b || last_f==NULL)
+		if(!b || last_f==nullptr)
 		{
 			Server->Log("Error retrieving last modified file", LL_ERROR);
 			return false;
@@ -1860,7 +1860,7 @@ std::string KvStoreFrontend::scrub_position()
 {
 	IScopedLock lock(scrub_mutex.get());
 	
-	if (scrub_worker != NULL)
+	if (scrub_worker != nullptr)
 	{
 		return scrub_worker->get_position();
 	}
@@ -1871,7 +1871,7 @@ std::string KvStoreFrontend::scrub_stats()
 {
 	IScopedLock lock(scrub_mutex.get());
 
-	if (scrub_worker != NULL)
+	if (scrub_worker != nullptr)
 	{
 		return scrub_worker->stats();
 	}
@@ -1882,13 +1882,13 @@ std::string KvStoreFrontend::scrub_stats()
 void KvStoreFrontend::stop_scrub()
 {
 	IScopedLock lock(scrub_mutex.get());
-	if (scrub_worker != NULL)
+	if (scrub_worker != nullptr)
 	{
 		scrub_worker->quit();
 		if (Server->getThreadPool()->waitFor(scrub_worker->ticket, 1000))
 		{
 			delete scrub_worker;
-			scrub_worker = NULL;
+			scrub_worker = nullptr;
 		}
 	}
 }
@@ -2737,7 +2737,7 @@ void KvStoreFrontend::BackgroundWorker::operator()()
 					mirror_pause)
 				{
 					paused = true;
-					lock.relock(NULL);
+					lock.relock(nullptr);
 					Server->wait(1000);
 					lock.relock(pause_mutex.get());
 				}
@@ -3661,7 +3661,7 @@ void KvStoreFrontend::ScrubWorker::operator()()
 
 			lock.relock(mutex.get());
 			deleted_objects.clear();
-			lock.relock(NULL);
+			lock.relock(nullptr);
 
 			if (Server->getTimeMS() - last_size_update_time > 2 * 60 * 60 * 1000)
 			{
@@ -3730,7 +3730,7 @@ void KvStoreFrontend::ScrubWorker::operator()()
 			scrubbed_transid_markers = true;
 		}
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		scrub_queue.stop();
 
@@ -3805,7 +3805,7 @@ void KvStoreFrontend::ScrubWorker::operator()()
 			{
 				lock.relock(mutex.get());
 				deleted_objects.clear();
-				lock.relock(NULL);
+				lock.relock(nullptr);
 
 				if (with_last_modified)
 				{
@@ -4029,7 +4029,7 @@ void KvStoreFrontend::PutDbWorker::operator()()
 		}
 		rowids.resize(other_items->size());
 
-		lock.relock(NULL);
+		lock.relock(nullptr);
 
 		bool needs_flush = false;
 
@@ -4260,7 +4260,7 @@ void KvStoreFrontend::ScrubThread::operator()()
 		if (unused_tmp_file.empty())
 		{
 			std::unique_ptr<IFile> tmpf(Server->openTemporaryFile());
-			if (tmpf.get() == NULL)
+			if (tmpf.get() == nullptr)
 			{
 				Server->Log("Error opening temporary file in scrub. " + os_last_error_str(), LL_ERROR);
 				scrub_queue.set_error(true);
@@ -4269,7 +4269,7 @@ void KvStoreFrontend::ScrubThread::operator()()
 			unused_tmp_file = tmpf->getFilename();
 		}
 		ScopedDeleteFn delete_fn(unused_tmp_file);
-		IFsFile* get_file = NULL;
+		IFsFile* get_file = nullptr;
 		std::string ret_md5sum;
 		unsigned int get_status;
 		ScopedFreeObjRef<IFsFile*> free_get_file(get_file);
@@ -4426,13 +4426,13 @@ void KvStoreFrontend::ScrubThread::operator()()
 				++scrub_queue.scrub_oks;
 		}
 
-		if (scrub_action == ScrubAction::Scrub && get_file == NULL && !curr_has_error)
+		if (scrub_action == ScrubAction::Scrub && get_file == nullptr && !curr_has_error)
 		{
 			Server->Log("No file while "+ strScrubAction(scrub_action)+" key "+
 				object_fn+" has_newer="+convert(has_newer), LL_ERROR);
 			++scrub_queue.scrub_errors;
 		}
-		if (b && get_file == NULL)
+		if (b && get_file == nullptr)
 		{
 			delete_fn.release();
 		}
@@ -4455,7 +4455,7 @@ void KvStoreFrontend::ScrubThread::operator()()
 		}
 
 		done_size += item.size;
-		if ( (!b || get_file != NULL) && !has_changes)
+		if ( (!b || get_file != nullptr) && !has_changes)
 		{
 			IScopedLock lock(new_md5sums_mutex);
 			has_changes = true;

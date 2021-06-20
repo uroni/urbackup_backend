@@ -77,7 +77,7 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 }
 
 FileMetadataPipe::FileMetadataPipe()
-	: PipeFileBase(std::string()), pipe(NULL),
+	: PipeFileBase(std::string()), pipe(nullptr),
 #ifdef _WIN32
 	hFile(INVALID_HANDLE_VALUE),
 	backup_read_state(-1),
@@ -92,7 +92,7 @@ FileMetadataPipe::FileMetadataPipe()
 
 FileMetadataPipe::~FileMetadataPipe()
 {
-	assert(token_callback.get() == NULL);
+	assert(token_callback.get() == nullptr);
 }
 
 
@@ -104,7 +104,7 @@ bool FileMetadataPipe::getExitCode( int& exit_code )
 
 bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes )
 {
-	if (token_callback.get() == NULL)
+	if (token_callback.get() == nullptr)
 	{
 		token_callback.reset(FileServ::newTokenCallback());
 	}
@@ -158,8 +158,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		{
 			metadata_buffer_size = 0;
 			metadata_buffer_off = 0;
-			curr_checksum = urb_adler32(0, NULL, 0);
-			if(callback==NULL)
+			curr_checksum = urb_adler32(0, nullptr, 0);
+			if(callback==nullptr)
 			{
 				metadata_state = MetadataState_Common;
 			}
@@ -205,7 +205,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addVarInt(file_meta.accessed);
 			meta_data.addVarInt(folder_items);
 			meta_data.addVarInt(metadata_id);
-			if(token_callback.get()!=NULL)
+			if(token_callback.get()!=nullptr)
 			{
 				meta_data.addString(token_callback->getFileTokens(local_fn));
 			}
@@ -248,7 +248,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		{
 			metadata_buffer_size = 0;
 			metadata_buffer_off = 0;
-			curr_checksum = urb_adler32(0, NULL, 0);
+			curr_checksum = urb_adler32(0, nullptr, 0);
 			metadata_state = MetadataState_Os;
 		}
 		return true;
@@ -417,7 +417,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		{
 			metadata_buffer_size = 0;
 			metadata_buffer_off = 0;
-			curr_checksum = urb_adler32(0, NULL, 0);
+			curr_checksum = urb_adler32(0, nullptr, 0);
 			metadata_state = MetadataState_RawFileData;
 			sha512_init(&transmit_file_ctx);
 		}
@@ -461,8 +461,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		if (metadata_buffer_size - metadata_buffer_off == 0)
 		{
 			transmit_wait_pipe->Write(std::string());
-			transmit_wait_pipe = NULL;
-			transmit_file = NULL;
+			transmit_wait_pipe = nullptr;
+			transmit_file = nullptr;
 			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token, active_gen);
 			metadata_state = MetadataState_Wait;
 		}
@@ -534,10 +534,10 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 					if (!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
 					{
-						callback = NULL;
+						callback = nullptr;
 					}
 
-					if (callback==NULL && !openFileHandle() )
+					if (callback==nullptr && !openFileHandle() )
 					{
 						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
@@ -567,15 +567,15 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					*buf = ID_METADATA_V1;
 					read_bytes = 1;
 					fn_off = 0;
-					curr_checksum = urb_adler32(0, NULL, 0);
+					curr_checksum = urb_adler32(0, nullptr, 0);
 
-					if(callback!=NULL)
+					if(callback!=nullptr)
 					{
 						std::string orig_path;
 						_u32 version = 0;
 						metadata_file.reset(callback->getMetadata(public_fn, &orig_path, &metadata_file_off, &metadata_file_size, &version, false));
 
-						if (metadata_file.get() == NULL)
+						if (metadata_file.get() == nullptr)
 						{
 							Server->Log("Error opening metadata file for \"" + public_fn + "\"", LL_ERROR);
 							errpipe->Write("Error opening metadata file for \"" + public_fn + "\"");
@@ -617,7 +617,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					*buf = ID_RAW_FILE;
 					read_bytes = 1;
 					fn_off = 0;
-					curr_checksum = urb_adler32(0, NULL, 0);
+					curr_checksum = urb_adler32(0, nullptr, 0);
 
 					return true;
 				}
@@ -1016,7 +1016,7 @@ namespace
 		while(true)
 		{
 			ssize_t bufsize;
-            bufsize = llistxattr(fn.c_str(), NULL, 0);
+            bufsize = llistxattr(fn.c_str(), nullptr, 0);
 
 			if(bufsize==-1)
 			{
@@ -1086,7 +1086,7 @@ namespace
 		while(true)
 		{
 			ssize_t bufsize;
-            bufsize = lgetxattr(fn.c_str(), key.c_str()+sizeof(unsigned int), NULL, 0);
+            bufsize = lgetxattr(fn.c_str(), key.c_str()+sizeof(unsigned int), nullptr, 0);
 
 			if(bufsize==-1)
 			{

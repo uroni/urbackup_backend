@@ -128,7 +128,7 @@ LocalBackup::LocalBackup(int64 local_process_id, int64 server_log_id,
 	int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id,
 	size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
 	const str_map& dest_secret_params)
-	: backup_updater_thread(NULL),
+	: backup_updater_thread(nullptr),
 	server_log_id(server_log_id), server_status_id(server_status_id),
 	backupid(backupid), server_token(std::move(server_token)), server_identity(std::move(server_identity)),
 	local_process_id(local_process_id), facet_id(facet_id),
@@ -152,7 +152,7 @@ bool LocalBackup::onStartBackup()
 void LocalBackup::onBackupFinish(bool image)
 {
 	backup_updater_thread->stop();
-	backup_updater_thread = NULL;
+	backup_updater_thread = nullptr;
 
 	log("Cleaning up old backups...", LL_INFO);
 

@@ -27,7 +27,7 @@ namespace
 	{
 		FILE* f=_popen(cmd.c_str(), "rt");
 		std::map<std::string, std::string> ret;
-		if(f!=NULL)
+		if(f!=nullptr)
 		{
 			std::string data;
 			char buf[1024];

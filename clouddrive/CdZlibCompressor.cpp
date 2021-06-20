@@ -71,7 +71,7 @@ CompressResult CdZlibCompressor::compress(bool finish, int & code)
 	else
 	{
 		if (code == Z_DATA_ERROR
-			&& strm.msg != NULL)
+			&& strm.msg != nullptr)
 		{
 			Server->Log(std::string("Zlib error: ") + strm.msg, LL_ERROR);
 		}

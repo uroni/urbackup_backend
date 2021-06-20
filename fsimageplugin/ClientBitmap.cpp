@@ -26,7 +26,7 @@ ClientBitmap::ClientBitmap(IFile * bitmap_file)
 
 void ClientBitmap::init(IFile * bitmap_file)
 {
-	if (bitmap_file == NULL)
+	if (bitmap_file == nullptr)
 	{
 		has_error = true;
 		return;

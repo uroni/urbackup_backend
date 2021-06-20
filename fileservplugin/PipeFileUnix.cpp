@@ -90,9 +90,9 @@ PipeFile::PipeFile(const std::string& pCmd)
 		return;
 	}
 	
-	const char* argv[] = {"sh", "-c", &pCmd[0], NULL};
-	const char* envp[] = {NULL};
-	if(posix_spawn(&child_pid, "/bin/sh", &fa, NULL, const_cast<char**>(argv), const_cast<char**>(envp))!=0)
+	const char* argv[] = {"sh", "-c", &pCmd[0], nullptr};
+	const char* envp[] = {nullptr};
+	if(posix_spawn(&child_pid, "/bin/sh", &fa, nullptr, const_cast<char**>(argv), const_cast<char**>(envp))!=0)
 	{
 		Server->Log("Error executing command: " + convert(errno), LL_ERROR);
 		has_error=true;

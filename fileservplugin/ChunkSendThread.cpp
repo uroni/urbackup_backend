@@ -61,8 +61,8 @@ namespace
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
-	: parent(parent), file(NULL), has_error(false), cbt_hash_file_info(),
-	vdl_vol_cache(NULL)
+	: parent(parent), file(nullptr), has_error(false), cbt_hash_file_info(),
+	vdl_vol_cache(nullptr)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
@@ -87,25 +87,25 @@ void ChunkSendThread::operator()(void)
 		}
 		else if (chunk.msg == ID_FREE_SERVER_FILE)
 		{
-			if (pipe_file_user.get()==NULL && file != NULL)
+			if (pipe_file_user.get()==nullptr && file != nullptr)
 			{
 				Server->Log("Closing file (free) " + file->getFilename(), LL_DEBUG);
 				Server->destroy(file);
 				assert(!s_filename.empty());
 				FileServ::decrShareActive(s_filename, share_active_gen);
-				file = NULL;
+				file = nullptr;
 			}
-			else if (pipe_file_user.get() != NULL)
+			else if (pipe_file_user.get() != nullptr)
 			{
-				file = NULL;
+				file = nullptr;
 			}
 			pipe_file_user.reset();
 
-			if (cbt_hash_file_info.cbt_hash_file != NULL
+			if (cbt_hash_file_info.cbt_hash_file != nullptr
 				&& cbt_hash_file_info.metadata_offset != -1)
 			{
 				Server->destroy(cbt_hash_file_info.cbt_hash_file);
-				cbt_hash_file_info.cbt_hash_file = NULL;
+				cbt_hash_file_info.cbt_hash_file = nullptr;
 			}
 
 			file_extents.clear();
@@ -118,20 +118,20 @@ void ChunkSendThread::operator()(void)
 				Server->Log("Error flushing output socket", LL_INFO);
 			}
 		}
-		else if(chunk.update_file!=NULL)
+		else if(chunk.update_file!=nullptr)
 		{
-			if(pipe_file_user.get() == NULL && file!=NULL)
+			if(pipe_file_user.get() == nullptr && file!=nullptr)
 			{
 				Server->Log("Closing file " + file->getFilename(), LL_DEBUG);
 				Server->destroy(file);
 				assert(!s_filename.empty());
 				FileServ::decrShareActive(s_filename, share_active_gen);
 			}
-			if (cbt_hash_file_info.cbt_hash_file != NULL
+			if (cbt_hash_file_info.cbt_hash_file != nullptr
 				&& cbt_hash_file_info.metadata_offset != -1)
 			{
 				Server->destroy(cbt_hash_file_info.cbt_hash_file);
-				cbt_hash_file_info.cbt_hash_file = NULL;
+				cbt_hash_file_info.cbt_hash_file = nullptr;
 			}
 			file=chunk.update_file;
 			Server->Log("Retaining file " + file->getFilename(), LL_DEBUG);
@@ -218,20 +218,20 @@ void ChunkSendThread::operator()(void)
 		}
 	}
 
-	if(pipe_file_user.get() == NULL && file!=NULL)
+	if(pipe_file_user.get() == nullptr && file!=nullptr)
 	{
 		Server->Log("Closing file (finish) " + file->getFilename(), LL_DEBUG);
 		Server->destroy(file);
 		assert(!s_filename.empty());
 		FileServ::decrShareActive(s_filename, share_active_gen);
-		file=NULL;
+		file=nullptr;
 	}
 
-	if (cbt_hash_file_info.cbt_hash_file != NULL
+	if (cbt_hash_file_info.cbt_hash_file != nullptr
 		&& cbt_hash_file_info.metadata_offset != -1)
 	{
 		Server->destroy(cbt_hash_file_info.cbt_hash_file);
-		cbt_hash_file_info.cbt_hash_file = NULL;
+		cbt_hash_file_info.cbt_hash_file = nullptr;
 	}
 
 	delete this;
@@ -239,7 +239,7 @@ void ChunkSendThread::operator()(void)
 
 bool ChunkSendThread::sendChunk(SChunk *chunk)
 {
-	if(file==NULL)
+	if(file==nullptr)
 	{
 		return false;
 	}
@@ -374,7 +374,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		if(script_eof)
 		{
-			parent->SendInt(NULL, 0);
+			parent->SendInt(nullptr, 0);
 			return false;
 		}
 
@@ -388,7 +388,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	bool sent_update=false;
 	char* cptr=chunk_buf+c_chunk_padding;
 	_i64 curr_pos=chunk->startpos;
-	unsigned int c_adler=urb_adler32(0, NULL, 0);
+	unsigned int c_adler=urb_adler32(0, nullptr, 0);
 	md5_hash.init();
 	unsigned int small_hash_num=0;
 	bool script_eof=false;
@@ -396,7 +396,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	int64 index_chunkhash_pos = -1;
 	_u16 index_chunkhash_pos_offset;
 
-	if (cbt_hash_file_info.cbt_hash_file!=NULL
+	if (cbt_hash_file_info.cbt_hash_file!=nullptr
 		&&  curr_pos+c_checkpoint_dist<=curr_file_size
 		&& (cbt_hash_file_info.metadata_offset!=-1
 			|| !file_extents.empty()
@@ -410,14 +410,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				if (file_extents.empty())
 				{
 					IFsFile* fs_file = static_cast<IFsFile*>(file);
-					if (fs_file != NULL
+					if (fs_file != nullptr
 						&& cbt_hash_file_info.blocksize > 0)
 					{
 						file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
 
 						if (curr_max_vdl == -1)
 						{
-							if (vdl_vol_cache == NULL)
+							if (vdl_vol_cache == nullptr)
 							{
 								vdl_vol_cache = fs_file->createVdlVolCache();
 							}
@@ -627,7 +627,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					memcpy(&new_chunkhashes[sizeof(_u16) + big_hash_size + small_hash_size*small_hash_num], &little_c_addler, sizeof(little_c_addler));
 				}
 
-				c_adler = urb_adler32(0, NULL, 0);
+				c_adler = urb_adler32(0, nullptr, 0);
 				++small_hash_num;
 				next_smallhash += c_small_hash_dist;
 			}
@@ -704,7 +704,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 	if(script_eof)
 	{
-		parent->SendInt(NULL, 0);
+		parent->SendInt(nullptr, 0);
 		return false;
 	}
 

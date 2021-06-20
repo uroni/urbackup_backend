@@ -931,7 +931,7 @@ bool VHDXFile::finish()
 		}
 
 		CompressedFile* compfile = dynamic_cast<CompressedFile*>(file);
-		if (compfile != NULL)
+		if (compfile != nullptr)
 		{
 			if (compfile->finish())
 			{

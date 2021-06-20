@@ -44,7 +44,7 @@ size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::
 	catch(const CryptoPP::ZlibDecompressor::Err& err)
 	{
 		Server->Log("Error during ZLib decompression: "+err.GetWhat(), LL_WARNING);
-		if(error!=NULL)
+		if(error!=nullptr)
 		{
 			*error=true;
 		}
@@ -66,7 +66,7 @@ size_t ZlibDecompression::decompress( const char *input, size_t input_size, char
 	catch(const CryptoPP::ZlibDecompressor::Err& err)
 	{
 		Server->Log("Error during ZLib decompression: "+err.GetWhat(), LL_WARNING);
-		if(error!=NULL)
+		if(error!=nullptr)
 		{
 			*error=true;
 		}

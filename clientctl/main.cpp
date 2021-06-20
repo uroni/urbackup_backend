@@ -88,7 +88,7 @@ int64 getTimeMS()
 	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0)
 	{
 		timeval tv;
-		gettimeofday(&tv, NULL);
+		gettimeofday(&tv, nullptr);
 		static long start_t = tv.tv_sec;
 		tv.tv_sec -= start_t;
 		return tv.tv_sec * 1000 + tv.tv_usec / 1000;
@@ -685,7 +685,7 @@ int action_browse(std::vector<std::string> args)
 	}
 	else
 	{
-		int* pbackupid = NULL;
+		int* pbackupid = nullptr;
 		int backupid = 0;
 		if(backupid_arg.isSet())
 		{

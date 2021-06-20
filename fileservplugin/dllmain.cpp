@@ -47,7 +47,7 @@ extern IServer* Server;
 #include "../stringtools.h"
 #include <stdlib.h>
 
-CFileServPluginMgr *fileservpluginmgr=NULL;
+CFileServPluginMgr *fileservpluginmgr=nullptr;
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
