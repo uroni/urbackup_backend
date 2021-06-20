@@ -274,3 +274,12 @@ blockalign/x64/*
 /luaplugin/Release/*
 /urbackup/data_*
 /clouddrive/x64/*
+/fa-copy.png
+/fa-home.png
+/fa-lock.png
+/fa-road.png
+/urbackup/backup_client.db-shm
+/urbackup/backup_client.db-wal
+/urbackup/clouddrive.db
+/urbackup/hdat*_.cbt
+/urbackupserver/www/__pycache__/*
