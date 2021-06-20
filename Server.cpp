@@ -2067,7 +2067,7 @@ unsigned int CServer::getSecureRandomNumber(void)
 	errno_t err = rand_s(&rnd);
 	if (err != 0)
 	{
-		Log("Error generating secure random number", LL_ERROR);
+		std::cerr << "Error generating secure random number" << std::endl;
 		abort();
 		return getRandomNumber();
 	}
