@@ -529,6 +529,7 @@ void CowFile::setupBitmap()
 	uint64 n_blocks = filesize/blocksize+(filesize%blocksize>0?1:0);
 	size_t n_bits = n_blocks/8 + (n_blocks%8>0?1:0);
 	bitmap.resize(n_bits);
+	bitmap_dirty=true;
 }
 
 void CowFile::resizeBitmap()
