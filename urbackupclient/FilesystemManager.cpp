@@ -8,6 +8,10 @@
 #include "../common/miniz.h"
 #include "../urbackupcommon/backup_url_parser.h"
 #include "../urbackupcommon/os_functions.h"
+#include "ClientService.h"
+#include <chrono>
+#include <atomic>
+using namespace std::chrono_literals;
 
 extern IBtrfsFactory* btrfs_fak;
 extern IFSImageFactory* image_fak;
@@ -15,6 +19,235 @@ extern IClouddriveFactory* clouddrive_fak;
 
 std::mutex FilesystemManager::mutex;
 std::map<std::string, IBackupFileSystem*> FilesystemManager::filesystems;
+
+namespace
+{
+	class TmpFileHandlingFileSystem : public IBackupFileSystem
+	{
+		std::unique_ptr<IBackupFileSystem> fs;
+		bool do_stop = false;
+		std::mutex flush_mutex;
+		std::condition_variable flush_cond;
+		std::thread flush_thread;
+		std::atomic<bool> dirty = false;
+	public:
+
+		TmpFileHandlingFileSystem(IBackupFileSystem* fs)
+			: fs(fs)
+		{
+			flush_thread = std::thread([this]() {
+				this->regular_sync();
+				});
+		}
+
+		~TmpFileHandlingFileSystem()
+		{
+			{
+				std::unique_lock<std::mutex> lock(flush_mutex);
+				do_stop = true;
+				flush_cond.notify_all();
+			}
+
+			flush_thread.join();
+		}
+
+		virtual bool hasError() override
+		{
+			return fs->hasError();
+		}
+
+		bool isTmpFile(const std::string& path)
+		{
+			return next(path, 0, "tmp://");
+		}
+
+		std::string tmpFileName(const std::string& path)
+		{
+			return path.substr(6);
+		}
+
+		virtual IFsFile* openFile(const std::string& path, int mode) override
+		{
+			if (isTmpFile(path))
+				return Server->openFile(tmpFileName(path), mode);
+
+			if(mode!=MODE_READ && mode!=MODE_READ_DEVICE &&
+				mode!=MODE_READ_SEQUENTIAL)
+				dirty = true;
+
+			return fs->openFile(path, mode);
+		}
+
+		virtual bool reflinkFile(const std::string& source, const std::string& dest) override
+		{
+			dirty = true;
+			return fs->reflinkFile(source, dest);
+		}
+
+		virtual bool createDir(const std::string& path) override
+		{
+			dirty = true;
+			return fs->createDir(path);
+		}
+
+		virtual bool deleteFile(const std::string& path) override
+		{
+			if (isTmpFile(path))
+				return Server->deleteFile(tmpFileName(path));
+
+			dirty = true;
+
+			return fs->deleteFile(path);
+		}
+
+		virtual int getFileType(const std::string& path) override
+		{
+			if (isTmpFile(path))
+				return os_get_file_type(tmpFileName(path));
+
+			return fs->getFileType(path);
+		}
+
+		virtual bool sync(const std::string& path) override
+		{
+			bool ret = fs->sync(path);
+			if (ret)
+				dirty = false;
+			return ret;
+		}
+
+		virtual std::vector<SFile> listFiles(const std::string& path) override
+		{
+			return fs->listFiles(path);
+		}
+
+		virtual bool createSubvol(const std::string& path) override
+		{
+			dirty = true;
+			return fs->createSubvol(path);
+		}
+
+		virtual bool createSnapshot(const std::string& src_path, const std::string& dest_path) override
+		{
+			dirty = true;
+			return fs->createSnapshot(src_path, dest_path);
+		}
+
+		virtual bool deleteSubvol(const std::string& path) override
+		{
+			dirty = true;
+			return fs->deleteSubvol(path);
+		}
+
+		virtual bool rename(const std::string& src_name, const std::string& dest_name) override
+		{
+			dirty = true;
+			return fs->rename(src_name, dest_name);
+		}
+
+		virtual bool removeDirRecursive(const std::string& path) override
+		{
+			dirty = true;
+			return fs->removeDirRecursive(path);
+		}
+
+		virtual bool directoryExists(const std::string& path) override
+		{
+			return fs->directoryExists(path);
+		}
+
+		virtual bool linkSymbolic(const std::string& target, const std::string& lname) override
+		{
+			return fs->linkSymbolic(target, lname);
+		}
+
+		virtual bool copyFile(const std::string& src, const std::string& dst, bool flush = false, std::string* error_str = nullptr) override
+		{
+			return fs->copyFile(src, dst, flush, error_str);
+		}
+
+		virtual int64 totalSpace() override
+		{
+			return fs->totalSpace();
+		}
+
+		virtual int64 freeSpace() override
+		{
+			return fs->freeSpace();
+		}
+		virtual int64 freeMetadataSpace() override
+		{
+			return fs->freeMetadataSpace();
+		}
+		virtual int64 unallocatedSpace() override
+		{
+			return fs->unallocatedSpace();
+		}
+		virtual bool forceAllocMetadata() override
+		{
+			return fs->forceAllocMetadata();
+		}
+		virtual bool balance(int usage, size_t limit, bool metadata, bool& enospc, size_t& relocated) override
+		{
+			return fs->balance(usage, limit, metadata, enospc, relocated);
+		}
+
+		virtual std::string fileSep() override
+		{
+			return fs->fileSep();
+		}
+
+		virtual std::string filePath(IFile* f) override
+		{
+			return fs->filePath(f);
+		}
+
+		virtual bool getXAttr(const std::string& path, const std::string& key, std::string& value) override
+		{
+			return fs->getXAttr(path, key, value);
+		}
+		virtual bool setXAttr(const std::string& path, const std::string& key, const std::string& val) override
+		{
+			dirty = true;
+			return fs->setXAttr(path, key, val);
+		}
+		virtual std::string getName() override
+		{
+			return fs->getName();
+		}
+		virtual IFile* getBackingFile() override
+		{
+			return fs->getBackingFile();
+		}
+		virtual std::string lastError() override
+		{
+			return fs->lastError();
+		}
+		virtual std::vector<SChunk> getChunks() override
+		{
+			return fs->getChunks();
+		}
+
+		void regular_sync()
+		{
+			std::unique_lock<std::mutex> lock(flush_mutex);
+			while (!do_stop)
+			{
+				flush_cond.wait_for(lock, 10s);
+
+				lock.unlock();
+
+				if(dirty.exchange(false, std::memory_order_release))
+				{
+					if (!fs->sync(std::string()))
+						break;
+				}
+
+				lock.lock();
+			}
+		}
+};
+}
 
 bool FilesystemManager::openFilesystemImage(const std::string& url, const std::string& url_params,
 	const str_map& secret_params)
@@ -27,6 +260,7 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 	IFile* img = nullptr;
 
 	IClouddriveFactory::CloudSettings settings;
+	std::unique_ptr<TmpFileHandlingFileSystem> tmpcachefs;
 
 	if (next(url, 0, "file://"))
 	{
@@ -97,7 +331,9 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 		
 		settings.size = 20LL * 1024 * 1024 * 1024; //20GB
 
-		img = clouddrive_fak->createCloudFile(cachefs, settings);
+		tmpcachefs = std::make_unique<TmpFileHandlingFileSystem>(cachefs);
+
+		img = clouddrive_fak->createCloudFile(tmpcachefs.get(), settings);
 	}
 
 	if (img == nullptr)
@@ -117,6 +353,8 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 		return false;
 
 	clouddrive_fak->setTopFs(img, fs);
+
+	tmpcachefs.release();
 
 	filesystems[url] = fs;
 
