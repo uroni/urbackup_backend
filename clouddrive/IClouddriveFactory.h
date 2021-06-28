@@ -78,4 +78,8 @@ public:
 	virtual bool runBackgroundWorker(IFile* cloudfile, const std::string& output_fn) = 0;
 
 	virtual int64 getCfTransid(IFile* cloudfile) = 0;
+
+	virtual bool flush(IFile* cloudfile, bool do_submit) = 0;
+
+	virtual std::string getCfNumDirtyItems(IFile* cloudfile) = 0;
 };
