@@ -2859,7 +2859,10 @@ function settingSwitch()
 	else
 	{
 		I(key).value = g.curr_settings[key].value;
-		I(key+"_client").value = g.curr_settings[key].value_client;
+
+		if(typeof g.curr_settings[key].value_client != "undefined")
+			I(key+"_client").value = g.curr_settings[key].value_client;
+			
 		I(key+"_group").value = g.curr_settings[key].value_group;
 	}
 }
@@ -3011,7 +3014,7 @@ function mergeSettingSwitch()
 
 		for(var i=0;i<ids.length;++i)
 		{
-			if(I(ids[i]).checked)
+			if(I(ids[i]) && I(ids[i]).checked)
 				num_checked+=1;
 		}
 
@@ -3020,6 +3023,7 @@ function mergeSettingSwitch()
 			for(var i=0;i<ids.length;++i)
 			{
 				if(!I(ids[i]).checked
+					&& I(ids[i]).checked
 					&& ids[i]!=$(this).attr("id"))
 				{
 					$("#"+ids[i]).prop("checked", true).change();
@@ -3041,7 +3045,8 @@ function mergeSettingUpdateUse(key)
 	{
 		use=use|2;
 	}
-	if(I(key+"_check_client").checked)
+	if(I(key+"_check_client") &&
+		I(key+"_check_client").checked)
 	{
 		use=use|4;
 	}
@@ -3064,10 +3069,13 @@ function renderMergeSetting(key)
 	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-home move_left\'></span> Here" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Here"></input></div>';
 	c+='</div>';
 
-	c+='<div class="input-group">';
-	c+='<input type="text" class="form-control" id="'+key+'_client" value="'+escapeHTMLDoubleQuote(val.value_client)+'" disabled="disabled"/>';
-	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-road move_left\'></span> Client" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Client"></input></div>';
-	c+='</div>';
+	if(typeof val.value_client != "undefined")
+	{
+		c+='<div class="input-group">';
+		c+='<input type="text" class="form-control" id="'+key+'_client" value="'+escapeHTMLDoubleQuote(val.value_client)+'" disabled="disabled"/>';
+		c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-road move_left\'></span> Client" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Client"></input></div>';
+		c+='</div>';
+	}
 	/*
 	c+='<div class="input-group">';
 	c+='<input type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-on="<i class=\'glyphicon glyphicon-home\'></i> Here" data-off="<i class=\'glyphicon glyphicon-remove\'></i> Ignore"></input>';
@@ -3093,11 +3101,17 @@ function renderMergeSetting(key)
 
 	$("#"+key+"_check_group").change(mergeSettingSwitch);
 	$("#"+key+"_check_home").change(mergeSettingSwitch);
-	$("#"+key+"_check_client").change(mergeSettingSwitch);
+	if(typeof val.value_client != "undefined")
+	{
+		$("#"+key+"_check_client").change(mergeSettingSwitch);
+	}
 
 	$("#"+key+"_check_group").bootstrapToggle();
 	$("#"+key+"_check_home").bootstrapToggle();
-	$("#"+key+"_check_client").bootstrapToggle();
+	if(typeof val.value_client != "undefined")
+	{
+		$("#"+key+"_check_client").bootstrapToggle();
+	}
 }
 function renderMergeSettingSwitch(key)
 {
@@ -3123,13 +3137,16 @@ function renderMergeSettingSwitch(key)
 		I(key+"_check_home").checked=false;
 	}
 
-	if(use&4)
+	if(I(key+"_check_client"))
 	{
-		I(key+"_check_client").checked=true;
-	}
-	else
-	{
-		I(key+"_check_client").checked=false;
+		if(use&4)
+		{
+			I(key+"_check_client").checked=true;
+		}
+		else
+		{
+			I(key+"_check_client").checked=false;
+		}
 	}
 }
 function renderSettingSwitchAll()
@@ -4183,7 +4200,8 @@ g.settings_list=[
 "image_compress_threads",
 "ransomware_canary_paths",
 "backup_dest_url",
-"backup_dest_params"
+"backup_dest_params",
+"backup_dest_secret_params"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4247,7 +4265,8 @@ g.mergable_settings_list=[
 "vss_select_components",
 "archive",
 "ransomware_canary_paths",
-"backup_dest_params"
+"backup_dest_params",
+"backup_dest_secret_params"
 ];
 g.client_settings_list=[
 "update_freq_incr",
