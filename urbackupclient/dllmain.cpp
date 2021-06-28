@@ -577,6 +577,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	cacheVolumes();
 #endif
 
+	std::thread sm([]() {
+		FilesystemManager::startupMountFileSystems();
+		});
+	sm.detach();
+
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
 	Server->wait(1000);
 }

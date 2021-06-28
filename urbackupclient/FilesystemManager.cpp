@@ -138,7 +138,16 @@ bool FilesystemManager::mountFileSystem(const std::string& url, const std::strin
 	
 	IBackupFileSystem* fs = filesystems[url];
 
-	return dokany_mount(fs, mount_path);
+	std::thread dm([url, fs, mount_path]() {
+		if (!dokany_mount(fs, mount_path))
+		{
+			Server->Log("Mounting fs " + url + " at \"" + mount_path + "\" failed", LL_ERROR);
+		}
+		});
+
+	dm.detach();
+
+	return true;
 }
 
 IBackupFileSystem* FilesystemManager::getFileSystem(const std::string& path)
@@ -150,4 +159,69 @@ IBackupFileSystem* FilesystemManager::getFileSystem(const std::string& path)
 		return nullptr;
 
 	return it->second;
+}
+
+void FilesystemManager::startupMountFileSystems()
+{
+	std::vector<SFile> facet_dirs = getFiles("urbackup");
+
+	for (SFile& fdir : facet_dirs)
+	{
+		if (!fdir.isdir || !next(fdir.name, 0, "data_"))
+			continue;
+
+		int facet_id = watoi(getafter("data_", fdir.name));
+
+		std::vector<SFile> settings_files = getFiles("urbackup/" + fdir.name);
+
+		for (SFile& sfn : settings_files)
+		{
+			if (sfn.isdir ||
+				(sfn.name != "settings.cfg" &&
+					!next(sfn.name, 0, "settings_")))
+				continue;
+
+			std::string clientsubname;
+			if (sfn.name != "settings.cfg")
+			{
+				clientsubname = getbetween("settings_", ".cfg", sfn.name);
+
+				if (clientsubname.empty())
+					continue;
+			}
+
+			std::string dest, dest_params, computername;
+			str_map dest_secret_params;
+			size_t max_backups = 1;
+			std::string perm_uid;
+			if (!ClientConnector::getBackupDest(clientsubname, facet_id, dest,
+				dest_params, dest_secret_params, computername, max_backups, perm_uid))
+				continue;
+
+			std::string backups_mpath;
+
+			if (facet_id != 1)
+				backups_mpath += std::to_string(facet_id);
+
+			if (!clientsubname.empty())
+			{
+				if (!backups_mpath.empty())
+					backups_mpath += "_";
+
+				backups_mpath += clientsubname;
+			}
+
+			backups_mpath = "backups" + backups_mpath;
+
+
+			if (!os_directory_exists(backups_mpath)
+				&& !os_create_dir(backups_mpath))
+				continue;
+
+			std::string fmpath = os_get_final_path(backups_mpath);
+
+			mountFileSystem(dest, dest_params, dest_secret_params,
+				fmpath);
+		}
+	}
 }

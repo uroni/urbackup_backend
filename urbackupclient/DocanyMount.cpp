@@ -21,6 +21,7 @@
 #include "../Interface/Server.h"
 #include <dokan/dokan.h>
 #include <sddl.h>
+#include "../stringtools.h"
 
 static NTSTATUS DOKAN_CALLBACK
 DokanCreateFile(LPCWSTR FileName, PDOKAN_IO_SECURITY_CONTEXT SecurityContext,
@@ -158,9 +159,25 @@ DokanFindFiles(LPCWSTR FileName,
     if (*FileName == '\\')
         offs = 1;
 
-    std::vector<SFile> files = fs->listFiles(Server->ConvertFromWchar(FileName + offs));
+    std::string ldir = Server->ConvertFromWchar(FileName + offs);
+
+    int top_path = 0;
+    for (char ch : ldir)
+        if (ch == '\\')
+            ++top_path;
+
+    std::vector<SFile> files = fs->listFiles(ldir);
     for (SFile& file : files)
     {
+        if (!ldir.empty() && top_path == 0 &&
+            (file.name == ".hashes" ||
+                next(file.name, 0, ".symlink_")))
+            continue;
+
+        if (ldir.empty() &&
+            file.name.find(".new") != std::string::npos)
+            continue;
+
         WIN32_FIND_DATAW find_data = {};
         std::wstring wfilename = Server->ConvertToWchar(file.name);
         memcpy(find_data.cFileName, wfilename.c_str(), (std::min)(259ULL, wfilename.size()*sizeof(wchar_t)));
