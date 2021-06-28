@@ -554,6 +554,9 @@ void ClientMain::operator ()(void)
 						 && (dynamic_cast<ImageBackup*>(backup_queue[i].backup)==NULL 
 							 || dynamic_cast<ImageBackup*>(backup_queue[i].backup)->getDependencies(false).empty()) )
 					{
+						if (backup_queue[i].running)
+							stopBackupRunning(backup_queue[i].backup->isFileBackup());
+
 						ServerStatus::subRunningJob(clientmainname);
 
 						if (!backup_queue[i].backup->getResult() &&
@@ -943,7 +946,7 @@ void ClientMain::operator ()(void)
 					bool started_job=false;
 					for(size_t i=0;i<backup_queue.size();++i)
 					{
-						bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
+						bool filebackup = backup_queue[i].backup->isFileBackup();
 
 						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
 							&& !backup_queue[i].running
