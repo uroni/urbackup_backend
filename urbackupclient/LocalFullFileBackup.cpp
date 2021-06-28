@@ -140,12 +140,15 @@ bool LocalFullFileBackup::run()
 
 	std::vector<size_t> diffs;
 	bool backup_with_components;
-	_i64 files_size = getIncrementalSize(curr_file_list.get(), diffs, backup_with_components, true);
+	total_bytes = getIncrementalSize(curr_file_list.get(), diffs, backup_with_components, true);
 
 	std::string curr_orig_path;
 	std::string orig_sep;
 	std::string curr_path;
 	std::string curr_os_path;
+
+	log("Copying files...", LL_INFO);
+	updateProgressPc(0, total_bytes, 0);
 
 	std::unique_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
 
@@ -182,6 +185,12 @@ bool LocalFullFileBackup::run()
 						orig_sep = it_orig_sep->second;
 					}
 					if (orig_sep.empty()) orig_sep = "\\";
+				}
+
+				int64 ctime = Server->getTimeMS();
+				if (ctime - laststatsupdate > status_update_intervall)
+				{
+					updateProgress(ctime);
 				}
 
 				if (cf.isdir)
@@ -291,7 +300,7 @@ bool LocalFullFileBackup::run()
 						return false;
 					}
 
-					std::unique_ptr<IFile> sourcef(Server->openFile(sourcepath, MODE_READ_SEQUENTIAL_BACKUP));
+					std::unique_ptr<IFsFile> sourcef(Server->openFile(sourcepath, MODE_READ_SEQUENTIAL_BACKUP));
 
 					if (sourcef.get() == nullptr)
 					{
@@ -303,9 +312,14 @@ bool LocalFullFileBackup::run()
 						int abct = 5;
 
 					std::unique_ptr<IFsFile> destf(backup_files->openFile(targetpath, MODE_WRITE));
+					FsExtentIterator extent_iterator(sourcef.get());
 
 					bool b = build_chunk_hashs(sourcef.get(),
-						metadataf.get(), nullptr, destf.get(), false);
+						metadataf.get(), nullptr, destf.get(), false,
+						nullptr, nullptr, false, nullptr, &extent_iterator,
+						std::pair<IFile*, int64>(), this);
+
+					done_bytes += cf.size;
 
 					if (!b)
 					{
@@ -339,6 +353,17 @@ bool LocalFullFileBackup::run()
 	}
 
 	return sync();
+}
+
+void LocalFullFileBackup::updateBchPc(int64 done, int64 total)
+{
+	file_done_bytes = done;
+
+	int64 ctime = Server->getTimeMS();
+	if (ctime - laststatsupdate > status_update_intervall)
+	{
+		updateProgress(ctime);
+	}
 }
 
 

@@ -375,6 +375,7 @@ void ServerStatus::setProcessSpeed(const std::string &clientname, size_t id, dou
 			proc->past_speed_bpms.pop_front();
 		}
 		proc->speed_bpms = speed_bpms;
+		proc->speed_set_time = Server->getTimeMS();
 	}
 }
 

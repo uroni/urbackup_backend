@@ -86,7 +86,7 @@ void init_chunk_hasher()
 bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	IFsFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
 	bool show_pc, IHashFunc* hashf, IExtentIterator* extent_iterator,
-	std::pair<IFile*, int64> cbt_hash_file)
+	std::pair<IFile*, int64> cbt_hash_file, IBuildChunkHashsUpdateCallback* update_progress)
 {
 	f->Seek(0);
 
@@ -137,6 +137,8 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	{
 		Server->Log("0%", LL_INFO);
 	}
+	if (update_progress != nullptr)
+		update_progress->updateBchPc(0, fsize);
 
 	IFsFile::SSparseExtent curr_extent;
 
@@ -202,6 +204,8 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				Server->Log(convert(curr_pc)+"%", LL_INFO);
 			}
 		}
+		if (update_progress != nullptr)
+			update_progress->updateBchPc(pos, fsize);
 
 		_i64 epos = pos + c_checkpoint_dist;
 

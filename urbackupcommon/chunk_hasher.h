@@ -11,6 +11,12 @@ public:
 	virtual bool handle_not_enough_space(const std::string &path)=0;
 };
 
+class IBuildChunkHashsUpdateCallback
+{
+public:
+	virtual void updateBchPc(int64 done, int64 total) = 0;
+};
+
 void init_chunk_hasher();
 
 std::string get_sparse_extent_content();
@@ -19,7 +25,8 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	IFsFile *copy, bool modify_inplace, int64* inplace_written=NULL,
 	IFile* hashinput=NULL, bool show_pc=false, IHashFunc* hashf=NULL,
 	IExtentIterator* extent_iterator=NULL,
-	std::pair<IFile*, int64> cbt_hash_file = std::pair<IFile*, int64>());
+	std::pair<IFile*, int64> cbt_hash_file = std::pair<IFile*, int64>(),
+	IBuildChunkHashsUpdateCallback* update_progress=nullptr);
 
 bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
 

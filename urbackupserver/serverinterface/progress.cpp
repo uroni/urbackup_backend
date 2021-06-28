@@ -87,24 +87,34 @@ ACTION_IMPL(progress)
 					obj.set("detail_pc", clients[i].processes[j].detail_pc);
 					obj.set("paused", clients[i].processes[j].paused);
 
-					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
-					int64 etams = clients[i].processes[j].eta_ms - add_time;
-					if (etams>0 && etams<60 * 1000)
-					{
-						etams = 61 * 1000;
-					}
-
-					obj.set("eta_ms", etams);
+					int64 ctime = Server->getTimeMS();
+					
+					if (ctime - clients[i].processes[j].speed_set_time >= 2000)
+						clients[i].processes[j].speed_bpms = 0;
+					
 					obj.set("speed_bpms", clients[i].processes[j].speed_bpms);
 
 					JSON::Array past_speed_bpms;
 					for (std::deque<double>::iterator it = clients[i].processes[j].past_speed_bpms.begin();
-					it != clients[i].processes[j].past_speed_bpms.end(); ++it)
+						it != clients[i].processes[j].past_speed_bpms.end(); ++it)
 					{
 						past_speed_bpms.add(*it);
 					}
 
 					obj.set("past_speed_bpms", past_speed_bpms);
+
+					int64 add_time = ctime - clients[i].processes[j].eta_set_time;
+					int64 etams = clients[i].processes[j].eta_ms - add_time;
+					if (etams > 0 && etams < 60 * 1000)
+					{
+						etams = 61 * 1000;
+					}
+
+					if(clients[i].processes[j].speed_bpms>0 ||
+						clients[i].processes[j].pcdone<0)
+						obj.set("eta_ms", etams);
+					else
+						obj.set("eta_ms", -1);
 
 					if (clients[i].processes[j].can_stop 
 						&& (all_stop_rights

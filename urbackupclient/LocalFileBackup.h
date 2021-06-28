@@ -8,7 +8,7 @@
 class LocalFileBackup : public LocalBackup
 {
 public:
-	LocalFileBackup(int64 local_process_id, int64 server_log_id, 
+	LocalFileBackup(bool incr, int64 local_process_id, int64 server_log_id, 
 		int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, 
 		int facet_id, size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
 		const str_map& dest_secret_params);

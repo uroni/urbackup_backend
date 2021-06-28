@@ -1679,6 +1679,8 @@ void ServerChannelThread::BACKUP_PERCENT(str_map params)
 	int64 total_bytes = watoi64(params["total_bytes"]);
 	int64 done_bytes = watoi64(params["done_bytes"]);
 	int detail_pc = watoi(params["detail_pc"]);
+	int64 eta = watoi(params["eta"]);
+	int64 eta_set_time = Server->getTimeMS() - watoi(params["eta_set_time"]);
 
 	client_main->updateLocalBackupRunning(backupid);
 
@@ -1686,6 +1688,7 @@ void ServerChannelThread::BACKUP_PERCENT(str_map params)
 	ServerStatus::setProcessSpeed(clientname, status_id, speed_bpms);
 	ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 	ServerStatus::setProcessTotalBytes(clientname, status_id, total_bytes);
+	ServerStatus::setProcessEta(clientname, status_id, eta, eta_set_time);
 }
 
 void ServerChannelThread::BACKUP_DONE(str_map params)

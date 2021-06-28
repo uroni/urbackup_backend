@@ -222,13 +222,10 @@ public:
 	static void updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
 		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);
 
-	static void updateLocalBackupPc(int64 local_process_id, int backupid, int64 status_id, int nv, const std::string& identity,
-		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);
-
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
 	static void updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, const std::string& identity,
-		const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms);
+		const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms, int64 eta, int64 eta_set_time);
 
 	static bool localBackupDone(int64 log_id, int64 status_id, int64 backup_id, bool success, const std::string& identity);
 
@@ -249,6 +246,10 @@ public:
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
 	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id);
+
+	static bool getBackupDest(const std::string& clientsubname, int facet_id, std::string& dest,
+		std::string& dest_params, str_map& dest_secret_params, std::string& computername,
+		size_t& max_backups, std::string& perm_uid);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
@@ -276,9 +277,6 @@ private:
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
-	bool getBackupDest(const std::string& clientsubname, int facet_id, std::string& dest,
-		std::string& dest_params, str_map& dest_secret_params, std::string& computername,
-		size_t& max_backups, std::string& perm_uid);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);

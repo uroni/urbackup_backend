@@ -6,6 +6,8 @@
 namespace
 {
 	class BackupUpdaterThread;
+
+	const unsigned int status_update_intervall = 1000;
 }
 
 class LocalBackup : public IThread
@@ -68,7 +70,7 @@ class LocalBackup : public IThread
 	};
 
 public:
-	LocalBackup(int64 local_process_id,
+	LocalBackup(bool file, bool incr, int64 local_process_id,
 		int64 server_log_id, int64 server_status_id, int64 backupid,
 		std::string server_token, std::string server_identity, int facet_id,
 		size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
@@ -92,6 +94,8 @@ protected:
 
 	void log(const std::string& msg, int loglevel);
 
+	void updateProgress(int64 ctime);
+
 	void logIndexResult();
 
 	std::string fixFilenameForOS(std::string fn) {
@@ -101,6 +105,10 @@ protected:
 	bool cleanupOldBackups(bool image);
 
 	bool openFileSystem();
+
+	void calculateBackupSpeed(int64 ctime);
+
+	void calculateEta(int64 ctime);
 
 	std::unique_ptr<PrefixedBackupFiles> backup_files;
 	std::unique_ptr<IBackupFileSystem> orig_backup_files;
@@ -118,6 +126,21 @@ protected:
 	str_map dest_secret_params;
 
 	std::vector<std::pair<std::string, int> > log_buffer;
+
+	int64 total_bytes = 0;
+	int64 done_bytes = 0;
+	int64 file_done_bytes = 0;
+	int64 speed_set_time = 0;
+	int64 last_speed_received_bytes = 0;
+	double curr_speed_bpms = 0;
+	int64 last_eta_update = 0;
+	int64 last_eta_received_bytes = 0;
+	int64 eta_set_time = 0;
+	int64 eta_estimated_speed = 0;
+	int64 curr_eta = 0;
+
+	bool file;
+	bool incr;
 
 private:
 

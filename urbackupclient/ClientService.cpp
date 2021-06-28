@@ -3849,41 +3849,6 @@ void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, 
 		0, identity);
 }
 
-void ClientConnector::updateLocalBackupPc(int64 local_process_id, int backupid, int64 status_id, int nv, const std::string& identity,
-	const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms)
-{
-	IScopedLock lock(backup_mutex);
-
-	{
-		IScopedLock lock_process(process_mutex);
-
-		SRunningProcess* proc = getRunningProcess(local_process_id);
-
-		if (proc != nullptr)
-		{
-			if (nv > 100)
-			{
-				removeRunningProcess(local_process_id, total_bytes == done_bytes);
-			}
-			else
-			{
-				proc->pcdone = nv;
-				proc->last_pingtime = Server->getTimeMS();
-				proc->details = fn;
-				proc->detail_pc = fn_pc;
-				proc->total_bytes = total_bytes;
-				proc->done_bytes = done_bytes;
-				proc->speed_bpms = speed_bpms;
-			}
-		}
-	}
-
-	sendMessageToChannel("BACKUP PERCENT pc=" + convert(nv) + "&status_id=" + convert(status_id) + "&id=" + convert(backupid)
-		+ "&details=" + EscapeParamString(fn) + "&detail_pc=" + convert(fn_pc) + "&total_bytes=" + convert(total_bytes) + "&done_bytes=" + convert(done_bytes)
-		+ "&speed_bpms=" + convert(speed_bpms),
-		0, identity);
-}
-
 bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity )
 {
 	return sendMessageToChannel("RESTORE DONE status_id="+convert(status_id)+
@@ -3892,7 +3857,9 @@ bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_
 		"&success=" + convert(success), 60000, identity);
 }
 
-void ClientConnector::updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, const std::string& identity, const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms)
+void ClientConnector::updateLocalBackupPc(int64 local_process_id, int64 backup_id, int64 status_id, int nv, 
+	const std::string& identity, const std::string& details, int64 total_bytes, int64 done_bytes, double speed_bpms,
+	int64 eta, int64 eta_set_time)
 {
 	IScopedLock lock(backup_mutex);
 
@@ -3915,13 +3882,14 @@ void ClientConnector::updateLocalBackupPc(int64 local_process_id, int64 backup_i
 				proc->total_bytes = total_bytes;
 				proc->done_bytes = done_bytes;
 				proc->speed_bpms = speed_bpms;
+				proc->eta_ms = eta;
 			}
 		}
 	}
 
 	sendMessageToChannel("BACKUP PERCENT pc=" + convert(nv) + "&status_id=" + convert(status_id) + "&id=" + convert(backup_id)
 		+ "&details=" + EscapeParamString(details) + "&total_bytes=" + convert(total_bytes) + "&done_bytes=" + convert(done_bytes)
-		+ "&speed_bpms=" + convert(speed_bpms),
+		+ "&speed_bpms=" + convert(speed_bpms)+"&eta="+std::to_string(eta) +"&eta_set_time="+std::to_string(Server->getTimeMS() - eta_set_time),
 		0, identity);
 }
 

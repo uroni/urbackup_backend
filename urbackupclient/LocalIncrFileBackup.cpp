@@ -171,7 +171,7 @@ bool LocalIncrFileBackup::run()
 #ifdef _WIN32
 	is_windows = true;
 #endif
-	bool diff_error;
+	bool diff_error = false;
 	std::vector<size_t> deleted_ids;
 	std::vector<size_t> modified_inplace_ids;
 	std::vector<size_t> dir_diffs;
@@ -185,6 +185,9 @@ bool LocalIncrFileBackup::run()
 		return false;
 	}
 
+	bool backup_with_components;
+	total_bytes = getIncrementalSize(curr_file_list.get(), diffs, backup_with_components, true);
+
 	if (!deleteFilesInSnapshot(last_file_list.get(), deleted_ids, "", false, false))
 	{
 		log("Error deleting files in snapshot", LL_ERROR);
@@ -196,6 +199,9 @@ bool LocalIncrFileBackup::run()
 		log("Error deleting file metdata in snapshot", LL_ERROR);
 		return false;
 	}
+
+	log("Copying files...", LL_INFO);
+	updateProgressPc(0, total_bytes, 0);
 
 	std::unique_ptr<IFile> filelist_out(backup_files->openFile(getBackupInternalDataDir() + "\\filelist.ub", MODE_WRITE));
 
@@ -243,6 +249,12 @@ bool LocalIncrFileBackup::run()
 				if (!cf.isdir || cf.name != "..")
 				{
 					osspecific_name = fixFilenameForOS(cf.name);
+				}
+
+				int64 ctime = Server->getTimeMS();
+				if (ctime - laststatsupdate > status_update_intervall)
+				{
+					updateProgress(ctime);
 				}
 
 				FileMetadata metadata;
@@ -769,7 +781,11 @@ bool LocalIncrFileBackup::run()
 							bool b = build_chunk_hashs(sourcef.get(),
 								metadata_f.get(), nullptr, destf.get(), true,
 								&inplace_written, last_metadataf.get(), false,
-								nullptr, &extent_iterator);
+								nullptr, &extent_iterator, 
+								std::pair<IFile*, int64>(), this);
+
+							done_bytes += cf.size;
+
 							if (!b)
 							{
 								log("Error backing up \"" + sourcepath + "\"", LL_ERROR);
@@ -1038,4 +1054,15 @@ bool LocalIncrFileBackup::deleteFilesInSnapshot(IFile* curr_file_list, const std
 	}
 
 	return true;
+}
+
+void LocalIncrFileBackup::updateBchPc(int64 done, int64 total)
+{
+	file_done_bytes = done;
+
+	int64 ctime = Server->getTimeMS();
+	if (ctime - laststatsupdate > status_update_intervall)
+	{
+		updateProgress(ctime);
+	}
 }

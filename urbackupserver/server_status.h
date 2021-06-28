@@ -81,6 +81,7 @@ struct SProcess
 	std::string details;
 	int detail_pc;
 	double speed_bpms;
+	int64 speed_set_time = 0;
 	std::deque<double> past_speed_bpms;
 	logid_t logid;
 	bool can_stop;

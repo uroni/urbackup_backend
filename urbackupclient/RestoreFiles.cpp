@@ -80,7 +80,14 @@ namespace
 						curr_fn_pc = -1;
 					}
 
+					speed_set = false;
+
 					update_cond->wait(&lock, 60000);
+
+					if (!speed_set)
+					{
+						speed_bpms = 0;
+					}
 				}
 			}
 			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
@@ -116,6 +123,7 @@ namespace
 		{
 			IScopedLock lock(update_mutex.get());
 			speed_bpms = n_speed_bpms;
+			speed_set = true;
 			update_cond->notify_all();
 		}
 
@@ -141,6 +149,7 @@ namespace
 		double speed_bpms;
 		bool success;
 		int64 last_fn_time;
+		bool speed_set = false;
 	};
 
 	const char ID_GRANT_ACCESS = 0;

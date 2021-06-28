@@ -27,6 +27,9 @@
 #include "client.h"
 #include <memory>
 #include <set>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 extern IClouddriveFactory* clouddrive_fak;
 
@@ -35,16 +38,16 @@ namespace
 	class BackupUpdaterThread : public IThread
 	{
 	public:
-		BackupUpdaterThread(int64 local_process_id, int64 backup_id, int64 status_id, std::string server_token)
-			: update_mutex(Server->createMutex()), stopped(false),
-			update_cond(Server->createCondition()), curr_pc(-1),
+		BackupUpdaterThread(bool file, bool incr, int64 local_process_id, int64 backup_id, int64 status_id, std::string server_token)
+			: stopped(false), curr_pc(-1),
 			backup_id(backup_id), status_id(status_id), server_token(server_token),
-			local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0), success(false),
-			last_fn_time(0)
+			local_process_id(local_process_id)
 		{
 			SRunningProcess new_proc;
 			new_proc.id = local_process_id;
-			new_proc.action = RUNNING_RESTORE_FILE;
+			new_proc.action = file ? 
+				( incr ? RUNNING_INCR_FILE : RUNNING_FULL_FILE) : 
+				(incr ? RUNNING_INCR_IMAGE : RUNNING_FULL_IMAGE);
 			new_proc.server_id = status_id;
 			new_proc.server_token = server_token;
 			ClientConnector::addNewProcess(new_proc);
@@ -53,62 +56,87 @@ namespace
 		void operator()()
 		{
 			{
-				IScopedLock lock(update_mutex.get());
+				std::unique_lock<std::mutex> lock(update_mutex);
 				while (!stopped)
 				{
-					ClientConnector::updateLocalBackupPc(local_process_id, backup_id, status_id, curr_pc, server_token, std::string(), -1, total_bytes, done_bytes, speed_bpms);
+					ClientConnector::updateLocalBackupPc(local_process_id, backup_id, status_id, curr_pc,
+						server_token, std::string(), total_bytes, done_bytes, speed_bpms, eta,
+						eta_set_time);
 
-					if (Server->getTimeMS() - last_fn_time > 61000)
-					{
-					}
+					speed_set = false;
 
-					update_cond->wait(&lock, 60000);
+					update_cond.wait_for(lock, 10s);
+
+					if (!speed_set)
+						speed_bpms = 0;
 				}
 			}
-			ClientConnector::updateLocalBackupPc(local_process_id, backup_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
+			ClientConnector::updateRestorePc(local_process_id, backup_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
 			delete this;
 		}
 
 		void stop()
 		{
-			IScopedLock lock(update_mutex.get());
+			std::lock_guard<std::mutex> lock(update_mutex);
 			stopped = true;
-			update_cond->notify_all();
+			update_cond.notify_all();
 		}
 
 		void update_pc(int new_pc, int64 p_total_bytes, int64 p_done_bytes)
 		{
-			IScopedLock lock(update_mutex.get());
+			std::lock_guard<std::mutex> lock(update_mutex);
 			curr_pc = new_pc;
 			total_bytes = p_total_bytes;
 			done_bytes = p_done_bytes;
-			update_cond->notify_all();
+			update_cond.notify_all();
 		}
 
 		void update_details(const std::string& details)
 		{
-			IScopedLock lock(update_mutex.get());
+			std::lock_guard<std::mutex> lock(update_mutex);
 			curr_details = details;
-			last_fn_time = Server->getTimeMS();
-			update_cond->notify_all();
+			update_cond.notify_all();
 		}
 
 		void update_speed(double n_speed_bpms)
 		{
-			IScopedLock lock(update_mutex.get());
+			std::lock_guard<std::mutex> lock(update_mutex);
 			speed_bpms = n_speed_bpms;
-			update_cond->notify_all();
+			speed_set = true;
+			update_cond.notify_all();
 		}
 
 		void set_success(bool b)
 		{
-			IScopedLock lock(update_mutex.get());
+			std::lock_guard<std::mutex> lock(update_mutex);
 			success = b;
 		}
 
+		void update_eta(int64 p_eta, int64 p_eta_set_time)
+		{
+			std::lock_guard<std::mutex> lock(update_mutex);
+			eta = p_eta;
+			eta_set_time = p_eta_set_time;
+			update_cond.notify_all();
+		}
+
+		void update(int new_pc, int64 p_total_bytes, int64 p_done_bytes,
+			double n_speed_bpms, int64 p_eta, int64 p_eta_set_time)
+		{
+			std::lock_guard<std::mutex> lock(update_mutex);
+			curr_pc = new_pc;
+			total_bytes = p_total_bytes;
+			done_bytes = p_done_bytes;
+			speed_bpms = n_speed_bpms;
+			eta = p_eta;
+			eta_set_time = p_eta_set_time;
+			speed_set = true;
+			update_cond.notify_all();
+		}
+
 	private:
-		std::unique_ptr<IMutex> update_mutex;
-		std::unique_ptr<ICondition> update_cond;
+		std::mutex update_mutex;
+		std::condition_variable update_cond;
 		bool stopped;
 		int curr_pc;
 		std::string curr_details;
@@ -116,19 +144,21 @@ namespace
 		int64 status_id;
 		std::string server_token;
 		int64 local_process_id;
-		int64 total_bytes;
-		int64 done_bytes;
-		double speed_bpms;
-		bool success;
-		int64 last_fn_time;
+		int64 total_bytes = -1;
+		int64 done_bytes = 0;
+		double speed_bpms = 0;
+		bool success = false;
+		int64 eta = 0;
+		int64 eta_set_time = 0;
+		bool speed_set = false;
 	};
 }
 
-LocalBackup::LocalBackup(int64 local_process_id, int64 server_log_id, 
+LocalBackup::LocalBackup(bool file, bool incr, int64 local_process_id, int64 server_log_id,
 	int64 server_status_id, int64 backupid, std::string server_token, std::string server_identity, int facet_id,
 	size_t max_backups, const std::string& dest_url, const std::string& dest_url_params,
 	const str_map& dest_secret_params)
-	: backup_updater_thread(nullptr),
+	: file(file), incr(incr), backup_updater_thread(nullptr),
 	server_log_id(server_log_id), server_status_id(server_status_id),
 	backupid(backupid), server_token(std::move(server_token)), server_identity(std::move(server_identity)),
 	local_process_id(local_process_id), facet_id(facet_id),
@@ -144,16 +174,14 @@ bool LocalBackup::onStartBackup()
 	if (!openFileSystem())
 		return false;
 
-	backup_updater_thread = new BackupUpdaterThread(local_process_id, backupid, server_status_id, server_token);
+	backup_updater_thread = new BackupUpdaterThread(file, incr, local_process_id, backupid, server_status_id, server_token);
+	Server->getThreadPool()->execute(backup_updater_thread, "bck update");
 
 	return true;
 }
 
 void LocalBackup::onBackupFinish(bool image)
 {
-	backup_updater_thread->stop();
-	backup_updater_thread = nullptr;
-
 	log("Cleaning up old backups...", LL_INFO);
 
 	if (!cleanupOldBackups(image))
@@ -166,6 +194,13 @@ void LocalBackup::onBackupFinish(bool image)
 		clouddrive_fak != nullptr &&
 		clouddrive_fak->isCloudFile(backup_files->getBackingFile()))
 	{
+		log("Waiting for upload to finish...", LL_INFO);
+
+		while (linecount(clouddrive_fak->getCfNumDirtyItems(backup_files->getBackingFile())) > 2)
+		{
+			Server->wait(1000);
+		}
+
 		log("Calculating background delete data...", LL_INFO);
 
 		int64 transid = clouddrive_fak->getCfTransid(backup_files->getBackingFile());
@@ -184,6 +219,11 @@ void LocalBackup::onBackupFinish(bool image)
 	}
 
 	log("Backup finished.", LL_INFO);
+
+	updateProgressSuccess(backup_success);
+
+	backup_updater_thread->stop();
+	backup_updater_thread = nullptr;
 
 	int64 log_send_starttime = Server->getTimeMS();
 	while (Server->getTimeMS() - log_send_starttime<3*60*1000)
@@ -279,8 +319,7 @@ bool LocalBackup::sync()
 
 	IFile* backing_file = backup_files->getBackingFile();
 
-	if (backing_file != nullptr &&
-		!backing_file->Sync())
+	if (!clouddrive_fak->flush(backing_file, true))
 	{
 		log("Error syncing backup file system backing file", LL_ERROR);
 		return false;
@@ -325,6 +364,19 @@ void LocalBackup::log(const std::string& msg, int loglevel)
 	}
 }
 
+void LocalBackup::updateProgress(int64 ctime)
+{
+	int pc_nv = (std::min)(100, (int)(((float)(file_done_bytes+ done_bytes)) / ((float)total_bytes / 100.f) + 0.5f));
+	std::string details;
+
+	calculateBackupSpeed(ctime);
+	calculateEta(ctime);
+
+	backup_updater_thread->update(pc_nv, total_bytes, file_done_bytes + done_bytes,
+		curr_speed_bpms, curr_eta, eta_set_time);
+}
+
+
 void LocalBackup::logIndexResult()
 {
 	CWData data;
@@ -357,6 +409,9 @@ void LocalBackup::logIndexResult()
 
 bool LocalBackup::cleanupOldBackups(bool image)
 {
+	if (!backup_files)
+		return false;
+
 	std::vector<SFile> backups = backup_files->root()->listFiles(std::string());
 
 	size_t n_backups = 0;
@@ -425,6 +480,69 @@ bool LocalBackup::openFileSystem()
 	}
 
 	return true;
+}
+
+void LocalBackup::calculateBackupSpeed(int64 ctime)
+{
+	if (speed_set_time == 0)
+	{
+		speed_set_time = ctime;
+	}
+
+	if (ctime - speed_set_time > 10000)
+	{
+		int64 received_data_bytes = file_done_bytes + done_bytes;
+
+		int64 new_bytes = received_data_bytes - last_speed_received_bytes;
+		int64 passed_time = ctime - speed_set_time;
+
+		if (passed_time > 0)
+		{
+			speed_set_time = ctime;
+
+			double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+			if (last_speed_received_bytes > 0)
+			{
+				curr_speed_bpms = speed_bpms;
+			}
+
+			last_speed_received_bytes = received_data_bytes;
+		}
+	}
+}
+
+void LocalBackup::calculateEta(int64 ctime)
+{
+	last_eta_update = ctime;
+
+	int64 received_data_bytes = file_done_bytes + done_bytes;
+
+	int64 new_bytes = received_data_bytes - last_eta_received_bytes;
+	int64 passed_time = Server->getTimeMS() - eta_set_time;
+
+	if (passed_time > 0)
+	{
+		eta_set_time = Server->getTimeMS();
+
+		double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+		if (eta_estimated_speed == 0)
+		{
+			eta_estimated_speed = speed_bpms;
+		}
+		else
+		{
+			eta_estimated_speed = eta_estimated_speed * 0.9 + speed_bpms * 0.1;
+		}
+
+		if (last_eta_received_bytes > 0 && eta_estimated_speed > 0)
+		{
+			curr_eta = static_cast<int64>((total_bytes - received_data_bytes) / eta_estimated_speed + 0.5);
+		}
+
+		last_eta_received_bytes = received_data_bytes;
+	}
 }
 
 bool LocalBackup::PrefixedBackupFiles::hasError()
@@ -530,7 +648,7 @@ std::string LocalBackup::PrefixedBackupFiles::getName()
 
 IFile* LocalBackup::PrefixedBackupFiles::getBackingFile()
 {
-	return nullptr;
+	return backup_files->getBackingFile();
 }
 
 std::string LocalBackup::PrefixedBackupFiles::lastError()
