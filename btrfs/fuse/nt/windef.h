@@ -2231,8 +2231,6 @@ NTSTATUS FsRtlFastUnlockAll(PFILE_LOCK FileLock, PFILE_OBJECT FileObject, PEPROC
 
 void FsRtlNotifyCleanup(PNOTIFY_SYNC NotifySync, PLIST_ENTRY NotifyList, PVOID arg1);
 
-BOOLEAN ExIsResourceAcquiredSharedLite(PERESOURCE Resource);
-
 void CcPurgeCacheSection(PSECTION_OBJECT_POINTERS SectionPointers, PLARGE_INTEGER FileOffset, ULONG Length, ULONG Flags);
 
 void MmProbeAndLockPages(PMDL Mdl, REQMODE Reqmode, ACCESS_MODE AccessMode);
@@ -2278,8 +2276,6 @@ void ExInitializeNPagedLookasideList(PNPAGED_LOOKASIDE_LIST LookasideList, PVOID
 void IoRaiseInformationalHardError(NTSTATUS Status, PUNICODE_STRING Msg, PKTHREAD Thread);
 
 PFILE_OBJECT IoCreateStreamFileObject(PVOID arg1, PDEVICE_OBJECT DeviceObject);
-
-BOOLEAN ExIsResourceAcquiredExclusive(PERESOURCE Resource);
 
 NTSTATUS FsRtlProcessFileLock(PFILE_LOCK FileLock, PIRP Irp, PVOID arg1);
 
@@ -2411,8 +2407,6 @@ NTSTATUS IoVerifyVolume(PDEVICE_OBJECT DevObj, BOOLEAN verify);
 
 BOOLEAN SePrivilegeCheck(PPRIVILEGE_SET PrivilegeSet, PSECURITY_SUBJECT_CONTEXT SecSubjContext, KPROCESSOR_MODE ProcessorMode);
 
-BOOLEAN ExIsResourceAcquiredExclusiveLite(PERESOURCE Resource);
-
 BOOLEAN FsRtlDoesNameContainWildCards(PUNICODE_STRING Str);
 
 BOOLEAN FsRtlIsNameInExpression(PUNICODE_STRING Expression, PUNICODE_STRING Name, BOOLEAN IgnoreCase, PVOID arg1);
@@ -2535,8 +2529,6 @@ NTSTATUS ZwNotifyChangeKey(HANDLE h, PVOID arg1, PVOID arg2, PVOID arg3, PIO_STA
 typedef void(*WQFUN)(PVOID arg);
 
 void ExInitializeWorkItem(PWORK_QUEUE_ITEM Wqi, WQFUN Fun, HANDLE h);
-
-void ExReleaseResource(PERESOURCE Resource);
 
 NTSTATUS SeQueryInformationToken(PACCESS_TOKEN Token, QUERY_INFORMATION_TOKEN_TYPE TokenType, PVOID Out);
 

@@ -26,7 +26,13 @@ extern "C" {
 
 	void ExConvertExclusiveToSharedLite(PERESOURCE Res);
 
+	BOOLEAN ExIsResourceAcquiredSharedLite(PERESOURCE Resource);
 
+	BOOLEAN ExIsResourceAcquiredExclusive(PERESOURCE Resource);
+
+	BOOLEAN ExIsResourceAcquiredExclusiveLite(PERESOURCE Resource);
+
+	void ExReleaseResource(PERESOURCE Resource);
 #ifdef __cplusplus
 }
 #endif

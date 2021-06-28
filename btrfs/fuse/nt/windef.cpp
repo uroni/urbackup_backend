@@ -136,7 +136,7 @@ NTSTATUS KeWaitForSingleObject(PVOID Object, KWAIT_REASON WaitReason, REQMODE Wa
 
 BOOLEAN KeReadStateEvent(PKEVENT Event)
 {
-	return std::atomic_load_explicit(reinterpret_cast<std::atomic<LONG>*>(&(Event->eword)), std::memory_order_relaxed);
+	return std::atomic_load_explicit(reinterpret_cast<std::atomic<LONG>*>(&(Event->eword)), std::memory_order_relaxed) > 0;
 }
 
 void KeClearEvent(PKEVENT Event)
@@ -779,12 +779,16 @@ BOOLEAN CcUninitializeCacheMap(PFILE_OBJECT FileObject, PVOID arg1, PVOID arg2)
 	return TRUE;
 }
 
+std::mutex vpb_mutex;
+
 void IoAcquireVpbSpinLock(PKIRQL Irql)
 {
+	vpb_mutex.lock();
 }
 
 void IoReleaseVpbSpinLock(KIRQL Irql)
 {
+	vpb_mutex.unlock();
 }
 
 void KeSetTimer(PKTIMER Timer, LARGE_INTEGER Time, PVOID arg1)
@@ -827,10 +831,7 @@ void FsRtlNotifyCleanup(PNOTIFY_SYNC NotifySync, PLIST_ENTRY NotifyList, PVOID a
 {
 }
 
-BOOLEAN ExIsResourceAcquiredSharedLite(PERESOURCE Resource)
-{
-	return BOOLEAN();
-}
+
 
 void CcPurgeCacheSection(PSECTION_OBJECT_POINTERS SectionPointers, PLARGE_INTEGER FileOffset, ULONG Length, ULONG Flags)
 {
@@ -877,8 +878,7 @@ void CcSetReadAheadGranularity(PFILE_OBJECT FileObject, ULONG Size)
 
 void KeInitializeSpinLock(PKSPIN_LOCK Spinlock)
 {
-	//Problem is that there is no KeFreeSpinLock and we can't spin in user space
-	//Spinlock->Lock = -2;
+	//TODO: Use WaitOnAddress
 	Spinlock->Lock = new KSPIN_LOCK_IMPL;
 }
 
@@ -991,7 +991,8 @@ NTSTATUS ZwQueryInformationProcess(HANDLE ProcessHandle, PROCESSINFOCLASS Inform
 
 void ExInitializeFastMutex(PFAST_MUTEX FastMutex)
 {
-
+	//TODO: Convert to futex (WaitOnAddress etc...)
+	FastMutex->fast_mutex = reinterpret_cast<FAST_MUTEX_OP*>(new std::mutex);
 }
 
 void FsRtlNotifyInitializeSync(PNOTIFY_SYNC* NotifySync)
@@ -1017,11 +1018,6 @@ PFILE_OBJECT IoCreateStreamFileObject(PVOID arg1, PDEVICE_OBJECT DeviceObject)
 	PFILE_OBJECT ret = new FILE_OBJECT;
 	ret->DeviceObject = DeviceObject;
 	return ret;
-}
-
-BOOLEAN ExIsResourceAcquiredExclusive(PERESOURCE Resource)
-{
-	return BOOLEAN();
 }
 
 NTSTATUS FsRtlProcessFileLock(PFILE_LOCK FileLock, PIRP Irp, PVOID arg1)
@@ -1440,49 +1436,12 @@ PKTHREAD KeGetCurrentThread()
 
 void KeAcquireSpinLock(PKSPIN_LOCK Spinlock, PKIRQL Irql)
 {
-	/*while (true)
-	{
-		LONG Lock = os_interlocked_compare_exchange(&Spinlock->Lock, -1, -2);
-		if (Lock == -2)
-		{
-			LONG Slot;
-			while (true)
-			{
-				Slot = (curr_spinlock_slot++) % spinlock_slots.size();
-
-				bool exp = false;
-				if (spinlock_slots[Slot].in_use.compare_exchange_strong(exp, true))
-				{
-					break;
-				}
-			}
-
-			spinlock_slots[Slot].m.lock();
-
-			os_interlocked_add(&Spinlock->Lock, Slot + 1);
-
-			return;
-		}
-
-		LONG Slot = Spinlock->Lock;
-		if (Slot>=0)
-		{
-			spinlock_slots[Slot].m.lock();
-			spinlock_slots[Slot].m.unlock();
-		}
-		else
-		{
-			os_sleep(0);
-		}
-	}*/
+	//TODO: Use WaitOnAddress
 	Spinlock->Lock->m.lock();
 }
 
 void KeReleaseSpinLock(PKSPIN_LOCK Spinlock, KIRQL Irql)
 {
-	/*spinlock_slots[Spinlock->Lock].m.unlock();
-	spinlock_slots[Spinlock->Lock].in_use = false;
-	os_interlocked_add(&Spinlock->Lock, (Spinlock->Lock+2)*-1);*/
 	Spinlock->Lock->m.unlock();
 }
 
@@ -1702,11 +1661,6 @@ BOOLEAN SePrivilegeCheck(PPRIVILEGE_SET PrivilegeSet, PSECURITY_SUBJECT_CONTEXT 
 	return BOOLEAN();
 }
 
-BOOLEAN ExIsResourceAcquiredExclusiveLite(PERESOURCE Resource)
-{
-	return BOOLEAN();
-}
-
 HANDLE ObRegisterHandle(PVOID Object)
 {
 	PVOID* reg = new PVOID;
@@ -1856,10 +1810,6 @@ void ExInitializeWorkItem(PWORK_QUEUE_ITEM Wqi, WQFUN Fun, HANDLE h)
 {
 }
 
-void ExReleaseResource(PERESOURCE Resource)
-{
-}
-
 NTSTATUS SeQueryInformationToken(PACCESS_TOKEN Token, QUERY_INFORMATION_TOKEN_TYPE TokenType, PVOID Out)
 {
 	return NTSTATUS();
@@ -1917,10 +1867,14 @@ NTSTATUS SeSetSecurityDescriptorInfo(PVOID arg1, PSECURITY_INFORMATION Flags, PS
 
 void ExAcquireFastMutex(PFAST_MUTEX Mutex)
 {
+	std::mutex* m = reinterpret_cast<std::mutex*>(Mutex->fast_mutex);
+	m->lock();
 }
 
 void ExReleaseFastMutex(PFAST_MUTEX Mutex)
 {
+	std::mutex* m = reinterpret_cast<std::mutex*>(Mutex->fast_mutex);
+	m->unlock();
 }
 
 PVOID MmGetMdlVirtualAddress(PMDL Mdl)
