@@ -582,6 +582,10 @@ int main_fkt(int argc, char *argv[])
 
 	Server->startupComplete();
 
+#ifndef _WIN32
+	writestring("", "/var/run/urbackupsrv.ready");
+#endif
+
 	if(no_server==false )
 	{
 		init_mutex_selthread();
