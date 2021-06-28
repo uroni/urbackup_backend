@@ -2462,7 +2462,8 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 					}
 
 					VSSLog("Hint: Directory to backup (\"" + orig_dir + "\") does not exist. It may have been deleted or renamed. "
-						"Set the \"optional\" directory flag if you do not want backups to fail if directories are missing.", LL_WARNING);
+						"Set the \"optional\" directory flag if you do not want backups to fail if this directory is missing or "
+						"set \"Directories to backup are optional by default\" in the file backup settings.", LL_WARNING);
 
 #ifdef _WIN32
 					if (orig_dir.size() > 1
