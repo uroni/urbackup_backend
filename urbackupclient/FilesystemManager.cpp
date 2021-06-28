@@ -287,7 +287,7 @@ bool FilesystemManager::openFilesystemImage(const std::string& url, const std::s
 		{
 			Server->Log("Creating new cache file system", LL_INFO);
 
-			int64 cache_size = 1LL * 1024 * 1024 * 1024;
+			int64 cache_size = 2LL * 1024 * 1024 * 1024;
 			std::unique_ptr<IVHDFile> dst_vhdx(image_fak->createVHDFile(settings.cache_img_path + ".new", false, cache_size,
 				2 * 1024 * 1024, true, IFSImageFactory::ImageFormat_VHDX));
 
