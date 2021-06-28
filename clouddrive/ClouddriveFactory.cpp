@@ -63,9 +63,16 @@ IFile* ClouddriveFactory::createCloudFile(IBackupFileSystem* cachefs, CloudSetti
 
 	if (settings.endpoint == CloudEndpoint::S3)
 	{
-		online_kv_store = new KvStoreFrontend(settings.s3_settings.cache_db_path,
-			backend, !check_only, std::string(), std::string(), nullptr,
-			std::string(), false, false, cachefs);
+		try
+		{
+			online_kv_store = new KvStoreFrontend(settings.s3_settings.cache_db_path,
+				backend, !check_only, std::string(), std::string(), nullptr,
+				std::string(), false, false, cachefs);
+		}
+		catch (const std::exception&)
+		{
+			return nullptr;
+		}
 	}
 	else
 	{
@@ -113,6 +120,31 @@ int64 ClouddriveFactory::getCfTransid(IFile* cloudfile)
 		return -1;
 
 	return cd->get_transid();
+}
+
+bool ClouddriveFactory::flush(IFile* cloudfile, bool do_submit)
+{
+	if (cloudfile == nullptr)
+		return false;
+
+	CloudFile* cd = dynamic_cast<CloudFile*>(cloudfile);
+	if (cd == nullptr)
+		return false;
+
+	return cd->Flush(do_submit);
+}
+
+std::string ClouddriveFactory::getCfNumDirtyItems(IFile* cloudfile)
+{
+	if (cloudfile == nullptr)
+		return std::string();
+
+	CloudFile* cd = dynamic_cast<CloudFile*>(cloudfile);
+	if (cd == nullptr)
+		return std::string();
+
+
+	return cd->getNumDirtyItems();
 }
 
 bool ClouddriveFactory::isCloudFile(IFile* cloudfile)

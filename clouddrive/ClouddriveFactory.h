@@ -12,6 +12,8 @@ public:
 	virtual bool runBackgroundWorker(IFile* cloudfile, const std::string& output_fn) override;
 	virtual bool isCloudFile(IFile* cloudfile) override;
 	virtual int64 getCfTransid(IFile* cloudfile) override;
+	virtual bool flush(IFile* cloudfile, bool do_submit) override;
+	virtual std::string getCfNumDirtyItems(IFile* cloudfile) override;
 
 private:
 	IFile* createCloudFile(IBackupFileSystem* cachefs, CloudSettings settings, bool check_only);
