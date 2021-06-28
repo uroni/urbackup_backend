@@ -48,6 +48,8 @@ extern IServer* Server;
 #define UnloadActions UnloadActions_clouddrive
 #endif
 
+#include "KvStoreBackendS3.h"
+
 void init_compress_encrypt_factory();
 
 bool is_automount_finished()
@@ -83,12 +85,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
     Server = pServer;
 
     WalCheckpointThread::init_mutex();
+    KvStoreBackendS3::init_mutex();
 
     clouddrivepluginmgr = new ClouddrivePluginMgr;
 
     init_compress_encrypt_factory();
 
-    Aws::SDKOptions options;
+    Aws::SDKOptions options = {};
     Aws::InitAPI(options);
 
     Aws::Utils::Logging::InitializeAWSLogging(Aws::MakeShared<ServerLogging>("KvStoreBackend", Aws::Utils::Logging::LogLevel::Warn));
