@@ -1924,7 +1924,13 @@ bool KvStoreFrontend::start_background_worker()
 	enable_background_worker(true);
 
 	while (nwork == background_worker.get_nwork())
+	{
 		Server->wait(100);
+
+		if (!has_background_task() &&
+			nwork == background_worker.get_nwork())
+			return false;
+	}
 
 	return true;
 }
@@ -2616,9 +2622,10 @@ void KvStoreFrontend::BackgroundWorker::operator()()
 	{
 		size_t n_wait = 0;
 		IScopedLock lock(pause_mutex.get());
+		pause = true;
 		while (!do_quit
 			&& n_wait < 15*60
-			&& !pause
+			&& pause
 			&& !scrub_pause
 			&& !mirror_pause)
 		{
@@ -2627,6 +2634,9 @@ void KvStoreFrontend::BackgroundWorker::operator()()
 			lock.relock(pause_mutex.get());
 			++n_wait;
 		}
+
+		if (!pause_set)
+			pause = false;
 	}
 
 

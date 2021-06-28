@@ -237,6 +237,7 @@ private:
 		void set_pause(bool b)
 		{
 			IScopedLock lock(pause_mutex.get());
+			pause_set = true;
 			pause = b;
 		}
 
@@ -292,6 +293,7 @@ private:
 		bool removeTransaction(KvStoreDao& dao, int64 trans_id, int64 cd_id);
 
 		volatile bool do_quit;
+		bool pause_set = false;
 		bool pause;
 		bool scrub_pause;
 		bool mirror_pause;
