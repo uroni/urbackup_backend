@@ -21,6 +21,7 @@
 #include <assert.h>
 #include "os.h"
 #include "../../utf8/utf8.h"
+#include "../../stringtools.h"
 
 #include "fuse.h"
 
@@ -187,7 +188,7 @@ BtrfsFuse::BtrfsFuse(IFile* img)
     fs_data->device_object = std::make_unique<DEVICE_OBJECT>();
     fs_data->file_object = std::make_unique<FILE_OBJECT>();
 
-    fs_data->device_object->DiskDevice = InitDiskDevice(img, 1LL * 1024 * 1024 * 1024, 1);
+    fs_data->device_object->DiskDevice = InitDiskDevice(img, img->Size(), 1);
 
     std::unique_ptr<IRP> irp = std::make_unique<IRP>();
     std::vector<char> moundev_name_buf;
@@ -341,7 +342,8 @@ public:
         irp->StackLocation.FileObject = file_obj.get();
         irp->UserBuffer = buffer;
         NTSTATUS rc = driver_object->MajorFunction[IRP_MJ_READ](fs_data->fs, irp.get());
-        if (!NT_SUCCESS(rc))
+        if (!NT_SUCCESS(rc) &&
+            rc!= STATUS_END_OF_FILE)
         {
             errno = rc;
             if(has_error!=nullptr)
@@ -536,7 +538,7 @@ bool BtrfsFuse::reflink(const std::string& src_path, const std::string& dest_pat
     if (dest_file_obj.get() == nullptr)
         return false;
 
-    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(src_path, MODE_WRITE, false, false);
+    std::unique_ptr<_FILE_OBJECT> src_file_obj = openFileInt(src_path, MODE_READ, false, false);
 
     if (src_file_obj.get() == nullptr)
         return false;
@@ -642,6 +644,8 @@ std::vector<SFile> BtrfsFuse::listFiles(const std::string& path)
 
         SFile cf;
         cf.name = ConvertFromWchar(std::wstring(fni->FileName, fni->FileNameLength / sizeof(WCHAR)));
+        if (cf.name.find("\\dirty")!=std::string::npos)
+            int abc = 5;
         cf.size = fni->EndOfFile.QuadPart;
         cf.created = fni->CreationTime.QuadPart;
         cf.accessed = fni->LastAccessTime.QuadPart;
@@ -649,7 +653,8 @@ std::vector<SFile> BtrfsFuse::listFiles(const std::string& path)
         cf.isdir = (fni->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) > 0;
         cf.issym = (fni->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) > 0;
 
-        ret.push_back(cf);
+        if (cf.name != "." && cf.name != "..")
+            ret.push_back(cf);
 
         if (fni->NextEntryOffset == 0)
         {
@@ -776,13 +781,23 @@ bool BtrfsFuse::rename(const std::string& orig_name, const std::string& new_name
     irp->StackLocation.Parameters.SetFile.FileInformationClass = FileRenameInformation;
 
 
-    HANDLE root_handle = ObRegisterHandle(fs_data->root_file);
+    //HANDLE root_handle = ObRegisterHandle(fs_data->root_file);
 
-    std::wstring new_name_w = ConvertToWchar(new_name);
+    std::wstring new_name_w;
+
+    if (ExtractFilePath(orig_name, "\\") == ExtractFilePath(new_name, "\\"))
+    {
+        new_name_w = ConvertToWchar(ExtractFileName(new_name, "\\"));
+    }
+    else
+    {
+        new_name_w = L"\\" + ConvertToWchar(new_name);
+    }
+
 
     std::vector<char> buf(sizeof(FILE_RENAME_INFORMATION) + new_name_w.size() * sizeof(wchar_t));
     FILE_RENAME_INFORMATION* fri = reinterpret_cast<FILE_RENAME_INFORMATION*>(buf.data());
-    fri->RootDirectory = root_handle;
+    fri->RootDirectory = nullptr;
     fri->ReplaceIfExists = TRUE;
     fri->Flags = 0;
     fri->FileNameLength = new_name_w.size()*sizeof(WCHAR);
@@ -800,7 +815,7 @@ bool BtrfsFuse::rename(const std::string& orig_name, const std::string& new_name
         ret = true;
     }
 
-    ObDeregisterHandle(root_handle);
+    //ObDeregisterHandle(root_handle);
 
     closeFile(std::move(src_file_obj));
 

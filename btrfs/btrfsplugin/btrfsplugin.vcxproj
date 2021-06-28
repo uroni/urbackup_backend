@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\stringtools.cpp" />
     <ClCompile Include="BackupFileSystem.cpp" />
     <ClCompile Include="BtrfsFactory.cpp" />
     <ClCompile Include="dllmain.cpp" />
