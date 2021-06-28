@@ -179,7 +179,23 @@ bool BtrfsBackupFileSystem::sync(const std::string& path)
 
 bool BtrfsBackupFileSystem::deleteSubvol(const std::string& path)
 {
-	return btrfs.deleteFile(path);
+	std::vector<SFile> files = listFiles(path);
+
+	for (SFile& f : files)
+	{
+		if (f.isdir)
+		{
+			if (!deleteSubvol(path + "\\" + f.name))
+				return false;
+		}
+		else
+		{
+			if (!deleteFile(path + "\\" + f.name))
+				return false;
+		}
+	}
+
+	return deleteFile(path);
 }
 
 int64 BtrfsBackupFileSystem::totalSpace()
