@@ -1626,7 +1626,7 @@ IFsFile* TransactionalKvStore::get_internal( const std::string& key, BitmapInfo 
 		if(nf==nullptr)
 		{
 			std::string err;
-			std::string msg = "Could not open cached file " + keypath2(key, transid) + ". " + os_last_error_str();
+			std::string msg = "Could not open cached file " + keypath2(key, transid) + ". " + cachefs->lastError();
 			Server->Log(msg, LL_ERROR);
 			err += msg;
 
@@ -4921,6 +4921,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 			{
 				lock.lock();
 
+				Server->Log("Removing invalid transaction " + std::to_string(it->transid)+ " (1)", LL_INFO);
 				remove_transaction(it->transid);
 			}
 		}
@@ -5017,7 +5018,7 @@ bool TransactionalKvStore::item_submitted( std::list<SSubmissionItem>::iterator 
 					else
 					{
 						lock.lock();
-
+						Server->Log("Removing invalid transaction " + std::to_string(it->transid) + " (2)", LL_INFO);
 						remove_transaction(it->transid);
 					}
 				}
@@ -6474,6 +6475,9 @@ void TransactionalKvStore::cleanup(bool init)
 			if( (dirty.get()==nullptr && dirty_mem.get()==nullptr)
 				|| invalid.get()!=nullptr )
 			{
+				if(invalid)
+					Server->Log("Removing invalid transaction " + std::to_string(ctransid) + " (3)", LL_INFO);
+
 				remove_transaction(ctransid);
 			}
 			else if(ctransid<maxsubmitted
@@ -7113,7 +7117,7 @@ int64 TransactionalKvStore::set_active_transactions(std::unique_lock<cache_mutex
 				{
 					DIRTY_ITEM(assert(dirty_items.find(ctransid) == dirty_items.end()));
 					dirty_lock.unlock();
-					Server->Log("Removing transaction "+convert(ctransid));
+					Server->Log("Removing transaction "+convert(ctransid)+" (no dirty items 1)");
 					remove_transaction(ctransid);
 				}
 				else
@@ -7137,7 +7141,7 @@ int64 TransactionalKvStore::set_active_transactions(std::unique_lock<cache_mutex
 				if (num_dirty_items.find(ctransid) == num_dirty_items.end())
 				{
 					DIRTY_ITEM(assert(dirty_items.find(ctransid) == dirty_items.end()));
-					Server->Log("Removing transaction " + convert(ctransid));
+					Server->Log("Removing transaction " + convert(ctransid)+" (no dirty items 2)");
 					remove_transaction(ctransid);
 				}
 				else
