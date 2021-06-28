@@ -91,6 +91,8 @@ public:
 	virtual bool fast_write_retry() { return false; }
 
 private:
+	virtual bool list_wo_versions(IListCallback* callback);
+
 	std::string encryption_key;
 	std::pair<int64, std::shared_ptr<Aws::S3::S3Client> > getS3Client(size_t idx, bool useVirtualAdressing=true);
 	std::pair<int64, std::shared_ptr<Aws::S3::S3Client> > newS3Client(size_t idx, int64 curr_requesttimeout, bool useVirtualAdressing);

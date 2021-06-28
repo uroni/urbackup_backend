@@ -629,7 +629,12 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 
 		if(!listObjectsOutcome.IsSuccess())
 		{
-			Server->Log("Listing objects in bucket \""+buckets[idx].name+"\" failed. "+listObjectsOutcome.GetError().GetMessage().c_str()+" (code: "+convert(static_cast<int64>(listObjectsOutcome.GetError().GetErrorType()))+")", LL_ERROR);
+			if (idx == 0
+				&& listObjectsOutcome.GetError().GetExceptionName()=="NotImplemented")
+			{
+				return list_wo_versions(callback);
+			}
+			Server->Log("Listing objects in bucket \""+buckets[idx].name+"\" with versions failed. "+listObjectsOutcome.GetError().GetMessage().c_str()+" (code: "+convert(static_cast<int64>(listObjectsOutcome.GetError().GetErrorType()))+")", LL_ERROR);
 			fixError(listObjectsOutcome.GetError().GetErrorType());
 			releaseS3Client(idx, s3_client);
 			return false;
@@ -699,6 +704,8 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 			std::string syserr = os_last_error_str();
 			Server->Log("Error opening source file "+ path+". "+syserr, LL_ERROR);
 			
+			cachefs->openFile(path, MODE_READ);
+
 			if(allow_error_event)
 			{
 				addSystemEvent("s3_backend",
@@ -1075,6 +1082,85 @@ bool KvStoreBackendS3::del_int( key_next_fun_t key_next_fun,
 		return del_int(key_next_fun, locinfo_next_fun, false);
 	}
 	
+	return true;
+}
+
+bool KvStoreBackendS3::list_wo_versions(IListCallback* callback)
+{
+	bool etag_error = false;
+	Aws::String key_marker;
+	size_t idx = 0;
+	auto s3_client = getS3Client(idx);
+	while (idx < buckets.size())
+	{
+		if (buckets[idx].name == SHARD_TAG)
+		{
+			if (idx + 1 < buckets.size())
+			{
+				++idx;
+				s3_client = getS3Client(idx);
+				key_marker.clear();
+				continue;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+		listObjectsRequest.SetBucket(buckets[idx].name.c_str());
+
+		if (!key_marker.empty())
+		{
+			listObjectsRequest.WithMarker(key_marker);
+		}
+
+		Aws::S3::Model::ListObjectsOutcome listObjectsOutcome = s3_client.second->ListObjects(listObjectsRequest);
+
+		if (!listObjectsOutcome.IsSuccess())
+		{
+			Server->Log("Listing objects in bucket \"" + buckets[idx].name + "\" failed. " + listObjectsOutcome.GetError().GetMessage().c_str() + " (code: " + convert(static_cast<int64>(listObjectsOutcome.GetError().GetErrorType())) + ")", LL_ERROR);
+			fixError(listObjectsOutcome.GetError().GetErrorType());
+			releaseS3Client(idx, s3_client);
+			return false;
+		}
+
+		for (const Aws::S3::Model::Object& object : listObjectsOutcome.GetResult().GetContents())
+		{
+			key_marker = object.GetKey();
+
+			std::string md5sum;
+			if (!callback->onlineItem(object.GetKey().c_str(), md5sum, object.GetSize(), object.GetLastModified().Millis()))
+			{
+				releaseS3Client(idx, s3_client);
+				return false;
+			}
+		}
+
+		if (!listObjectsOutcome.GetResult().GetIsTruncated())
+		{
+			releaseS3Client(idx, s3_client);
+
+			if (idx + 1 < buckets.size())
+			{
+				++idx;
+				s3_client = getS3Client(idx);
+				key_marker.clear();
+			}
+			else
+			{
+				return true;
+			}
+		}
+		else
+		{
+			if (!listObjectsOutcome.GetResult().GetNextMarker().empty())
+			{
+				key_marker = listObjectsOutcome.GetResult().GetNextMarker();
+			}
+		}
+	}
 	return true;
 }
 
