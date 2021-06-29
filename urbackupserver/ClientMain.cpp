@@ -1998,12 +1998,9 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
-	std::vector<std::string> setting_names=getSettingsList();
+	std::vector<std::string> setting_names=getClientConfigurableSettingsList();
 
 	bool mod=false;
-
-	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
-
 	bool has_use = false;
 
 	for (size_t i = 0; i < setting_names.size(); ++i)
@@ -2015,17 +2012,18 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			break;
 		}
 	}
+
+	int def_use = c_use_group;
+
+	if (sr->getValue("client_set_settings") == "true")
+	{
+		def_use = c_use_value_client;
+	}
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
 		std::string &key=setting_names[i];
 		std::string value;
-
-		if(std::find(only_server_settings.begin(), only_server_settings.end(),
-			key)!=only_server_settings.end())
-		{
-			continue;
-		}
 
 		int use = c_use_value;
 
@@ -2051,14 +2049,15 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			}
 		}
 		else if (!has_use
-			&& sr->getValue(key, &value))
+			&& sr->getValue(key, &value)
+			&& def_use==c_use_value_client)
 		{
 			if (internet_connection && key == "computername")
 			{
 				continue;
 			}
 
-			bool b = updateClientSetting(key, value, c_use_undefined, 0);
+			bool b = updateClientSetting(key, value, def_use, 0);
 			if (b)
 				mod = true;
 		}
