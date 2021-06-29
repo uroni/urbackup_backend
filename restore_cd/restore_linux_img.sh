@@ -152,7 +152,7 @@ SERVER_CONNECTED=0
 while [ $WTIME -lt 60 ]
 do
     sleep 1
-    if $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"internet_connected": true' > /dev/null && ! $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"servers": []'
+    if $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"internet_connected": true' > /dev/null && ! $PREFIX/sbin/urbackuprestoreclientctl status 2>&1 | grep '"servers": \[\]' > /dev/null
     then
         echo "Successfully connected to Internet server. Logging in..."
         SERVER_CONNECTED=1
