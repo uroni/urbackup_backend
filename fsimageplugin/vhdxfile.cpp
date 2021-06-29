@@ -699,7 +699,7 @@ namespace
 
 		if (f->Read(off, entry_buf.data(), static_cast<_u32>(entry_buf.size())) != entry_buf.size())
 		{
-			Server->Log("Error reading log entry (size=" + std::to_string(header->EntryLength) + "). "
+			Server->Log("Error reading log entry (size=" + convert(header->EntryLength) + "). "
 				+ os_last_error_str(), LL_WARNING);
 			return loge;
 		}
@@ -1154,7 +1154,7 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 		}
 		else if (bat_entry->State != PAYLOAD_BLOCK_ZERO)
 		{
-			Server->Log("Unknown bat entry state " + std::to_string(bat_entry->State), LL_ERROR);
+			Server->Log("Unknown bat entry state " + convert(bat_entry->State), LL_ERROR);
 			return false;
 		}
 
@@ -1919,7 +1919,7 @@ bool VHDXFile::updateHeader()
 
 	if (file->Write(curr_header_pos, reinterpret_cast<char*>(&curr_header), sizeof(curr_header)) != sizeof(curr_header))
 	{
-		Server->Log("Error writing VHDX header to pos " + std::to_string(curr_header_pos) + ". " + os_last_error_str());
+		Server->Log("Error writing VHDX header to pos " + convert(curr_header_pos) + ". " + os_last_error_str());
 		return false;
 	}
 
@@ -1957,8 +1957,8 @@ bool VHDXFile::replayLog()
 
 	if (file->Size() < head_entry.fsize)
 	{
-		Server->Log("VHDX size smaller than expected from log expected="+std::to_string(head_entry.fsize)
-			+" got="+std::to_string(file->Size()), LL_WARNING);
+		Server->Log("VHDX size smaller than expected from log expected="+convert(head_entry.fsize)
+			+" got="+convert(file->Size()), LL_WARNING);
 		return false;
 	}
 
@@ -1975,8 +1975,8 @@ bool VHDXFile::replayLog()
 
 		if (file->Size() < loge.fsize)
 		{
-			Server->Log("VHDX size smaller than expected from log entry expected=" + std::to_string(loge.fsize)
-				+ " got=" + std::to_string(file->Size()), LL_WARNING);
+			Server->Log("VHDX size smaller than expected from log entry expected=" + convert(loge.fsize)
+				+ " got=" + convert(file->Size()), LL_WARNING);
 			return false;
 		}
 
@@ -2143,7 +2143,7 @@ bool VHDXFile::readRegionTable(int64 off)
 
 	if ((found ^ (1 | 2)) != 0)
 	{
-		Server->Log("Did not find required region table entry. Found="+std::to_string(found), LL_WARNING);
+		Server->Log("Did not find required region table entry. Found="+convert(found), LL_WARNING);
 		return false;
 	}
 
@@ -2161,8 +2161,8 @@ bool VHDXFile::readBat()
 		_u32 toread = (std::min)(read_size, bat_region.Length - i);
 		if (file->Read(bat_region.FileOffset + i, bat_buf.data() + i, toread) != toread)
 		{
-			Server->Log("Error reading VHDX BAT at pos " + std::to_string(bat_region.FileOffset + i)
-				+ " toread " + std::to_string(toread) + ". " + os_last_error_str(), LL_WARNING);
+			Server->Log("Error reading VHDX BAT at pos " + convert(bat_region.FileOffset + i)
+				+ " toread " + convert(toread) + ". " + os_last_error_str(), LL_WARNING);
 			return false;
 		}
 	}
@@ -2183,7 +2183,7 @@ bool VHDXFile::readMeta()
 	if (file->Read(meta_table_region.FileOffset, meta_table.data(), static_cast<_u32>(meta_table.size())) != meta_table.size())
 	{
 		Server->Log("Error reading VHDX meta table from pos " +
-			std::to_string(meta_table_region.FileOffset) + ". " + os_last_error_str(), LL_WARNING);
+			convert(meta_table_region.FileOffset) + ". " + os_last_error_str(), LL_WARNING);
 		return false;
 	}
 
@@ -2229,12 +2229,12 @@ bool VHDXFile::readMeta()
 
 		if (table_entry->Offset < 64 * 1024)
 		{
-			Server->Log("Meta table offset wrong: " + std::to_string(table_entry->Offset), LL_WARNING);
+			Server->Log("Meta table offset wrong: " + convert(table_entry->Offset), LL_WARNING);
 			return false;
 		}
 		if (table_entry->Offset + table_entry->Length > meta_table_region.Length)
 		{
-			Server->Log("Meta table offset+length wrong: " + std::to_string(table_entry->Offset + table_entry->Length), LL_WARNING);
+			Server->Log("Meta table offset+length wrong: " + convert(table_entry->Offset + table_entry->Length), LL_WARNING);
 			return false;
 		}
 
@@ -2329,8 +2329,8 @@ bool VHDXFile::readMeta()
 				if (parent_locator_entry->KeyOffset + parent_locator_entry->KeyLength >= entry_buf.size()
 					|| parent_locator_entry->KeyOffset>10*1024*1024)
 				{
-					Server->Log("Parent locator entry key offset not plausible: "+std::to_string(parent_locator_entry->KeyOffset)+
-						" length: "+std::to_string(parent_locator_entry->KeyLength),
+					Server->Log("Parent locator entry key offset not plausible: "+convert(parent_locator_entry->KeyOffset)+
+						" length: "+convert(parent_locator_entry->KeyLength),
 						LL_WARNING);
 					return false;
 				}
@@ -2338,8 +2338,8 @@ bool VHDXFile::readMeta()
 				if (parent_locator_entry->ValueOffset + parent_locator_entry->ValueLength >= entry_buf.size()
 					|| parent_locator_entry->ValueOffset > 10 * 1024 * 1024)
 				{
-					Server->Log("Parent locator entry key offset not plausible: " + std::to_string(parent_locator_entry->ValueOffset)+
-						" length: " + std::to_string(parent_locator_entry->ValueLength),
+					Server->Log("Parent locator entry key offset not plausible: " + convert(parent_locator_entry->ValueOffset)+
+						" length: " + convert(parent_locator_entry->ValueLength),
 						LL_WARNING);
 					return false;
 				}
@@ -2384,10 +2384,10 @@ bool VHDXFile::readMeta()
 		vhdx_params.BlockSize == 0 ||
 		dst_size == -1)
 	{
-		Server->Log("Missing VHDX parameter. sector_size=" + std::to_string(sector_size) +
-			" physical_sector_size=" + std::to_string(physical_sector_size) +
-			" vhdx_params.BlockSize=" + std::to_string(vhdx_params.BlockSize)+
-			" dst_size=" + std::to_string(dst_size), LL_WARNING);
+		Server->Log("Missing VHDX parameter. sector_size=" + convert(sector_size) +
+			" physical_sector_size=" + convert(physical_sector_size) +
+			" vhdx_params.BlockSize=" + convert(vhdx_params.BlockSize)+
+			" dst_size=" + convert(dst_size), LL_WARNING);
 		return false;
 	}
 
@@ -2454,7 +2454,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 			!backing_file->Resize(allocated_size, false))
 		{
 			Server->Log("Error resizing backing file to new allocated size " 
-				+ std::to_string(allocated_size) + ". " + os_last_error_str(),
+				+ convert(allocated_size) + ". " + os_last_error_str(),
 				LL_WARNING);
 			return false;
 		}
@@ -2796,7 +2796,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 			sector_bitmap_buf.data(), 
 			static_cast<_u32>(sector_bitmap_buf.size())) != block_size)
 		{
-			Server->Log("Reading sector bitmap from mb offset " + std::to_string(FileOffsetMB)
+			Server->Log("Reading sector bitmap from mb offset " + convert(FileOffsetMB)
 				+ " failed. " + os_last_error_str(), LL_ERROR);
 			return NULL;
 		}
@@ -2836,7 +2836,7 @@ bool VHDXFile::isSectorSet(int64 spos, bool& set)
 
 	if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT)
 	{
-		Server->Log("Sector bitmap " + std::to_string(sector_block) + " not fully present", LL_WARNING);
+		Server->Log("Sector bitmap " + convert(sector_block) + " not fully present", LL_WARNING);
 		return false;
 	}
 
@@ -2844,7 +2844,7 @@ bool VHDXFile::isSectorSet(int64 spos, bool& set)
 
 	if (sector_bitmap == NULL)
 	{
-		Server->Log("Error reading sector bitmap of sector block " + std::to_string(sector_block), LL_ERROR);
+		Server->Log("Error reading sector bitmap of sector block " + convert(sector_block), LL_ERROR);
 		return false;
 	}
 
@@ -2867,8 +2867,8 @@ bool VHDXFile::setSector(int64 start, int64 end)
 	if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT &&
 		sector_bat_entry->State != PAYLOAD_BLOCK_NOT_PRESENT)
 	{
-		Server->Log("Sector bitmap " + std::to_string(sector_block) + " wrong state "
-			+std::to_string(sector_bat_entry->State), LL_WARNING);
+		Server->Log("Sector bitmap " + convert(sector_block) + " wrong state "
+			+convert(sector_bat_entry->State), LL_WARNING);
 		return false;
 	}
 
