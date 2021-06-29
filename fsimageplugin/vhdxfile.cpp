@@ -805,7 +805,7 @@ VHDXFile::VHDXFile(const std::string& fn, bool pRead_only, uint64 pDstsize, unsi
 	: dst_size(pDstsize), fast_mode(fast_mode), read_only(pRead_only), sector_bitmap_mutex(Server->createMutex()),
 	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
 	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
-	is_open(false)
+	is_open(false), next_payload_mutex(Server->createMutex()), log_mutex(Server->createMutex())
 {
 	is_open = open(fn, compress, compress_n_threads);
 }
@@ -816,7 +816,7 @@ VHDXFile::VHDXFile(const std::string& fn, const std::string& parent_fn, bool pRe
 	parent_fn(parent_fn), sector_bitmap_mutex(Server->createMutex()),
 	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
 	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
-	is_open(false)
+	is_open(false), next_payload_mutex(Server->createMutex()), log_mutex(Server->createMutex())
 {
 	if (!FileExists(fn))
 	{
@@ -908,7 +908,7 @@ bool VHDXFile::has_sector(_i64 sector_size)
 {
 	if (!has_sector_int(spos))
 	{
-		if (parent.get() != nullptr)
+		if (parent.get() != NULL)
 			return parent->has_sector_int(spos);
 	}
 	
@@ -936,7 +936,7 @@ bool VHDXFile::finish()
 
 		bool ret = syncInt(true);
 
-		if (ret && parent.get()!=nullptr)
+		if (ret && parent.get()!=NULL)
 		{
 			ret = parent->finish();
 		}
@@ -1159,7 +1159,7 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 		}
 
 		if (copy_prev && curr_sector_size < sector_size &&
-			parent.get()!=nullptr)
+			parent.get()!=NULL)
 		{
 			std::vector<char> prev_buf(sector_size - curr_sector_size);
 
@@ -1251,7 +1251,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 {
 	if (spos> dst_size)
 	{
-		if (has_error != nullptr)
+		if (has_error != NULL)
 			*has_error = true;
 
 		return 0;
@@ -1280,7 +1280,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (rc < toread)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1289,13 +1289,13 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			continue;
 		}
 
-		if (parent.get()==nullptr)
+		if (parent.get()==NULL)
 		{
 			_u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1313,7 +1313,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1336,7 +1336,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 				bool set;
 				if (!isSectorSet(spos, set))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1358,7 +1358,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1381,7 +1381,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1389,7 +1389,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1415,7 +1415,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 {
 	if (spos > dst_size)
 	{
-		if (has_error != nullptr)
+		if (has_error != NULL)
 			*has_error = true;
 
 		return 0;
@@ -1433,7 +1433,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 		if (!fast_mode && !updateHeader())
 		{
-			if (has_error != nullptr)
+			if (has_error != NULL)
 				*has_error = true;
 
 			return 0;
@@ -1458,7 +1458,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1467,13 +1467,13 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			continue;
 		}
 
-		if (parent.get()==nullptr)
+		if (parent.get()==NULL)
 		{
 			_u32 towrite = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - written);
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1483,7 +1483,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 				bat_entry->State != PAYLOAD_BLOCK_ZERO &&
 				bat_entry->State != PAYLOAD_BLOCK_UNMAPPED)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1491,7 +1491,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (!allocateBatBlockFull(block))
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1505,7 +1505,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1519,7 +1519,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			{
 				if (!setSector(spos, spos+towrite))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1530,7 +1530,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 				bat_entry->State != PAYLOAD_BLOCK_ZERO &&
 				bat_entry->State != PAYLOAD_BLOCK_UNMAPPED)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1539,7 +1539,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			{
 				if (!allocateBatBlockFull(block))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1549,7 +1549,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 				if (!setSector(spos, spos+towrite))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1565,7 +1565,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1637,7 +1637,7 @@ bool VHDXFile::syncInt(bool full)
 	{
 		retry = false;
 
-		std::unique_lock<std::mutex> lock(log_mutex);
+		IScopedLock lock(log_mutex.get());
 
 		int64 stop_idx = -1;
 		if (!fast_mode)
@@ -1832,7 +1832,7 @@ bool VHDXFile::createNew()
 	std::string parent_data_uuid;
 	std::string parent_abs_path;
 	std::string parent_rel_path;
-	if (parent.get() != nullptr)
+	if (parent.get() != NULL)
 	{
 		VhdxGUID g;
 		parent->getDataWriteGUID(g);
@@ -2050,7 +2050,7 @@ bool VHDXFile::readHeader()
 		return false;
 	}
 
-	VhdxHeader* sel_header = nullptr;
+	VhdxHeader* sel_header = NULL;
 
 	if (checkHeader(file, header1))
 	{
@@ -2063,7 +2063,7 @@ bool VHDXFile::readHeader()
 		sel_header = &header2;
 	}
 
-	if (sel_header == nullptr)
+	if (sel_header == NULL)
 	{
 		Server->Log("Both VHDX headers are invalid", LL_WARNING);
 		return false;
@@ -2412,7 +2412,7 @@ bool VHDXFile::readMeta()
 				true, 0));
 		}
 
-		if (parent.get() == nullptr ||
+		if (parent.get() == NULL ||
 			!parent->isOpen())
 		{
 			Server->Log("Could not open parent vhdx at \"" + absolute_win32_parent_path + "\" or "
@@ -2439,7 +2439,12 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 
 	bat_entry->State = PAYLOAD_BLOCK_FULLY_PRESENT;
 
-	int64 new_pos = next_payload_pos.fetch_add(block_size, std::memory_order_relaxed);
+	int64 new_pos;
+	{
+		IScopedLock lock(next_payload_mutex.get());
+		new_pos = next_payload_pos;
+		next_payload_pos += block_size;
+	}
 
 	if (new_pos > file->Size())
 	{
@@ -2460,7 +2465,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 	bat_entry->Reserved = 0;
 
 	{
-		std::unique_lock<std::mutex> lock(log_mutex);
+		IScopedLock lock(log_mutex.get());
 		pending_bat_entries.insert(block);
 	}
 
@@ -2496,7 +2501,7 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 {
 	backing_file.reset(Server->openFile(fn, read_only ? MODE_READ : MODE_RW_CREATE));
 
-	if (backing_file.get() == nullptr)
+	if (backing_file.get() == NULL)
 	{
 		Server->Log("Error opening VHDX backing file at \"" 
 			+ fn + "\". " + os_last_error_str(), LL_WARNING);
@@ -2793,7 +2798,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 		{
 			Server->Log("Reading sector bitmap from mb offset " + std::to_string(FileOffsetMB)
 				+ " failed. " + os_last_error_str(), LL_ERROR);
-			return nullptr;
+			return NULL;
 		}
 
 		lock.relock(sector_bitmap_mutex.get());
@@ -2837,7 +2842,7 @@ bool VHDXFile::isSectorSet(int64 spos, bool& set)
 
 	char* sector_bitmap = getSectorBitmap(sector_block, sector_bat_entry->FileOffsetMB);
 
-	if (sector_bitmap == nullptr)
+	if (sector_bitmap == NULL)
 	{
 		Server->Log("Error reading sector bitmap of sector block " + std::to_string(sector_block), LL_ERROR);
 		return false;
@@ -2880,7 +2885,7 @@ bool VHDXFile::setSector(int64 start, int64 end)
 		sector_bitmap = getSectorBitmap(sector_block, sector_bat_entry->FileOffsetMB);
 	}
 
-	if (sector_bitmap == nullptr)
+	if (sector_bitmap == NULL)
 		return false;
 
 	setSectorInt(sector_bitmap, start, end, block_size, sector_size);
@@ -2904,7 +2909,7 @@ bool VHDXFile::has_block(bool use_parent)
 {
 	if (!has_sector_int(spos))
 	{
-		if (use_parent && parent.get() != nullptr)
+		if (use_parent && parent.get() != NULL)
 			return parent->has_block(true);
 
 		return false;

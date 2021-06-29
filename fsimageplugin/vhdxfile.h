@@ -5,8 +5,6 @@
 #include "IVHDFile.h"
 
 #include <memory>
-#include <atomic>
-#include <mutex>
 #include <set>
 
 class CompressedFile;
@@ -164,13 +162,14 @@ private:
 	int64 flushed_vhdx_size;
 	bool data_write_uuid_updated;
 
-	std::mutex log_mutex;
+	std::auto_ptr<IMutex> log_mutex;
 
 	_u32 sector_size;
 	_u32 physical_sector_size;
 	_u32 block_size;
 
-	std::atomic<int64> next_payload_pos;
+	std::auto_ptr<IMutex> next_payload_mutex;
+	int64 next_payload_pos;
 
 	int64 log_start_pos;
 	int64 log_pos;
