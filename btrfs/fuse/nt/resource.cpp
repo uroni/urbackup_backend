@@ -2,6 +2,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <thread>
 #include <set>
 
 struct ERESOURCE_INT {

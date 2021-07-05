@@ -84,6 +84,7 @@ extern IServer* Server;
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
 #include <vector>
+#include <thread>
 
 namespace
 {

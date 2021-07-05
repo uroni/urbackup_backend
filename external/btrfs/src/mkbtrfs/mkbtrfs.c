@@ -77,7 +77,7 @@ static void print_string(FILE* f, int resid, ...) {
     va_end(ap);
 }
 
-int main(int argc, char** argv) {
+int main_mkbtrfs(int argc, char** argv) {
     HMODULE ubtrfs;
     bool baddrive = false, success;
     char *ds = NULL, *labels = NULL;

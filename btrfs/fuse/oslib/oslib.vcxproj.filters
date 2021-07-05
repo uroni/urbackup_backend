@@ -32,9 +32,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="event.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="file.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>

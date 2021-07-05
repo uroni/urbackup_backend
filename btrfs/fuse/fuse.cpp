@@ -19,7 +19,8 @@
 #include <iostream>
 #include <vector>
 #include <assert.h>
-#include "os.h"
+#include <atomic>
+#include "oslib/os.h"
 #include "../../utf8/utf8.h"
 #include "../../stringtools.h"
 
@@ -29,7 +30,7 @@ extern "C"
 {
 #include <ntifs.h>
 #include <device.h>
-#include "src/btrfsioctl.h"
+#include "../../external/btrfs/src/btrfsioctl.h"
 #include "get_chunks.h"
 
     NTSTATUS __stdcall DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath);

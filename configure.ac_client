@@ -48,6 +48,8 @@ AC_ARG_ENABLE([embedded-zstd],
      AS_HELP_STRING([--enable-embedded-zstd], [Compile and use ZSTD included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_ZSTD, test "x$enable_embedded_zstd" = xyes)
 
+AM_CONDITIONAL(WITH_BTRFS_ZLIB, test 1 = 0)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -64,7 +66,51 @@ fi
 
 AC_LANG([C++])
 
+AX_CXX_COMPILE_STDCXX([17])
+
 # Checks for libraries.
+
+AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
+AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
+
+if test "x$with_openssl" != "xtrue"
+then
+    AC_MSG_ERROR([OpenSSL library not present or not recent enough.])
+fi
+
+LIBCURL_CHECK_CONFIG(,[7.20.0],,[
+       AC_MSG_ERROR([Your system lacks of libcurl >= 7.20.0])
+     ])
+
+AC_CHECK_HEADER(aws/s3/S3Client.h, [HAS_AWS_SDK_H=1])
+AC_CHECK_LIB(aws-c-common, aws_string_destroy, [HAS_AWS_C_COMMON=1])
+AC_MSG_CHECKING([linking to aws-c++-sdk])
+SAVED_LDFLAGS="$LDFLAGS"
+SAVED_LIBS="$LIBS"
+SAVED_CPPFLAGS="$CPPFLAGS"
+AWS_SDK_INCLUDES=""
+AWS_SDK_LIBS="-laws-cpp-sdk-s3 -laws-cpp-sdk-core -laws-c-event-stream -laws-checksums -laws-c-common"
+LDFLAGS="$LDFLAGS"
+CPPFLAGS="$CPPFLAGS $PTHREAD_CFLAGS $AWS_SDK_INCLUDES"
+LIBS="$LIBS $AWS_SDK_LIBS $OPENSSL_LIBS $LIBS $LIBCURL $PTHREAD_LIBS"
+AC_LINK_IFELSE(
+	  [AC_LANG_PROGRAM([#include <aws/s3/model/BucketLocationConstraint.h>], 
+		[Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(Aws::S3::Model::BucketLocationConstraint::af_south_1);])],
+	  [
+		  HAS_AWS_CPP_SDK=1
+		  AC_MSG_RESULT([yes])
+	  ], 
+	  [AC_MSG_RESULT([no])])
+LDFLAGS="$SAVED_LDFLAGS"
+CPPFLAGS="$SAVED_CPPFLAGS"
+LIBS="$SAVED_LIBS"
+AC_SUBST([AWS_SDK_INCLUDES])
+AC_SUBST([AWS_SDK_LIBS])
+
+if test "x$HAS_AWS_SDK_H" != "x1" || test "x$HAS_AWS_C_COMMON" != "x1" || test "x$HAS_AWS_CPP_SDK" != "x1"
+then
+	AC_MSG_ERROR(AWS C++ SDK not found or installed correctly)
+fi
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -88,6 +134,10 @@ AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wforma
 AX_CHECK_COMPILE_FLAG(-msse4.1 -msse4.2, 
 	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xyes)],
 	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xno)])
+
+AX_CHECK_COMPILE_FLAG(-Wno-subobject-linkage,
+	[AM_CONDITIONAL(DISABLE_CERTAIN_WARNINGS, test xyes = xyes)], 
+	[AM_CONDITIONAL(DISABLE_CERTAIN_WARNINGS, test xyes = xno)])
 	
 AX_CHECK_LINK_FLAG([-Wl,-z,relro],
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
@@ -170,14 +220,6 @@ then
 				C-Ares (address resolution) library not found or not recent enough.
 				])
 	])
-fi
-
-AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
-AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
-
-if test "x$with_openssl" != "xtrue"
-then
-        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (web socket/https proxy support)])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")

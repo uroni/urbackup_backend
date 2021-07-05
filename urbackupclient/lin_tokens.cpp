@@ -34,7 +34,6 @@ struct TokenCacheInt
 };
 
 TokenCache::TokenCache()
-: token_cache(NULL)
 {
 }
 

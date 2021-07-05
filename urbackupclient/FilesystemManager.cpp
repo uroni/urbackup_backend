@@ -11,6 +11,9 @@
 #include "ClientService.h"
 #include <chrono>
 #include <atomic>
+#include <memory>
+#include <thread>
+#include <condition_variable>
 using namespace std::chrono_literals;
 
 extern IBtrfsFactory* btrfs_fak;
@@ -39,6 +42,11 @@ namespace
 				this->regular_sync();
 				});
 		}
+
+		TmpFileHandlingFileSystem(const TmpFileHandlingFileSystem&) = delete;
+		void operator=(const TmpFileHandlingFileSystem&) = delete;
+		TmpFileHandlingFileSystem(TmpFileHandlingFileSystem&&) = delete;
+		void operator=(TmpFileHandlingFileSystem&&) = delete;		
 
 		~TmpFileHandlingFileSystem()
 		{
@@ -377,10 +385,14 @@ bool FilesystemManager::mountFileSystem(const std::string& url, const std::strin
 	IBackupFileSystem* fs = filesystems[url];
 
 	std::thread dm([url, fs, mount_path]() {
+		#ifndef _WIN32
+		//TODO: Implement fuse
+		#else
 		if (!dokany_mount(fs, mount_path))
 		{
 			Server->Log("Mounting fs " + url + " at \"" + mount_path + "\" failed", LL_ERROR);
 		}
+		#endif
 		});
 
 	dm.detach();

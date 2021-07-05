@@ -20,6 +20,7 @@
 #include "../fileservplugin/IFileServ.h"
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/file_metadata.h"
+#include "../common/data.h"
 #include "../fileservplugin/IFileMetadataPipe.h"
 #include "client.h"
 #include "../Interface/BackupFileSystem.h"

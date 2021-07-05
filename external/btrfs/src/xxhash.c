@@ -227,7 +227,7 @@ static U64 XXH_read64(const void* memPtr)
 #define GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 
 /* Note : although _rotl exists for minGW (GCC under windows), performance seems poor */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #  define XXH_rotl32(x,r) _rotl(x,r)
 #  define XXH_rotl64(x,r) _rotl64(x,r)
 #else
@@ -235,7 +235,7 @@ static U64 XXH_read64(const void* memPtr)
 #  define XXH_rotl64(x,r) ((x << r) | (x >> (64 - r)))
 #endif
 
-#if defined(_MSC_VER)     /* Visual Studio */
+#if defined(_MSC_VER) && !defined(__GNUC__)     /* Visual Studio */
 #  define XXH_swap32 _byteswap_ulong
 #  define XXH_swap64 _byteswap_uint64
 #elif GCC_VERSION >= 403

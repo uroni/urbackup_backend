@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 
 size_t os_get_num_cpus();
 

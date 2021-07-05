@@ -5,14 +5,13 @@ extern "C"
 #include "device.h"
 }
 #include "../fuse.h"
-#include "event.h"
 
 #include <memory>
 #include <iostream>
 #include <thread>
 #include <stdarg.h>
 #include <assert.h>
-#include <os.h>
+#include "../oslib/os.h"
 #include <map>
 #include <vector>
 #include <mutex>
@@ -20,9 +19,16 @@ extern "C"
 #include <set>
 #include <array>
 #include <thread>
+#include <condition_variable>
 #include "file.h"
-#include "utf8.h"
-#include "../../utf8/utf8.h"
+#include "../oslib/utf8.h"
+#include "../../../utf8/utf8.h"
+
+#ifndef _WIN32
+#define vsprintf_s vsnprintf
+#define vprintf_s vprintf
+#define vswprintf_s vswprintf
+#endif
 
 POBJECT_TYPE* IoFileObjectType;
 
@@ -68,15 +74,6 @@ namespace
 	}
 
 	PFILE_OBJECT last_file_object = NULL;
-
-	struct SSpinlockSlot
-	{
-		std::mutex m;
-		std::atomic<bool> in_use;
-	};
-
-	std::array<SSpinlockSlot, 30> spinlock_slots;
-	std::atomic<unsigned int> curr_spinlock_slot(0);
 }
 
 struct KSPIN_LOCK_IMPL
@@ -84,23 +81,6 @@ struct KSPIN_LOCK_IMPL
 	std::mutex m;
 };
 
-void init_events()
-{
-	for (SEventSlot& slot : event_slots)
-	{
-		slot.waiters_a = 0;
-		slot.waiters_b = 0;
-		slot.waiters = &slot.waiters_a;
-		slot.evt_a = create_event(FALSE);
-		slot.evt_b = create_event(FALSE);
-		slot.evt = slot.evt_a;
-	}
-
-	for (SSpinlockSlot& slot : spinlock_slots)
-	{
-		slot.in_use = false;
-	}
-}
 LONG KeSetEvent(PKEVENT event, int a, BOOLEAN b)
 {
 	LONG prev = std::atomic_load_explicit(reinterpret_cast<std::atomic<LONG>*>(&(event->eword)), std::memory_order_acquire);
@@ -151,7 +131,6 @@ void init_object_type()
 
 void init_windef()
 {
-	init_events();
 	init_object_type();
 }
 
@@ -540,22 +519,6 @@ PLIST_ENTRY RemoveHeadList(PLIST_ENTRY ListHead)
 	return ret;
 }
 
-void InitializeListHead(PLIST_ENTRY ListHead)
-{
-	ListHead->Flink = ListHead;
-	ListHead->Blink = ListHead;
-}
-
-void InsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY ListEntry)
-{
-	PLIST_ENTRY LastEntry = ListHead->Blink;
-
-	ListEntry->Flink = ListHead;
-	ListEntry->Blink = LastEntry;
-	ListHead->Blink = ListEntry;
-	LastEntry->Flink = ListEntry;
-}
-
 PLIST_ENTRY RemoveTailList(PLIST_ENTRY ListHead)
 {
 	PLIST_ENTRY ret = ListHead->Blink;
@@ -627,11 +590,6 @@ size_t RtlCompareMemory(const void* const src1, const void* const src2, size_t l
 		}
 	}
 	return len;
-}
-
-void RtlCopyMemory(PVOID dst, const PVOID src, size_t len)
-{
-	memcpy(dst, src, len);
 }
 
 void RtlMoveMemory(PVOID dst, const void* src, size_t len)
@@ -886,7 +844,7 @@ void InitializeObjectAttributes(POBJECT_ATTRIBUTES ObjectAttributes, PUNICODE_ST
 {
 	if (arg1 != NULL)
 	{
-		ULONG len = min(sizeof(ObjectAttributes->path) - 1, arg1->Length / sizeof(WCHAR));
+		ULONG len = (std::min)(sizeof(ObjectAttributes->path) - 1, arg1->Length / sizeof(WCHAR));
 		memcpy(ObjectAttributes->path, arg1->Buffer, len * sizeof(WCHAR));
 		ObjectAttributes->path[len] = 0;
 	}
@@ -1922,3 +1880,33 @@ HANDLE Handle32ToHandle(void* POINTER_32 ptr)
 {
 	return HANDLE();
 }
+
+#ifndef _WIN32
+int MultiByteToWideChar(UINT CodePage, DWORD Flags, char* ByteStr, int ByteStrSize, wchar_t* OutStr, int OutStrSize)
+{
+	return 0;
+}
+
+PVOID GetModuleHandle(PVOID p1) { return nullptr; }
+
+BOOL LoadStringW(PVOID module, int resid, WCHAR* str, size_t str_size)
+{
+	return FALSE;
+}
+
+DWORD GetLastError(void)
+{
+	return errno;
+}
+
+HMODULE LoadLibraryW(WCHAR* str)
+{
+	return nullptr;
+}
+
+PVOID GetProcAddress(HMODULE, char* name)
+{
+	return nullptr;
+}
+
+#endif

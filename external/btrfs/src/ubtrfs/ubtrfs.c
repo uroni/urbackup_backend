@@ -97,19 +97,6 @@ typedef struct {
     DSTRING* label;
 } options;
 
-FORCEINLINE VOID InitializeListHead(PLIST_ENTRY ListHead) {
-    ListHead->Flink = ListHead->Blink = ListHead;
-}
-
-FORCEINLINE VOID InsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY Entry) {
-    PLIST_ENTRY Blink;
-
-    Blink = ListHead->Blink;
-    Entry->Flink = ListHead;
-    Entry->Blink = Blink;
-    Blink->Flink = Entry;
-    ListHead->Blink = Entry;
-}
 
 typedef struct {
     KEY key;

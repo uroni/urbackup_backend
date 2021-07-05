@@ -1,9 +1,10 @@
 #pragma once
-#include "windef.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "windef.h"
 
 	struct ERESOURCE_INT;
 

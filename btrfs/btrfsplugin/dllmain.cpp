@@ -37,7 +37,7 @@
 #ifndef STATIC_PLUGIN
 IServer* Server;
 #else
-#include "../StaticPluginRegistration.h"
+#include "../../StaticPluginRegistration.h"
 
 extern IServer* Server;
 

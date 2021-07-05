@@ -3,10 +3,64 @@
 #include <guiddef.h>
 #include <ntstatus.h>
 #include <string.h>
+#include <stdarg.h>
+#ifndef _WIN32
+#include <wchar.h>
+#endif
 
-#ifndef _WCHAR_T_DEFINED
+#if !defined(_WCHAR_T_DEFINED) && defined(_WIN32)
 typedef unsigned short wchar_t;
 #define _WCHAR_T_DEFINED
+#endif
+
+#if !defined(_WIN32) && !defined(__stdcall)
+#define __stdcall
+#define _stdcall
+#endif
+
+#ifndef _WIN32
+#define _MSC_VER 1
+#define _Requires_lock_held_(a)
+#define _Requires_exclusive_lock_held_(a)
+#define _Releases_lock_(a)
+#define _Out_writes_bytes_opt_(a)
+#define _Pre_satisfies_(a)
+#define _Post_satisfies_(a)
+#define _Releases_exclusive_lock_(a)
+#define _Create_lock_level_(a)
+#define _Lock_level_order_(a,b)
+#define _Has_lock_level_(a)
+#define _Requires_lock_not_held_(a)
+#define _Acquires_exclusive_lock_(a)
+#define _Acquires_shared_lock_(a)
+#define _In_opt_
+#define _In_
+#define _Out_
+#define _Ret_maybenull_
+#define _In_reads_bytes_opt_(x)
+#define _When_(x, y)
+#define _Success_(x)
+#define _Inout_
+#define _Out_writes_bytes_(x)
+#define _In_reads_bytes_(x)
+#define _In_z_
+#define _Out_opt_
+#ifndef __cplusplus
+#define __try if (1)
+#define __except(x) if (0 && (x))
+#define __finally if (1)
+#endif
+#ifndef S_IFDIR
+# define S_IFDIR 0040000
+#endif
+#ifndef S_IFREG
+# define S_IFREG 0100000
+#endif
+#ifndef S_IFLNK
+# define S_IFLNK 0120000
+#endif
+#define _stricmp strncasecmp
+#define MAX_PATH 255
 #endif
 
 typedef unsigned char BOOL;
@@ -22,8 +76,13 @@ typedef unsigned int UINT;
 typedef LONG NTSTATUS;
 typedef unsigned long DWORD;
 typedef unsigned short WORD;
+#ifdef _WIN32
 typedef unsigned __int64 ULONGLONG;
 typedef __int64 LONGLONG;
+#else
+typedef unsigned long long int ULONGLONG;
+typedef long long int LONGLONG;
+#endif
 typedef short CSHORT;
 typedef ULONG ACCESS_MASK;
 typedef unsigned char UCHAR;
@@ -39,12 +98,18 @@ typedef unsigned int KAFFINITY;
 typedef char* PCHAR;
 typedef size_t SIZE_T;
 
+#ifdef _WIN32
 #define POINTER_64 __ptr64
 typedef unsigned __int64 POINTER_64_INT;
 #if defined(_WIN64)
 #define POINTER_32 __ptr32
 #else
 #define POINTER_32
+#endif
+#else
+#define POINTER_64
+#define POINTER_32
+typedef unsigned long long int POINTER_64_INT;
 #endif
 
 typedef union
@@ -2142,9 +2207,21 @@ BOOLEAN IsListEmpty(const LIST_ENTRY* ListHead);
 
 PLIST_ENTRY RemoveHeadList(PLIST_ENTRY ListHead);
 
-void InitializeListHead(PLIST_ENTRY ListHead);
+FORCEINLINE void InitializeListHead(PLIST_ENTRY ListHead)
+{
+	ListHead->Flink = ListHead;
+	ListHead->Blink = ListHead;
+}
 
-void InsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY ListEntry);
+FORCEINLINE void InsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY ListEntry)
+{
+	PLIST_ENTRY LastEntry = ListHead->Blink;
+
+	ListEntry->Flink = ListHead;
+	ListEntry->Blink = LastEntry;
+	ListHead->Blink = ListEntry;
+	LastEntry->Flink = ListEntry;
+}
 
 PLIST_ENTRY RemoveTailList(PLIST_ENTRY ListHead);
 
@@ -2158,7 +2235,10 @@ void ZwClose(HANDLE hFile);
 
 size_t RtlCompareMemory(const void* const src1, const void* const src2, size_t len);
 
-void RtlCopyMemory(PVOID dst, const void* src, size_t len);
+FORCEINLINE void RtlCopyMemory(PVOID dst, const void* src, size_t len)
+{
+    memcpy(dst, src, len);
+}
 
 void RtlMoveMemory(PVOID dst, const void* src, size_t len);
 
@@ -2619,6 +2699,19 @@ BOOL AdjustTokenPrivileges(HANDLE token, BOOL b, TOKEN_PRIVILEGES* TokenPrivs, U
 
 NTSTATUS NtFsControlFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, 
     PIO_STATUS_BLOCK IoStatusBlock, ULONG FsControlCode, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength);
+
+#ifndef _WIN32
+int MultiByteToWideChar(UINT CodePage, DWORD Flags, char* ByteStr, int ByteStrSize, wchar_t* OutStr, int OutStrSize);
+#define CP_OEMCP 1
+#define MB_PRECOMPOSED 1
+
+PVOID GetModuleHandle(PVOID p1);
+BOOL LoadStringW(PVOID module, int resid, WCHAR* str, size_t str_size);
+DWORD GetLastError(void);
+
+HMODULE LoadLibraryW(WCHAR* str);
+PVOID GetProcAddress(HMODULE, char* name);
+#endif
    
 #define CONTAINING_RECORD(addr, type, field) ((type*)( (char*)(addr)-(ULONG_PTR)(&((type*)0)->field)))
 #define FILE_ATTRIBUTE_SPARSE_FILE (1)

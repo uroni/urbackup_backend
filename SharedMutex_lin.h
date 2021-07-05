@@ -30,7 +30,7 @@ private:
 	pthread_rwlock_t lock;
 	
 #ifdef SHARED_MUTEX_CHECK
-	std::auto_ptr<IMutex> check_mutex;
+	std::unique_ptr<IMutex> check_mutex;
 	std::set<pthread_t> check_threads;
 #endif
 };

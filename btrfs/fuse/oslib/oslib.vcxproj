@@ -26,7 +26,6 @@
     <ClCompile Include="utf8.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="event.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="os.h" />
     <ClInclude Include="utf8.h" />

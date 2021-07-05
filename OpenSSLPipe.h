@@ -61,7 +61,7 @@ public:
 
 private:
 
-	std::auto_ptr<CStreamPipe> bpipe;
+	std::unique_ptr<CStreamPipe> bpipe;
 
 	BIO* bbio;
 	SSL_CTX* ctx;

@@ -45,6 +45,7 @@ struct SOwner
 
 static bool getOwner(const std::string& fn, SOwner& owner)
 {
+#ifdef _WIN32
 	PSID newOwner = nullptr;
 	PSECURITY_DESCRIPTOR new_sec_d = nullptr;
 	DWORD rc = GetNamedSecurityInfoW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(),
@@ -65,6 +66,10 @@ static bool getOwner(const std::string& fn, SOwner& owner)
 		LocalFree(new_sec_d);
 	}
 	return rc == ERROR_SUCCESS;
+#else
+	//TODO: Implement
+	return false;
+#endif
 }
 
 #ifdef _WIN32
@@ -116,6 +121,10 @@ HRESULT ModifyPrivilege(
 
 static bool setOwner(const std::string& fn, const SOwner& owner)
 {
+#ifndef _WIN32
+	//TODO: Implement
+	return false;
+#else
 	if (!owner.has_owner || owner.Owner == nullptr)
 		return false;
 
@@ -129,6 +138,7 @@ static bool setOwner(const std::string& fn, const SOwner& owner)
 		NULL);
 
 	return rc == ERROR_SUCCESS;
+#endif
 }
 
 static size_t zipWrite(void* pOpaque, mz_uint64 file_ofs, const void* pBuf, size_t n)

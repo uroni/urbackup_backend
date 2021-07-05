@@ -19,6 +19,7 @@
 #include "vhdxfile.h"
 #include "../stringtools.h"
 #include <assert.h>
+#include <cstring>
 #include "CompressedFile.h"
 #include "../urbackupcommon/os_functions.h"
 #include "FileWrapper.h"
@@ -49,9 +50,9 @@ namespace
 	{
 		std::vector<char> ret;
 		ret.resize(500);
-		memcpy(ret.data(), "vhdxfile", 8);
+		std::memcpy(ret.data(), "vhdxfile", 8);
 		std::string creator = Server->ConvertToUTF16("UrBackup vhdx file");
-		memcpy(ret.data() + 8, creator.data(), creator.size());
+		std::memcpy(ret.data() + 8, creator.data(), creator.size());
 		return ret;
 	}
 
@@ -87,7 +88,7 @@ namespace
 
 	void copyGUID(const VhdxGUID& src, VhdxGUID& dst)
 	{
-		memcpy(dst, src, 16);
+		std::memcpy(dst, src, 16);
 	}
 
 	void reorderGUID(VhdxGUID& g)
@@ -166,7 +167,7 @@ namespace
 		std::vector<char> ret;
 		ret.resize(sizeof(VhdxHeader));
 		VhdxHeader* vhdxHeader = reinterpret_cast<VhdxHeader*>(ret.data());
-		memcpy(ret.data(), "head", 4);
+		std::memcpy(ret.data(), "head", 4);
 		vhdxHeader->SequenceNumber = SequenceNumber;
 		secureRandomGuid(vhdxHeader->FileWriteGuid);
 		secureRandomGuid(vhdxHeader->DataWriteGuid);
@@ -311,14 +312,14 @@ namespace
 	void makeMetaTableGUID(VhdxGUID& g)
 	{
 		unsigned char meta_guid[16] = { 0x8B, 0x7C, 0xA2, 0x06, 0x47, 0x90, 0x4B, 0x9A, 0xB8, 0xFE, 0x57, 0x5F, 0x05, 0x0F, 0x88, 0x6E };
-		memcpy(g, meta_guid, sizeof(meta_guid));
+		std::memcpy(g, meta_guid, sizeof(meta_guid));
 		reorderGUID(g);
 	}
 
 	void makeBatGUID(VhdxGUID& g)
 	{
 		unsigned char bat_guid[16] = { 0x2D, 0xC2, 0x77, 0x66, 0xF6, 0x23, 0x42, 0x00, 0x9D, 0x64, 0x11, 0x5E, 0x9B, 0xFD, 0x4A, 0x08 };
-		memcpy(g, bat_guid, sizeof(bat_guid));
+		std::memcpy(g, bat_guid, sizeof(bat_guid));
 		reorderGUID(g);
 	}
 
@@ -330,7 +331,7 @@ namespace
 		std::vector<char> ret;
 		ret.resize(64 * 1024);
 
-		memcpy(ret.data(), "regi", 4);
+		std::memcpy(ret.data(), "regi", 4);
 		VhdxRegionTableHeader* header = reinterpret_cast<VhdxRegionTableHeader*>(ret.data());
 		header->EntryCount = 2;
 
@@ -413,42 +414,42 @@ namespace
 	void makeFileParametersGUID(VhdxGUID& g)
 	{
 		unsigned char file_parameters_guid[16] = { 0xCA, 0xA1, 0x67, 0x37, 0xFA, 0x36, 0x4D, 0x43, 0xB3, 0xB6, 0x33, 0xF0, 0xAA, 0x44, 0xE7, 0x6B };
-		memcpy(&g, file_parameters_guid, sizeof(file_parameters_guid));
+		std::memcpy(&g, file_parameters_guid, sizeof(file_parameters_guid));
 		reorderGUID(g);
 	}
 
 	void makeVirtualDiskSizeGUID(VhdxGUID& g)
 	{
 		unsigned char virtual_disk_size_guid[16] = { 0x2F, 0xA5, 0x42, 0x24, 0xCD, 0x1B, 0x48, 0x76, 0xB2, 0x11, 0x5D, 0xBE, 0xD8, 0x3B, 0xF4, 0xB8 };
-		memcpy(&g, virtual_disk_size_guid, sizeof(virtual_disk_size_guid));
+		std::memcpy(&g, virtual_disk_size_guid, sizeof(virtual_disk_size_guid));
 		reorderGUID(g);
 	}
 
 	void makeLogicalSectorSizeGUID(VhdxGUID& g)
 	{
 		unsigned char logical_sector_size_guid[16] = { 0x81, 0x41, 0xBF, 0x1D, 0xA9, 0x6F, 0x47, 0x09, 0xBA, 0x47, 0xF2, 0x33, 0xA8, 0xFA, 0xAB, 0x5F };
-		memcpy(&g, logical_sector_size_guid, sizeof(logical_sector_size_guid));
+		std::memcpy(&g, logical_sector_size_guid, sizeof(logical_sector_size_guid));
 		reorderGUID(g);
 	}
 
 	void makePhysicalSectorSizeGUID(VhdxGUID& g)
 	{
 		unsigned char physical_sector_size_guid[16] = { 0xCD, 0xA3, 0x48, 0xC7, 0x44, 0x5D, 0x44, 0x71, 0x9C, 0xC9, 0xE9, 0x88, 0x52, 0x51, 0xC5, 0x56 };
-		memcpy(&g, physical_sector_size_guid, sizeof(physical_sector_size_guid));
+		std::memcpy(&g, physical_sector_size_guid, sizeof(physical_sector_size_guid));
 		reorderGUID(g);
 	}
 
 	void makeVirtualDiskIdGUID(VhdxGUID& g)
 	{
 		unsigned char page83_data_guid[16] = { 0xBE, 0xCA, 0x12, 0xAB, 0xB2, 0xE6, 0x45, 0x23, 0x93, 0xEF, 0xC3, 0x09, 0xE0, 0x00, 0xC7, 0x46 };
-		memcpy(&g, page83_data_guid, sizeof(page83_data_guid));
+		std::memcpy(&g, page83_data_guid, sizeof(page83_data_guid));
 		reorderGUID(g);
 	}
 
 	void makeParentLocatorGUID(VhdxGUID& g)
 	{
 		unsigned char parent_locator_guid[16] = { 0xA8, 0xD3, 0x5F, 0x2D, 0xB3, 0x0B, 0x45, 0x4D, 0xAB, 0xF7, 0xD3, 0xD8, 0x48, 0x34, 0xAB, 0x0C };
-		memcpy(&g, parent_locator_guid, sizeof(parent_locator_guid));
+		std::memcpy(&g, parent_locator_guid, sizeof(parent_locator_guid));
 		reorderGUID(g);
 	}
 
@@ -456,7 +457,7 @@ namespace
 	{
 		unsigned char vhdx_parent_locator_guid[16] = { 0xB0, 0x4A, 0xEF, 0xB7, 0xD1, 0x9E, 0x4A, 0x81, 0xB7, 0x89, 0x25,
 			0xB8, 0xE9, 0x44, 0x59, 0x13 };
-		memcpy(&g, vhdx_parent_locator_guid, sizeof(vhdx_parent_locator_guid));
+		std::memcpy(&g, vhdx_parent_locator_guid, sizeof(vhdx_parent_locator_guid));
 		reorderGUID(g);
 	}
 
@@ -492,7 +493,7 @@ namespace
 			+ sizeof(VhdxVirtualDiskId)
 			+ parent_locator_size);
 
-		memcpy(ret.data(), "metadata", 8);
+		std::memcpy(ret.data(), "metadata", 8);
 		VhdxMetadataTableHeader* header = reinterpret_cast<VhdxMetadataTableHeader*>(ret.data());
 		header->EntryCount = 5;
 
@@ -579,12 +580,12 @@ namespace
 
 				entry->KeyOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
 				entry->KeyLength = static_cast<_u16>(it.first.size());
-				memcpy(ret.data() + str_pos, it.first.data(), it.first.size());
+				std::memcpy(ret.data() + str_pos, it.first.data(), it.first.size());
 				str_pos += it.first.size();
 
 				entry->ValueOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
 				entry->ValueLength = static_cast<_u16>(it.second.size());
-				memcpy(ret.data() + str_pos, it.second.data(), it.second.size());
+				std::memcpy(ret.data() + str_pos, it.second.data(), it.second.size());
 				str_pos += it.second.size();
 			}
 
@@ -778,9 +779,9 @@ namespace
 
 				LogData log_data;
 				log_data.offset = data_desc->FileOffset;
-				memcpy(log_data.data, data_desc->LeadingBytes, 8);
-				memcpy(log_data.data + 8, data_sec->data, sizeof(data_sec->data));
-				memcpy(log_data.data + 8 + sizeof(data_sec->data), data_desc->TrailingBytes, 4);
+				std::memcpy(log_data.data, data_desc->LeadingBytes, 8);
+				std::memcpy(log_data.data + 8, data_sec->data, sizeof(data_sec->data));
+				std::memcpy(log_data.data + 8 + sizeof(data_sec->data), data_desc->TrailingBytes, 4);
 
 				loge.to_write.push_back(log_data);
 			}
@@ -1750,7 +1751,7 @@ void VHDXFile::getDataWriteGUID(VhdxGUID& g)
 bool VHDXFile::createNew()
 {
 	memset(&curr_header, 0, sizeof(curr_header));
-	memcpy(&curr_header, "head", 4);
+	std::memcpy(&curr_header, "head", 4);
 	curr_header.SequenceNumber = 1;
 	secureRandomGuid(curr_header.FileWriteGuid);
 	secureRandomGuid(curr_header.DataWriteGuid);
@@ -2045,7 +2046,7 @@ bool VHDXFile::readHeader()
 		return false;
 	}
 
-	memcpy(&curr_header, sel_header, sizeof(curr_header));
+	std::memcpy(&curr_header, sel_header, sizeof(curr_header));
 
 	return true;
 }
@@ -2092,7 +2093,7 @@ bool VHDXFile::readRegionTable(int64 off)
 
 		if (equalsGUID(entry->Guid, meta_table_guid))
 		{
-			memcpy(&meta_table_region, entry, sizeof(meta_table_region));
+			std::memcpy(&meta_table_region, entry, sizeof(meta_table_region));
 			if (found & 1)
 			{
 				Server->Log("Found metadata table region entry twice", LL_WARNING);
@@ -2102,7 +2103,7 @@ bool VHDXFile::readRegionTable(int64 off)
 		}
 		else if (equalsGUID(entry->Guid, bat_guid))
 		{
-			memcpy(&bat_region, entry, sizeof(bat_region));
+			std::memcpy(&bat_region, entry, sizeof(bat_region));
 			if (found & 2)
 			{
 				Server->Log("Found BAT table region entry twice", LL_WARNING);
@@ -2231,7 +2232,7 @@ bool VHDXFile::readMeta()
 				return false;
 			}
 
-			memcpy(&vhdx_params, entry_buf.data(), sizeof(vhdx_params));
+			std::memcpy(&vhdx_params, entry_buf.data(), sizeof(vhdx_params));
 		}
 		else if (equalsGUID(table_entry->ItemId, virtual_disk_size_guid))
 		{
@@ -2701,7 +2702,7 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 
 	LogEntryHeader* header = reinterpret_cast<LogEntryHeader*>(log_entry.data());
 
-	memcpy(&header->signature, "loge", 4);
+	std::memcpy(&header->signature, "loge", 4);
 
 	header->Checksum = 0;
 	header->EntryLength = static_cast<_u32>(log_entry.size());
@@ -2721,10 +2722,10 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 	{
 		LogDataDescriptor* data_desc = reinterpret_cast<LogDataDescriptor*>(log_entry.data() + 64 + i * 32);
 
-		memcpy(&data_desc->signature, "desc", 4);
+		std::memcpy(&data_desc->signature, "desc", 4);
 		data_desc->FileOffset = off + i * log_sector_size;
-		memcpy(data_desc->LeadingBytes, buf + i * log_sector_size, 8);
-		memcpy(data_desc->TrailingBytes, buf + i * log_sector_size + (log_sector_size - 4), 4);
+		std::memcpy(data_desc->LeadingBytes, buf + i * log_sector_size, 8);
+		std::memcpy(data_desc->TrailingBytes, buf + i * log_sector_size + (log_sector_size - 4), 4);
 		data_desc->SequenceNumber = header->SequenceNumber;
 	}
 
@@ -2732,12 +2733,12 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 	{
 		LogDataSector* data_sec = reinterpret_cast<LogDataSector*>(log_entry.data() + log_sector_size + i * log_sector_size);
 
-		memcpy(&data_sec->signature, "data", 4);
+		std::memcpy(&data_sec->signature, "data", 4);
 		SSequence seq;
 		seq.QuadPart = header->SequenceNumber;
 		data_sec->SequenceLow = seq.LowPart;
 		data_sec->SequenceHigh = seq.HighPart;
-		memcpy(data_sec->data, buf + i + 8, log_sector_size - 8 - 4);
+		std::memcpy(data_sec->data, buf + i + 8, log_sector_size - 8 - 4);
 	}
 
 	header->Checksum = crc32c(reinterpret_cast<unsigned char*>(log_entry.data()), log_entry.size());

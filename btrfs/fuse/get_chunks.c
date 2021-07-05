@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "get_chunks.h"
-#include "src/btrfs_drv.h"
+#include "../../external/btrfs/src/btrfs_drv.h"
 #include <memory.h>
 
 SBtrfsChunk* get_btrfs_chunks(device_extension* Vcb, size_t* n_chunks)
