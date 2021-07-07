@@ -1,0 +1,18 @@
+version: 0.2
+#this build spec assumes the ubuntu 14.04 trusty image
+phases:
+  install:
+    commands:
+      - sudo apt-get update -y
+      - sudo apt-get install gcc gcc-multilib cmake3 cppcheck -y
+  pre_build:
+    commands:
+      - export CC=gcc
+  build:
+    commands:
+      - echo Build started on `date`
+      - ./codebuild/common-linux.sh -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DCMAKE_C_FLAGS="-m32" -DCMAKE_LINK_FLAGS="-m32"
+  post_build:
+    commands:
+      - echo Build completed on `date`
+

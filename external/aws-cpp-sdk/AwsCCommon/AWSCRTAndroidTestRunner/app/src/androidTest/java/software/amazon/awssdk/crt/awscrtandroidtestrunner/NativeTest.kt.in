@@ -1,0 +1,13 @@
+package software.amazon.awssdk.crt.awscrtandroidtestrunner.tests
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Test
+import org.junit.Assert
+import software.amazon.awssdk.crt.awscrtandroidtestrunner.NativeTestFixture
+
+class Test_@TEST_NAME@ : NativeTestFixture() {
+    @Test
+    public fun test_@TEST_NAME@() {
+        Assert.assertEquals(0, runTest("@TEST_NAME@"))
+    }
+}

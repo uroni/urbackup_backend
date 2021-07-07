@@ -1,0 +1,21 @@
+version: 0.2
+#this buildspec assumes the ubuntu 14.04 trusty image
+phases:
+  install:
+    commands:
+      - sudo apt-get update -y
+      - sudo apt-get update
+      - sudo apt-get install clang-3.9 cmake3 cppcheck clang-tidy-3.9 -y
+
+  pre_build:
+    commands:
+      - export CC=clang-3.9
+  build:
+    commands:
+      - echo Build started on `date`
+      - ./codebuild/common-linux.sh -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE="RelWithDebInfo"
+      - clang-tidy-3.9 -p=build **/*.c
+  post_build:
+    commands:
+      - echo Build completed on `date`
+

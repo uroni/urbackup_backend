@@ -1,0 +1,5 @@
+# hashlittle2 purposefully reads past string ends (but shifts unnecessary data out before doing anything with it)
+fun:hashlittle2
+# Unfortunately, due to the technique of rounding to page base and reading the tag value,
+# TSan cannot instrument s_sba_free without finding a false positive eventually.
+fun:s_sba_free

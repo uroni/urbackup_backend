@@ -1,0 +1,25 @@
+version: 0.2
+#this buildspec assumes the ubuntu 14.04 trusty image
+phases:
+  install:
+    commands:
+      - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+      - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+      - sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
+      - sudo apt-get update -y
+      - sudo apt-get install clang-6.0 cmake3 cppcheck clang-tidy-6.0 clang-format-6.0 -y -f
+
+  pre_build:
+    commands:
+      - export CC=clang-6.0
+      - export CLANG_FORMAT=clang-format-6.0
+  build:
+    commands:
+      - echo Build started on `date`
+      - ./codebuild/common-linux.sh -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DENABLE_FUZZ_TESTS=ON -DCMAKE_BUILD_TYPE="RelWithDebInfo"
+      - clang-tidy-6.0 -p=build **/*.c
+      - ./format-check.sh
+  post_build:
+    commands:
+      - echo Build completed on `date`
+

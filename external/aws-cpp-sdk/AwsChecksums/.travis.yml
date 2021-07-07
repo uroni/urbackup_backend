@@ -1,0 +1,14 @@
+sudo: false
+language: c
+
+osx_image: xcode8
+
+os:
+  - osx
+
+compiler:
+  - clang
+
+#execute build
+script:
+  - ./codebuild/common-macos.sh

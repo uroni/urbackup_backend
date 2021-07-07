@@ -1,0 +1,7 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - .\codebuild\common-windows.bat -G "Visual Studio 14 2015"
+

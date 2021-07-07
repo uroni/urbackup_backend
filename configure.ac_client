@@ -48,6 +48,10 @@ AC_ARG_ENABLE([embedded-zstd],
      AS_HELP_STRING([--enable-embedded-zstd], [Compile and use ZSTD included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_ZSTD, test "x$enable_embedded_zstd" = xyes)
 
+AC_ARG_WITH([embedded-aws-cpp-sdk],
+     AS_HELP_STRING([--without-embedded-aws-cpp-sdk], [Disables the embedded AWS c++ sdk (for S3) and uses the system one. Not recommended.]))
+AM_CONDITIONAL(WITH_EMBEDDED_AWS_CPP_SDK, test "x$with_embedded_aws_cpp_sdk" != "xno")
+
 AM_CONDITIONAL(WITH_BTRFS_ZLIB, test 1 = 0)
 
 # Checks for programs.
@@ -55,6 +59,8 @@ AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_OBJCXX
+AC_PROG_EGREP
+AC_PROG_GREP
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)
@@ -82,34 +88,41 @@ LIBCURL_CHECK_CONFIG(,[7.20.0],,[
        AC_MSG_ERROR([Your system lacks of libcurl >= 7.20.0])
      ])
 
-AC_CHECK_HEADER(aws/s3/S3Client.h, [HAS_AWS_SDK_H=1])
-AC_CHECK_LIB(aws-c-common, aws_string_destroy, [HAS_AWS_C_COMMON=1])
-AC_MSG_CHECKING([linking to aws-c++-sdk])
-SAVED_LDFLAGS="$LDFLAGS"
-SAVED_LIBS="$LIBS"
-SAVED_CPPFLAGS="$CPPFLAGS"
-AWS_SDK_INCLUDES=""
-AWS_SDK_LIBS="-laws-cpp-sdk-s3 -laws-cpp-sdk-core -laws-c-event-stream -laws-checksums -laws-c-common"
-LDFLAGS="$LDFLAGS"
-CPPFLAGS="$CPPFLAGS $PTHREAD_CFLAGS $AWS_SDK_INCLUDES"
-LIBS="$LIBS $AWS_SDK_LIBS $OPENSSL_LIBS $LIBS $LIBCURL $PTHREAD_LIBS"
-AC_LINK_IFELSE(
-	  [AC_LANG_PROGRAM([#include <aws/s3/model/BucketLocationConstraint.h>], 
-		[Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(Aws::S3::Model::BucketLocationConstraint::af_south_1);])],
-	  [
-		  HAS_AWS_CPP_SDK=1
-		  AC_MSG_RESULT([yes])
-	  ], 
-	  [AC_MSG_RESULT([no])])
-LDFLAGS="$SAVED_LDFLAGS"
-CPPFLAGS="$SAVED_CPPFLAGS"
-LIBS="$SAVED_LIBS"
-AC_SUBST([AWS_SDK_INCLUDES])
-AC_SUBST([AWS_SDK_LIBS])
-
-if test "x$HAS_AWS_SDK_H" != "x1" || test "x$HAS_AWS_C_COMMON" != "x1" || test "x$HAS_AWS_CPP_SDK" != "x1"
+if test "x$with_embedded_aws_cpp_sdk" = "xno"
 then
-	AC_MSG_ERROR(AWS C++ SDK not found or installed correctly)
+	AC_CHECK_HEADER(aws/s3/S3Client.h, [HAS_AWS_SDK_H=1])
+	AC_CHECK_LIB(aws-c-common, aws_string_destroy, [HAS_AWS_C_COMMON=1])
+	AC_MSG_CHECKING([linking to aws-c++-sdk])
+	SAVED_LDFLAGS="$LDFLAGS"
+	SAVED_LIBS="$LIBS"
+	SAVED_CPPFLAGS="$CPPFLAGS"
+	AWS_SDK_INCLUDES=""
+	AWS_SDK_LIBS="-laws-cpp-sdk-s3 -laws-cpp-sdk-core -laws-c-event-stream -laws-checksums -laws-c-common"
+	LDFLAGS="$LDFLAGS"
+	CPPFLAGS="$CPPFLAGS $PTHREAD_CFLAGS $AWS_SDK_INCLUDES"
+	LIBS="$LIBS $AWS_SDK_LIBS $OPENSSL_LIBS $LIBS $LIBCURL $PTHREAD_LIBS"
+	AC_LINK_IFELSE(
+		[AC_LANG_PROGRAM([#include <aws/s3/model/BucketLocationConstraint.h>], 
+			[Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(Aws::S3::Model::BucketLocationConstraint::af_south_1);])],
+		[
+			HAS_AWS_CPP_SDK=1
+			AC_MSG_RESULT([yes])
+		], 
+		[AC_MSG_RESULT([no])])
+	LDFLAGS="$SAVED_LDFLAGS"
+	CPPFLAGS="$SAVED_CPPFLAGS"
+	LIBS="$SAVED_LIBS"
+	AC_SUBST([AWS_SDK_INCLUDES])
+	AC_SUBST([AWS_SDK_LIBS])
+
+	if test "x$HAS_AWS_SDK_H" != "x1" || test "x$HAS_AWS_C_COMMON" != "x1" || test "x$HAS_AWS_CPP_SDK" != "x1"
+	then
+		AC_MSG_ERROR(AWS C++ SDK not found or installed correctly)
+	fi
+else
+	LIBCURL_CHECK_CONFIG(,[7.20.0],,[
+       AC_MSG_ERROR([Your system lacks of libcurl >= 7.20.0])
+     ])
 fi
 
 # Checks for header files.

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>netstandard1.3</TargetFramework>
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+    <AssemblyName>AWS.Checksums</AssemblyName>
+    <PackageId>AWS.Checksums</PackageId>
+    <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
+    <PackageTargetFallback>$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
+    <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
+    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
+    <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
+    <FileUpgradeFlags>40</FileUpgradeFlags>
+    <OldToolsVersion>15.0</OldToolsVersion>
+  </PropertyGroup>
+</Project>

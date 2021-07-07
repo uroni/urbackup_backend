@@ -1,0 +1,19 @@
+version: 0.2
+#this build spec assumes the ubuntu 14.04 trusty image
+phases:
+  install:
+    commands:
+      - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+      - sudo apt-get update -y
+      - sudo apt-get install gcc-5 cmake3 cppcheck -y
+  pre_build:
+    commands:
+      - export CC=gcc-5
+  build:
+    commands:
+      - echo Build started on `date`
+      - ./codebuild/common-linux.sh -DCMAKE_BUILD_TYPE="RelWithDebInfo"
+  post_build:
+    commands:
+      - echo Build completed on `date`
+

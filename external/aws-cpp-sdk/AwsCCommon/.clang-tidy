@@ -1,0 +1,14 @@
+---
+Checks:          'clang-diagnostic-*,clang-analyzer-*,readability-*,modernize-*,bugprone-*,misc-*,google-runtime-int,llvm-header-guard,fuchsia-restrict-system-includes,-clang-analyzer-valist.Uninitialized,-clang-analyzer-security.insecureAPI.rand,-clang-analyzer-alpha.*,-readability-magic-numbers,-readability-non-const-parameter,-readability-avoid-const-params-in-decls,-readability-else-after-return,-readability-isolate-declaration,-readability-uppercase-literal-suffix'
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*\.[h|inl]$'
+FormatStyle: 'file'
+CheckOptions:
+  - key:             readability-braces-around-statements.ShortStatementLines
+    value:           '1'
+  - key:             google-runtime-int.TypeSufix
+    value:           '_t'
+  - key:             fuchsia-restrict-system-includes.Includes
+    value:           '*,-stdint.h,-stdbool.h,-assert.h'
+
+...

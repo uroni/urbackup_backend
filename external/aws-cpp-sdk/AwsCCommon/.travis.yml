@@ -1,0 +1,22 @@
+sudo: false
+language: c
+
+os: osx
+osx_image:
+  - xcode8
+  - xcode9.2
+  - xcode10.1
+compiler: clang
+
+addons:
+  homebrew:
+    update: true
+    packages:
+      - python@3
+
+install:
+  - export PATH=$(brew --prefix llvm)/bin:$PATH
+
+script:
+  - export CODEBUILD_SRC_DIR=$(pwd)
+  - python3 ./codebuild/builder.py build macos-default-default-macos-x64

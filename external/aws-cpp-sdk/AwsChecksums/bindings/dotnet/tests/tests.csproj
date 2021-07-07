@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp1.0</TargetFramework>
+    <DebugType>portable</DebugType>
+    <AssemblyName>tests</AssemblyName>
+    <PackageId>tests</PackageId>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <PackageTargetFallback>$(PackageTargetFallback);dotnet5.4;portable-net451+win8</PackageTargetFallback>
+    <FileUpgradeFlags>40</FileUpgradeFlags>
+    <OldToolsVersion>15.0</OldToolsVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../src/AWS.Checksums/AWS.Checksums.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.0.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="1.1.11" />
+    <PackageReference Include="MSTest.TestFramework" Version="1.1.11" />
+  </ItemGroup>
+</Project>
