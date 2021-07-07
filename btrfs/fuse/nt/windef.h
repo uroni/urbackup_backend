@@ -64,7 +64,7 @@ typedef unsigned short wchar_t;
 #ifndef S_IFLNK
 # define S_IFLNK 0120000
 #endif
-#define _stricmp strncasecmp
+#define _stricmp strcasecmp
 #define MAX_PATH 255
 #endif
 

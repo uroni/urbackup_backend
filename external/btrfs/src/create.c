@@ -15,8 +15,8 @@
  * You should have received a copy of the GNU Lesser General Public Licence
  * along with WinBtrfs.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <sys/stat.h>
 #include "btrfs_drv.h"
+//#include <sys/stat.h>
 #include "crc32c.h"
 #include <ntddstor.h>
 
