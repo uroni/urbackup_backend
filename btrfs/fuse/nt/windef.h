@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef _WIN32
+#include <stdint.h>
+#include <stddef.h>
+#endif
+
 #include <guiddef.h>
 #include <ntstatus.h>
 #include <string.h>

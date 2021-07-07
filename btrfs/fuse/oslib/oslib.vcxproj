@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="event.cpp" />
     <ClCompile Include="file_common.cpp" />
     <ClCompile Include="file_win.cpp" />
     <ClCompile Include="os.cpp" />
