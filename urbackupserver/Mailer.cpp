@@ -86,7 +86,7 @@ void Mailer::operator()()
 	}
 
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	IQuery* q_get_mail = db->Prepare("SELECT id, send_to, subject, message, next_try, retry_count FROM mail_queue WHERE next_try IS NULL or next_try>=?");
+	IQuery* q_get_mail = db->Prepare("SELECT id, send_to, subject, message, next_try, retry_count FROM mail_queue WHERE next_try IS NULL or next_try<=?");
 	IQuery* q_set_retry = db->Prepare("UPDATE mail_queue SET next_try=?, retry_count=? WHERE id=?");
 	IQuery* q_remove_mail = db->Prepare("DELETE FROM mail_queue WHERE id=?");
 
