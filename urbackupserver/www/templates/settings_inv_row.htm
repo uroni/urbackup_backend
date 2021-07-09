@@ -452,18 +452,22 @@
 	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
-			<div class="form-group">
-				<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
-				<div class="col-sm-6">
-					<select class="form-control" id="alert_script" onChange="updateAlertScriptParams()">{alert_scripts|s}</select>
+			<div class="row">
+				<div class="col-sm-11">
+					<div class="form-group">
+						<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
+						<div class="col-sm-6">
+							<select class="form-control" id="alert_script" onChange="updateAlertScriptParams()">{alert_scripts|s}</select>
+						</div>
+						{?can_edit_scripts}
+							<a href="javascript: show_scripts1()">{tEdit scripts}</a>
+						{/can_edit_scripts}
+					</div>
 				</div>
-				{?can_edit_scripts}
-					<a href="javascript: show_scripts1()">{tEdit scripts}</a>
-				{/can_edit_scripts}
 				<div id="alert_script_sw" style="float: right; margin-left: 10pt; margin-right: 10pt"></div>
 			</div>
-			<div>		
-				<div id="alert_script_params_container">
+			<div class="row">		
+				<div id="alert_script_params_container" class="col-sm-11">
 					{mod_alert_params|s}
 				</div>
 				<div id="alert_params_sw" style="float: right; margin-left: 10pt; margin-right: 10pt"></div>

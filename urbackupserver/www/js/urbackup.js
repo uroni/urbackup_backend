@@ -2643,9 +2643,9 @@ function update_alert_params(nochange)
 			}
 		}
 	}
-	g.alert_params = $.param(p);
+	g.last_alert_params = $.param(p);
 	if(!nochange)
-		settingChangeKey("alert_params");
+		settingChangeKey("alert_params", $.param(p));
 }
 function update_alert_unit(name)
 {
@@ -2896,6 +2896,11 @@ function settingSwitch()
 			{
 				renderArchiveSettings(g.curr_settings_type==0 || g.curr_settings_type == 1);
 			}
+			else if(key=="alert_params")
+			{
+				g.last_alert_params = val;
+				updateAlertScriptParams();
+			}
 			else
 			{
 				I(key).value = renderSettingValue(key, val);
@@ -2973,7 +2978,7 @@ function settingChangeKey(key)
 
 		if(key=="alert_params")
 		{
-			g.curr_settings[key].value = g.alert_params;
+			g.curr_settings[key].value = g.last_alert_params;
 		}
 		else if($("#"+key).attr("type")=="checkbox")
 		{

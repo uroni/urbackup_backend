@@ -309,3 +309,5 @@ cryptoplugin/src/ltmain.sh
 cryptoplugin/src/Makefile.in
 cryptoplugin/src/missing
 cryptoplugin/src/m4/libtool.m4
+
+/urbackupclient/restorewww/node_modules
