@@ -56,7 +56,7 @@ bool LocalBackup::doBackup()
 		incremental_ref = last_incremental.id;
 	}
 
-	if (!backup_dao.newFileBackup(incremental, clientid, backuppath_single, 0, 0, group, incremental_ref))
+	if (!backup_dao.newFileBackup(incremental, clientid, backuppath_single, 0, 0, group, incremental_ref, 1))
 		return false;
 
 	backupid = static_cast<int>(db->getLastInsertID());

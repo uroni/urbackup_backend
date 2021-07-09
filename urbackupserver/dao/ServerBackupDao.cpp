@@ -678,15 +678,17 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 * @-SQLGenAccess
 * @func bool ServerBackupDao::newFileBackup
 * @sql
-*       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
+*       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, 
+							done, archived, size_calculated, resumed, indexing_time_ms, tgroup, incremental_ref, deletion_protected,
+							delete_client_pending)
 *		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int),
-*				:incremental_ref(int))
+*				:incremental_ref(int), :deletion_protected(int), 0)
 */
-bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int incremental_ref)
+bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int incremental_ref, int deletion_protected)
 {
 	if(q_newFileBackup==NULL)
 	{
-		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup, incremental_ref) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ?, ?)", false);
+		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes,  done, archived, size_calculated, resumed, indexing_time_ms, tgroup, incremental_ref, deletion_protected) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ?, ?, ?)", false);
 	}
 	q_newFileBackup->Bind(incremental);
 	q_newFileBackup->Bind(clientid);
@@ -695,6 +697,7 @@ bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::st
 	q_newFileBackup->Bind(indexing_time_ms);
 	q_newFileBackup->Bind(tgroup);
 	q_newFileBackup->Bind(incremental_ref);
+	q_newFileBackup->Bind(deletion_protected);
 	bool ret = q_newFileBackup->Write();
 	q_newFileBackup->Reset();
 	return ret;
@@ -754,21 +757,22 @@ void ServerBackupDao::setFileBackupSynced(int backupid)
 /**
 * @-SQLGenAccess
 * @func SLastIncremental ServerBackupDao::getLastIncrementalFileBackup
-* @return int incremental, string path, int resumed, int complete, int id
+* @return int incremental, string path, int resumed, int complete, int id, int incremental_ref, int deletion_protected
 * @sql
-*       SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=:clientid(int) AND tgroup=:tgroup(int) AND done=1 ORDER BY backuptime DESC LIMIT 1
+*       SELECT incremental, path, resumed, complete, id, incremental_ref, deletion_protected
+*		FROM backups WHERE clientid=:clientid(int) AND tgroup=:tgroup(int) AND done=1 ORDER BY backuptime DESC LIMIT 1
 */
 ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalFileBackup(int clientid, int tgroup)
 {
 	if(q_getLastIncrementalFileBackup==NULL)
 	{
-		q_getLastIncrementalFileBackup=db->Prepare("SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=? AND tgroup=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+		q_getLastIncrementalFileBackup=db->Prepare("SELECT incremental, path, resumed, complete, id, incremental_ref, deletion_protected FROM backups WHERE clientid=? AND tgroup=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	}
 	q_getLastIncrementalFileBackup->Bind(clientid);
 	q_getLastIncrementalFileBackup->Bind(tgroup);
 	db_results res=q_getLastIncrementalFileBackup->Read();
 	q_getLastIncrementalFileBackup->Reset();
-	SLastIncremental ret = { false, 0, "", 0, 0, 0 };
+	SLastIncremental ret = { false, 0, "", 0, 0, 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
@@ -777,6 +781,8 @@ ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalFileBackup(
 		ret.resumed=watoi(res[0]["resumed"]);
 		ret.complete=watoi(res[0]["complete"]);
 		ret.id=watoi(res[0]["id"]);
+		ret.incremental_ref=watoi(res[0]["incremental_ref"]);
+		ret.deletion_protected=watoi(res[0]["deletion_protected"]);
 	}
 	return ret;
 }

@@ -309,13 +309,14 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefsReverse(i
 * @return int id, int complete, int archived
 * @sql
 *	SELECT id, complete, archived FROM backups
-*	WHERE incremental<>0 AND incremental_ref=:incremental_ref(int)
+*	WHERE incremental<>0 AND incremental_ref=:incremental_ref(int) AND
+*			delete_client_pending!=1
 */
 std::vector<ServerCleanupDao::SFileBackupRef> ServerCleanupDao::getFileBackupRefs(int incremental_ref)
 {
 	if(q_getFileBackupRefs==NULL)
 	{
-		q_getFileBackupRefs=db->Prepare("SELECT id, complete, archived FROM backups WHERE incremental<>0 AND incremental_ref=?", false);
+		q_getFileBackupRefs=db->Prepare("SELECT id, complete, archived FROM backups WHERE incremental<>0 AND incremental_ref=? AND delete_client_pending!=1", false);
 	}
 	q_getFileBackupRefs->Bind(incremental_ref);
 	db_results res=q_getFileBackupRefs->Read();
@@ -491,13 +492,13 @@ int ServerCleanupDao::getIncrNumImagesForBackup(int backupid)
 * @sql
 *	SELECT COUNT(id) AS c FROM backups
 *	WHERE clientid=(SELECT clientid FROM backups WHERE id=:backupid(int))
-*			AND incremental<>0 AND complete=1 AND archived=0
+*			AND incremental<>0 AND complete=1 AND archived=0 AND delete_client_pending!=1
 */
 int ServerCleanupDao::getIncrNumFileBackupsForBackup(int backupid)
 {
 	if(q_getIncrNumFileBackupsForBackup==NULL)
 	{
-		q_getIncrNumFileBackupsForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backups WHERE clientid=(SELECT clientid FROM backups WHERE id=?) AND incremental<>0 AND complete=1 AND archived=0", false);
+		q_getIncrNumFileBackupsForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backups WHERE clientid=(SELECT clientid FROM backups WHERE id=?) AND incremental<>0 AND complete=1 AND archived=0 AND delete_client_pending!=1", false);
 	}
 	q_getIncrNumFileBackupsForBackup->Bind(backupid);
 	db_results res=q_getIncrNumFileBackupsForBackup->Read();
@@ -512,14 +513,16 @@ int ServerCleanupDao::getIncrNumFileBackupsForBackup(int backupid)
 * @return int id
 * @sql
 *	SELECT id FROM backups
-*	WHERE clientid=:clientid(int) AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0
+*	WHERE clientid=:clientid(int) AND incremental=0 AND 
+*			running<datetime('now','-300 seconds') AND archived=0 AND
+*			delete_client_pending!=1
 *   ORDER BY backuptime ASC
 */
 std::vector<int> ServerCleanupDao::getFullNumFiles(int clientid)
 {
 	if(q_getFullNumFiles==NULL)
 	{
-		q_getFullNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
+		q_getFullNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND  running<datetime('now','-300 seconds') AND archived=0 AND delete_client_pending!=1 ORDER BY backuptime ASC", false);
 	}
 	q_getFullNumFiles->Bind(clientid);
 	db_results res=q_getFullNumFiles->Read();
@@ -539,14 +542,16 @@ std::vector<int> ServerCleanupDao::getFullNumFiles(int clientid)
 * @return int id
 * @sql
 *	SELECT id FROM backups
-*	WHERE clientid=:clientid(int) AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0
+*	WHERE clientid=:clientid(int) AND incremental<>0 AND
+*			running<datetime('now','-300 seconds') AND archived=0 AND
+*			delete_client_pending!=1
 *	ORDER BY backuptime ASC
 */
 std::vector<int> ServerCleanupDao::getIncrNumFiles(int clientid)
 {
 	if(q_getIncrNumFiles==NULL)
 	{
-		q_getIncrNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
+		q_getIncrNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 AND delete_client_pending!=1 ORDER BY backuptime ASC", false);
 	}
 	q_getIncrNumFiles->Bind(clientid);
 	db_results res=q_getIncrNumFiles->Read();
@@ -633,6 +638,82 @@ ServerCleanupDao::CondString ServerCleanupDao::getFileBackupPath(int backupid)
 		ret.value=res[0]["path"];
 	}
 	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerCleanupDao::getFileBackupDeletionProtected
+* @return int deletion_protected
+* @sql
+*	SELECT deletion_protected FROM backups WHERE id=:backupid(int)
+*/
+ServerCleanupDao::CondInt ServerCleanupDao::getFileBackupDeletionProtected(int backupid)
+{
+	if(q_getFileBackupDeletionProtected==NULL)
+	{
+		q_getFileBackupDeletionProtected=db->Prepare("SELECT deletion_protected FROM backups WHERE id=?", false);
+	}
+	q_getFileBackupDeletionProtected->Bind(backupid);
+	db_results res=q_getFileBackupDeletionProtected->Read();
+	q_getFileBackupDeletionProtected->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["deletion_protected"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::resetFileBackupDeletionProtected
+* @sql
+*	UPDATE backups SET deletion_protected=0 WHERE id=:backupid(int)
+*/
+void ServerCleanupDao::resetFileBackupDeletionProtected(int backupid)
+{
+	if(q_resetFileBackupDeletionProtected==NULL)
+	{
+		q_resetFileBackupDeletionProtected=db->Prepare("UPDATE backups SET deletion_protected=0 WHERE id=?", false);
+	}
+	q_resetFileBackupDeletionProtected->Bind(backupid);
+	q_resetFileBackupDeletionProtected->Write();
+	q_resetFileBackupDeletionProtected->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::resetFileBackupIncrementalRef
+* @sql
+*	UPDATE backups SET incremental_ref=0 WHERE id=:backupid(int)
+*/
+void ServerCleanupDao::resetFileBackupIncrementalRef(int backupid)
+{
+	if(q_resetFileBackupIncrementalRef==NULL)
+	{
+		q_resetFileBackupIncrementalRef=db->Prepare("UPDATE backups SET incremental_ref=0 WHERE id=?", false);
+	}
+	q_resetFileBackupIncrementalRef->Bind(backupid);
+	q_resetFileBackupIncrementalRef->Write();
+	q_resetFileBackupIncrementalRef->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::setFileBackupDeleteClientPending
+* @sql
+*	UPDATE backups SET delete_client_pending=1 WHERE id=:backupid(int)
+*/
+void ServerCleanupDao::setFileBackupDeleteClientPending(int backupid)
+{
+	if(q_setFileBackupDeleteClientPending==NULL)
+	{
+		q_setFileBackupDeleteClientPending=db->Prepare("UPDATE backups SET delete_client_pending=1 WHERE id=?", false);
+	}
+	q_setFileBackupDeleteClientPending->Bind(backupid);
+	q_setFileBackupDeleteClientPending->Write();
+	q_setFileBackupDeleteClientPending->Reset();
 }
 
 /**
@@ -1178,7 +1259,7 @@ void ServerCleanupDao::cleanupAuthLog(void)
 * @sql
 *      SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM
 			backups b INNER JOIN clients c ON b.clientid=c.id
-*        WHERE complete=0 AND archived=0 AND EXISTS
+*        WHERE complete=0 AND archived=0 AND delete_client_pending!=1 AND EXISTS
 *            ( SELECT * FROM backups e WHERE b.clientid = e.clientid AND
 *                     e.backuptime>b.backuptime AND e.done=1)
 */
@@ -1186,7 +1267,7 @@ std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncomp
 {
 	if(q_getIncompleteFileBackups==NULL)
 	{
-		q_getIncompleteFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE complete=0 AND archived=0 AND EXISTS ( SELECT * FROM backups e WHERE b.clientid = e.clientid AND e.backuptime>b.backuptime AND e.done=1)", false);
+		q_getIncompleteFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE complete=0 AND archived=0 AND delete_client_pending!=1 AND EXISTS ( SELECT * FROM backups e WHERE b.clientid = e.clientid AND e.backuptime>b.backuptime AND e.done=1)", false);
 	}
 	db_results res=q_getIncompleteFileBackups->Read();
 	std::vector<ServerCleanupDao::SIncompleteFileBackup> ret;
@@ -1210,13 +1291,13 @@ std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncomp
 * @sql
 *      SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM
 *		backups b INNER JOIN clients c ON b.clientid=c.id
-*        WHERE b.delete_pending=1
+*        WHERE b.delete_pending=1 AND b.delete_client_pending!=1 
 */
 std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getDeletePendingFileBackups(void)
 {
 	if(q_getDeletePendingFileBackups==NULL)
 	{
-		q_getDeletePendingFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE b.delete_pending=1", false);
+		q_getDeletePendingFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE b.delete_pending=1 AND b.delete_client_pending!=1", false);
 	}
 	db_results res=q_getDeletePendingFileBackups->Read();
 	std::vector<ServerCleanupDao::SIncompleteFileBackup> ret;
@@ -1413,6 +1494,10 @@ void ServerCleanupDao::createQueries(void)
 	q_getClientName=NULL;
 	q_getClientPermUid=NULL;
 	q_getFileBackupPath=NULL;
+	q_getFileBackupDeletionProtected=NULL;
+	q_resetFileBackupDeletionProtected=NULL;
+	q_resetFileBackupIncrementalRef=NULL;
+	q_setFileBackupDeleteClientPending=NULL;
 	q_removeFileBackup=NULL;
 	q_changeImagePath=NULL;
 	q_getFileBackupInfo=NULL;
@@ -1471,6 +1556,10 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getClientName);
 	db->destroyQuery(q_getClientPermUid);
 	db->destroyQuery(q_getFileBackupPath);
+	db->destroyQuery(q_getFileBackupDeletionProtected);
+	db->destroyQuery(q_resetFileBackupDeletionProtected);
+	db->destroyQuery(q_resetFileBackupIncrementalRef);
+	db->destroyQuery(q_setFileBackupDeleteClientPending);
 	db->destroyQuery(q_removeFileBackup);
 	db->destroyQuery(q_changeImagePath);
 	db->destroyQuery(q_getFileBackupInfo);

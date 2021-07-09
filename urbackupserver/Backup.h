@@ -13,19 +13,16 @@ class ServerBackupDao;
 
 struct SBackup
 {
-	SBackup()
-		: incremental(0), incremental_ref(0), is_complete(false),
-		  is_resumed(false), backupid(0), indexing_time_ms(0), backup_time_ms(0) {}
-
-	int incremental;
+	int incremental = 0;
 	std::string path;
-	int incremental_ref;
+	int incremental_ref = 0;
 	std::string complete;
-	bool is_complete;
-	bool is_resumed;
-	int backupid;
-	int64 indexing_time_ms;
-	int64 backup_time_ms;
+	bool is_complete = false;
+	bool is_resumed = false;
+	int backupid = 0;
+	int64 indexing_time_ms = 0;
+	int64 backup_time_ms = 0;
+	int deletion_protected = 0;
 };
 
 enum LogAction

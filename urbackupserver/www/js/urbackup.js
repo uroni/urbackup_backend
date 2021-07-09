@@ -1905,6 +1905,12 @@ function prepareBackupObj(data, obj, image)
 	
 	if(image && obj.id<0)
 		obj.id*=-1;
+
+	if(obj.deletion_protected)
+		obj.is_deletion_protected=true;
+
+	if(obj.delete_client_pending)
+		obj.can_delete=false;
 	
 	return obj;
 }
