@@ -25,6 +25,7 @@
 #include "../common/data.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "client_restore.h"
 #include <iostream>
 #include <stdlib.h>
 #include <memory.h>
@@ -42,7 +43,7 @@
 #include <memory>
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
-#include "../urbackupcommon/json.h"
+
 #ifndef _WIN32
 #include "../config.h"
 #include <sys/ioctl.h>
@@ -59,6 +60,8 @@
 #endif
 
 #endif
+
+using namespace restore;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -96,133 +99,131 @@ namespace
 #endif
 		return ret;
 	}
-
-struct LoginData
-{
-	LoginData() : has_login_data(false) {}
-
-	bool has_login_data;
-	std::string username;
-	std::string password;
-	std::string token;
-};
-
-std::string trim2(const std::string &str)
-{
-    size_t startpos=str.find_first_not_of(" \t\n");
-    size_t endpos=str.find_last_not_of(" \t\n");
-    if( std::string::npos == startpos || std::string::npos==endpos)
-    {
-        return "";
-    }
-    else
-    {
-		return str.substr( startpos, endpos-startpos+1);
-    }
 }
 
-std::string getResponse(IPipe *c)
+namespace restore
 {
-	CTCPStack tcpstack;
-	char *resp=nullptr;
-	char buffer[1024];
-	size_t packetsize;
-	while(resp==nullptr)
+	std::string trim2(const std::string& str)
 	{
-		size_t rc=c->Read(buffer, 1024, 60000);
-		if(rc==0)
+		size_t startpos = str.find_first_not_of(" \t\n");
+		size_t endpos = str.find_last_not_of(" \t\n");
+		if (std::string::npos == startpos || std::string::npos == endpos)
 		{
 			return "";
-		}
-		tcpstack.AddData(buffer, rc );
-
-		resp=tcpstack.getPacket(&packetsize);
-		if(resp!=nullptr && packetsize==0)
-		{
-			delete []resp;
-			return "";
-		}
-	}
-
-	std::string ret;
-	ret.resize(packetsize);
-	memcpy(&ret[0], resp, packetsize);
-	delete []resp;
-	return ret;
-}
-
-std::vector<std::string> getBackupclients(int *ec)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<std::string> ret;
-	*ec=0;
-
-	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==nullptr)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		*ec=10;
-		return ret;
-	}
-
-	tcpstack.Send(c, "GET BACKUPCLIENTS#pw="+pw);
-	std::string r=getResponse(c);
-	if(r.empty() )
-	{
-		Server->Log("No response from ClientConnector", LL_ERROR);
-		*ec=1;
-	}
-	else
-	{
-		if(r[0]=='0')
-		{
-			Server->Log("No backupserver found", LL_ERROR);
-			*ec=2;
 		}
 		else
 		{
-			std::vector<std::string> toks;
-			std::string t=r.substr(1);
-			Tokenize(t, toks, "\n");
-			for(size_t i=0;i<toks.size();++i)
+			return str.substr(startpos, endpos - startpos + 1);
+		}
+	}
+
+	std::string getResponse(IPipe* c)
+	{
+		CTCPStack tcpstack;
+		char* resp = nullptr;
+		char buffer[1024];
+		size_t packetsize;
+		while (resp == nullptr)
+		{
+			size_t rc = c->Read(buffer, 1024, 60000);
+			if (rc == 0)
 			{
-				std::string nam=trim2(getafter("|", toks[i]));
-				if(!nam.empty())
+				return "";
+			}
+			tcpstack.AddData(buffer, rc);
+
+			resp = tcpstack.getPacket(&packetsize);
+			if (resp != nullptr && packetsize == 0)
+			{
+				delete[]resp;
+				return "";
+			}
+		}
+
+		std::string ret;
+		ret.resize(packetsize);
+		memcpy(&ret[0], resp, packetsize);
+		delete[]resp;
+		return ret;
+	}
+
+	std::string restorePw()
+	{
+		return getFile(pw_file);
+	}
+
+	std::vector<std::string> getBackupclients(int& ec)
+	{
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<std::string> ret;
+		ec = 0;
+
+		IPipe* c = Server->ConnectStream("localhost", 35623, 60000);
+		if (c == nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			ec = 10;
+			return ret;
+		}
+
+		tcpstack.Send(c, "GET BACKUPCLIENTS#pw=" + pw);
+		std::string r = getResponse(c);
+		if (r.empty())
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			ec = 1;
+		}
+		else
+		{
+			if (r[0] == '0')
+			{
+				Server->Log("No backupserver found", LL_ERROR);
+				ec = 2;
+			}
+			else
+			{
+				std::vector<std::string> toks;
+				std::string t = r.substr(1);
+				Tokenize(t, toks, "\n");
+				for (size_t i = 0; i < toks.size(); ++i)
 				{
-					bool found=false;
-					for(size_t i=0;i<ret.size();++i)
+					std::string nam = trim2(getafter("|", toks[i]));
+					if (!nam.empty())
 					{
-						if(ret[i]==nam)
+						if (std::find(ret.begin(), ret.end(), nam) == ret.end())
 						{
-							found=true;
-							break;
+							ret.push_back(nam);
 						}
-					}
-					if(!found)
-					{
-						ret.push_back(nam);
 					}
 				}
 			}
 		}
+		Server->destroy(c);
+		return ret;
 	}
-	Server->destroy(c);
-	return ret;
-}
 
-IPipe* connectToService(int *ec)
-{
-	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==nullptr)
+	IPipe* connectToService(int& ec)
 	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		*ec=10;
-		return nullptr;
+		IPipe* c = Server->ConnectStream("localhost", 35623, 60000);
+		if (c == nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			ec = 10;
+			return nullptr;
+		}
+
+		return c;
 	}
 
-	return c;
+	IPipe* connectToService()
+	{
+		int ec = 0;
+		return connectToService(ec);
+	}
 }
+
+
 
 struct SPasswordSalt
 {
@@ -238,7 +239,7 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *
 	*ec=0;
 	std::vector<SPasswordSalt> ret;
 
-	IPipe *c=connectToService(ec);
+	IPipe *c=connectToService(*ec);
 	if(c==nullptr)
 	{
 		return ret;
@@ -311,7 +312,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	CTCPStack tcpstack;
 	*ec=0;
 
-	IPipe *c=connectToService(ec);
+	IPipe *c=connectToService(*ec);
 	if(c==nullptr)
 	{
 		return false;
@@ -382,20 +383,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	return ret;
 }
 
-struct SImage
-{
-	bool operator<(const SImage &other) const
-	{
-		return other.time_s<time_s;
-	}
-	std::string time_str;
-	_i64 time_s;
-	int id;
-	std::vector<SImage> assoc;
-	std::string letter;
-};
 
-std::vector<SImage> parse_backup_images_output(const std::string& data);
 
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 {
@@ -503,364 +491,337 @@ std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
 
 volatile bool restore_retry_ok=false;
 
-enum EDownloadResult
+namespace restore
 {
-	EDownloadResult_Ok = 0,
-	EDownloadResult_ConnectError = 10,
-	EDownloadResult_OpenError = 2,
-	EDownloadResult_SizeReadError = 3,
-	EDownloadResult_TimeoutError2 = 4,
-	EDownloadResult_TimeoutError1 = 5,
-	EDownloadResult_WriteFailed = 6,
-	EDownloadResult_DeviceTooSmall = 11
-};
-
-struct DownloadStatus
-{
-	DownloadStatus()
-		: offset(-1),
-		received(0) {}
-
-	int64 offset;
-	int64 received;
-};
-
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, 
-	DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
-
-bool do_login(LoginData& login_data);
-
-EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, 
-	bool mbr, LoginData login_data, DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
-{
-	if(recur_depth==0)
+	EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile,
+		bool mbr, LoginData login_data, DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 	{
-		Server->Log("Read Timeout: Retrying -1", LL_WARNING);
-
-		int total_tries = 20;
-		int tries= total_tries;
-		EDownloadResult rc;
-		do
+		if (recur_depth == 0)
 		{
-			Server->wait(30000);
-			int64 starttime = Server->getTimeMS();
-			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, dl_status, recur_depth+1, o_imgsize, o_output_file_size);
-			if(rc== EDownloadResult_Ok)
-			{
-				return rc;
-			}
-			--tries;
-			if (Server->getTimeMS() - starttime > 180000)
-			{
-				tries = total_tries;
-			}
+			Server->Log("Read Timeout: Retrying -1", LL_WARNING);
 
-			if (rc== EDownloadResult_SizeReadError)
+			int total_tries = 20;
+			int tries = total_tries;
+			EDownloadResult rc;
+			do
 			{
-				do_login(login_data);
-				Server->wait(10000);
-			}
+				Server->wait(30000);
+				int64 starttime = Server->getTimeMS();
+				rc = downloadImage(img_id, img_time, outfile, mbr, login_data, dl_status, recur_depth + 1, o_imgsize, o_output_file_size);
+				if (rc == EDownloadResult_Ok)
+				{
+					return rc;
+				}
+				--tries;
+				if (Server->getTimeMS() - starttime > 180000)
+				{
+					tries = total_tries;
+				}
+
+				if (rc == EDownloadResult_SizeReadError)
+				{
+					do_login(login_data);
+					Server->wait(10000);
+				}
+			} while (tries > 0);
 		}
-		while(tries>0);
-	}
-	Server->Log("Read Timeout.", LL_ERROR);
-	return errrc;
-}
-
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
-	DownloadStatus& dl_status, int recur_depth=0, int64* o_imgsize=nullptr, int64* o_output_file_size=nullptr)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<SImage> ret;
-
-	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==nullptr)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		return EDownloadResult_ConnectError;
+		Server->Log("Read Timeout.", LL_ERROR);
+		return errrc;
 	}
 
-	std::string s_offset;
-	if(dl_status.offset!=-1)
+	EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
+		DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 	{
-		s_offset="&offset="+convert(dl_status.offset)+"&received_bytes="+convert(dl_status.received);
-	}
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<SImage> ret;
 
-	std::string dl_args;
-	if (img_id != 0 || !img_time.empty())
-	{
-		dl_args = "&img_id = "+convert(img_id)+" & time = "+img_time;
-	}
-	else if (login_data.has_login_data
-		&& !login_data.token.empty())
-	{
-		dl_args = "&token=" + EscapeParamString(login_data.token);
-	}
-
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+ dl_args + "&mbr="+convert(mbr)+s_offset);
-
-	std::string restore_out=outfile;
-	Server->Log("Restoring to "+restore_out);
-	std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
-	if(out_file.get()==nullptr)
-	{
-		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
-		return EDownloadResult_OpenError;
-	}
-	else if (o_output_file_size != nullptr)
-	{
-		*o_output_file_size = out_file->Size();
-	}
-
-	_i64 imgsize=-1;
-	client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
-
-	if (o_imgsize != nullptr)
-	{
-		*o_imgsize = imgsize;
-	}
-
-	if(imgsize==-1)
-	{
-		Server->Log("Error reading size", LL_ERROR);
-		return EDownloadResult_SizeReadError;
-	}
-	if(imgsize==-2)
-	{
-		Server->Log("Connection timeout", LL_ERROR);
-		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, 
-			outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-		return rc;
-	}
-
-	if (!mbr && imgsize > out_file->Size())
-	{
-		Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = "+convert(imgsize), LL_ERROR);
-		return EDownloadResult_DeviceTooSmall;
-	}
-
-	const size_t c_buffer_size=32768;
-	const unsigned int c_block_size=4096;
-
-	char buf[c_buffer_size];
-	if(mbr==true)
-	{
-		_i64 read=0;
-		while(read<imgsize)
+		std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+		if (client_pipe.get() == nullptr)
 		{
-			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
-			if(c_read==0)
-			{
-				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, 
-					mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-				return rc;
-			}
-			out_file->Write(buf, (_u32)c_read);
-			read+=c_read;
-		}
-		return EDownloadResult_Ok;
-	}
-	else
-	{
-		_i64 read=0;
-		unsigned int blockleft=0;
-		unsigned int off=0;
-		char blockdata[c_block_size];
-		bool first=true;
-		bool has_data=false;
-		_i64 pos=0;
-		while(pos<imgsize)
-		{
-			size_t r=client_pipe->Read(&buf[off], c_buffer_size-off, 180000);
-			if(r!=0)
-				r+=off;
-			off=0;
-			if( r==0 )
-			{
-				Server->Log("Read Timeout: Retrying", LL_WARNING);
-				client_pipe.reset(nullptr);
-				out_file.reset(nullptr);
-				if(has_data)
-				{
-					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
-						outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-				}
-				else
-				{
-					Server->Log("Read Timeout: No data", LL_ERROR);
-					return EDownloadResult_TimeoutError2;
-				}
-			}
-			while(true)
-			{
-				if( blockleft==0 )
-				{
-					if(!first)
-					{
-						//Only write one block
-						_u32 tw=c_block_size;
-						//Don't write over blockdev boundary
-						if(imgsize>=pos && imgsize-pos<c_block_size)
-							tw=(_u32)(imgsize-pos);
-
-						//Write to blockdev
-						_u32 woff=0;
-						do
-						{
-							bool has_write_error = false;
-							_u32 w=out_file->Write(&blockdata[woff], tw-woff, &has_write_error);
-							if(w==0)
-							{
-								Server->Log("Writing to output file failed", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							if (has_write_error)
-							{
-								Server->Log("Writing to output file failed -2", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							woff+=w;
-						}
-						while(tw-woff>0);
-
-						if (pos > dl_status.offset)
-						{
-							dl_status.offset = pos;
-						}
-
-						has_data=true;
-					}
-					else
-					{
-						first=false;
-
-						if(pos!=-1 && !restore_retry_ok)
-						{
-							restore_retry_ok=true;
-						}
-					}
-
-					if(r-off>=sizeof(_i64) )
-					{
-						blockleft=c_block_size;
-						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
-						if (*s == 0x7fffffffffffffffLL)
-						{
-							Server->Log("Restore finished", LL_INFO);
-							pos = *s;
-							break;
-						}
-						if(*s>imgsize)
-						{
-							Server->Log("Invalid seek value: "+convert(*s), LL_ERROR);
-							//TODO return error code here after deprecation period
-							pos=*s;
-							break;
-						}
-						else if(*s<pos)
-						{
-							Server->Log("Position out of order!", LL_ERROR);
-						}
-						else
-						{
-							if (!out_file->Seek(*s))
-							{
-								Server->Log("Seeking in output file failed (to position "+convert(*s)+")", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							pos=*s;
-						}
-						off+=sizeof(_i64);
-					}
-					else if(r-off>0)
-					{
-						memmove(buf, &buf[off], r-off);
-						off=(_u32)r-off;
-						break;
-					}
-					else
-					{
-						off=0;
-						break;
-					}
-				}
-				else
-				{
-					unsigned int available=(std::min)((unsigned int)r-off, blockleft);
-					if(available>0)
-					{
-						memcpy(&blockdata[c_block_size-blockleft], &buf[off], (_u32)available );
-					}
-					read+=available;
-					blockleft-=available;
-					off+=available;
-					dl_status.received+= available;
-					if(off>=r)
-					{
-						off=0;
-						break;
-					}
-				}
-			}
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			return EDownloadResult_ConnectError;
 		}
 
-		return EDownloadResult_Ok;
-	}
-	return EDownloadResult_Ok;
-}
-
-int downloadFiles(int backupid, std::string backup_time)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<SImage> ret;
-
-	std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==nullptr)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		return 10;
-	}
-
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD FILES#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
-	int64 starttime = Server->getTimeMS();
-
-	while(Server->getTimeMS()-starttime<60000)
-	{
-		std::string msg;
-		if(client_pipe->Read(&msg, 60000)>0)
+		std::string s_offset;
+		if (dl_status.offset != -1)
 		{
-			tcpstack.AddData(&msg[0], msg.size());
+			s_offset = "&offset=" + convert(dl_status.offset) + "&received_bytes=" + convert(dl_status.received);
+		}
 
-			if(tcpstack.getPacket(msg) )
+		std::string dl_args;
+		if (img_id != 0 || !img_time.empty())
+		{
+			dl_args = "&img_id = " + convert(img_id) + " & time = " + img_time;
+		}
+		else if (login_data.has_login_data
+			&& !login_data.token.empty())
+		{
+			dl_args = "&token=" + EscapeParamString(login_data.token);
+		}
+
+		tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw=" + pw + dl_args + "&mbr=" + convert(mbr) + s_offset);
+
+		std::string restore_out = outfile;
+		Server->Log("Restoring to " + restore_out);
+		std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
+		if (out_file.get() == nullptr)
+		{
+			Server->Log("Could not open \"" + restore_out + "\" for writing", LL_ERROR);
+			return EDownloadResult_OpenError;
+		}
+		else if (o_output_file_size != nullptr)
+		{
+			*o_output_file_size = out_file->Size();
+		}
+
+		_i64 imgsize = -1;
+		client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
+
+		if (o_imgsize != nullptr)
+		{
+			*o_imgsize = imgsize;
+		}
+
+		if (imgsize == -1)
+		{
+			Server->Log("Error reading size", LL_ERROR);
+			return EDownloadResult_SizeReadError;
+		}
+		if (imgsize == -2)
+		{
+			Server->Log("Connection timeout", LL_ERROR);
+			EDownloadResult rc = retryDownload(EDownloadResult_TimeoutError1, img_id, img_time,
+				outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+			return rc;
+		}
+
+		if (!mbr && imgsize > out_file->Size())
+		{
+			Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = " + convert(imgsize), LL_ERROR);
+			return EDownloadResult_DeviceTooSmall;
+		}
+
+		const size_t c_buffer_size = 32768;
+		const unsigned int c_block_size = 4096;
+
+		char buf[c_buffer_size];
+		if (mbr == true)
+		{
+			_i64 read = 0;
+			while (read < imgsize)
 			{
-				if(msg=="ok")
+				size_t c_read = client_pipe->Read(buf, c_buffer_size, 180000);
+				if (c_read == 0)
 				{
-					return 0;
+					EDownloadResult rc = retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile,
+						mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+					return rc;
 				}
-				else
-				{
-					Server->Log("Error: "+msg, LL_ERROR);
-					return 1;
-				}
-
-				break;
+				out_file->Write(buf, (_u32)c_read);
+				read += c_read;
 			}
+			return EDownloadResult_Ok;
 		}
 		else
 		{
-			break;
+			_i64 read = 0;
+			unsigned int blockleft = 0;
+			unsigned int off = 0;
+			char blockdata[c_block_size];
+			bool first = true;
+			bool has_data = false;
+			_i64 pos = 0;
+			while (pos < imgsize)
+			{
+				size_t r = client_pipe->Read(&buf[off], c_buffer_size - off, 180000);
+				if (r != 0)
+					r += off;
+				off = 0;
+				if (r == 0)
+				{
+					Server->Log("Read Timeout: Retrying", LL_WARNING);
+					client_pipe.reset(nullptr);
+					out_file.reset(nullptr);
+					if (has_data)
+					{
+						return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
+							outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+					}
+					else
+					{
+						Server->Log("Read Timeout: No data", LL_ERROR);
+						return EDownloadResult_TimeoutError2;
+					}
+				}
+				while (true)
+				{
+					if (blockleft == 0)
+					{
+						if (!first)
+						{
+							//Only write one block
+							_u32 tw = c_block_size;
+							//Don't write over blockdev boundary
+							if (imgsize >= pos && imgsize - pos < c_block_size)
+								tw = (_u32)(imgsize - pos);
+
+							//Write to blockdev
+							_u32 woff = 0;
+							do
+							{
+								bool has_write_error = false;
+								_u32 w = out_file->Write(&blockdata[woff], tw - woff, &has_write_error);
+								if (w == 0)
+								{
+									Server->Log("Writing to output file failed", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								if (has_write_error)
+								{
+									Server->Log("Writing to output file failed -2", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								woff += w;
+							} while (tw - woff > 0);
+
+							if (pos > dl_status.offset)
+							{
+								dl_status.offset = pos;
+							}
+
+							has_data = true;
+						}
+						else
+						{
+							first = false;
+
+							if (pos != -1 && !restore_retry_ok)
+							{
+								restore_retry_ok = true;
+							}
+						}
+
+						if (r - off >= sizeof(_i64))
+						{
+							blockleft = c_block_size;
+							_i64* s = reinterpret_cast<_i64*>(&buf[off]);
+							if (*s == 0x7fffffffffffffffLL)
+							{
+								Server->Log("Restore finished", LL_INFO);
+								pos = *s;
+								break;
+							}
+							if (*s > imgsize)
+							{
+								Server->Log("Invalid seek value: " + convert(*s), LL_ERROR);
+								//TODO return error code here after deprecation period
+								pos = *s;
+								break;
+							}
+							else if (*s < pos)
+							{
+								Server->Log("Position out of order!", LL_ERROR);
+							}
+							else
+							{
+								if (!out_file->Seek(*s))
+								{
+									Server->Log("Seeking in output file failed (to position " + convert(*s) + ")", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								pos = *s;
+							}
+							off += sizeof(_i64);
+						}
+						else if (r - off > 0)
+						{
+							memmove(buf, &buf[off], r - off);
+							off = (_u32)r - off;
+							break;
+						}
+						else
+						{
+							off = 0;
+							break;
+						}
+					}
+					else
+					{
+						unsigned int available = (std::min)((unsigned int)r - off, blockleft);
+						if (available > 0)
+						{
+							memcpy(&blockdata[c_block_size - blockleft], &buf[off], (_u32)available);
+						}
+						read += available;
+						blockleft -= available;
+						off += available;
+						dl_status.received += available;
+						if (off >= r)
+						{
+							off = 0;
+							break;
+						}
+					}
+				}
+			}
+
+			return EDownloadResult_Ok;
 		}
+		return EDownloadResult_Ok;
 	}
 
-	Server->Log("Timeout", LL_ERROR);
-	return 2;
-}
+	int downloadFiles(int backupid, std::string backup_time)
+	{
+		std::string pw=getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<SImage> ret;
 
-} //unnamed namespace
+		std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+		if(client_pipe.get()==nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			return 10;
+		}
 
-namespace
+		tcpstack.Send(client_pipe.get(), "DOWNLOAD FILES#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
+		int64 starttime = Server->getTimeMS();
+
+		while(Server->getTimeMS()-starttime<60000)
+		{
+			std::string msg;
+			if(client_pipe->Read(&msg, 60000)>0)
+			{
+				tcpstack.AddData(&msg[0], msg.size());
+
+				if(tcpstack.getPacket(msg) )
+				{
+					if(msg=="ok")
+					{
+						return 0;
+					}
+					else
+					{
+						Server->Log("Error: "+msg, LL_ERROR);
+						return 1;
+					}
+
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		Server->Log("Timeout", LL_ERROR);
+		return 2;
+	}
+
+} //namespace restore
+
+namespace restore
 {
 
 	bool LookupBlocking(std::string pServer, in_addr *dest)
@@ -947,15 +908,6 @@ namespace
 		return true;
 	}
 	
-	struct SLsblk
-	{
-		std::string maj_min;
-		std::string model;
-		std::string size;
-		std::string type;
-		std::string path;
-	};
-	
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
 		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
@@ -1013,7 +965,7 @@ namespace
 	}
 }
 
-namespace
+namespace restore
 {
 	std::vector<SImage> parse_backup_images_output(const std::string& data)
 	{
@@ -1048,7 +1000,7 @@ namespace
 		return ret;
 	}
 
-	std::string backup_images_output_to_json(const std::string& data)
+	JSON::Array backup_images_output_to_json(const std::string& data)
 	{
 		std::vector<SImage> images = parse_backup_images_output(data);
 
@@ -1078,7 +1030,12 @@ namespace
 			ret.add(image);
 		}
 
-		return ret.stringify(false);
+		return ret;
+	}
+
+	std::string backup_images_output_to_json_str(const std::string& data)
+	{
+		return backup_images_output_to_json(data).stringify(false);
 	}
 }
 
@@ -1345,7 +1302,7 @@ void do_restore(void)
 			{
 				if (cmd == "get_backupimages_json")
 				{
-					std::cout << backup_images_output_to_json(r.substr(1));
+					std::cout << backup_images_output_to_json_str(r.substr(1));
 				}
 				else
 				{
@@ -1492,61 +1449,64 @@ private:
 	int64 output_file_size;
 };
 
-bool has_network_device(void)
+namespace restore
 {
+	bool has_network_device(void)
+	{
 #ifdef _WIN32
-	return true;
+		return true;
 #else
 #ifdef sun
-	return true;
+		return true;
 #else
-	char          buf[1024];
-	struct ifconf ifc;
-	struct ifreq *ifr;
-	int           sck;
-	int           nInterfaces;
-	int           i;
+		char          buf[1024];
+		struct ifconf ifc;
+		struct ifreq* ifr;
+		int           sck;
+		int           nInterfaces;
+		int           i;
 
-	int type = SOCK_DGRAM;
+		int type = SOCK_DGRAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-	type |= SOCK_CLOEXEC;
+		type |= SOCK_CLOEXEC;
 #endif
-/* Get a socket handle. */
-	sck = socket(AF_INET, type, 0);
-	if(sck < 0)
-	{
-		return true;
-	}
+		/* Get a socket handle. */
+		sck = socket(AF_INET, type, 0);
+		if (sck < 0)
+		{
+			return true;
+		}
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(sck, F_SETFD, fcntl(sck, F_GETFD, 0) | FD_CLOEXEC);
+		fcntl(sck, F_SETFD, fcntl(sck, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
-/* Query available interfaces. */
-	ifc.ifc_len = sizeof(buf);
-	ifc.ifc_buf = buf;
-	if(ioctl(sck, SIOCGIFCONF, &ifc) < 0)
-	{
-		close(sck);
-		return true;
-	}
-
-/* Iterate through the list of interfaces. */
-	ifr         = ifc.ifc_req;
-	nInterfaces = ifc.ifc_len / sizeof(struct ifreq);
-	for(i = 0; i < nInterfaces; i++)
-	{
-		struct ifreq *item = &ifr[i];
-		
-		if(htonl(INADDR_LOOPBACK)!=((struct sockaddr_in *)&item->ifr_addr)->sin_addr.s_addr )
+		/* Query available interfaces. */
+		ifc.ifc_len = sizeof(buf);
+		ifc.ifc_buf = buf;
+		if (ioctl(sck, SIOCGIFCONF, &ifc) < 0)
 		{
 			close(sck);
 			return true;
 		}
-	}
-	close(sck);
-	return false;
+
+		/* Iterate through the list of interfaces. */
+		ifr = ifc.ifc_req;
+		nInterfaces = ifc.ifc_len / sizeof(struct ifreq);
+		for (i = 0; i < nInterfaces; i++)
+		{
+			struct ifreq* item = &ifr[i];
+
+			if (htonl(INADDR_LOOPBACK) != ((struct sockaddr_in*)&item->ifr_addr)->sin_addr.s_addr)
+			{
+				close(sck);
+				return true;
+			}
+		}
+		close(sck);
+		return false;
 #endif //sun
 #endif //_WIN32
+	}
 }
 
 void ping_named_server(void)
@@ -1569,40 +1529,43 @@ void ping_named_server(void)
 	}
 }
 
-bool has_internet_connection(int* ec, std::string& errstatus)
+namespace restore
 {
-	*ec = 0;
-
-	IPipe* c = connectToService(ec);
-
-	if (c == nullptr)
+	bool has_internet_connection(int& ec, std::string& errstatus)
 	{
+		ec = 0;
+
+		IPipe* c = connectToService(ec);
+
+		if (c == nullptr)
+		{
+			return false;
+		}
+
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		tcpstack.Send(c, "STATUS DETAIL#pw=" + pw);
+		std::string r = getResponse(c);
+		if (r.empty())
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			ec = 1;
+			return false;
+		}
+
+		std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
+		std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
+
+		if (internet_connected == "true"
+			&& r.find("\"servers\": []") == std::string::npos)
+		{
+			return true;
+		}
+
+		errstatus = internet_status;
+		ec = 2;
 		return false;
 	}
-
-	std::string pw = getFile(pw_file);
-	CTCPStack tcpstack;
-	tcpstack.Send(c, "STATUS DETAIL#pw=" + pw);
-	std::string r = getResponse(c);
-	if (r.empty())
-	{
-		Server->Log("No response from ClientConnector", LL_ERROR);
-		*ec = 1;
-		return false;
-	}
-	
-	std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
-	std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
-
-	if (internet_connected == "true"
-		&& r.find("\"servers\": []")==std::string::npos)
-	{
-		return true;
-	}
-
-	errstatus = internet_status;
-	*ec = 2;
-	return false;
 }
 
 namespace
@@ -1610,144 +1573,165 @@ namespace
 	bool internet_server_configured = false;
 }
 
-void configure_internet_server()
+namespace restore
 {
-	std::string internet_server;
-	while (internet_server.empty())
+	void configure_internet_server()
 	{
-		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_name`\" 8 30 2> out");
-		internet_server = trim(getFile("out"));
+		std::string internet_server;
+		while (internet_server.empty())
+		{
+			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_name`\" 8 30 2> out");
+			internet_server = trim(getFile("out"));
 
-		if (rc != 0)
+			if (rc != 0)
+			{
+				system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+				return;
+			}
+		}
+
+		if (internet_server.empty())
 		{
 			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
 			return;
 		}
-	}
 
-	if (internet_server.empty())
-	{
-		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
-		return;
-	}
+		std::string internet_authkey;
+		while (internet_authkey.empty())
+		{
+			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_authkey`\" 8 30 2> out");
+			internet_authkey = getFile("out");
 
-	std::string internet_authkey;
-	while (internet_authkey.empty())
-	{
-		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_authkey`\" 8 30 2> out");
-		internet_authkey = getFile("out");
+			if (rc != 0)
+			{
+				system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+				return;
+			}
+		}
 
-		if (rc != 0)
+		if (internet_authkey.empty())
 		{
 			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
 			return;
 		}
+
+		system("clear");
+		std::cout << "Configuring UrBackup restore client as Internet client..." << std::endl;
+
+		configure_internet_server(internet_server, internet_authkey, "", true);
 	}
 
-	if (internet_authkey.empty())
+	void configure_internet_server(std::string server_url, const std::string& server_authkey, const std::string& server_proxy,
+		bool with_cli)
 	{
-		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
-		return;
-	}
+		system("systemctl stop restore-client");
 
-	system("clear");
-	std::cout << "Configuring UrBackup restore client as Internet client..." << std::endl;
-	system("systemctl stop restore-client");
-
-	std::string internet_server_port = "55415";
-	if (internet_server.find(":") != std::string::npos)
-	{
-		internet_server_port = getafter(":", internet_server);
-		internet_server = getuntil(":", internet_server);
-	}
-
-	std::string rnd;
-	rnd.resize(16);
-	Server->secureRandomFill(&rnd[0], 16);
-
-	std::string clientname = "##restore##" + bytesToHex(rnd);
-
-	os_create_dir_recursive("urbackup/data");
-
-	writestring("internet_mode_enabled=true\n"
-		"internet_server=" + internet_server + "\n"
-		"internet_server_port=" + internet_server_port + "\n"
-		"internet_authkey=" + internet_authkey + "\n"
-		"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
-
-	std::cout << "Starting UrBackup Internet restore client..." << std::endl;
-
-	if (system("systemctl start restore-client-internet") != 0)
-	{
-		std::cout << "Error starting Internet restore client." << std::endl;
-		char ch;
-		std::cin >> ch;
-		return;
-	}
-
-	std::cout << "Waiting for Internet restore client to connect..." << std::endl;
-
-	Server->wait(1000);
-
-	int64 starttime = Server->getTimeMS();
-	int ec;
-	std::string errstatus;
-	while (Server->getTimeMS() - starttime < 60000)
-	{
-		if (has_internet_connection(&ec, errstatus))
+		std::string internet_server_port = "55415";
+		if (server_url.find(":") != std::string::npos)
 		{
-			internet_server_configured = true;
+			internet_server_port = getafter(":", server_url);
+			server_url = getuntil(":", server_url);
+		}
+
+		std::string rnd;
+		rnd.resize(16);
+		Server->secureRandomFill(&rnd[0], 16);
+
+		std::string clientname = "##restore##" + bytesToHex(rnd);
+
+		os_create_dir_recursive("urbackup/data");
+
+		writestring("internet_mode_enabled=true\n"
+			"internet_server=" + server_url + "\n"
+			"internet_server_port=" + internet_server_port + "\n"
+			"internet_authkey=" + server_authkey + "\n"
+			"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
+
+		if (with_cli)
+			std::cout << "Starting UrBackup Internet restore client..." << std::endl;
+
+		if (system("systemctl start restore-client-internet") != 0)
+		{
+			std::cout << "Error starting Internet restore client." << std::endl;
+			char ch;
+			std::cin >> ch;
 			return;
 		}
-		if (ec == 2 && next(errstatus, 0, "error:"))
-			break;
+
+		if (!with_cli)
+			return;
+
+		std::cout << "Waiting for Internet restore client to connect..." << std::endl;
+
 		Server->wait(1000);
+
+		int64 starttime = Server->getTimeMS();
+		int ec;
+		std::string errstatus;
+		while (Server->getTimeMS() - starttime < 60000)
+		{
+			if (has_internet_connection(ec, errstatus))
+			{
+				internet_server_configured = true;
+				return;
+			}
+			if (ec == 2 && next(errstatus, 0, "error:"))
+				break;
+			Server->wait(1000);
+		}
+
+		std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
+		std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
+		system("systemctl stop restore-client-internet");
+		Server->deleteFile("urbackup/data/settings.cfg");
+		system("systemctl start restore-client");
+
+		std::string errmsg;
+		switch (ec)
+		{
+		case 10:
+		case 1:
+			errmsg = "`cat urbackup/restore/internal_error`";
+			break;
+		case 2:
+			errmsg = getFile("urbackup/restore/internet_authentification_failed");
+			errmsg = greplace("_STATUS_", errstatus, errmsg);
+			break;
+		}
+
+		int r = system(("dialog --menu \"`cat urbackup/restore/error_happend` " + errmsg + ". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
+			"\"r\" \"`cat urbackup/restore/search_again`\" "
+			"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
+			"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
+			"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+
+		if (r != 0)
+		{
+			return;
+		}
+		std::string out = getFile("out");
+		if (out == "s")
+		{
+			system("bash");
+		}
+		else if (out == "i")
+		{
+			configure_internet_server();
+		}
 	}
 
-	std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
-	std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
-	system("systemctl stop restore-client-internet");
-	Server->deleteFile("urbackup/data/settings.cfg");
-	system("systemctl start restore-client");
-
-	std::string errmsg;
-	switch (ec)
+	void configure_local_server()
 	{
-	case 10:
-	case 1:
-		errmsg = "`cat urbackup/restore/internal_error`";
-		break;
-	case 2:
-		errmsg = getFile("urbackup/restore/internet_authentification_failed");
-		errmsg = greplace("_STATUS_", errstatus, errmsg);
-		break;
-	}
-
-	int r = system(("dialog --menu \"`cat urbackup/restore/error_happend` " + errmsg + ". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
-		"\"r\" \"`cat urbackup/restore/search_again`\" "
-		"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
-		"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
-		"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
-
-	if (r != 0)
-	{
-		return;
-	}
-	std::string out = getFile("out");
-	if (out == "s")
-	{
-		system("bash");
-	}
-	else if(out=="i")
-	{
-		configure_internet_server();
+		system("systemctl stop restore-client-internet");
+		Server->deleteFile("urbackup/data/settings.cfg");
+		system("systemctl start restore-client");
 	}
 }
 
-namespace
+namespace restore
 {
 
-bool do_login(LoginData& login_data)
+bool do_login(LoginData& login_data, bool with_cli_output)
 {
 	if (login_data.has_login_data)
 	{
@@ -1779,8 +1763,11 @@ bool do_login(LoginData& login_data)
 		return tryLogin(login_data.username, login_data.password, salts, 10, &ec);
 	}
 
-	system("clear");
-	system("cat urbackup/restore/trying_to_login");
+	if (with_cli_output)
+	{
+		system("clear");
+		system("cat urbackup/restore/trying_to_login");
+	}
 
 	int ec;
 	if (!tryLogin("", "", std::vector<SPasswordSalt>(), 0, &ec))
@@ -1788,15 +1775,20 @@ bool do_login(LoginData& login_data)
 		if (ec == 1)
 		{
 			//Server probably does not support logging in
-			std::vector<std::string> clients = getBackupclients(&ec);
+			std::vector<std::string> clients = getBackupclients(ec);
 			if (ec == 0 && !clients.empty())
 			{
 				return true;
 			}
 		}
 
-		while (true)
+		if (!with_cli_output)
 		{
+			return false;
+		}
+
+		while (true)
+		{			
 			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
 			std::string username = getFile("out");
 
@@ -1964,7 +1956,7 @@ void restore_wizard(void)
 				login_data = LoginData();
 				if(do_login(login_data))
 				{					
-					clients=getBackupclients(&ec);
+					clients=getBackupclients(ec);
 					
 					switch(ec)
 					{

@@ -41,6 +41,10 @@ AC_ARG_ENABLE([embedded-zstd],
      AS_HELP_STRING([--enable-embedded-zstd], [Compile and use ZSTD included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_ZSTD, test "x$enable_embedded_zstd" = xyes)
 
+AC_ARG_ENABLE([httpserver],
+     AS_HELP_STRING([--enable-httpserver], [Enable HTTP server for restore CD]))
+AM_CONDITIONAL(WITH_HTTPSERVER, test "x$enable_httpserver" = xyes)
+
 
 # Checks for programs.
 AC_PROG_CXX
