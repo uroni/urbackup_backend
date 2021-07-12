@@ -8,7 +8,7 @@ set -x
 
 autoreconf --install
 
-./configure CXXFLAGS="-DRESTORE_CLIENT" --enable-headless --enable-embedded-cryptopp
+./configure CXXFLAGS="-DRESTORE_CLIENT" --enable-headless --enable-embedded-cryptopp --enable-httpserver
 
 make -j4
 
