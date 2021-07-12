@@ -50,13 +50,13 @@ public:
 		bool background_worker_manual_run, bool background_worker_multi_trans_delete, IBackupFileSystem* cachefs);
 	~KvStoreFrontend();
 
-	virtual IFsFile* get(const std::string& key, int64 transid, const std::string& path,
+	virtual IFsFile* get(const std::string& key, int64 transid,
 		bool prioritize_read, IFsFile* tmpl_file, bool allow_error_event, bool& not_found,
 		int64* get_transid = nullptr) {
-		return get(0, key, transid, path, prioritize_read, tmpl_file, allow_error_event, not_found, get_transid);
+		return get(0, key, transid, prioritize_read, tmpl_file, allow_error_event, not_found, get_transid);
 	}
 	
-	IFsFile* get(int64 cd_id, const std::string& key, int64 transid, const std::string& path,
+	IFsFile* get(int64 cd_id, const std::string& key, int64 transid,
 		bool prioritize_read, IFsFile* tmpl_file, bool allow_error_event, bool& not_found,
 		int64* get_transid=nullptr);
 
@@ -69,15 +69,15 @@ public:
 	virtual bool reset(const std::string& key, int64 transid);
 
 	virtual bool put(const std::string& key, int64 transid, IFsFile* src,
-		const std::string& path, unsigned int flags,
+		unsigned int flags,
 		bool allow_error_event, int64& compressed_size)
 	{
-		return put(0, key, transid, 0, src, path, flags,
+		return put(0, key, transid, 0, src, flags,
 			allow_error_event, compressed_size);
 	}
 
 	bool put(int64 cd_id, const std::string& key, int64 transid, int64 generation, IFsFile* src,
-		const std::string& path, unsigned int flags,
+		unsigned int flags,
 		bool allow_error_event, int64& compressed_size);
 
 	virtual int64 new_transaction(bool allow_error_event)

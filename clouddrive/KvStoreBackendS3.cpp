@@ -339,9 +339,10 @@ void KvStoreBackendS3::init_mutex()
     Aws::InitAPI(options);
 }
 
-bool KvStoreBackendS3::get( const std::string& key, const std::string& path, const std::string& md5sum, 
-		unsigned int flags, bool allow_error_event, IFsFile*& ret_file, std::string& ret_md5sum, unsigned int& get_status)
+bool KvStoreBackendS3::get( const std::string& key, const std::string& md5sum, 
+		unsigned int flags, bool allow_error_event, IFsFile* ret_file, std::string& ret_md5sum, unsigned int& get_status)
 {
+	assert(ret_file!=nullptr);
 	get_status=0;
 	
 	size_t idx0 = 0;
@@ -444,37 +445,11 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 
 		downloaded_bytes+=tmpfile->Size();
 
-		std::unique_ptr<IFsFile> res_src;
-		IFsFile* res;
-		if(ret_file==nullptr)
-		{
-			res_src.reset(cachefs->openFile(path, MODE_RW_CREATE));
-
-			if(res_src.get()==nullptr)
-			{
-				std::string syserr = os_last_error_str();
-				if (allow_error_event)
-				{
-					addSystemEvent("s3_backend",
-						"Error opening result file",
-						"Error opening result file at " + path + ". " + syserr, LL_ERROR);
-				}
-				Server->Log("Error opening result file at "+path+". "+syserr, LL_ERROR);
-				return false;
-			}
-			
-			res = res_src.get();
-		}
-		else
-		{
-			res = ret_file;
-		}
-
 		std::unique_ptr<IDecryptAndDecompress> decrypt_and_decompress;
 		
 		if(flags & IKvStoreBackend::GetDecrypted)
 		{
-			decrypt_and_decompress.reset(compress_encrypt_factory->createDecryptAndDecompress(encryption_key, res));
+			decrypt_and_decompress.reset(compress_encrypt_factory->createDecryptAndDecompress(encryption_key, ret_file));
 		}
 
 		std::vector<char> buffer;
@@ -505,7 +480,7 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 			else if(decrypt_and_decompress.get()==nullptr)
 			{
 				md_check.update(reinterpret_cast<unsigned char*>(buffer.data()), read);
-				if(res->Write(buffer.data(), read)!=read)
+				if(ret_file->Write(buffer.data(), read)!=read)
 				{
 					std::string syserr = os_last_error_str();
 					Server->Log("Error writing to result file. "+syserr, LL_ERROR);
@@ -557,10 +532,6 @@ bool KvStoreBackendS3::get( const std::string& key, const std::string& path, con
 			return false;
 		}
 
-		if(ret_file==nullptr)
-		{
-			ret_file = res_src.release();
-		}
 		return true;
 	}
 	else
@@ -691,36 +662,10 @@ bool KvStoreBackendS3::list( IListCallback* callback )
 	return true;
 }
 
-bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::string& path, 
+bool KvStoreBackendS3::put( const std::string& key, IFsFile* src,
 		unsigned int flags, bool allow_error_event, std::string& md5sum, int64& compressed_size)
 {
-	std::unique_ptr<IFsFile> tsourcefile;
-	
-	if(src==nullptr)
-	{
-		tsourcefile.reset(cachefs->openFile(path, MODE_READ));
-		if(tsourcefile.get()==nullptr)
-		{
-			std::string syserr = os_last_error_str();
-			Server->Log("Error opening source file "+ path+". "+syserr, LL_ERROR);
-			
-			cachefs->openFile(path, MODE_READ);
-
-			if(allow_error_event)
-			{
-				addSystemEvent("s3_backend",
-					"Error opening source file",
-					"Error opening source file "+ path+". "+syserr, LL_ERROR);
-			}
-			
-			return false;
-		}
-		src = tsourcefile.get();
-	}
-	else
-	{
-		src->Seek(0);
-	}
+	src->Seek(0);
 
 	unsigned int curr_comp_method = (flags & IKvStoreBackend::GetMetadata) > 0 ? comp_method_metadata
 		: comp_method;
@@ -785,8 +730,6 @@ bool KvStoreBackendS3::put( const std::string& key, IFsFile* src, const std::str
 		Server->Log("Uploading object "+ key +"... Uncompressed size="+convert(src->Size())+" Compressed size="+convert(local_size), LL_INFO);
 		
 		local_md5 = compress_encrypt->md5sum();
-		
-		tsourcefile.reset();
 		
 		tmpfile_delete.release();
 		offset_buffer.reset(new offset_buf(0, tmpfile, this, true));

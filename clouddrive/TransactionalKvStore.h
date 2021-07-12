@@ -206,7 +206,8 @@ public:
 		IOnlineKvStore* online_kv_store, const std::string& encryption_key, ICompressEncryptFactory* compress_encrypt_factory, bool verify_cache,
 		float cpu_multiplier, size_t no_compress_mult, bool with_prev_link, bool allow_evict, bool with_submitted_files,
 		float resubmit_compressed_ratio, int64 max_memfile_size, std::string memcache_path,
-		float memory_usage_factor, bool only_memfiles, unsigned int background_comp_method);
+		float memory_usage_factor, bool only_memfiles, unsigned int background_comp_method,
+		unsigned int cache_comp, unsigned int meta_cache_comp);
 
 	~TransactionalKvStore();
 
@@ -528,6 +529,8 @@ private:
 	TransactionalKvStore::SCacheVal cache_val(const std::string& key, bool dirty);
 	TransactionalKvStore::SCacheVal cache_val_nc(bool dirty);
 
+	bool set_cache_file_compression(const std::string& key, const std::string& fpath);
+
 	std::list<SSubmissionItem>::iterator submission_queue_add(SSubmissionItem& item, bool memfile);
 	std::list<SSubmissionItem>::iterator submission_queue_insert(SSubmissionItem& item, bool memfile, std::list<SSubmissionItem>::iterator it);
 
@@ -800,4 +803,7 @@ private:
 	std::string memcache_path;
 
 	std::unique_ptr<IFsFile> cache_lock_file;
+
+	unsigned int cache_comp;
+	unsigned int meta_cache_comp;
 };

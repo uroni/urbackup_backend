@@ -22,12 +22,12 @@ public:
 
 	static void init_mutex();
 		
-	virtual bool get( const std::string& key, const std::string& path, const std::string& md5sum, 
-				unsigned int flags, bool allow_error_event, IFsFile*& ret_file, std::string& ret_md5sum, unsigned int& get_status);
+	virtual bool get( const std::string& key, const std::string& md5sum, 
+				unsigned int flags, bool allow_error_event, IFsFile* ret_file, std::string& ret_md5sum, unsigned int& get_status);
 
 	virtual bool list( IListCallback* callback );
 
-	virtual bool put( const std::string& key, IFsFile* src, const std::string& path, 
+	virtual bool put( const std::string& key, IFsFile* src,
 				unsigned int flags, bool allow_error_event, std::string& md5sum, 
 				int64& compressed_size) override;
 

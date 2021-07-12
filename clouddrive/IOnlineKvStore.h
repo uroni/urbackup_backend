@@ -6,7 +6,7 @@
 class IOnlineKvStore : public IObject
 {
 public:
-	virtual IFsFile* get(const std::string& key, int64 transid, const std::string& path, 
+	virtual IFsFile* get(const std::string& key, int64 transid,
 		bool prioritize_read, IFsFile* tmpl_file, bool allow_error_event,
 		bool& not_found, int64* get_transid=nullptr) = 0;
 
@@ -19,7 +19,7 @@ public:
 	const static unsigned int PutMetadata = 2;
 
 	virtual bool put(const std::string& key, int64 transid, IFsFile* src, 
-		const std::string& path, unsigned int flags,
+		unsigned int flags,
 		bool allow_error_event, int64& compressed_size) = 0;
 
 	virtual int64 new_transaction(bool allow_error_event) = 0;

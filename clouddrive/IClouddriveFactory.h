@@ -21,7 +21,9 @@ public:
 		zstd_3 = 2,
 		zstd_19 = 3,
 		zstd_9 = 4,
-		none = 5
+		none = 5,
+		zstd7 = 6,
+		lzo = 7
 	};
 
 	struct CloudSettingsS3
@@ -48,6 +50,8 @@ public:
 		CompressionMethod submit_compression = CompressionMethod::none;
 		CompressionMethod metadata_submit_compression = CompressionMethod::zstd_3;
 		CompressionMethod background_compression = CompressionMethod::lzma_5;
+		CompressionMethod cache_object_compression = CompressionMethod::none;
+		CompressionMethod metadata_cache_object_compression = CompressionMethod::lzo;
 		bool multi_trans_delete = true;
 		int64 reserved_cache_device_space = 100 * 1024 * 1024;
 		float memory_usage_factor = 0.1f;

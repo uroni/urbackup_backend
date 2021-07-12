@@ -52,8 +52,33 @@ unsigned int CompressionMethodFromString(const std::string & str)
 		return CompressionNone;
 	else if (str == "zstd_7")
 		return CompressionZstd7;
+	else if (str == "lzo" )
+		return CompressionLzo;
 	else
 		return CompressionZstd3;
+}
+
+std::string CompressionMethodToBtrfsString(unsigned int cmeth)
+{
+	switch (cmeth)
+	{
+	case CompressionZlib5:
+		return "zlib:5";
+	case CompressionZstd3:
+		return "zstd:3";
+	case CompressionZstd19:
+		return "zstd:15";
+	case CompressionZstd9:
+		return "zstd:9";
+	case CompressionZstd7:
+		return "zstd:7";
+	case CompressionNone:
+		return "none";
+	case CompressionLzo:
+		return "lzo";
+	default:
+		return "zstd:3";
+	}
 }
 
 ICompressEncryptFactory* get_compress_encrypt_factory()

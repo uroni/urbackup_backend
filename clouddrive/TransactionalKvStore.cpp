@@ -463,7 +463,24 @@ public:
 						&& kv_store.num_second_chances_cb->is_metadata(item->key))
 						flags |= IOnlineKvStore::PutMetadata;
 
-					while(!kv_store.online_kv_store->put(item->key, item->transid, memf_file, path, flags, n>retry_log_n, compressed_size) )
+					IFsFile* putf = memf_file;
+					while(putf==nullptr)
+					{
+						putf = kv_store.cachefs->openFile(path, MODE_READ);
+
+						if(putf==nullptr)
+						{
+							std::string syserr = kv_store.cachefs->lastError();
+							Server->Log("Cannot open file to submit: " + path+". "+ syserr, LL_ERROR);
+							addSystemEvent("online_kv_store",
+								"Cannot open file to submit",
+								"Cannot open file to submit: " + path + ". " + syserr, LL_ERROR);
+
+							retryWait(n++);
+						}
+					}
+
+					while(!kv_store.online_kv_store->put(item->key, item->transid, memf_file, flags, n>retry_log_n, compressed_size) )
 					{
 						Server->Log("Error submitting dirty data block "+kv_store.hex(item->key)+" transid "+convert(item->transid)+". Retrying...", LL_ERROR);
 						if (kv_store.online_kv_store->fast_write_retry())
@@ -2201,9 +2218,57 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 			do
 			{
 				not_found = false;
-				online_file = online_kv_store->get(key, transid, keypath2(key, transid),
-					prioritize_read, memfile, retry_n > retry_log_n, not_found);
-				assert(online_file == nullptr || memfile == nullptr || online_file == memfile);
+
+				IFsFile* online_file_tmpl = memfile;
+				if (online_file_tmpl == nullptr)
+				{
+					std::string online_file_path = keypath2(key, transid);
+					bool path_err = false;
+					if (!cachefs->directoryExists(ExtractFilePath(online_file_path)))
+					{
+						if (!cachefs->createDir(ExtractFilePath(online_file_path)))
+						{
+							std::string syserr = os_last_error_str();
+							Server->Log("Error creating directory for GET-file with key " + bytesToHex(key) + " path " + ExtractFilePath(online_file_path) + ". " + syserr, LL_ERROR);
+							addSystemEvent("cache_err_retry",
+								"Error creating directory for get file on cache",
+								"Error creating directory for GET-file with key " + bytesToHex(key) + " path " + ExtractFilePath(online_file_path) + ". " + syserr, LL_ERROR);
+							path_err = true;
+						}
+					}
+
+					if (!path_err)
+					{
+						online_file_tmpl = cachefs->openFile(online_file_path, CREATE_DIRECT);
+
+						if (online_file_tmpl == nullptr)
+						{
+							std::string syserr = os_last_error_str();
+							Server->Log("Error opening output file " + online_file_path + ". " + syserr, LL_ERROR);
+							addSystemEvent("online_kv_store",
+								"Error opening output file",
+								"Error opening output file " + online_file_path + ". " + syserr, LL_ERROR);
+						}
+						else
+						{
+							set_cache_file_compression(key, online_file_path);
+						}
+					}
+				}
+
+				if (online_file_tmpl != nullptr)
+				{
+					online_file = online_kv_store->get(key, transid,
+						prioritize_read, online_file_tmpl, retry_n > retry_log_n, not_found);
+					assert(online_file == nullptr || memfile == nullptr || online_file == memfile);
+
+					if (online_file == nullptr &&
+						online_file_tmpl != memfile)
+					{
+						Server->destroy(online_file_tmpl);
+						cachefs->deleteFile(keypath2(key, transid));
+					}
+				}
 
 				if (online_file != nullptr)
 				{
@@ -2392,6 +2457,8 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 						retryWait(++retry_n);
 					}
 					FILE_SIZE_CACHE(online_file->setCachedSize(0));
+
+					set_cache_file_compression(key, path);
 				}
 
 			} while (online_file == nullptr);
@@ -3045,7 +3112,8 @@ TransactionalKvStore::TransactionalKvStore(IBackupFileSystem* cachefs, int64 min
 	bool verify_cache, float cpu_multiplier, size_t no_compress_mult, bool with_prev_link,
 	bool allow_evict, bool with_submitted_files, float resubmit_compressed_ratio, int64 max_memfile_size, 
 	std::string memcache_path, float memory_usage_factor,
-	bool only_memfiles, unsigned int background_comp_method)
+	bool only_memfiles, unsigned int background_comp_method,
+	unsigned int cache_comp, unsigned int meta_cache_comp)
 	: min_cachesize(min_cachesize), min_free_size(min_free_size), critical_free_size(critical_free_size),
 	comp_percent(comp_percent), comp_start_limit(comp_start_limit), throttle_free_size(throttle_free_size),
 	do_stop(false),
@@ -3074,7 +3142,8 @@ TransactionalKvStore::TransactionalKvStore(IBackupFileSystem* cachefs, int64 min
 	total_submitted_bytes(0),
 	retrieval_waiters_async(0),
 	retrieval_waiters_sync(0),
-	cachefs(cachefs)
+	cachefs(cachefs),
+	cache_comp(cache_comp), meta_cache_comp(meta_cache_comp)
 {
 	g_cache_mutex = &cache_mutex;
 
@@ -3958,8 +4027,22 @@ void TransactionalKvStore::read_keys(std::unique_lock<cache_mutex_t>& cache_lock
 				}
 
 				std::string tmpfn = "verify.file";
+				IFsFile* tmpl_file = cachefs->openFile(tmpfn, CREATE_DIRECT);
+				if (tmpl_file == nullptr)
+				{
+					Server->Log("Could not verify.file on cache fs. "+cachefs->lastError(), LL_ERROR);
+					assert(false);
+					throw std::runtime_error("Could not verify.file on cache fs. " + cachefs->lastError());
+				}
+
 				bool not_found = false;
-				IFile* online_file = online_kv_store->get(key, transid, tmpfn, false, nullptr, true, not_found);
+				IFile* online_file = online_kv_store->get(key, transid, false, tmpl_file, true, not_found);
+
+				if (online_file == nullptr)
+				{
+					Server->destroy(tmpl_file);
+					cachefs->deleteFile(tmpfn);
+				}
 
 				if (online_file == nullptr || not_found)
 				{
@@ -5730,7 +5813,20 @@ bool TransactionalKvStore::read_from_dirty_file(std::unique_lock<cache_mutex_t>&
 
 				bool not_found;
 				int64 get_transid = 0;
-				IFsFile* f = online_kv_store->get(key, transaction_id, "submit.test.file", false, nullptr, true, not_found, &get_transid);
+
+				std::string tmpfn = "submit.test.file";
+				IFsFile* tmpl_file = cachefs->openFile(tmpfn, CREATE_DIRECT);
+
+				if (tmpl_file == nullptr)
+				{
+					Server->Log("Cannot open submit.test.file "+cachefs->lastError(), LL_ERROR);
+					addSystemEvent("cache_err_fatal",
+						"Cannot open file",
+						"Cannot open submit.test.file " + cachefs->lastError(), LL_ERROR);
+					abort();
+				}
+
+				IFsFile* f = online_kv_store->get(key, transaction_id, false, tmpl_file, true, not_found, &get_transid);
 				if (f == nullptr)
 				{
 					Server->Log("Cannot get file not_found="+convert(not_found), LL_ERROR);
@@ -5742,7 +5838,7 @@ bool TransactionalKvStore::read_from_dirty_file(std::unique_lock<cache_mutex_t>&
 				else
 				{
 					Server->destroy(f);
-					cachefs->deleteFile("submit.test.file");
+					cachefs->deleteFile(tmpfn);
 					Server->Log("Get ok", LL_WARNING);
 				}
 
@@ -9035,4 +9131,20 @@ void TransactionalKvStore::MemfdDelThread::operator()()
 
 		lock.lock();
 	}
+}
+
+bool TransactionalKvStore::set_cache_file_compression(const std::string& key, const std::string& fpath)
+{
+	if (meta_cache_comp != CompressionNone &&
+		num_second_chances_cb != nullptr &&
+		num_second_chances_cb->is_metadata(key))
+	{
+		return cachefs->setXAttr(fpath, "btrfs.compression", CompressionMethodToBtrfsString(meta_cache_comp));
+	}
+	else if (cache_comp != CompressionNone)
+	{
+		return cachefs->setXAttr(fpath, "btrfs.compression", CompressionMethodToBtrfsString(cache_comp));
+	}
+
+	return true;
 }
