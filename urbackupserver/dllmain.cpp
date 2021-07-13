@@ -2352,7 +2352,11 @@ bool upgrade65_66()
 
 	bool b = true;
 	b &= db->Write("ALTER TABLE backups ADD incremental_ref INTEGER");
+	b &= db->Write("ALTER TABLE backups ADD deletion_protected INTEGER");
+	b &= db->Write("ALTER TABLE backups ADD delete_client_pending INTEGER");
 	b &= db->Write("UPDATE backups SET incremental_ref=0");
+	b &= db->Write("UPDATE backups SET deletion_protected=0");
+	b &= db->Write("UPDATE backups SET delete_client_pending=0");
 	b &= db->Write("ALTER TABLE clients ADD perm_uid BLOB");
 
 	db_results res_clients = db->Read("SELECT id FROM clients");

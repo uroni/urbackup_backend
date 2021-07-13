@@ -62,7 +62,8 @@ public:
 		unsigned int background_comp_method,
 		const std::string& slog_path,
 		int64 slog_max_size,
-		bool is_async);
+		bool is_async,
+		unsigned int cache_comp, unsigned int meta_cache_comp);
 
 	~CloudFile();
 

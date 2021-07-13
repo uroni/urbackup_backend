@@ -34,9 +34,11 @@ namespace
 	const unsigned int CompressionZstd9 = 4;
 	const unsigned int CompressionNone = 5;
 	const unsigned int CompressionZstd7 = 6;
+	const unsigned int CompressionLzo = 7;
 }
 
 unsigned int CompressionMethodFromString(const std::string& str);
+std::string CompressionMethodToBtrfsString(unsigned int cmeth);
 
 class ICompressEncryptFactory : public IObject
 {

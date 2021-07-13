@@ -228,7 +228,7 @@ bool IncrFileBackup::doFileBackup()
 
 	int incremental_num = resumed_full?0:(last.incremental+1);
 	if (!backup_dao->newFileBackup(incremental_num, clientid, backuppath_single, 
-		resumed_backup, Server->getTimeMS() - indexing_start_time, group, 0))
+		resumed_backup, Server->getTimeMS() - indexing_start_time, group, 0, 0))
 	{
 		ServerLogger::Log(logid, "Error creating new backup row in database", LL_ERROR);
 		has_early_error = true;
@@ -1866,6 +1866,8 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 		b.is_complete=last_incremental.complete>0;
 		b.is_resumed=last_incremental.resumed>0;
 		b.backupid=last_incremental.id;
+		b.incremental_ref = last_incremental.incremental_ref;
+		b.deletion_protected = last_incremental.deletion_protected;
 
 
 		ServerBackupDao::SLastIncremental last_complete_incremental =
@@ -1883,15 +1885,12 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 
 		b.indexing_time_ms = duration.indexing_time_ms;
 		b.backup_time_ms = duration.duration*1000;
-
-		b.incremental_ref=0;
 		return b;
 	}
 	else
 	{
 		SBackup b;
 		b.incremental=-2;
-		b.incremental_ref=0;
 		return b;
 	}
 }

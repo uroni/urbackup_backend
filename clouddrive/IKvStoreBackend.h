@@ -57,15 +57,16 @@ public:
 	const static unsigned int GetStatusEnospc = 2;
 	const static unsigned int GetStatusNotFound = 4;
 	const static unsigned int GetStatusRepairError = 8;
+	const static unsigned int GetStatusSkipped = 16;
 
-	virtual bool get( const std::string& key, const std::string& path, const std::string& md5sum, 
-		unsigned int flags, bool allow_error_event, IFsFile*& ret_file, std::string& ret_md5sum, unsigned int& get_status) = 0;
+	virtual bool get( const std::string& key, const std::string& md5sum, 
+		unsigned int flags, bool allow_error_event, IFsFile* ret_file, std::string& ret_md5sum, unsigned int& get_status) = 0;
 	virtual bool list(IListCallback* callback) = 0;
 
 	const static unsigned int PutAlreadyCompressedEncrypted = 1;
 	const static unsigned int PutMetadata = 2;
 
-	virtual bool put( const std::string& key, IFsFile* src, const std::string& path, 
+	virtual bool put( const std::string& key, IFsFile* src,
 		unsigned int flags, bool allow_error_event, std::string& md5sum, int64& size) = 0;
 
 	enum class key_next_action_t

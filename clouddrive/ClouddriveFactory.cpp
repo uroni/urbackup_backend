@@ -88,7 +88,9 @@ IFile* ClouddriveFactory::createCloudFile(IBackupFileSystem* cachefs, CloudSetti
 		settings.resubmit_compressed_ratio, settings.memcache_size, std::string(),
 		settings.memory_usage_factor, settings.only_memfiles, std::string(),
 		std::string(), static_cast<unsigned int>(settings.background_compression),
-		std::string(), -1, false);
+		std::string(), -1, false,
+		static_cast<unsigned int>(settings.cache_object_compression),
+		static_cast<unsigned int>(settings.metadata_cache_object_compression));
 }
 
 IKvStoreBackend* ClouddriveFactory::createBackend(IBackupFileSystem* cachefs, 

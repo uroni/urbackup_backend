@@ -54,6 +54,10 @@ AM_CONDITIONAL(WITH_EMBEDDED_AWS_CPP_SDK, test "x$with_embedded_aws_cpp_sdk" != 
 
 AM_CONDITIONAL(WITH_BTRFS_ZLIB, test 1 = 0)
 
+AC_ARG_ENABLE([httpserver],
+     AS_HELP_STRING([--enable-httpserver], [Enable HTTP server for restore CD]))
+AM_CONDITIONAL(WITH_HTTPSERVER, test "x$enable_httpserver" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC

@@ -41,6 +41,7 @@
 #include "../urbackupcommon/events.h"
 #include <zlib.h>
 #include <memory>
+#include "Auto.h"
 #ifdef HAS_MIRROR
 #include "../urbackupserver/server_settings.h"
 #endif
@@ -264,7 +265,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 		IFsFile* ret_file = tmp_f;
 		std::string ret_md5sum;
 		unsigned int get_status;
-		if (!backend->get("cd_magic_file", std::string(), std::string(), IKvStoreBackend::GetDecrypted,
+		if (!backend->get("cd_magic_file", std::string(), IKvStoreBackend::GetDecrypted,
 			false, ret_file, ret_md5sum, get_status))
 		{
 			KvStoreDao::CdSingleObject obj = dao.getSingleObject();
@@ -274,7 +275,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 				Server->Log("Retrieving " + prefixKey(encodeKey(obj.tkey, obj.trans_id))
 					+ " (first object in cache database)");
 				if (!backend->get(prefixKey(encodeKey(obj.tkey, obj.trans_id)),
-					std::string(), obj.md5sum, IKvStoreBackend::GetDecrypted,
+					obj.md5sum, IKvStoreBackend::GetDecrypted,
 					false, ret_file, ret_md5sum, get_status))
 				{
 					Server->Log("Retrieving " + prefixKey(encodeKey(obj.tkey, obj.trans_id))
@@ -298,7 +299,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 
 				if (has_item.has_item
 					&& !backend->get(has_item.item_key,
-						std::string(), std::string(), IKvStoreBackend::GetDecrypted,
+						std::string(), IKvStoreBackend::GetDecrypted,
 						true, ret_file, ret_md5sum, get_status))
 				{
 					std::string err = "Error getting item " + has_item.item_key + " from cloud drive. Encryption key may be wrong.";
@@ -330,7 +331,7 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 
 			std::string md5sum;
 			int64 size;
-			if (!backend->put("cd_magic_file", new_f, std::string(), 0, true, md5sum, size))
+			if (!backend->put("cd_magic_file", new_f, 0, true, md5sum, size))
 			{
 				std::string err = "Error uploading magic file.";
 				setMountStatusErr(err);
@@ -469,12 +470,14 @@ KvStoreFrontend::KvStoreFrontend(const std::string& db_path,
 
 	if (!scrub_obj.empty())
 	{
-		std::unique_ptr<IFile> tmpf(Server->openTemporaryFile());
-		IFsFile* ret_file = nullptr;
-		ScopedFreeObjRef<IFsFile*> free_get_file(ret_file);
+		IFsFile* tmpf = Server->openTemporaryFile();
+		ScopedDeleteFile del_tmpf(tmpf);
+		if(tmpf==nullptr)
+			abort();
+		
 		std::string ret_md5sum;
 		unsigned int get_status;
-		if (!backend->get(trim(scrub_obj), "tmp://"+tmpf->getFilename(), std::string(), IKvStoreBackend::GetScrub, true, ret_file, ret_md5sum, get_status))
+		if (!backend->get(trim(scrub_obj), std::string(), IKvStoreBackend::GetScrub, true, tmpf, ret_md5sum, get_status))
 		{
 			Server->Log("Get scrub of object " + scrub_obj + " failed", LL_ERROR);
 		}
@@ -509,23 +512,12 @@ KvStoreFrontend::~KvStoreFrontend()
 }
 
 IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid, 
-	const std::string& path, bool prioritize_read, IFsFile* tmpl_file, 
+	bool prioritize_read, IFsFile* tmpl_file, 
 	bool allow_error_event, bool& not_found, int64* get_transid)
 {
 	not_found=false;
-	if(tmpl_file==nullptr
-		&& !cachefs->directoryExists(ExtractFilePath(path)))
-    {
-            if(!cachefs->createDir(ExtractFilePath(path)))
-            {
-				std::string syserr = os_last_error_str();
-                Server->Log("Error creating directory for GET-file with key "+bytesToHex(key)+" path "+ ExtractFilePath(path)+". "+ syserr, LL_ERROR);
-				addSystemEvent("cache_err_retry",
-						"Error creating directory for get file on cache",
-					"Error creating directory for GET-file with key " + bytesToHex(key) + " path " + ExtractFilePath(path) + ". " + syserr, LL_ERROR);
-                return nullptr;
-            }
-    }
+	if (tmpl_file == nullptr)
+		return nullptr;
 
 	bool is_unsynced = false;
 	SUnsyncedKey unsynced_key;
@@ -636,10 +628,8 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 		|| cd_object.size==-1)
 	{
 		not_found=true;
-		if (tmpl_file!=nullptr) 
-			return tmpl_file;
 		dao.getDb()->freeMemory();
-		return cachefs->openFile(path, MODE_RW_CREATE);
+		return tmpl_file;
 	}
 
 	if (cd_object.md5sum.empty()
@@ -674,13 +664,13 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 	bool from_mirror = false;
 
 	std::string bkey = prefixKey(encodeKey(cd_id, key, cd_object.trans_id));
-	if (!backend->get(bkey, path, cd_object.md5sum,
+	if (!backend->get(bkey, cd_object.md5sum,
 		flags, allow_error_event, ret, ret_md5sum, get_status))
 	{
 		not_found = (get_status & IKvStoreBackend::GetStatusNotFound)>0;
 		bool backend_not_found = not_found;
 		if (backend_mirror == nullptr
-			|| !backend_mirror->get(bkey, path, 
+			|| !backend_mirror->get(bkey, 
 					get_md5sum(cd_object.md5sum),
 					flags, allow_error_event, ret, ret_md5sum, get_status))
 		{
@@ -690,9 +680,7 @@ IFsFile* KvStoreFrontend::get(int64 cd_id, const std::string& key, int64 transid
 			not_found = backend_not_found && not_found;
 			if (not_found)
 			{
-				if (tmpl_file != nullptr)
-					return tmpl_file;
-				return cachefs->openFile(path, MODE_RW_CREATE);
+				return tmpl_file;
 			}
 			return nullptr;
 		}
@@ -811,7 +799,7 @@ bool KvStoreFrontend::reset(const std::string & key, int64 transid)
 }
 
 bool KvStoreFrontend::put(int64 cd_id, const std::string& key, int64 transid, 
-	int64 generation, IFsFile* src, const std::string& path, unsigned int cflags,
+	int64 generation, IFsFile* src, unsigned int cflags,
 	bool allow_error_event, int64& compressed_size)
 {
 	IScopedReadLock read_lock(put_shared_mutex.get());
@@ -906,7 +894,7 @@ bool KvStoreFrontend::put(int64 cd_id, const std::string& key, int64 transid,
 		put_flags |= IKvStoreBackend::PutMetadata;
 	std::string md5sum;
 	compressed_size = 0;
-	bool ret = backend->put(tkey, src, path, put_flags, allow_error_event, md5sum, compressed_size);
+	bool ret = backend->put(tkey, src, put_flags, allow_error_event, md5sum, compressed_size);
 
 	if(ret)
 	{
@@ -1006,8 +994,16 @@ bool KvStoreFrontend::transaction_finalize(int64 cd_id, int64 transid, bool comp
 		else
 			tkey = convert(cd_id)+"_"+convert(transid) + (complete ? "_complete" : "_finalized");
 
+		std::unique_ptr<IFsFile> src(cachefs->openFile(empty_file_path, MODE_READ));
+
+		if(!src)
+		{
+			Server->Log("Error opening empty file. "+cachefs->lastError(), LL_ERROR);
+			return false;
+		}
+
 		if (backend->put(prefixKey(tkey),
-			nullptr, empty_file_path, 0, allow_error_event, md5sum, size))
+			src.get(), 0, allow_error_event, md5sum, size))
 		{
 			tries = -2;
 			break;
@@ -1061,6 +1057,14 @@ bool KvStoreFrontend::set_active_transactions(int64 cd_id, const std::vector<int
 {
 	Server->Log("Setting active transactions... (cd_id=" + convert(cd_id) + ")", LL_INFO);
 
+	std::unique_ptr<IFsFile> empty_f(cachefs->openFile(empty_file_path, MODE_READ));
+
+	if(!empty_f)
+	{
+		Server->Log("Error opening empty file -2. "+cachefs->lastError(), LL_ERROR);
+		return false;
+	}
+
 	IDatabase* db = getDatabase();
 	KvStoreDao dao(db);
 	DBScopedSynchronous synchronous(dao.getDb());
@@ -1095,7 +1099,7 @@ bool KvStoreFrontend::set_active_transactions(int64 cd_id, const std::vector<int
 					tkey = convert(incomplete_transactions[i]) + "_inactive";
 				else
 					tkey = convert(cd_id)+"_"+convert(incomplete_transactions[i]) + "_inactive";
-				if (backend->put(prefixKey(tkey), nullptr, empty_file_path, 0, true, md5sum, size))
+				if (backend->put(prefixKey(tkey), empty_f.get(), 0, true, md5sum, size))
 				{
 					tries = -2;
 					break;
@@ -1673,16 +1677,15 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 		return false;
 	}
 	ScopedDeleteFile tmp_f_del(tmp_f);
-	IFsFile* ret_file = tmp_f;
 	std::string ret_md5sum;
 	unsigned int get_status;
 	int64 import_total_num_files = -1;
-	if (backend->get("cd_num_file", std::string(), std::string(), IKvStoreBackend::GetDecrypted,
-		false, ret_file, ret_md5sum, get_status))
+	if (backend->get("cd_num_file", std::string(), IKvStoreBackend::GetDecrypted,
+		false, tmp_f, ret_md5sum, get_status))
 	{
-		if (ret_file->Size() < 1 * 1024 * 1024)
+		if (tmp_f->Size() < 1 * 1024 * 1024)
 		{
-			std::string num_data = ret_file->Read(0LL, static_cast<_u32>(ret_file->Size()));
+			std::string num_data = tmp_f->Read(0LL, static_cast<_u32>(tmp_f->Size()));
 
 			CRData rnumdata(num_data.data(), num_data.size());
 
@@ -1703,7 +1706,7 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 		}
 		else
 		{
-			Server->Log("cd_num_file too large ("+PrettyPrintBytes(ret_file->Size())+")", LL_WARNING);
+			Server->Log("cd_num_file too large ("+PrettyPrintBytes(tmp_f->Size())+")", LL_WARNING);
 		}
 	}
 	else
@@ -1731,17 +1734,14 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 	{
 		Server->Log("Retrieving last object to get current generation...", LL_INFO);
 
-		std::unique_ptr<IFile> temp_file(Server->openTemporaryFile());
-		std::string temp_file_path = temp_file->getFilename();
-		temp_file.reset();
+		IFsFile* temp_file = Server->openTemporaryFile();
+		ScopedDeleteFile delete_last_f(temp_file);
 
-		IFsFile* last_f = nullptr;
 		std::string md5sum_ret;
 		unsigned int get_status;
-		bool b = backend->get(import_callback.lastModifiedKey(), "tmp://"+temp_file_path, import_callback.lastModifiedMd5sum(), 0, true, last_f, md5sum_ret, get_status);
-		ScopedDeleteFile delete_last_f(last_f);
+		bool b = backend->get(import_callback.lastModifiedKey(), import_callback.lastModifiedMd5sum(), 0, true, temp_file, md5sum_ret, get_status);		
 
-		if(!b || last_f==nullptr)
+		if(!b)
 		{
 			Server->Log("Error retrieving last modified file", LL_ERROR);
 			return false;
@@ -1749,7 +1749,7 @@ bool KvStoreFrontend::importFromBackend( KvStoreDao& dao )
 
 		int64 generation=0;
 
-		if(!read_generation(last_f, 0, generation))
+		if(!read_generation(temp_file, 0, generation))
 		{
 			return false;
 		}
@@ -1985,11 +1985,10 @@ bool KvStoreFrontend::reupload(int64 transid_start, int64 transid_stop, IKvStore
 
 		std::string ret_md5sum;
 		unsigned int get_status;
-		IFsFile* ret_file = tmp_f;
 		int flags = IKvStoreBackend::GetDecrypted;
-		if (!old_backend->get(fkey, std::string(), md5sum, flags, false, ret_file, ret_md5sum, get_status))
+		if (!old_backend->get(fkey, md5sum, flags, false, tmp_f, ret_md5sum, get_status))
 		{
-			if (!backend->get(fkey, std::string(), md5sum, flags, false, ret_file, ret_md5sum, get_status))
+			if (!backend->get(fkey, md5sum, flags, false, tmp_f, ret_md5sum, get_status))
 			{
 				Server->Log("Error reading " + fkey + ". status=" + convert(get_status), LL_ERROR);
 				ret = false;
@@ -2000,7 +1999,7 @@ bool KvStoreFrontend::reupload(int64 transid_start, int64 transid_stop, IKvStore
 		{
 			int64 size = 0;
 			std::string new_md5sum;
-			if (backend->put(fkey, ret_file, "tmp://"+ret_file->getFilename(), 0, false, ret_md5sum, size))
+			if (backend->put(fkey, tmp_f, 0, false, ret_md5sum, size))
 			{
 				Server->Log("Successfully rewritten " + fkey);
 				KvStoreDao::CdIterObject new_obj;
@@ -2377,7 +2376,7 @@ bool KvStoreFrontend::update_total_num(int64 num)
 
 	std::string md5sum;
 	int64 size;
-	if (!backend->put("cd_num_file", new_f, std::string(), 0, true, md5sum, size))
+	if (!backend->put("cd_num_file", new_f, 0, true, md5sum, size))
 	{
 		std::string err = "Error uploading cd_num_file file.";
 		Server->Log(err, LL_ERROR);
@@ -4257,7 +4256,16 @@ void KvStoreFrontend::PutDbWorker::worker_abort()
 
 void KvStoreFrontend::ScrubThread::operator()()
 {
-	std::string unused_tmp_file;
+	Auto(delete this);
+	IFsFile* tmpf  = Server->openTemporaryFile();
+	ScopedDeleteFile del_tmpf(tmpf);
+
+	if (tmpf == nullptr)
+	{
+		Server->Log("Error opening temporary file in scrub. " + os_last_error_str(), LL_ERROR);
+		scrub_queue.set_error(true);
+		return;
+	}
 
 	while (true)
 	{
@@ -4267,23 +4275,9 @@ void KvStoreFrontend::ScrubThread::operator()()
 		{
 			break;
 		}
-
-		if (unused_tmp_file.empty())
-		{
-			std::unique_ptr<IFile> tmpf(Server->openTemporaryFile());
-			if (tmpf.get() == nullptr)
-			{
-				Server->Log("Error opening temporary file in scrub. " + os_last_error_str(), LL_ERROR);
-				scrub_queue.set_error(true);
-				return;
-			}
-			unused_tmp_file = tmpf->getFilename();
-		}
-		ScopedDeleteFn delete_fn(unused_tmp_file);
-		IFsFile* get_file = nullptr;
+		
 		std::string ret_md5sum;
 		unsigned int get_status;
-		ScopedFreeObjRef<IFsFile*> free_get_file(get_file);
 
 		int flags = IKvStoreBackend::GetBackground;
 		if (scrub_action == ScrubAction::Balance)
@@ -4321,8 +4315,8 @@ void KvStoreFrontend::ScrubThread::operator()()
 		}
 
 		bool b = backend->get(object_fn,
-			"tmp://"+unused_tmp_file, item.md5sum, flags,
-			false, get_file, ret_md5sum, get_status);
+			item.md5sum, flags,
+			false, tmpf, ret_md5sum, get_status);
 
 		size_t tries = 3;
 		size_t retry_n = 0;
@@ -4342,9 +4336,9 @@ void KvStoreFrontend::ScrubThread::operator()()
 			}
 			Server->wait(1000);
 			b = backend->get(object_fn,
-				"tmp://"+unused_tmp_file, item.md5sum, flags,
+				item.md5sum, flags,
 				false,
-				get_file, ret_md5sum, get_status);
+				tmpf, ret_md5sum, get_status);
 			--tries;
 			++retry_n;
 
@@ -4360,8 +4354,8 @@ void KvStoreFrontend::ScrubThread::operator()()
 		{
 			if (backend_mirror == nullptr
 				|| !backend_mirror->get(object_fn,
-					"tmp://"+unused_tmp_file, item.md5sum, flags,
-					false, get_file, ret_md5sum, get_status))
+					item.md5sum, flags,
+					false, tmpf, ret_md5sum, get_status))
 			{
 				Server->Log("Error while " + strScrubAction(scrub_action) + " key " + object_fn+" Has_newer = "+convert(has_newer), LL_ERROR);
 				curr_has_error = true;
@@ -4376,14 +4370,24 @@ void KvStoreFrontend::ScrubThread::operator()()
 					Server->Log("Repairing. Adding empty file...", LL_WARNING);
 					int64 size;
 					std::string md5sum;
-					if (!backend->put(object_fn,
-						nullptr, frontend->empty_file_path, 0, false, md5sum, size))
+					std::unique_ptr<IFsFile> empty_file(frontend->cachefs->openFile("empty.file", MODE_READ));
+
+					if(!empty_file)
 					{
+						Server->Log("Error while opening empty file. "+frontend->cachefs->lastError(), LL_ERROR);
 						++scrub_queue.scrub_errors;
 					}
 					else
 					{
-						++scrub_queue.scrub_repaired;
+						if (!backend->put(object_fn,
+							empty_file.get(), 0, false, md5sum, size))
+						{
+							++scrub_queue.scrub_errors;
+						}
+						else
+						{
+							++scrub_queue.scrub_repaired;
+						}
 					}
 				}
 				else
@@ -4391,8 +4395,8 @@ void KvStoreFrontend::ScrubThread::operator()()
 					++scrub_queue.scrub_errors;
 				}
 			}
-			else if (backend_mirror != nullptr
-				&& get_file != nullptr)
+			else if (backend_mirror != nullptr &&
+				!(get_status & IKvStoreBackend::GetStatusSkipped))
 			{
 				bool put_success = false;
 				size_t tries = 0;
@@ -4400,7 +4404,7 @@ void KvStoreFrontend::ScrubThread::operator()()
 				{
 					std::string put_md5sum;
 					int64 put_size = 0;
-					if (backend->put(object_fn, get_file, "tmp://"+unused_tmp_file, IKvStoreBackend::PutAlreadyCompressedEncrypted, true, put_md5sum, put_size))
+					if (backend->put(object_fn, tmpf, IKvStoreBackend::PutAlreadyCompressedEncrypted, true, put_md5sum, put_size))
 					{
 						put_success = true;
 						item.md5sum = put_md5sum;
@@ -4429,7 +4433,7 @@ void KvStoreFrontend::ScrubThread::operator()()
 				++scrub_queue.scrub_errors;
 			}
 		}
-		else if (scrub_action != ScrubAction::Scrub || get_file != nullptr)
+		else
 		{
 			if (get_status & IKvStoreBackend::GetStatusRepaired)
 				++scrub_queue.scrub_repaired;
@@ -4437,20 +4441,16 @@ void KvStoreFrontend::ScrubThread::operator()()
 				++scrub_queue.scrub_oks;
 		}
 
-		if (scrub_action == ScrubAction::Scrub && get_file == nullptr && !curr_has_error)
+		if(!(get_status & IKvStoreBackend::GetStatusSkipped))
 		{
-			Server->Log("No file while "+ strScrubAction(scrub_action)+" key "+
-				object_fn+" has_newer="+convert(has_newer), LL_ERROR);
-			++scrub_queue.scrub_errors;
+			if(!tmpf->Resize(0))
+			{
+				Server->Log("Error resizing temporary file in scrub. " + os_last_error_str(), LL_ERROR);
+				scrub_queue.set_error(true);
+				return;
+			}
 		}
-		if (b && get_file == nullptr)
-		{
-			delete_fn.release();
-		}
-		else
-		{
-			unused_tmp_file.clear();
-		}
+
 		if (b
 			&& !ret_md5sum.empty())
 		{
@@ -4466,19 +4466,12 @@ void KvStoreFrontend::ScrubThread::operator()()
 		}
 
 		done_size += item.size;
-		if ( (!b || get_file != nullptr) && !has_changes)
+		if ( !b && !has_changes)
 		{
 			IScopedLock lock(new_md5sums_mutex);
 			has_changes = true;
 		}
 	}
-
-	if (!unused_tmp_file.empty())
-	{
-		Server->deleteFile(unused_tmp_file);
-	}
-
-	delete this;
 }
 
 void KvStoreFrontend::MirrorWorker::operator()()
@@ -4639,10 +4632,18 @@ void KvStoreFrontend::MirrorWorker::operator()()
 					continue;
 				}
 
+				std::unique_ptr<IFsFile> empty_file(frontend->cachefs->openFile(frontend->empty_file_path, MODE_READ));
+
+				if(!empty_file)
+				{
+					Server->Log("Cannot open empty file: "+frontend->cachefs->lastError(), LL_ERROR);
+					abort();
+				}
+
 				int64 size;
 				std::string md5sum;
 				if (frontend->backend_mirror->put(frontend->prefixKey(convert(trans.id) + suffix),
-					nullptr, frontend->empty_file_path, 0, false, md5sum, size))
+					empty_file.get(), 0, false, md5sum, size))
 				{
 					dao.setTransactionMirrored(trans.id);
 					--frontend->mirror_items;
@@ -4721,12 +4722,11 @@ void KvStoreFrontend::MirrorWorker::operator()()
 
 void KvStoreFrontend::MirrorThread::operator()()
 {
-	std::string tmp_fn;
-	{
-		std::unique_ptr<IFile> f(Server->openTemporaryFile());
-		tmp_fn = f->getFilename();
-	}
-	ScopedDeleteFn delete_tmp_fn(tmp_fn);
+	IFsFile* tmpf = Server->openTemporaryFile();
+	ScopedDeleteFile del_tmpf(tmpf);
+
+	if(tmpf==nullptr)
+		abort();
 
 	std::string cdata;
 	while (!has_error
@@ -4745,27 +4745,29 @@ void KvStoreFrontend::MirrorThread::operator()()
 			KvStoreDao::CdIterObject2& obj = objs[i];
 
 			std::string fn = frontend->prefixKey(frontend->encodeKey(obj.tkey, obj.trans_id));
-			IFsFile* ret_file = nullptr;
-			ScopedFreeObjRef<IFsFile*> tmp_f_del(ret_file);
 			std::string ret_md5sum;
 			unsigned int get_status;
-			Server->deleteFile(tmp_fn);
 			size_t retry_n = 0;
 			bool success = false;
 			while (!success
 				&& retry_n < 10)
 			{
-				if (backend->get(fn, "tmp://"+tmp_fn, obj.md5sum, IKvStoreBackend::GetPrependMd5sum, false, ret_file, ret_md5sum, get_status))
+				if(!tmpf->Resize(0) || !tmpf->Seek(0))
+				{
+					abort();
+				}
+
+				if (backend->get(fn, obj.md5sum, IKvStoreBackend::GetPrependMd5sum, false, tmpf, ret_md5sum, get_status))
 				{
 					size_t retry_n_put = 0;
 
 					while (!success
 						&& retry_n_put < 10)
 					{
-						ret_file->Seek(0);
+						tmpf->Seek(0);
 						int64 ret_size;
 
-						if (backend_mirror->put(fn, ret_file, "tmp://"+tmp_fn, IKvStoreBackend::PutAlreadyCompressedEncrypted, false, ret_md5sum, ret_size))
+						if (backend_mirror->put(fn, tmpf, IKvStoreBackend::PutAlreadyCompressedEncrypted, false, ret_md5sum, ret_size))
 						{
 							frontend->mirror_curr_pos += obj.size;
 							success = true;

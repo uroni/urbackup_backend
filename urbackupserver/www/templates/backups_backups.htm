@@ -26,6 +26,9 @@
 					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
 					{?has_actions}
 						<th onclick="g.no_tab_mouse_click=true; return false;">
+							{?is_deletion_protected}
+								<span class="glyphicon glyphicon-lock" aria-hidden="true"></span>
+							{/is_deletion_protected}
 							{^is_archived}
 							{^disable_delete}
 							{?can_delete}

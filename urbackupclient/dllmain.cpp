@@ -80,6 +80,7 @@ extern IServer* Server;
 
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/WalCheckpointThread.h"
+#include "client_restore_http.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -123,6 +124,8 @@ void restore_wizard(void);
 void upgrade(void);
 bool upgrade_client(void);
 void parse_devnum_test();
+
+#define ADD_ACTION(x) Server->AddAction( new Actions::x );
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -358,6 +361,23 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		restore_wizard();
 		exit(10);
+		return;
+	}
+
+	if (Server->getServerParameter("restore_http") == "true")
+	{
+		ADD_ACTION(login);
+		ADD_ACTION(get_clientnames);
+		ADD_ACTION(get_backupimages);
+		ADD_ACTION(start_download);
+		ADD_ACTION(download_progress);
+		ADD_ACTION(has_network_device);
+		ADD_ACTION(ping_server);
+		ADD_ACTION(has_internet_connection);
+		ADD_ACTION(configure_server);
+		ADD_ACTION(get_disks);
+		ADD_ACTION(get_is_disk_mbr);
+		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}
 

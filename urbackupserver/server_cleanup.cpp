@@ -2919,198 +2919,147 @@ bool ServerCleanupThread::delete_local_backup(const std::string& backupfolder, i
 		return false;
 	}
 
-	std::vector<SFile> files = getFiles(path);
+	bool deletion_protected = cleanupdao->getFileBackupDeletionProtected(backupid).value != 0;
 
-	ServerSettings settings(db, clientid);
 
-	std::string dest_url = settings.getSettings()->backup_dest_url;
-
-	dest_url = greplace("$CLIENTUID$", perm_uid, dest_url);
-	dest_url = greplace("$CLIENTNAME$", clientname, dest_url);
-
-	for (SFile cleanup_file : files)
+	if (deletion_protected)
 	{
-		if (!cleanup_file.isdir &&
-			next(cleanup_file.name, 0, "del_objs_"))
+		std::vector<SFile> files = getFiles(path);
+
+		ServerSettings settings(db, clientid);
+
+		std::string dest_url = settings.getSettings()->backup_dest_url;
+
+		dest_url = greplace("$CLIENTUID$", perm_uid, dest_url);
+		dest_url = greplace("$CLIENTNAME$", clientname, dest_url);
+
+		for (SFile cleanup_file : files)
 		{
-			CleanupFrontend cleanup_frontend;
-			ObjectCollector object_collector(&cleanup_frontend, path + os_file_sep() + cleanup_file.name);
-
-			if (object_collector.get_has_error())
+			if (!cleanup_file.isdir &&
+				next(cleanup_file.name, 0, "del_objs_"))
 			{
-				ServerLogger::Log(logid, "Error reading " + path + os_file_sep() + cleanup_file.name, LL_ERROR);
-				return false;
-			}
+				CleanupFrontend cleanup_frontend;
+				ObjectCollector object_collector(&cleanup_frontend, path + os_file_sep() + cleanup_file.name);
 
-			object_collector.finalize();
-
-			str_map secret_params;
-			ParseParamStrHttp(settings.getSettings()->backup_dest_secret_params, &secret_params);
-
-			IClouddriveFactory::CloudSettings cloud_settings;
-
-			if (!parse_backup_url(dest_url,
-				settings.getSettings()->backup_dest_params, secret_params,
-				cloud_settings))
-			{
-				ServerLogger::Log(logid, "Error parsing backup dest url to delete objects: "+ settings.getSettings()->backup_dest_url, LL_ERROR);
-				return false;
-			}
-			
-			std::unique_ptr<IKvStoreBackend> backend(clouddrive_fak->createBackend(nullptr, cloud_settings));
-
-			if (!backend)
-			{
-				ServerLogger::Log(logid, "Error creating backend to delete objects", LL_ERROR);
-				return false;
-			}
-
-			for (size_t i = 0; i < object_collector.key_next_funs.size(); ++i)
-			{
-				if (object_collector.locinfo_next_funs[i] != nullptr)
+				if (object_collector.get_has_error())
 				{
-					if (!backend->del(object_collector.key_next_funs[i], 
-						object_collector.locinfo_next_funs[i], true))
-					{
-						ServerLogger::Log(logid, "Error deleting objects of backup (with locinfo)", LL_ERROR);
-						return false;
-					}
-					object_collector.locinfo_next_funs[i](IKvStoreBackend::key_next_action_t::clear, nullptr);
-				}
-				else
-				{
-					if (!backend->del(object_collector.key_next_funs[i], true))
-					{
-						ServerLogger::Log(logid, "Error deleting objects of backup", LL_ERROR);
-						return false;
-					}
-				}
-				
-				object_collector.key_next_funs[i](IKvStoreBackend::key_next_action_t::clear, nullptr);
-			}
-
-			if (object_collector.task_id == 2) //remove transaction
-			{
-				if (object_collector.trans_ids.size() != 1)
-				{
-					ServerLogger::Log(logid, "Remove transaction task without transaction info", LL_ERROR);
+					ServerLogger::Log(logid, "Error reading " + path + os_file_sep() + cleanup_file.name, LL_ERROR);
 					return false;
 				}
 
-				int64 trans_id = object_collector.trans_ids[0];
+				object_collector.finalize();
 
-				std::vector<std::string> add_backend_keys;
+				str_map secret_params;
+				ParseParamStrHttp(settings.getSettings()->backup_dest_secret_params, &secret_params);
 
-				if (object_collector.completed != 0)
+				IClouddriveFactory::CloudSettings cloud_settings;
+
+				if (!parse_backup_url(dest_url,
+					settings.getSettings()->backup_dest_params, secret_params,
+					cloud_settings))
 				{
-					if (object_collector.cd_id == 0)
-						add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(trans_id) + "_complete"));
-					else
-						add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(object_collector.cd_id) + "_" + convert(trans_id) + "_complete"));
+					ServerLogger::Log(logid, "Error parsing backup dest url to delete objects: " + settings.getSettings()->backup_dest_url, LL_ERROR);
+					return false;
 				}
 
-				if (object_collector.active == 0)
+				std::unique_ptr<IKvStoreBackend> backend(clouddrive_fak->createBackend(nullptr, cloud_settings));
+
+				if (!backend)
 				{
-					if (object_collector.cd_id == 0)
-						add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(trans_id) + "_inactive"));
-					else
-						add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(object_collector.cd_id) + "_" + convert(trans_id) + "_inactive"));
+					ServerLogger::Log(logid, "Error creating backend to delete objects", LL_ERROR);
+					return false;
 				}
 
-				if (!add_backend_keys.empty())
+				for (size_t i = 0; i < object_collector.key_next_funs.size(); ++i)
 				{
-					size_t idx = 0;
-					backend->del([&add_backend_keys, &idx](IKvStoreBackend::key_next_action_t action, std::string* key) {
-						if (action == IKvStoreBackend::key_next_action_t::clear) {
-							add_backend_keys.clear();
-							assert(key == nullptr);
-							return true;
-						}
-
-						if (action == IKvStoreBackend::key_next_action_t::reset) {
-							idx = 0;
-							assert(key == nullptr);
-							return true;
-						}
-
-						assert(action == IKvStoreBackend::key_next_action_t::next);
-
-						if (idx >= add_backend_keys.size())
+					if (object_collector.locinfo_next_funs[i] != nullptr)
+					{
+						if (!backend->del(object_collector.key_next_funs[i],
+							object_collector.locinfo_next_funs[i], true))
+						{
+							ServerLogger::Log(logid, "Error deleting objects of backup (with locinfo)", LL_ERROR);
 							return false;
-						*key = add_backend_keys[idx];
-						++idx;
-						return true;
-						}, true);
+						}
+						object_collector.locinfo_next_funs[i](IKvStoreBackend::key_next_action_t::clear, nullptr);
+					}
+					else
+					{
+						if (!backend->del(object_collector.key_next_funs[i], true))
+						{
+							ServerLogger::Log(logid, "Error deleting objects of backup", LL_ERROR);
+							return false;
+						}
+					}
+
+					object_collector.key_next_funs[i](IKvStoreBackend::key_next_action_t::clear, nullptr);
 				}
-			}
-		}
-	}
 
-	bool b = false;
-	if (BackupServer::isFileSnapshotsEnabled())
-	{
-		b = SnapshotHelper::removeFilesystem(false, clientname, backuppath);
-
-		if (!b)
-		{
-			b = os_remove_nonempty_dir(path);
-
-			if (!b && SnapshotHelper::isSubvolume(false, clientname, backuppath))
-			{
-				ServerLogger::Log(logid, "Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
-				b = truncate_files_recurisve(os_file_prefix(path));
-
-				if (b)
+				if (object_collector.task_id == 2) //remove transaction
 				{
-					b = os_remove_nonempty_dir(path);
+					if (object_collector.trans_ids.size() != 1)
+					{
+						ServerLogger::Log(logid, "Remove transaction task without transaction info", LL_ERROR);
+						return false;
+					}
+
+					int64 trans_id = object_collector.trans_ids[0];
+
+					std::vector<std::string> add_backend_keys;
+
+					if (object_collector.completed != 0)
+					{
+						if (object_collector.cd_id == 0)
+							add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(trans_id) + "_complete"));
+						else
+							add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(object_collector.cd_id) + "_" + convert(trans_id) + "_complete"));
+					}
+
+					if (object_collector.active == 0)
+					{
+						if (object_collector.cd_id == 0)
+							add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(trans_id) + "_inactive"));
+						else
+							add_backend_keys.push_back(cleanup_frontend.prefixKey(convert(object_collector.cd_id) + "_" + convert(trans_id) + "_inactive"));
+					}
+
+					if (!add_backend_keys.empty())
+					{
+						size_t idx = 0;
+						backend->del([&add_backend_keys, &idx](IKvStoreBackend::key_next_action_t action, std::string* key) {
+							if (action == IKvStoreBackend::key_next_action_t::clear) {
+								add_backend_keys.clear();
+								assert(key == nullptr);
+								return true;
+							}
+
+							if (action == IKvStoreBackend::key_next_action_t::reset) {
+								idx = 0;
+								assert(key == nullptr);
+								return true;
+							}
+
+							assert(action == IKvStoreBackend::key_next_action_t::next);
+
+							if (idx >= add_backend_keys.size())
+								return false;
+							*key = add_backend_keys[idx];
+							++idx;
+							return true;
+							}, true);
+					}
 				}
 			}
 		}
-		else if (BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile)
-		{
-			Server->deleteFile(path);
-		}
-	}
-	else
-	{
-		b = os_remove_nonempty_dir(path);
+
+		cleanupdao->resetFileBackupDeletionProtected(backupid);
+		cleanupdao->resetFileBackupIncrementalRef(backupid);
 	}
 
-	bool del = true;
-	bool err = false;
-	if (!b)
-	{
-		if (!os_directory_exists(os_file_prefix(path)))
-		{
-			if (os_directory_exists(os_file_prefix(backupfolder)))
-			{
-				del = true;
-			}
-			ServerLogger::Log(logid, "Warning: Directory doesn't exist: \"" + path + "\"", LL_WARNING);
-		}
-		else
-		{
-			del = false;
-			removeerr.push_back(backupid);
-			ServerLogger::Log(logid, "Error removing directory \"" + path + "\"", LL_ERROR);
-			err = true;
-		}
-	}
-	if (os_directory_exists(os_file_prefix(path)))
-	{
-		del = false;
-		ServerLogger::Log(logid, "Directory still exists. Deleting backup failed. Path: \"" + path + "\"", LL_ERROR);
-		err = true;
-		removeerr.push_back(backupid);
-	}
-	if (del || force_remove)
-	{
-		removeFileBackupSql(backupid);
-	}
+	cleanupdao->setFileBackupDeleteClientPending(backupid);
 
 	ServerStatus::updateActive();
 
-	return !err;
+	return true;
 }
 
 bool ServerCleanupThread::backup_ident()
