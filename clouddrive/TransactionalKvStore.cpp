@@ -6348,7 +6348,7 @@ bool TransactionalKvStore::write_to_deleted_file(const std::string& fn, bool do_
 void TransactionalKvStore::delete_item(fuse_io_context* io, const std::string& key, bool compressed_item,
 		std::unique_lock<cache_mutex_t>& cache_lock,
 		int64 force_delete_transid, int64 skip_transid, DeleteImm del_imm, int64 delete_only,
-	    bool rm_submitted)
+	    bool rm_submitted, int64 ignore_sync_wait_transid)
 {
 	assert(cache_lock.owns_lock());
 	assert(io == nullptr || del_imm== DeleteImm::None);
@@ -6393,7 +6393,9 @@ void TransactionalKvStore::delete_item(fuse_io_context* io, const std::string& k
 
 			if(submission_items.find(std::make_pair(ctransid, key))==submission_items.end()
 				&& !nosubmit_dirty
-				&& (ctransid==transid || !is_sync_wait_item(key, ctransid) ) )
+				&& (ctransid == transid || 
+					ctransid == ignore_sync_wait_transid ||
+					!is_sync_wait_item(key, ctransid) ) )
 			{
 				if (!compressed_item
 					&& ctransid==transid)
@@ -8722,7 +8724,8 @@ void TransactionalKvStore::RegularSubmitBundleThread::regular_submit_bundle(std:
 							kv_store->comp_bytes -= fsize;
 						}
 
-						kv_store->delete_item(nullptr, it->key, compressed, cache_lock);
+						kv_store->delete_item(nullptr, it->key, compressed, cache_lock,
+							0, 0, TransactionalKvStore::DeleteImm::None, 0, false, it->transid);
 						run_del_path = true;
 
 						cache_del(*target_cache, it->key, cache_lock);

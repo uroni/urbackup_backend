@@ -405,7 +405,7 @@ private:
 	void delete_item(fuse_io_context* io, const std::string& key, bool compressed_item,
 		std::unique_lock<cache_mutex_t>& cache_lock,
 		int64 force_delete_transid=0, int64 skip_transid=0, DeleteImm del_imm = DeleteImm::None,
-		int64 delete_only=0, bool rm_submitted=false);
+		int64 delete_only=0, bool rm_submitted=false, int64 ignore_sync_wait_transid=0);
 
 	void run_del_file_queue();
 
