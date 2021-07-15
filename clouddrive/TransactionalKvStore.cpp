@@ -464,11 +464,12 @@ public:
 						flags |= IOnlineKvStore::PutMetadata;
 
 					IFsFile* putf = memf_file;
+					std::unique_ptr<IFsFile> putf_holder;
 					while(putf==nullptr)
 					{
-						putf = kv_store.cachefs->openFile(path, MODE_READ);
+						putf_holder.reset(kv_store.cachefs->openFile(path, MODE_READ));
 
-						if(putf==nullptr)
+						if(!putf_holder)
 						{
 							std::string syserr = kv_store.cachefs->lastError();
 							Server->Log("Cannot open file to submit: " + path+". "+ syserr, LL_ERROR);
@@ -478,9 +479,13 @@ public:
 
 							retryWait(n++);
 						}
+						else
+						{
+							putf = putf_holder.get();
+						}
 					}
 
-					while(!kv_store.online_kv_store->put(item->key, item->transid, memf_file, flags, n>retry_log_n, compressed_size) )
+					while(!kv_store.online_kv_store->put(item->key, item->transid, putf, flags, n>retry_log_n, compressed_size) )
 					{
 						Server->Log("Error submitting dirty data block "+kv_store.hex(item->key)+" transid "+convert(item->transid)+". Retrying...", LL_ERROR);
 						if (kv_store.online_kv_store->fast_write_retry())
@@ -497,6 +502,8 @@ public:
 							break;
 						}
 					}
+
+					putf_holder.reset();
 
 					++kv_store.total_put_ops;
 
