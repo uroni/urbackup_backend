@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/stat.h>
 #endif
 
 #include <guiddef.h>
