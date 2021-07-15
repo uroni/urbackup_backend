@@ -22,10 +22,10 @@ namespace client
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback, FileClient::ProgressLogCallback
 {
 public:
-	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id,
+	RestoreFiles(int facet_id, int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id,
 		std::string client_token, std::string server_token, std::string restore_path, bool single_file,
 		bool clean_other, bool ignore_other_fs, int64 restore_flags, int tgroup, std::string clientsubname)
-		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
+		: facet_id(facet_id), local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
 		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
 		clean_other(clean_other), ignore_other_fs(ignore_other_fs), restore_flags(restore_flags), last_speed_received_bytes(0), speed_set_time(0),
@@ -96,6 +96,8 @@ private:
 	bool createDirectoryWin(const std::string& dir);
 
 	std::pair<IFile*, int64> getCbtHashFile(const std::string& fn);
+
+	int facet_id;
 
 	int64 local_process_id;
 

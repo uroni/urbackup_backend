@@ -584,6 +584,10 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readStringClientSetting(q_get_client_setting, "backup_dest_url", std::string(), &settings->backup_dest_url, false);
 	readStringClientSetting(q_get_client_setting, "backup_dest_params", "&", &settings->backup_dest_params, false);
 	readStringClientSetting(q_get_client_setting, "backup_dest_secret_params", "&", &settings->backup_dest_secret_params, false);
+
+	readStringClientSetting(q_get_client_setting, "backup_unlocked_window", std::string(), &settings->backup_unlocked_window, false);
+	settings->pause_if_windows_unlocked = false;
+	readBoolClientSetting(q_get_client_setting, "pause_if_windows_unlocked", &settings->pause_if_windows_unlocked, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -713,6 +717,9 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "backup_dest_url", std::string(), &settings->backup_dest_url);
 	readStringClientSetting(q_get_client_setting, "backup_dest_params", "&", &settings->backup_dest_params);
 	readStringClientSetting(q_get_client_setting, "backup_dest_secret_params", "&", &settings->backup_dest_secret_params);
+
+	readStringClientSetting(q_get_client_setting, "backup_unlocked_window", std::string(), &settings->backup_unlocked_window, false);
+	readBoolClientSetting(q_get_client_setting, "pause_if_windows_unlocked", &settings->pause_if_windows_unlocked, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)

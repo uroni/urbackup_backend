@@ -156,6 +156,8 @@ struct SSettings
 	std::string backup_dest_url;
 	std::string backup_dest_params;
 	std::string backup_dest_secret_params;
+	bool pause_if_windows_unlocked;
+	std::string backup_unlocked_window;
 };
 
 struct SLDAPSettings

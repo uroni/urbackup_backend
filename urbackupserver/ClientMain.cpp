@@ -165,6 +165,7 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	session_identity_refreshtime = 0;
 	connection_metered = false;
 	do_reauthenticate = false;
+	windows_locked = false;
 	update_capa = false;
 }
 
@@ -1782,6 +1783,12 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			connection_metered = true;
 		}
+		it = params.find("LOCKED");
+		if (it != params.end()
+			&& it->second == "1")
+		{
+			windows_locked = true;
+		}
 		it = params.find("PHASH");
 		if (it != params.end())
 		{
@@ -2667,6 +2674,11 @@ std::string ClientMain::getClientIpStr(const std::string & clientname)
 void ClientMain::setConnectionMetered(bool b)
 {
 	connection_metered = b;
+}
+
+void ClientMain::setWindowsLocked(bool b)
+{
+	windows_locked = b;
 }
 
 void ClientMain::forceReauthenticate()

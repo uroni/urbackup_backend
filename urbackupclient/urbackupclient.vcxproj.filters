@@ -425,5 +425,8 @@
     <ClInclude Include="client_restore.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="win_locked.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

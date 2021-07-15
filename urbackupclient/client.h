@@ -376,6 +376,8 @@ public:
 	
 	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
+	static bool pauseIfWindowsUnlocked();
+
 	static std::vector<std::string> buildExcludeList(const std::string& val);
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
@@ -392,7 +394,7 @@ public:
 
 	static bool normalizeVolume(std::string& volume);
 
-	static void readPatterns(int index_group, std::string index_clientsubname,
+	static void readPatterns(int facet_id, int index_group, std::string index_clientsubname,
 		std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
 		bool& backup_dirs_optional);
 
@@ -413,6 +415,8 @@ public:
 #ifndef _WIN32
 	static std::string get_snapshot_script_location(const std::string& scriptname, const std::string& index_clientsubname);
 #endif
+
+	static bool isWindowsLocked();
 	
 private:
 	static void addResult(unsigned int id, const std::string& res);

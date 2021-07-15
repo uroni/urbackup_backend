@@ -214,6 +214,8 @@ public:
 
 	static bool isBackupRunning();
 
+	static bool tochannelSendLocked(bool locked);
+
 	static bool tochannelSendChanges(const char* changes, size_t changes_size);
 
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity,
@@ -285,6 +287,7 @@ private:
 	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client);
 
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
+	static bool sendMessageToAllChannels(const std::string& msg, int timeoutms);
 
 	static int64 getLastBackupTime();
 
@@ -350,7 +353,7 @@ private:
 	void CMD_GET_ACCESS_PARAMS(str_map &params);
 	void CMD_CONTINUOUS_WATCH_START();
 	void CMD_SCRIPT_STDERR(const std::string& cmd);
-	void CMD_FILE_RESTORE(const std::string& cmd);
+	void CMD_FILE_RESTORE(const std::string& cmd, const std::string& identity);
 	void CMD_RESTORE_OK(str_map &params);
 	void CMD_CLIENT_ACCESS_KEY(const std::string& cmd);
 	void CMD_WRITE_TOKENS(const std::string& cmd);
@@ -442,6 +445,7 @@ private:
 	static std::map < std::pair<std::string, std::string>, SChallenge > challenges;
 	static bool has_file_changes;
 	static bool last_metered;
+	static bool last_locked;
 
 	struct SFilesrvConnection
 	{

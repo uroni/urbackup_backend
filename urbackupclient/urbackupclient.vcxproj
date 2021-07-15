@@ -151,6 +151,7 @@
     <ClInclude Include="watchdir\JournalDAO.h" />
     <ClInclude Include="win_all_volumes.h" />
     <ClInclude Include="win_disk_mon.h" />
+    <ClInclude Include="win_locked.h" />
     <ClInclude Include="win_sysvol.h" />
     <ClInclude Include="win_ver.h" />
   </ItemGroup>
@@ -264,7 +265,7 @@
       <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd;C:\Program Files\Dokan\Dokan Library-1.5.0\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib;dokan1.lib</AdditionalDependencies>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;Wtsapi32.lib;%(AdditionalDependencies);libzstd_x86_64.lib;dokan1.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>

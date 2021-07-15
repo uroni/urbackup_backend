@@ -1364,6 +1364,17 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 				tcpstack.Send(pipe, std::string("METERED metered=") + (metered ? "1" : "0"));
 			}
 		}
+
+		{
+			IScopedLock lock(ident_mutex);
+			bool locked = IndexThread::isWindowsLocked();
+			if (locked != last_locked)
+			{
+				last_locked = locked;
+				lock.relock(NULL);
+				tcpstack.Send(pipe, std::string("LOCKED locked=") + (locked ? "1" : "0"));
+			}
+		}
 #endif
 
 		std::string token;
@@ -2713,11 +2724,14 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		last_metered = metered;
 	}
 
+	bool locked = IndexThread::isWindowsLocked();
+	std::string locked_str = std::string("&LOCKED=") + (locked ? "1" : "0");
+
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&FACET=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + locked_str);
 #else
 
 #ifdef __APPLE__
@@ -2893,7 +2907,7 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 	}
 }
 
-void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
+void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd, const std::string& identity)
 {
 	str_map params;
 	ParseParamStrHttp(cmd, &params);
@@ -2995,7 +3009,9 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		Server->Log("Error decrypting server access token. Crypto_fak not loaded.", LL_ERROR);
 	}
 
-	RestoreFiles* local_restore_files = new RestoreFiles(restore_process_id, restore_id, status_id, log_id,
+	int facet_id = getFacetId(ServerIdentityMgr::getIdentityFromSessionIdentity(identity));
+
+	RestoreFiles* local_restore_files = new RestoreFiles(facet_id, restore_process_id, restore_id, status_id, log_id,
 		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs, restore_flags,
 		tgroup, clientsubname);
 
