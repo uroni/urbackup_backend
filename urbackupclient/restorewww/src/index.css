@@ -1,0 +1,9 @@
+@import '~antd/dist/antd.css';
+
+body {
+    height: 100%
+}
+
+#container {
+    height: 100%
+}

@@ -12,6 +12,7 @@
 
 namespace Actions
 {
+	ACTION(status);
 	ACTION(login);
 	ACTION(get_clientnames);
 	ACTION(get_backupimages);
@@ -23,6 +24,9 @@ namespace Actions
 	ACTION(configure_server);
 	ACTION(get_disks);
 	ACTION(get_is_disk_mbr);
+	ACTION(write_mbr);
+	ACTION(get_partition);
+	ACTION(restart);
 }
 
 namespace restore

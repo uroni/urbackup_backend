@@ -366,6 +366,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if (Server->getServerParameter("restore_http") == "true")
 	{
+		ADD_ACTION(status);
 		ADD_ACTION(login);
 		ADD_ACTION(get_clientnames);
 		ADD_ACTION(get_backupimages);
@@ -377,6 +378,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(configure_server);
 		ADD_ACTION(get_disks);
 		ADD_ACTION(get_is_disk_mbr);
+		ADD_ACTION(write_mbr);
+		ADD_ACTION(get_partition);
+		ADD_ACTION(restart);
 		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}
