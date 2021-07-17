@@ -383,7 +383,7 @@ void RestoreFiles::operator()()
 		}
 
 		bool backup_dirs_optional;
-		IndexThread::readPatterns(tgroup, clientsubname, exclude_dirs,
+		IndexThread::readPatterns(facet_id, tgroup, clientsubname, exclude_dirs,
 			include_dirs, backup_dirs_optional);
 
 		std::map<std::string, IFsFile*> open_files;

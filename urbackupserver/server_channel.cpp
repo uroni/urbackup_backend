@@ -435,6 +435,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 		client_main->setConnectionMetered(params["metered"] == "1");
 	}
+	else if (next(msg, 0, "LOCKED "))
+	{
+		std::string s_params = msg.substr(7);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+		client_main->setWindowsLocked(params["locked"] == "1");
+	}
 	else if(next(msg, 0, "LOGIN ") && allow_restore)
 	{
 		std::string s_params=msg.substr(6);

@@ -53,6 +53,7 @@
 #include <sys\stat.h>
 #include "win_disk_mon.h"
 #include "win_all_volumes.h"
+#include "win_locked.h"
 #else
 #include "../config.h"
 #ifdef HAVE_MNTENT_H
@@ -678,6 +679,7 @@ void IndexThread::operator()(void)
 	Server->waitForStartupComplete();
 
 #ifdef _WIN32
+	init_win_locked();
 	initVss();
 	init_cbt_mutex();
 	if (os_get_file_type("urbctctl.exe") != 0)
@@ -1474,7 +1476,7 @@ void IndexThread::operator()(void)
 
 IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
-	readPatterns(index_group, index_clientsubname,
+	readPatterns(index_facet_id, index_group, index_clientsubname,
 		index_exclude_dirs, index_include_dirs,
 		index_backup_dirs_optional);
 	file_id = 0;
@@ -4231,7 +4233,7 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
+void IndexThread::readPatterns(int facet_id, int index_group, std::string index_clientsubname,
 	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
 	bool& backup_dirs_optional)
 {
@@ -4246,10 +4248,10 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 		include_pattern_key="continuous_include_files";
 	}
 
-	std::string settings_fn = "urbackup/data/settings.cfg";
+	std::string settings_fn = "urbackup/data_"+std::to_string(facet_id)+"/settings.cfg";
 	if(!index_clientsubname.empty())
 	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(index_clientsubname)+".cfg";
+		settings_fn = "urbackup/data" + std::to_string(facet_id) + "/settings_"+conv_filename(index_clientsubname)+".cfg";
 	}
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
@@ -5562,6 +5564,23 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 		}
 	}
 	return true;
+}
+
+bool IndexThread::pauseIfWindowsUnlocked()
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+
+	std::unique_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	if (curr_settings.get() != nullptr)
+	{
+		std::string pause_if_windows_unlocked;
+		if (curr_settings->getValue("pause_if_windows_unlocked", &pause_if_windows_unlocked)
+			|| curr_settings->getValue("pause_if_windows_unlocked_def", &pause_if_windows_unlocked))
+		{
+			return pause_if_windows_unlocked == "true";
+		}
+	}
+	return false;
 }
 
 void IndexThread::writeTokens()
@@ -8926,6 +8945,15 @@ bool IndexThread::get_volumes_mounted_locally()
 
 
 #endif //!_WIN32
+
+bool IndexThread::isWindowsLocked()
+{
+#ifdef _WIN32
+	return is_win_locked();
+#else
+	return false;
+#endif
+}
 
 std::string IndexThread::escapeDirParam( const std::string& dir )
 {

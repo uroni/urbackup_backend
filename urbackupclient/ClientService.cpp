@@ -110,6 +110,7 @@ SRestoreToken ClientConnector::restore_token;
 std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
 std::deque<std::pair<std::string, std::string> > ClientConnector::finished_async_file_index;
 bool ClientConnector::last_metered = false;
+bool ClientConnector::last_locked = false;
 int64 ClientConnector::startup_timestamp = 0;
 
 
@@ -1229,7 +1230,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 			else if( next(cmd, 0, "FILE RESTORE "))
 			{
-				CMD_FILE_RESTORE(cmd.substr(13)); continue;
+				CMD_FILE_RESTORE(cmd.substr(13), identity); continue;
 			}
 			else if (next(cmd, 0, "CLIENT ACCESS KEY "))
 			{
@@ -3503,6 +3504,18 @@ bool ClientConnector::isBackupRunning()
 	return job!="NOA";
 }
 
+bool ClientConnector::tochannelSendLocked(bool locked)
+{
+	std::string msg = std::string("LOCKED locked=") + (locked ? "1" : "0");
+	bool rc = sendMessageToAllChannels(msg, 10000);
+	if (rc)
+	{
+		IScopedLock lock(ident_mutex);
+		last_locked = locked;
+	}
+	return rc;
+}
+
 bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_size)
 {
 	IScopedLock lock(backup_mutex);
@@ -3932,6 +3945,41 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 	} while(Server->getTimeMS()-starttime<timeoutms);
 
 	return false;
+}
+
+bool ClientConnector::sendMessageToAllChannels(const std::string& msg, int timeoutms)
+{
+	std::set<std::string> done_tokens;
+	IScopedLock lock(backup_mutex);
+
+	int64 starttime = Server->getTimeMS();
+
+	do
+	{
+		for (size_t i = 0; i < channel_pipes.size(); ++i)
+		{
+			if (done_tokens.find(channel_pipes[i].token) == done_tokens.end())
+			{
+				CTCPStack tmpstack(channel_pipes[i].internet_connection);
+				if (tmpstack.Send(channel_pipes[i].pipe, msg) == msg.size())
+				{
+					done_tokens.insert(channel_pipes[i].token);
+				}
+			}
+		}
+
+		if (done_tokens.size() == channel_pipes.size())
+			return true;
+
+		if (timeoutms == 0)
+			return false;
+
+		lock.relock(nullptr);
+		Server->wait(100);
+		lock.relock(backup_mutex);
+	} while (Server->getTimeMS() - starttime < timeoutms);
+
+	return done_tokens.size()==channel_pipes.size();
 }
 
 std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client)

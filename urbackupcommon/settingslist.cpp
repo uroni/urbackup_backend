@@ -114,6 +114,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("ransomware_canary_paths");
 	ret.push_back("backup_dest_url");
 	ret.push_back("backup_dest_params");
+	ret.push_back("pause_if_windows_unlocked");
+	ret.push_back("backup_unlocked_window");
 	return ret;
 }
 
@@ -207,6 +209,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("ransomware_canary_paths");
 	ret.push_back("backup_dest_url");
 	ret.push_back("backup_dest_params");
+	ret.push_back("backup_unlocked_window");
+	ret.push_back("pause_if_windows_unlocked");
 	return ret;
 }
 

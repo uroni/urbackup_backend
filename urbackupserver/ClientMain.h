@@ -283,6 +283,8 @@ public:
 
 	void setConnectionMetered(bool b);
 
+	void setWindowsLocked(bool b);
+
 	void forceReauthenticate();
 
 	static std::string normalizeVolumeUpper(std::string volume);
@@ -410,6 +412,7 @@ private:
 	SProtocolVersions protocol_versions;
 	volatile bool internet_connection;
 	volatile bool connection_metered;
+	std::atomic<bool> windows_locked;
 	int update_version;
 	std::string all_volumes;
 	std::string all_nonusb_volumes;

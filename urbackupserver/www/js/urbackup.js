@@ -3438,6 +3438,7 @@ function show_settings2(data)
 			g.curr_settings = data.settings;
 			data.settings = getCurrentSettings(data.settings);
 			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
+			data.settings.pause_if_windows_unlocked = getCheckboxValue(data.settings.pause_if_windows_unlocked);
 			var internet_server = unescapeHTML(data.settings.internet_server);
 			if(internet_server.indexOf("ws://")!=0 &&
 				internet_server.indexOf("wss://")!=0 &&
@@ -3558,6 +3559,7 @@ function show_settings2(data)
 			g.curr_settings = data.settings;
 			data.settings = getCurrentSettings(data.settings);
 			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
+			data.settings.pause_if_windows_unlocked = getCheckboxValue(data.settings.pause_if_windows_unlocked);
 					
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -4133,6 +4135,7 @@ g.settings_list=[
 "max_image_full",
 "allow_overwrite",
 "startup_backup_delay",
+"pause_if_windows_unlocked",
 "backup_window_incr_file",
 "backup_window_full_file",
 "backup_window_incr_image",
@@ -4207,7 +4210,8 @@ g.settings_list=[
 "ransomware_canary_paths",
 "backup_dest_url",
 "backup_dest_params",
-"backup_dest_secret_params"
+"backup_dest_secret_params",
+"backup_unlocked_window"
 ];
 g.general_settings_list=[
 "backupfolder",

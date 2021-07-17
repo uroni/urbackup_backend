@@ -280,6 +280,8 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_STR(backup_dest_url);
 	SET_SETTING_STR(backup_dest_params);
 	SET_SETTING_STR(backup_dest_secret_params);
+	SET_SETTING_BOOL(pause_if_windows_unlocked);
+	SET_SETTING_STR(backup_unlocked_window);
 #undef SET_SETTING
 	return ret;
 }

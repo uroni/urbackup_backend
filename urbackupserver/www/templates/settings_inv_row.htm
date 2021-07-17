@@ -302,6 +302,13 @@
 				</div>
 				<div id="startup_backup_delay_sw" style="display: inline"></div>
 			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="pause_if_windows_unlocked">{tPause backups if Windows is unlocked}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="pause_if_windows_unlocked" {pause_if_windows_unlocked}/></label>
+				</div>
+				<div id="pause_if_windows_unlocked_sw" style="display: inline"></div>
+			</div>
 			{/main_client}
 			<div class="form-group" id="backup_window_row">
 				<label class="col-sm-4 control-label">{tBackup window}</label>
@@ -411,6 +418,15 @@
 					<input type="text" class="form-control" id="backup_dest_secret_params" value="{backup_dest_secret_params|s}"/>
 				</div>
 				<div id="backup_dest_secret_params_sw" style="display: inline"></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="backup_unlocked_window">{tOnly run backups if unlocked in this backup window}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_unlocked_window" value="{backup_unlocked_window}"/>
+					</div>
+				</div>
+				<div id="backup_unlocked_window_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>
