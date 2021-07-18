@@ -552,7 +552,7 @@ namespace restore
 		std::string dl_args;
 		if (img_id != 0 || !img_time.empty())
 		{
-			dl_args = "&img_id = " + convert(img_id) + " & time = " + img_time;
+			dl_args = "&img_id=" + convert(img_id) + "&time=" + img_time;
 		}
 		else if (login_data.has_login_data
 			&& !login_data.token.empty())
@@ -567,7 +567,7 @@ namespace restore
 		std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
 		if (out_file.get() == nullptr)
 		{
-			Server->Log("Could not open \"" + restore_out + "\" for writing", LL_ERROR);
+			Server->Log("Could not open \"" + restore_out + "\" for writing. "+os_last_error_str(), LL_ERROR);
 			return EDownloadResult_OpenError;
 		}
 		else if (o_output_file_size != nullptr)
@@ -910,7 +910,7 @@ namespace restore
 	
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
-		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
+		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE,PATH -P "+dev+" 1> out").c_str());
 		
 		std::vector<SLsblk> ret;
 		
@@ -930,19 +930,8 @@ namespace restore
 			c.model = getbetween("MODEL=\"", "\"", lines[i]);
 			c.size = getbetween("SIZE=\"", "\"", lines[i]);
 			c.type = getbetween("TYPE=\"", "\"", lines[i]);
+			c.path = getbetween("PATH=\"", "\"", lines[i]);
 			
-			rc = system(("udevadm info --query=property --path=/sys/dev/block/"+greplace(":", "\\:", c.maj_min)+
-					" | grep \"DEVNAME=\" | sed 's/DEVNAME=//' - 1> out").c_str());
-			
-			if(rc==0)
-			{
-			    c.path = trim(getuntil("\n", getFile("out")));
-			}
-			else
-			{
-				Server->Log("Error getting name of device "+c.maj_min, LL_ERROR);
-			}
-
 			if(next(c.path, 0, "/dev/fd"))
 				continue;
 			
@@ -955,16 +944,30 @@ namespace restore
 	std::string getPartitionPath(const std::string& dev, int partnum)
 	{
 		std::vector<SLsblk> parts = lsblk(dev);
+
+		std::map<size_t, SLsblk> parts_maj_min;
+
+		for(auto& it: parts)
+		{
+			if(it.type=="part") 
+			{
+				int maj = watoi(getuntil(":", it.maj_min));
+				int min = watoi(getafter(":", it.maj_min));
+				parts_maj_min[maj*100000ULL + min] = it;
+			}
+		}
+
+		int idx=1;
+		for(auto it: parts_maj_min)
+		{
+			if(idx==partnum)
+			{
+				return it.second.path;
+			}
+			++idx;
+		}
 		
-		if(partnum<parts.size() &&
-			parts[partnum].type=="part")
-		{
-			return parts[partnum].path;
-		}
-		else
-		{
-			return std::string();
-		}
+		return std::string();
 	}
 }
 

@@ -33,6 +33,12 @@ function ServerSearch(props: WizardComponent) {
         }
 
         if (typeof jdata["servers"] ==="undefined") {
+            
+            if(jdata["err"]) {
+                return {res: ConnectedResult.ServiceError,
+                    err: jdata["err"]};    
+            }
+
             return {res: ConnectedResult.ServiceError,
                 err: "Unknown status returned"};
         }
@@ -86,17 +92,20 @@ function ServerSearch(props: WizardComponent) {
         Searching for UrBackup server in local network...
         <div>
             <Button onClick={() => {
-
+                props.update(produce(props.props, draft => {
+                    draft.state = WizardState.ConfigureServerConnectionDetails;
+                    draft.max_state = draft.state;
+                }));
             } }>Configure Internet server</Button>
         </div>
         {noLocalServer &&
-            <Alert
+            <><br /><Alert
             message="No local server found. Please configure an Internet server or make sure the server runs"
             type="info"
-          />
+          /></>
         }
         {serviceError.length>0 &&
-            <Alert message={serviceError} type="error" />
+            <><br /><Alert message={serviceError} type="error" /></>
         }
     </div>);
 }

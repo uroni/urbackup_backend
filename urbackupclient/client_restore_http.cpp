@@ -17,7 +17,7 @@ namespace
 	struct SRestoreRes
 	{
 		restore::DownloadStatus dl_status;
-		int ec;
+		restore::EDownloadResult ec;
 		bool finished;
 	};
 
@@ -160,6 +160,13 @@ ACTION_IMPL(start_download)
 		restore_res = &restore_results[curr_res_id];
 	}
 
+	if(mbr && !FileExists(out))
+	{
+		writestring("", out);
+	}
+
+	Server->Log("Start_download: id = \""+std::to_string(img_id)+" time = \""+img_time+ "\"", LL_INFO);
+
 	std::thread dl_thread([img_id, img_time, mbr, out, restore_res]() {
 		restore_res->ec = restore::downloadImage(img_id, img_time, out, mbr, g_login_data, restore_res->dl_status);
 		std::lock_guard<std::mutex> lock(g_restore_data_mutex);
@@ -202,11 +209,35 @@ ACTION_IMPL(download_progress)
 	if (restore_res->finished)
 	{
 		ret.set("finished", true);
+		ret.set("ec", restore_res->ec);
 		restore::writeJsonResponse(tid, ret);
 		return;
 	}
 
 	std::unique_ptr<IPipe> c(restore::connectToService());
+
+	if (!c)
+	{
+		ret.set("err", "Error connecting to restore service");
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	CTCPStack tcpstack;
+	std::string pw = restore::restorePw();
+	tcpstack.Send(c.get(), "STATUS DETAIL#pw=" + pw);
+	std::string r = restore::getResponse(c);
+	if (r.empty())
+	{
+		ret.set("err", "No response from restore service");
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+	
+	Server->setContentType(tid, "application/json");
+	Server->Write(tid, r);
+
+	/*std::unique_ptr<IPipe> c(restore::connectToService());
 
 	if (!c)
 	{
@@ -242,7 +273,7 @@ ACTION_IMPL(download_progress)
 		ret.set("pc", lpc);
 	}
 
-	restore::writeJsonResponse(tid, ret);
+	restore::writeJsonResponse(tid, ret); */
 }
 
 ACTION_IMPL(has_network_device)
@@ -338,7 +369,8 @@ ACTION_IMPL(get_is_disk_mbr)
 ACTION_IMPL(write_mbr)
 {
 	std::string errmsg;
-	bool b = restore::do_restore_write_mbr(POST["mbrfn"], POST["out_device"], errmsg);
+	bool b = restore::do_restore_write_mbr(POST["mbrfn"], 
+		POST["out_device"], true, errmsg);
 
 	JSON::Object ret;
 	ret.set("ok", true);
@@ -382,8 +414,8 @@ ACTION_IMPL(get_partition)
 	std::string seldrive = POST["out_device"];
 
 	Server->Log("Selected device: "+seldrive+" Partition: "+convert(mbrdata.partition_number));
-	system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 	std::string partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number);
+	Server->Log("Partition path: "+partpath);
 	std::unique_ptr<IFsFile> dev;
 	if(!partpath.empty())
 	{
@@ -458,7 +490,7 @@ ACTION_IMPL(get_partition)
 
 	JSON::Object ret;
 	ret.set("ok", true);
-	ret.set("success", false);
+	ret.set("success", true);
 	ret.set("partpath", partpath);
 	restore::writeJsonResponse(tid, ret);
 	return;

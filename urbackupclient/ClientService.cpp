@@ -3023,8 +3023,6 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		return;
 	}
 
-	int l_pcdone=0;
-
 	{
 		IScopedLock lock(backup_mutex);
 		SRunningProcess new_proc;
@@ -3043,6 +3041,12 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
 		SChannel::EChannelState orig_state = channel_pipes[i].state;
+
+		if(orig_state!=SChannel::EChannelState_Idle)
+			continue;
+
+		int restore_version = channel_pipes[i].restore_version;
+
 		channel_pipes[i].state = SChannel::EChannelState_Used;
 
 		_i64 received_bytes = 0;
@@ -3094,6 +3098,7 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
 			Server->Log("Could not write to pipe! downloadImage-1", LL_ERROR);
+			backup_mutex_lock.relock(backup_mutex);
 			removeChannelpipe(c);
 			return;
 		}
@@ -3111,12 +3116,14 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 				size_t c_read=c->Read(buf, c_buffer_size, 60000);
 				if(c_read==0)
 				{
+					backup_mutex_lock.relock(backup_mutex);
 					Server->Log("Read Timeout", LL_ERROR);
 					removeChannelpipe(c);
 					return;
 				}
 				if(!pipe->Write(buf, (_u32)c_read, (int)receive_timeouttime*5))
 				{
+					backup_mutex_lock.relock(backup_mutex);
 					Server->Log("Could not write to pipe! downloadImage-5", LL_ERROR);
 					removeChannelpipe(c);
 					return;
@@ -3124,20 +3131,27 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 				read+=c_read;
 			}
 			Server->Log("Downloading MBR done");
-			channel_pipes[i].state = orig_state;
+			backup_mutex_lock.relock(backup_mutex);
+			for(auto& cp: channel_pipes)
+			{
+				if(cp.pipe == c)
+				{
+					cp.state = orig_state;
+				}
+			}
 			return;
 		}
 
 		_i64 used_bytes = imgsize;
-		if (channel_pipes[i].restore_version > 0)
+		if (restore_version > 0)
 		{
 			if (!c->Read((char*)&used_bytes, sizeof(_i64), 60000))
 			{
 				Server->Log("Error getting used bytes", LL_ERROR);
+				backup_mutex_lock.relock(backup_mutex);
 				if (i + 1<channel_pipes.size())
 				{
 					removeChannelpipe(c);
-					backup_mutex_lock.relock(backup_mutex);
 					waitForPings(&backup_mutex_lock);
 					continue;
 				}
@@ -3147,12 +3161,28 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 					return;
 				}
 			}
-			Server->Log("Used bytes " + convert(used_bytes), LL_DEBUG);
+			Server->Log("Used bytes " + convert(used_bytes), LL_INFO);
 		}
 		else
 		{
+			Server->Log("Restore version 0. No used bytes", LL_INFO);
 			received_bytes = start_offset;
 		}
+
+		{
+			int t_pcdone=(std::min)((int)100, (int)(((float)received_bytes/(float)used_bytes)*100.f+0.5f));
+
+			IScopedLock lock(process_mutex);
+
+			SRunningProcess* proc = getRunningProcess(local_backup_running_id);
+			if (proc != nullptr)
+			{
+				proc->pcdone = t_pcdone;
+				proc->total_bytes = used_bytes;
+				proc->done_bytes = received_bytes;
+			}
+		}
+
 
 		if (received_bytes >= used_bytes)
 		{
@@ -3162,18 +3192,22 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		unsigned int blockleft=0;
 		unsigned int off=0;
 		_i64 pos=0;
+		int64 lastupdatetime = Server->getTimeMS();
+		int64 last_received = received_bytes;
 		while(pos<imgsize)
 		{
 			size_t r=c->Read(&buf[off], c_buffer_size-off, 180000);
 			if( r==0 )
 			{
 				Server->Log("Read Timeout -2 CS", LL_ERROR);
+				backup_mutex_lock.relock(backup_mutex);
 				removeChannelpipe(c);
 				return;
 			}
 			if(!pipe->Write(&buf[off], r, (int)receive_timeouttime*5))
 			{
 				Server->Log("Could not write to pipe! downloadImage-3 size "+convert(r)+" off "+convert(off), LL_ERROR);
+				backup_mutex_lock.relock(backup_mutex);
 				removeChannelpipe(c);
 				return;
 			}
@@ -3223,19 +3257,41 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 					}
 				}
 			}
-
-			int t_pcdone=(std::min)((int)100, (int)(((float)received_bytes/(float)used_bytes)*100.f+0.5f));
-			if(t_pcdone!=l_pcdone)
-			{
-				l_pcdone=t_pcdone;
-				updateRunningPc(local_backup_running_id, l_pcdone);
-			}
-
+			
 			lasttime=Server->getTimeMS();
+
+			if(lasttime - lastupdatetime>1000)
+			{
+				int64 passed_time = lasttime - lastupdatetime;
+				lastupdatetime = lasttime;
+				int t_pcdone=(std::min)((int)100, (int)(((float)received_bytes/(float)used_bytes)*100.f+0.5f));
+				int64 new_bytes = received_bytes - last_received;
+				last_received = received_bytes;
+				double speed_bpms = static_cast<double>(new_bytes)/passed_time;
+
+				IScopedLock lock(process_mutex);
+
+				SRunningProcess* proc = getRunningProcess(local_backup_running_id);
+				if (proc != nullptr)
+				{
+					proc->pcdone = t_pcdone;
+					proc->done_bytes = received_bytes;
+					proc->speed_bpms = speed_bpms;
+					proc->last_pingtime = lasttime;
+					status_updated = true;
+				}
+			}
 		}
 		remove_running_backup.setSuccess(true);
 		Server->Log("Downloading image done", LL_DEBUG);
-		channel_pipes[i].state = orig_state;
+		backup_mutex_lock.relock(backup_mutex);
+		for(auto& cp: channel_pipes)
+		{
+			if(cp.pipe == c)
+			{
+				cp.state = orig_state;
+			}
+		}
 		return;
 	}
 	imgsize=-2;

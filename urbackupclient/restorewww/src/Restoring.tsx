@@ -1,12 +1,32 @@
-import { Button, Progress, Table } from "antd";
+import { Button, Col, Progress, Row, Table } from "antd";
 import produce from "immer";
+import prettyBytes from "pretty-bytes";
 import { useEffect, useRef, useState } from "react";
 import { sleep, useMountEffect } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
+import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
 
 interface LogTableItem {
     time: Date,
     message: string
+}
+
+interface DownloadStats {
+    totalBytes: number;
+    doneBytes: number;
+    speedBpms: number;
+    pcdone: number;
+}
+
+interface RestoreStatus {
+    action: string;
+    eta_ms: number;
+    percent_done: number;
+    process_id: number;
+    server_status_id: number;
+    speed_bpms: number;
+    total_bytes: number;
+    done_bytes: number;
 }
 
 const AlwaysScrollToBottom = () => {
@@ -26,6 +46,8 @@ function Restoring(props: WizardComponent) {
     const [percent, setPercent] = useState(0);
     const [imageDone, setImageDone] = useState(false);
     const [restartLoading, setRestartLoading] = useState(false);
+    const [downloadStats, setDownloadStats] = useState<DownloadStats|null>(null);
+    const [speedHist, setSpeedHist] = useState<number[]>([])
 
     const logTableColumns = [
         {
@@ -45,6 +67,28 @@ function Restoring(props: WizardComponent) {
 
     const addLog = (msg: string) => {
         setLogTableData(produce(draft => {draft.push({time: new Date(), message: msg})}));
+    }
+
+    const restoreEcToString = (ec: number) => {
+        switch(ec)
+        {
+            case 10:
+                return "Error connecting to server";
+            case 2:
+                return "Error opening output device";
+            case 3:
+                return "Error reading image size from server";
+            case 4:
+                return "Timout while loading image (2)";
+            case 5:
+                return "Timout while loading image (1)";
+            case 6:
+                return "Writing image to disk failed";
+            case 11:
+                return "Disk too small for image";
+            default:
+                return "Unknown error (code " + ec + ")";
+        }
     }
 
     useMountEffect( () => {
@@ -90,8 +134,14 @@ function Restoring(props: WizardComponent) {
                 }
 
                 if(jdata["finished"]) {
-                    addLog("Loading MBR finished");
-                    setStatus("success");
+                    if(jdata["ec"] === 0) {
+                        addLog("Loading MBR finished");
+                        setStatus("success");
+                    } else {
+                        addLog("Loading MBR failed: " + restoreEcToString(jdata["ec"]));
+                        setStatus("exception");
+                        return;
+                    }
                     break;
                 } else if(jdata["pc"]) {
                     setPercent(jdata["pc"]);
@@ -172,6 +222,8 @@ function Restoring(props: WizardComponent) {
 
             const img_res_id : number = jdata["res_id"];
 
+            addLog("Restore is running")
+
             while(true) {
                 await sleep(1000);
 
@@ -189,13 +241,48 @@ function Restoring(props: WizardComponent) {
                 }
 
                 if(jdata["finished"]) {
-                    addLog("Restoring image finished");
-                    setPercent(100);
-                    setStatus("success");
-                    setImageDone(true);
+                    const ec : number = jdata["ec"];
+                    if(ec===0) {
+                        addLog("Restoring image finished");
+                        setPercent(100);
+                        setStatus("success");
+                        setImageDone(true);
+                    } else {
+                        addLog("Restoring image failed: "+restoreEcToString(ec));
+                        setStatus("exception");
+                        return;
+                    }
                     break;
-                } else if(jdata["pc"]) {
-                    setPercent(jdata["pc"]);
+                } else if(typeof jdata["running_processes"]==="object") {
+                    let restore_proc : RestoreStatus = jdata["running_processes"].find( 
+                        (proc:RestoreStatus) => (proc.action && proc.action==="RESTORE_IMAGE")
+                    );
+                    if(restore_proc!==undefined) {
+                        if(restore_proc.percent_done >=0)
+                            setPercent(restore_proc.percent_done);
+
+                        if(typeof restore_proc.done_bytes !== "undefined" )
+                        {
+                            setDownloadStats({
+                                doneBytes: restore_proc.done_bytes,
+                                totalBytes: restore_proc.total_bytes,
+                                pcdone: restore_proc.percent_done,
+                                speedBpms: restore_proc.speed_bpms
+                            });
+                            setSpeedHist(produce(
+                                draft => {
+                                    draft.push(restore_proc.speed_bpms*1000*8);
+                                    if(draft.length>20)
+                                    {
+                                        draft.shift();
+                                    }
+                                }));
+                        }
+                    } else if(downloadStats!==null) {
+                        setDownloadStats(produce( draft => {
+                            draft.speed_bpms = 0;
+                        }));
+                    }
                 }
             }
         })();
@@ -214,8 +301,28 @@ function Restoring(props: WizardComponent) {
     }
 
     return (<div>
-        Restoring {restoreAction}  progress: <br />
-        <Progress percent={percent}  status={status}/>
+        Restoring {restoreAction}  progress: <br /> <br />
+        <Progress percent={percent}  status={status} strokeWidth={30} strokeLinecap="square"/>
+        { downloadStats!=null &&
+            <><br /><br /><Row>
+            <Col span={8}>
+                <span style={{width: "50pt", display: "inline-block"}}>{prettyBytes(downloadStats.doneBytes)}</span> 
+                    &nbsp; / {prettyBytes(downloadStats.totalBytes)} 
+            </Col>
+            <Col span={8}>
+                <div style={{width: "300pt", display: "inline-block"}}>
+                    <Sparklines data={speedHist} height={20}>
+                        <SparklinesLine />
+                        <SparklinesReferenceLine type="avg" />
+                    </Sparklines>
+                </div>
+                <span style={{marginLeft: "10pt"}}>
+                {prettyBytes(downloadStats.speedBpms*1000, {bits: true})} per second
+                </span>
+            </Col>
+            </Row>
+            </>
+        }
         <br />
         <br />
         {status==="exception" &&
