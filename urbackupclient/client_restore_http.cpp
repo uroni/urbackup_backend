@@ -529,7 +529,7 @@ ACTION_IMPL(get_keyboard_layouts)
 
 ACTION_IMPL(set_keyboard_layout)
 {
-	writestring(POST["layout"], "/home/urbackup/setxkbmap");
+	writestring(POST["layout"]+"\n", "/home/urbackup/setxkbmap");
 	JSON::Object ret;
 	ret.set("ok", true);
 	restore::writeJsonResponse(tid, ret);
