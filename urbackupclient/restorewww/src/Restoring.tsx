@@ -317,7 +317,7 @@ function Restoring(props: WizardComponent) {
                     </Sparklines>
                 </div>
                 <span style={{marginLeft: "10pt"}}>
-                {prettyBytes(downloadStats.speedBpms*1000, {bits: true})} per second
+                {prettyBytes(downloadStats.speedBpms*1000*8, {bits: true})} per second
                 </span>
             </Col>
             </Row>

@@ -138,7 +138,7 @@ function App() {
       if(jdata["serverProxy"])
         serverProxy = jdata["serverProxy"];
       
-      if(jdata["keyboardLayout"]) {
+      if(jdata["keyboardLayout"] && jdata["keyboardLayout"]!=="ask") {
         let keyboardLayout : string = jdata["keyboardLayout"];
         try {
           await fetch("x?a=set_keyboard_layout",
