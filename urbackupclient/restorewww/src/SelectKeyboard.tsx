@@ -43,18 +43,16 @@ function SelectKeyboard(props: WizardComponent) {
 
     const selectKeyboardLayout = async () => {
 
-        let jdata;
-            try {
-                const resp = await fetch("x?a=set_keyboard_layout",
-                    {method: "POST",
-                    body: new URLSearchParams({
-                        "layout": selectedLayout
-                    })})
-                jdata = await resp.json();
-            } catch(error) {
-                setFetchError("Error setting keyboard layout");
-                return;
-            }
+        try {
+            await fetch("x?a=set_keyboard_layout",
+                {method: "POST",
+                body: new URLSearchParams({
+                    "layout": selectedLayout
+                })})
+        } catch(error) {
+            setFetchError("Error setting keyboard layout");
+            return;
+        }
 
         props.update(produce(props.props, draft => {
             draft.keyboardLayout = selectedLayout;

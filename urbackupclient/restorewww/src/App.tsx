@@ -137,14 +137,42 @@ function App() {
       let serverProxy: string = "";
       if(jdata["serverProxy"])
         serverProxy = jdata["serverProxy"];
-      setWizardState(produce(draft => {
-        draft.serverUrl = serverUrl;
-        draft.serverAuthkey = serverAuthkey;
-        draft.serverProxy = serverProxy;
-        draft.internetServer = true;
-        draft.state = WizardState.ServerSearch;
-        draft.max_state = draft.state;
-      }));
+      
+      if(jdata["keyboardLayout"]) {
+        let keyboardLayout : string = jdata["keyboardLayout"];
+        try {
+          await fetch("x?a=set_keyboard_layout",
+              {method: "POST",
+              body: new URLSearchParams({
+                  "layout": keyboardLayout
+              })})
+        } catch(error) {
+            setWizardState(produce(draft => {
+              draft.state = WizardState.SelectKeyboard;
+              draft.max_state = WizardState.WaitForNetwork;
+            }));
+            return;
+        }
+
+        setWizardState(produce(draft => {
+          draft.keyboardLayout = keyboardLayout;
+          draft.serverUrl = serverUrl;
+          draft.serverAuthkey = serverAuthkey;
+          draft.serverProxy = serverProxy;
+          draft.internetServer = true;
+          draft.state = WizardState.ServerSearch;
+          draft.max_state = WizardState.ServerSearch;
+        }));
+      } else {
+        setWizardState(produce(draft => {
+          draft.serverUrl = serverUrl;
+          draft.serverAuthkey = serverAuthkey;
+          draft.serverProxy = serverProxy;
+          draft.internetServer = true;
+          draft.state = WizardState.SelectKeyboard;
+          draft.max_state = WizardState.WaitForNetwork;
+        }));
+      }
     }
   })();
   });
