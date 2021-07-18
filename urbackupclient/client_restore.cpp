@@ -1677,13 +1677,13 @@ namespace restore
 
 		std::string clientname = "##restore##" + bytesToHex(rnd);
 
-		os_create_dir_recursive("urbackup/data");
+		os_create_dir_recursive("urbackup/data_1");
 
 		writestring("internet_mode_enabled=true\n"
 			"internet_server=" + server_url + "\n"
 			"internet_server_port=" + internet_server_port + "\n"
 			"internet_authkey=" + server_authkey + "\n"
-			"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
+			"computername=" + clientname + "\n", "urbackup/data_1/settings.cfg");
 
 		if (with_cli)
 			std::cout << "Starting UrBackup Internet restore client..." << std::endl;
@@ -1721,7 +1721,7 @@ namespace restore
 		std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
 		std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
 		system("systemctl stop restore-client-internet");
-		Server->deleteFile("urbackup/data/settings.cfg");
+		Server->deleteFile("urbackup/data_1/settings.cfg");
 		system("systemctl start restore-client");
 
 		std::string errmsg;
@@ -1761,7 +1761,7 @@ namespace restore
 	void configure_local_server()
 	{
 		system("systemctl stop restore-client-internet");
-		Server->deleteFile("urbackup/data/settings.cfg");
+		Server->deleteFile("urbackup/data_1/settings.cfg");
 		system("systemctl restart restore-client");
 	}
 }
