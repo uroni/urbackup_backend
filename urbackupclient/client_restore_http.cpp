@@ -534,3 +534,19 @@ ACTION_IMPL(set_keyboard_layout)
 	ret.set("ok", true);
 	restore::writeJsonResponse(tid, ret);
 }
+
+ACTION_IMPL(get_connection_settings)
+{
+	std::string settingsfn = "/run/live/medium/connection_settings.json";
+	if(!FileExists(settingsfn))
+	{
+		JSON::Object ret;
+		ret.set("ok", true);
+		ret.set("no_config", true);
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	Server->setContentType(tid, "application/json");
+	Server->Write(tid, getFile(settingsfn));
+}

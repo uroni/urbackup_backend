@@ -34,6 +34,8 @@ export const toIsoDateTime = (d: Date) => {
 function CurrentContent(args: WizardComponent) {
   switch(args.props.state)
   {
+    case WizardState.Init:
+      return <div>Initializing...</div>
     case WizardState.SelectKeyboard:
       return <SelectKeyboard props={args.props} update={args.update} />;
     case WizardState.WaitForNetwork:
@@ -59,8 +61,8 @@ function CurrentContent(args: WizardComponent) {
 
 function App() {
   const [wizard_state, setWizardState] = useState<WizardStateProps>({
-    state: WizardState.SelectKeyboard,
-    max_state: WizardState.WaitForNetwork,
+    state: WizardState.Init,
+    max_state: WizardState.Init,
     serverFound: false,
     internetServer: false,
     serverUrl: "",
@@ -109,6 +111,43 @@ function App() {
 
     return false;
   }
+
+  useMountEffect( () => {
+  (async () => {
+    let jdata;
+    try {
+        const resp = await fetch("x?a=get_connection_settings",
+            {method: "POST"})
+        jdata = await resp.json();
+    } catch(error) {
+        jdata = {"no_config": true};
+    }
+
+    if(jdata["no_config"]) {
+      setWizardState(produce(draft => {
+        draft.state = WizardState.SelectKeyboard;
+        draft.max_state = WizardState.WaitForNetwork;
+      }));
+      return;
+    }
+
+    if(jdata["serverUrl"]) {
+      let serverUrl: string = jdata["serverUrl"];
+      let serverAuthkey: string = jdata["serverAuthkey"];
+      let serverProxy: string = "";
+      if(jdata["serverProxy"])
+        serverProxy = jdata["serverProxy"];
+      setWizardState(produce(draft => {
+        draft.serverUrl = serverUrl;
+        draft.serverAuthkey = serverAuthkey;
+        draft.serverProxy = serverProxy;
+        draft.internetServer = true;
+        draft.state = WizardState.ServerSearch;
+        draft.max_state = draft.state;
+      }));
+    }
+  })();
+  });
 
   return (
     <Layout style={{height: "100%"}}>

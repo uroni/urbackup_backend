@@ -21,6 +21,7 @@ function ServerSearch(props: WizardComponent) {
     const [serviceError, setServiceError] = useState("");
 
     const [noLocalServer, setNoLocalServer] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     const checkConnected = async () : Promise<SConnectedResult> => {
         try {
@@ -54,7 +55,37 @@ function ServerSearch(props: WizardComponent) {
 
     useMountEffect(() => {
     (async () => {
+        if(props.props.internetServer) {
+            console.log("Skip local server search because internet server is configured");
+
+            let jdata;
+            try {
+                const resp = await fetch("x?a=configure_server",
+                    {method: "POST",
+                    body: new URLSearchParams({
+                        "active": "1",
+                        "url": props.props.serverUrl,
+                        "authkey": props.props.serverAuthkey,
+                        "proxy": props.props.serverProxy
+                    }) });
+                jdata = await resp.json();
+            } catch(error) {
+                setServiceError("Error retrieving data from HTTP server");
+            }
+
+            if(!jdata["ok"]) {
+                setServiceError("Error configuring client to connect to server");
+            } else {
+                props.update(produce(props.props, draft => {
+                    draft.state = WizardState.WaitForConnection;
+                    draft.max_state = draft.state;
+                }));
+            }
+            return;
+        }
+
         console.log("Server search started");
+        setIsLoading(false);
 
         var cnt = 0;
         while(props.props.state===WizardState.ServerSearch) {
@@ -96,7 +127,7 @@ function ServerSearch(props: WizardComponent) {
                     draft.state = WizardState.ConfigureServerConnectionDetails;
                     draft.max_state = draft.state;
                 }));
-            } }>Configure Internet server</Button>
+            } } loading={isLoading}>Configure Internet server</Button>
         </div>
         {noLocalServer &&
             <><br /><Alert

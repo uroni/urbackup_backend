@@ -176,7 +176,7 @@ function Restoring(props: WizardComponent) {
                 return;
             }
 
-            setRestoreAction(props.props.restoreImage.letter +" - "+(new Date(props.props.restoreImage.time_s)).toLocaleString() + " client "+props.props.restoreImage.clientname);
+            setRestoreAction(props.props.restoreImage.letter +" - "+toIsoDateTime(new Date(props.props.restoreImage.time_s*1000)) + " client "+props.props.restoreImage.clientname);
 
             addLog("Getting partition to restore to...")
             try {
@@ -347,7 +347,7 @@ function Restoring(props: WizardComponent) {
                     loading={restartLoading}>Restart machine</Button>
             </>
         }
-        <div style={{overflow: "auto", height: "500px", border: "1px solid black"}}>
+        <div style={{overflow: "auto", height: "50vh", border: "1px solid black"}}>
             <Table pagination={false} showHeader={false} columns={logTableColumns} dataSource={logTableData} />
             <AlwaysScrollToBottom />
         </div>

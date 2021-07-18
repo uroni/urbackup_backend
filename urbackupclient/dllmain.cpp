@@ -383,6 +383,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(restart);
 		ADD_ACTION(get_keyboard_layouts);
 		ADD_ACTION(set_keyboard_layout);
+		ADD_ACTION(get_connection_settings);
 		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}

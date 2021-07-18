@@ -29,6 +29,7 @@ namespace Actions
 	ACTION(restart);
 	ACTION(get_keyboard_layouts);
 	ACTION(set_keyboard_layout);
+	ACTION(get_connection_settings);
 }
 
 namespace restore

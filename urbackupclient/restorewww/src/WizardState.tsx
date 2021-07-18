@@ -1,5 +1,6 @@
 export enum WizardState {
-    SelectKeyboard = 1,
+    Init = 1,
+    SelectKeyboard,
     WaitForNetwork,
     ServerSearch,
     ConfigureServerConnectionDetails,
