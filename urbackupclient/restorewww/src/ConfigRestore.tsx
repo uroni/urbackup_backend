@@ -1,7 +1,7 @@
 import { Alert, Button, Select } from "antd";
 import produce from "immer";
 import { useState } from "react";
-import { useMountEffect } from "./App";
+import { toIsoDateTime, useMountEffect } from "./App";
 import { BackupImage, LocalDisk, WizardComponent, WizardState } from "./WizardState";
 
 function ConfigRestore(props: WizardComponent) {
@@ -103,12 +103,12 @@ function ConfigRestore(props: WizardComponent) {
             <br />
             Select image: <br />
             <Select loading={!hasImages} style={{ width: "600px" }} 
-                value={selImage === null ? "Please select..." : (selImage.letter + " - " + new Date(selImage.time_s*1000).toLocaleString())}
+                value={selImage === null ? "Please select..." : (selImage.letter + " - " + toIsoDateTime(new Date(selImage.time_s*1000)))}
                 onChange={(val) => {
                     setSelImage( images.find( image => image.id===parseInt(val) ) as BackupImage);
                 } }>
                 {images.map( image => (
-                    <Select.Option value={image.id}>{image.letter} - {new Date(image.time_s*1000).toLocaleString()}</Select.Option>
+                    <Select.Option value={image.id}>{image.letter} - {toIsoDateTime(new Date(image.time_s*1000))}</Select.Option>
                 ))}
             </Select>
 

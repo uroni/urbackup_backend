@@ -20,6 +20,17 @@ import SelectKeyboard from './SelectKeyboard';
 export const useMountEffect = (fun : React.EffectCallback) => useEffect(fun, []);
 export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
 
+export const toIsoDateTime = (d: Date) => {
+  let y = d.getFullYear();
+  let m = d.getMonth()+1;
+  let day = d.getDate();
+  let dstr = y + "-" + (m<10 ? ("0"+ m) : m) + "-" + (day<10 ? ("0"+day) : day);
+  let h = d.getHours();
+  let min = d.getMinutes();
+  let tstr = (h<10 ? ("0" +h) : h)+":"+(min<10 ? ("0" + min) : min);
+  return dstr+" "+tstr;
+}
+
 function CurrentContent(args: WizardComponent) {
   switch(args.props.state)
   {

@@ -2,7 +2,7 @@ import { Button, Col, Progress, Row, Table } from "antd";
 import produce from "immer";
 import prettyBytes from "pretty-bytes";
 import { useEffect, useRef, useState } from "react";
-import { sleep, useMountEffect } from "./App";
+import { sleep, toIsoDateTime, useMountEffect } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
 import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
 
@@ -55,7 +55,7 @@ function Restoring(props: WizardComponent) {
           dataIndex: 'time',
           key: 'time',
           width: 200,
-          render: (t: Date) => t.toLocaleString(),
+          render: (t: Date) => toIsoDateTime(t),
         },
         {
           title: 'Message',

@@ -1,5 +1,6 @@
 import { Alert, Button } from "antd";
 import produce from "immer";
+import { toIsoDateTime } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
 
 
@@ -19,7 +20,7 @@ function ReviewRestore(props: WizardComponent) {
         <Alert type="warning" message="Data on the destination disk will be overwritten!" />
         <br />
         Image to restore: <br />
-        <strong>Image of client {props.props.restoreImage.clientname} volume {props.props.restoreImage.letter} at {new Date(props.props.restoreImage.time_s*1000).toLocaleString()}</strong>
+        <strong>Image of client {props.props.restoreImage.clientname} volume {props.props.restoreImage.letter} at {toIsoDateTime(new Date(props.props.restoreImage.time_s*1000))}</strong>
 
         <br />
         <br />
