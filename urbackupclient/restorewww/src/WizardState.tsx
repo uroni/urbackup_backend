@@ -1,5 +1,6 @@
 export enum WizardState {
-    WaitForNetwork = 1,
+    SelectKeyboard = 1,
+    WaitForNetwork,
     ServerSearch,
     ConfigureServerConnectionDetails,
     WaitForConnection,
@@ -38,6 +39,7 @@ export interface WizardStateProps {
     restoreToDisk: LocalDisk;
     restoreImage: BackupImage;
     disableMenu: boolean;
+    keyboardLayout: string;
 }
 
 export interface WizardComponent {

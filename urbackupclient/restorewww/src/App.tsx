@@ -15,6 +15,7 @@ import Login from './Login';
 import ConfigRestore from './ConfigRestore';
 import ReviewRestore from './ReviewRestore';
 import Restoring from './Restoring';
+import SelectKeyboard from './SelectKeyboard';
 
 export const useMountEffect = (fun : React.EffectCallback) => useEffect(fun, []);
 export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
@@ -22,6 +23,8 @@ export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
 function CurrentContent(args: WizardComponent) {
   switch(args.props.state)
   {
+    case WizardState.SelectKeyboard:
+      return <SelectKeyboard props={args.props} update={args.update} />;
     case WizardState.WaitForNetwork:
       return <WaitForNetwork props={args.props} update={args.update} />;
     case WizardState.ServerSearch:
@@ -45,8 +48,8 @@ function CurrentContent(args: WizardComponent) {
 
 function App() {
   const [wizard_state, setWizardState] = useState<WizardStateProps>({
-    state: WizardState.ConfigureServerConnectionDetails,
-    max_state: WizardState.ConfigureServerConnectionDetails,
+    state: WizardState.SelectKeyboard,
+    max_state: WizardState.WaitForNetwork,
     serverFound: false,
     internetServer: false,
     serverUrl: "",
@@ -68,7 +71,8 @@ function App() {
       time_s: 0,
       time_str: ""
     },
-    disableMenu: false
+    disableMenu: false,
+    keyboardLayout: "us"
   });
 
   const menuSelected = () => {
@@ -106,6 +110,7 @@ function App() {
           <Menu theme="dark" mode="inline" selectedKeys={menuSelected()}
             style={{ height: '100%', borderRight: 0 }} 
             onClick={menuClick}>
+            <Menu.Item key={"" + WizardState.SelectKeyboard} disabled={menuItemDisabled(WizardState.SelectKeyboard)}>Select keyboard layout</Menu.Item>
             <Menu.Item key={"" + WizardState.WaitForNetwork} disabled={menuItemDisabled(WizardState.WaitForNetwork)}>Waiting for network</Menu.Item>
             <Menu.Item key={"" + WizardState.ServerSearch} disabled={menuItemDisabled(WizardState.ServerSearch)}>Search for server</Menu.Item>
             <Menu.Item key={"" + WizardState.ConfigureServerConnectionDetails} disabled={menuItemDisabled(WizardState.ConfigureServerConnectionDetails)}>Configure server connection</Menu.Item>

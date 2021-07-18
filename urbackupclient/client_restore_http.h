@@ -27,6 +27,8 @@ namespace Actions
 	ACTION(write_mbr);
 	ACTION(get_partition);
 	ACTION(restart);
+	ACTION(get_keyboard_layouts);
+	ACTION(set_keyboard_layout);
 }
 
 namespace restore

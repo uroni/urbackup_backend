@@ -503,3 +503,34 @@ ACTION_IMPL(restart)
 	ret.set("ok", true);
 	restore::writeJsonResponse(tid, ret);
 }
+
+ACTION_IMPL(get_keyboard_layouts)
+{
+	std::string llist;
+	JSON::Array j_layouts;
+	if(os_popen("localectl list-x11-keymap-layouts", llist)==0)
+	{
+		std::vector<std::string> toks;
+		Tokenize(llist, toks, "\n");
+
+		for(auto tok: toks)
+		{
+			std::string ctok = trim(tok);
+			if(!ctok.empty())
+				j_layouts.add(ctok);
+		}
+	}
+
+	JSON::Object ret;
+	ret.set("layouts", j_layouts);
+	ret.set("ok", true);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(set_keyboard_layout)
+{
+	system(("setxkbmap \""+POST["layout"]+"\"").c_str());
+	JSON::Object ret;
+	ret.set("ok", true);
+	restore::writeJsonResponse(tid, ret);
+}

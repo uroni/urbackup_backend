@@ -1,13 +1,55 @@
-import { Spin } from "antd";
-import { WizardComponent} from "./WizardState";
+import { Alert, Spin } from "antd";
+import produce from "immer";
+import { useState } from "react";
+import { sleep, useMountEffect } from "./App";
+import { WizardComponent, WizardState} from "./WizardState";
 
 
 function WaitForNetwork(props: WizardComponent) {
+
+    const [fetchError, setFetchError] = useState("");
+    const [displayHint, setDisplayHint] = useState(false);
     
+    useMountEffect(() => {
+        (async () => {
+            var cnt = 0;
+            while(props.props.state===WizardState.WaitForNetwork) {
+                let jdata;
+                try {
+                    const resp = await fetch("x?a=has_network_device",
+                        {method: "POST"})
+                    jdata = await resp.json();
+                } catch(error) {
+                    setFetchError("Error retrieving data from HTTP server");
+                }
+
+                if(jdata["ret"]) {
+                    props.update(produce(props.props, draft => {
+                        draft.state = WizardState.ServerSearch;
+                        draft.max_state = draft.state;
+                    }));
+                    return;
+                }
+
+                await sleep(1000);
+
+                ++cnt;
+                if(cnt>30)
+                    setDisplayHint(true);
+            }
+        })();
+    });
+
     return (
         <div>
             <Spin size="large" /> <br /> <br />
             Waiting for network to become available...
+            { displayHint &&
+                <Alert message="Network does not seem to be configured automatically. Please configure network manually via the task tray" type="info" />
+            }
+            { fetchError.length>0 &&
+                <Alert message={fetchError} type="error" />
+            }
         </div>
     )
 }
