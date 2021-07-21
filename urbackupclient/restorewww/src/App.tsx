@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import WaitForNetwork from './WaitForNetwork';
 import { Layout, Menu } from 'antd';
-import { Header, Content } from 'antd/lib/layout/layout';
+import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import Title from 'antd/lib/typography/Title';
 import ServerSearch from './ServerSearch';
 import { WizardComponent, WizardState, WizardStateProps } from './WizardState';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -18,6 +17,7 @@ import Restoring from './Restoring';
 import SelectKeyboard from './SelectKeyboard';
 import ConfigureSpillSpace from './ConfigureSpillSpace';
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 export const useMountEffect = (fun : React.EffectCallback) => useEffect(fun, []);
 export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
 

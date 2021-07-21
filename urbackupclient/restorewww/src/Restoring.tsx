@@ -477,7 +477,7 @@ function Restoring(props: WizardComponent) {
             addLog("Restoring "+img.letter+" at " + toIsoDateTime(new Date(img.time_s*1000)));
         }
 
-        assert(!props.props.restoreToPartition || restoreImages.length==1);
+        assert(!props.props.restoreToPartition || restoreImages.length===1);
 
         for(const img of restoreImages) {
             await restoreImage(img, props.props.restoreToPartition,

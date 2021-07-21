@@ -1,4 +1,4 @@
-import { Alert, Button, Select, Spin } from "antd";
+import { Alert, Button, Spin } from "antd";
 import Checkbox, { CheckboxChangeEvent } from "antd/lib/checkbox/Checkbox";
 import produce from "immer";
 import prettyBytes from "pretty-bytes";
@@ -120,7 +120,7 @@ function ConfigureSpillSpace(props: WizardComponent) {
 
                 let found=false;
                 for(const tdisk of testedDisks) {
-                    if(tdisk.path==disk.path) {
+                    if(tdisk.path===disk.path) {
                         disk.space = tdisk.space;
                         disk.destructive = false;
                         addDiskSpace+=tdisk.space;
@@ -180,7 +180,7 @@ function ConfigureSpillSpace(props: WizardComponent) {
         let addDiskSpace = 0;
         setSpillDisks(produce(draft => {
             draft.map((newdisk: ConfigSpillDisk) => {
-                if(newdisk.path==disk.path) {
+                if(newdisk.path===disk.path) {
                     newdisk.selected=e.target.checked;
                     
                     if(newdisk.selected && newdisk.space>0)
@@ -213,7 +213,7 @@ function ConfigureSpillSpace(props: WizardComponent) {
             
             {spillDisks.map( disk => {
                 return <div><Checkbox checked={disk.selected} onChange={ e => spillDiskChange(e, disk) }>
-                    {disk.type=="disk" ? "Disk" : "Partition"} at {disk.path} size {prettyBytes(disk.size)} file system {disk.fstype}
+                    {disk.type==="disk" ? "Disk" : "Partition"} at {disk.path} size {prettyBytes(disk.size)} file system {disk.fstype}
                     {disk.selected && disk.tested && disk.destructive &&
                         <Alert type="warning" message="Content of this disk will be overwritten" />
                     }
@@ -227,7 +227,7 @@ function ConfigureSpillSpace(props: WizardComponent) {
                 <Button loading={testing || isLoading} onClick={testSpillDisks}>Test spill disks</Button> }
             {!needsTest &&
                 <Button loading={testing || isLoading} onClick={useSpillSpace}>
-                    { (liveMedium && liveMediumSelected || spillDisks.filter(disk => disk.selected).length>0 )
+                    { ( (liveMedium && liveMediumSelected) || spillDisks.filter(disk => disk.selected).length>0 )
                         ? "Use spill space" : "Skip selecting spill space"}
                 </Button> }
 

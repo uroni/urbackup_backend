@@ -1,9 +1,9 @@
 import { Alert, Button, Radio, RadioChangeEvent, Select, Space } from "antd";
 import Checkbox, { CheckboxChangeEvent } from "antd/lib/checkbox/Checkbox";
 import produce from "immer";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useState } from "react";
-import { toIsoDateTime, useMountEffect } from "./App";
+import { toIsoDateTime } from "./App";
 import { BackupImage, LocalDisk, WizardComponent, WizardState } from "./WizardState";
 
 function ConfigRestore(props: WizardComponent) {
@@ -19,7 +19,7 @@ function ConfigRestore(props: WizardComponent) {
     const [selDisk, setSelDisk] = useState<LocalDisk | undefined>(undefined);
     const [advanced, setAdvanced] = useState(false);
 
-    const init = async () => {
+    const init = useCallback(async () => {
 
         if(!hasClients) {
             let jdata;
@@ -67,11 +67,11 @@ function ConfigRestore(props: WizardComponent) {
             setDisks(jdata["disks"]);
             setHasDisks(true);
         }
-    }
+    }, [hasClients, hasDisks, props.props.restoreToPartition]);
 
     useEffect( () => {
         init();
-    }, [hasClients, hasDisks]);
+    }, [init]);
 
     const onClientChange = async (value: string) => {
         setHasImages(false);
@@ -105,7 +105,7 @@ function ConfigRestore(props: WizardComponent) {
             new_images_flattened.push(img_no_assoc);
             for(const assoc_img of img.assoc) {
                 let timg_assoc = {...assoc_img};
-                if(timg_assoc.letter.length==0) {
+                if(timg_assoc.letter.length===0) {
                     timg_assoc.letter = "sysvol?";
                 }
                 new_images_flattened.push(timg_assoc);
@@ -141,8 +141,8 @@ function ConfigRestore(props: WizardComponent) {
     }
 
     const onRestoreChange = async (e: RadioChangeEvent) => {
-        if(e.target.value=="normal") {
-            if(selDisk && selDisk.type=="part") {
+        if(e.target.value==="normal") {
+            if(selDisk && selDisk.type==="part") {
                 setSelDisk(undefined);
             }
 
@@ -152,8 +152,8 @@ function ConfigRestore(props: WizardComponent) {
             }));
 
             setHasDisks(false);
-        } else if(e.target.value=="restoreMBR") {
-            if(selDisk && selDisk.type=="part") {
+        } else if(e.target.value==="restoreMBR") {
+            if(selDisk && selDisk.type==="part") {
                 setSelDisk(undefined);
             }
 
@@ -163,9 +163,9 @@ function ConfigRestore(props: WizardComponent) {
             }));
 
             setHasDisks(false);
-        } else if(e.target.value=="restorePartition") {
+        } else if(e.target.value==="restorePartition") {
 
-            if(selDisk && selDisk.type!="part") {
+            if(selDisk && selDisk.type!=="part") {
                 setSelDisk(undefined);
             }
 
@@ -182,8 +182,11 @@ function ConfigRestore(props: WizardComponent) {
         if (selImage===undefined)
             return;
 
-        setSelImage( getSelImageSet().find( image => image.id == selImage.id) );
-    }, [props.props.restoreToPartition]);
+        const getSelImageSet = () => props.props.restoreToPartition ? flattenedImages : images;
+        setSelImage(getSelImageSet().find( image => image.id === selImage.id));
+    }, [selImage, flattenedImages, images, props.props.restoreToPartition]); 
+
+    const getSelImageSet = () => props.props.restoreToPartition ? flattenedImages : images;
 
     const renderAdvanced = () => {
         return (<><br /> <br />
@@ -198,7 +201,7 @@ function ConfigRestore(props: WizardComponent) {
         </>);
     }
 
-    const getSelImageSet = () => props.props.restoreToPartition ? flattenedImages : images;
+    
 
     return (<div>
             Select client: <br />
