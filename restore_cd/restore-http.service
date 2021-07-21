@@ -1,0 +1,14 @@
+[Unit]
+Description=UrBackup Restore HTTP server
+After=network.target
+
+[Service]
+ExecStart=/root/urbackuprestoreclient --restore-http --logfile /root/restore_http.log --loglevel debug -t
+WorkingDirectory=/root
+User=root
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
+
+
