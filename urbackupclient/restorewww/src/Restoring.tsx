@@ -3,8 +3,9 @@ import produce from "immer";
 import prettyBytes from "pretty-bytes";
 import { useEffect, useRef, useState } from "react";
 import { sleep, toIsoDateTime, useMountEffect } from "./App";
-import { WizardComponent, WizardState } from "./WizardState";
+import { BackupImage, LocalDisk, WizardComponent, WizardState } from "./WizardState";
 import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
+import assert from "assert";
 
 interface LogTableItem {
     time: Date,
@@ -48,6 +49,11 @@ function Restoring(props: WizardComponent) {
     const [restartLoading, setRestartLoading] = useState(false);
     const [downloadStats, setDownloadStats] = useState<DownloadStats|null>(null);
     const [speedHist, setSpeedHist] = useState<number[]>([])
+    const [retryWithSpillSpace, setRetryWithSpillSpace] = useState(false);
+    const [diskSizeError, setDiskSizeError] = useState(false);
+
+    //Needed for dev, otherwise it would restart restore on hot-reload
+    let restoreRunning = useRef(false);
 
     const logTableColumns = [
         {
@@ -91,100 +97,187 @@ function Restoring(props: WizardComponent) {
         }
     }
 
-    useMountEffect( () => {
+    const restoreMBR = async () => {
         setRestoreAction("MBR and GPT");
         setPercent(0);
 
         addLog("Loading MBR and GPT data...");
 
-        ( async () => {
-            let jdata;
+        let jdata;
+        try {
+            const resp = await fetch("x?a=start_download",
+                {method: "POST",
+                body: new URLSearchParams({
+                    "img_id": ("" + props.props.restoreImage.id),
+                    "img_time": ("" + props.props.restoreImage.time_s),
+                    "out": "/tmp/mbr.dat",
+                    "mbr": "1"
+                })});
+            jdata = await resp.json();
+        } catch(error) {
+            addLog("Error while loading MBR");
+            setStatus("exception");
+            return;
+        }
+
+        const mbr_res_id : number = jdata["res_id"];
+
+        while(true) {
+            await sleep(1000);
+
             try {
-                const resp = await fetch("x?a=start_download",
+                const resp = await fetch("x?a=download_progress",
                     {method: "POST",
                     body: new URLSearchParams({
-                        "img_id": ("" + props.props.restoreImage.id),
-                        "img_time": ("" + props.props.restoreImage.time_s),
-                        "out": "/tmp/mbr.dat",
-                        "mbr": "1"
+                        "res_id": ("" + mbr_res_id)
                     })});
                 jdata = await resp.json();
             } catch(error) {
-                addLog("Error while loading MBR");
+                addLog("Error while checking MBR restore status");
                 setStatus("exception");
                 return;
             }
 
-            const mbr_res_id : number = jdata["res_id"];
-
-            while(true) {
-                await sleep(1000);
-
-                try {
-                    const resp = await fetch("x?a=download_progress",
-                        {method: "POST",
-                        body: new URLSearchParams({
-                            "res_id": ("" + mbr_res_id)
-                        })});
-                    jdata = await resp.json();
-                } catch(error) {
-                    addLog("Error while checking MBR restore status");
+            if(jdata["finished"]) {
+                if(jdata["ec"] === 0) {
+                    addLog("Loading MBR finished");
+                    setStatus("success");
+                } else {
+                    addLog("Loading MBR failed: " + restoreEcToString(jdata["ec"]));
                     setStatus("exception");
                     return;
                 }
-
-                if(jdata["finished"]) {
-                    if(jdata["ec"] === 0) {
-                        addLog("Loading MBR finished");
-                        setStatus("success");
-                    } else {
-                        addLog("Loading MBR failed: " + restoreEcToString(jdata["ec"]));
-                        setStatus("exception");
-                        return;
-                    }
-                    break;
-                } else if(jdata["pc"]) {
-                    setPercent(jdata["pc"]);
-                }
+                break;
+            } else if(jdata["pc"]) {
+                setPercent(jdata["pc"]);
             }
+        }
 
-            addLog("Writing MBR and GPT to disk...");
-            setPercent(0);
-            setStatus("normal");
+        addLog("Writing MBR and GPT to disk...");
+        setPercent(0);
+        setStatus("normal");
+
+        try {
+            const resp = await fetch("x?a=write_mbr",
+                {method: "POST",
+                body: new URLSearchParams({
+                    "mbrfn": "/tmp/mbr.dat",
+                    "out_device": props.props.restoreToDisk.path
+                })});
+            jdata = await resp.json();
+        } catch(error) {
+            addLog("Error while writing MBR");
+            setStatus("exception");
+            return;
+        }
+
+        if(jdata["success"] && jdata["errmsg"] && jdata["errmsg"].length>0) {
+            addLog("Ignoring MBR write error: "+jdata["errmsg"]);
+        }
+
+        if(!jdata["success"]) {
+            addLog("Error writing to MBR and GPT: "+jdata["errmsg"]);
+            setStatus("exception");
+            return;
+        }
+    }
+
+    const resizeSpilledImage = async (disk_fn: string, new_size: string, partnum: number) => {
+        addLog("Resizing partition...");
+
+        let jdata;
+        try {
+            const resp = await fetch("x?a=resize_disk",
+                {method: "POST",
+                body: new URLSearchParams({
+                    "disk_fn": disk_fn,
+                    "new_size": new_size
+                })});
+            jdata = await resp.json();
+        } catch(error) {
+            addLog("Error starting partition resize");
+            setStatus("exception");
+            return false;
+        }
+
+        const res_id : number = jdata["res_id"];
+
+        while(true) {
+            await sleep(1000);
 
             try {
-                const resp = await fetch("x?a=write_mbr",
+                const resp = await fetch("x?a=restore_finished",
                     {method: "POST",
                     body: new URLSearchParams({
-                        "mbrfn": "/tmp/mbr.dat",
-                        "out_device": props.props.restoreToDisk.path
+                        "res_id": ("" + res_id)
                     })});
                 jdata = await resp.json();
             } catch(error) {
-                addLog("Error while writing MBR");
+                addLog("Error while checking image restore status");
                 setStatus("exception");
-                return;
+                return false;
             }
 
-            if(jdata["success"] && jdata["errmsg"] && jdata["errmsg"].length>0) {
-                addLog("Ignoring MBR write error: "+jdata["errmsg"]);
+            if(jdata["finished"]) {
+                if(typeof jdata["err"]!=="undefined") {
+                    addLog("Error resizing partition: "+jdata["err"]);
+                    setStatus("exception");
+                    return false; 
+                }
+
+                addLog("Resizing done. Cleaning up spill disk...");
+
+                try {
+                    await fetch("x?a=cleanup_spill_disks",
+                        {method: "POST"});
+                } catch(error) {
+                    addLog("Error cleaning up spill disk");
+                }
+
+                if(!props.props.restoreToPartition) {
+                    addLog("Resizing partition...");
+
+                    let jdata;
+                    try {
+                        const resp = await fetch("x?a=resize_part",
+                            {method: "POST",
+                            body: new URLSearchParams({
+                                "disk_fn": disk_fn,
+                                "new_size": new_size,
+                                "partnum": (""+partnum)
+                            })});
+                        jdata = await resp.json();
+                    } catch(error) {
+                        addLog("Error resizing partition");
+                    }
+
+                    if(jdata["err"]) {
+                        addLog("Error changing partition size. Perhaps fix with gparted? Output: "+ jdata["err"]);
+                    }
+                }
+
+                addLog("Done.");
+
+                return true;
             }
+        }
+    }
 
-            if(!jdata["success"]) {
-                addLog("Error writing to MBR and GPT: "+jdata["errmsg"]);
-                setStatus("exception");
-                return;
-            }
+    const restoreImage = async (img: BackupImage, restoreToPartition: boolean,
+        restoreToDisk: LocalDisk, withSpillSpace: boolean) => {
+        setRestoreAction(img.letter +" - "+toIsoDateTime(new Date(img.time_s*1000)) + " client "+img.clientname);
 
-            setRestoreAction(props.props.restoreImage.letter +" - "+toIsoDateTime(new Date(props.props.restoreImage.time_s*1000)) + " client "+props.props.restoreImage.clientname);
-
-            addLog("Getting partition to restore to...")
+        let partpath: string;
+        let partnum: number;
+        if(!restoreToPartition) {
+            addLog("Getting partition to restore to...");
+            let jdata;
             try {
                 const resp = await fetch("x?a=get_partition",
                     {method: "POST",
                     body: new URLSearchParams({
                         "mbrfn": "/tmp/mbr.dat",
-                        "out_device": props.props.restoreToDisk.path
+                        "out_device": restoreToDisk.path
                     })});
                 jdata = await resp.json();
             } catch(error) {
@@ -199,92 +292,204 @@ function Restoring(props: WizardComponent) {
                 return;
             }
 
-            const partpath : string = jdata["partpath"];
+            partpath = jdata["partpath"];
+            partnum = jdata["partnum"];
+        } else {
+            partpath = restoreToDisk.path;
+            partnum = -1;
+        }
 
-            addLog("Restoring image to "+partpath);
+        addLog("Restoring image to "+partpath);
 
-            addLog("Starting image restore...");
+        let orig_dev_sz = "";
 
+        if(withSpillSpace)
+        {
+            addLog("Setting up spill space...");
+
+            let params = new URLSearchParams({
+                "orig_dev": partpath
+            });
+
+            let idx=0;
+            if(props.props.spillSpace.live_medium) {
+                params.append("disk"+idx, "live_medium");
+                params.append("destructive"+idx, "0");
+                ++idx;
+            }
+
+            for(const sp of props.props.spillSpace.disks) {
+                params.append("disk"+idx, sp.path);
+                params.append("destructive"+idx, sp.space>=0 ? "0" : "1");
+            }
+
+            let jdata;
             try {
-                const resp = await fetch("x?a=start_download",
+                const resp = await fetch("x?a=setup_spill_disks",
                     {method: "POST",
-                    body: new URLSearchParams({
-                        "img_id": ("" + props.props.restoreImage.id),
-                        "img_time": ("" + props.props.restoreImage.time_s),
-                        "out": partpath
-                    })});
+                    body: params});
                 jdata = await resp.json();
             } catch(error) {
-                addLog("Error while starting image restore");
+                addLog("Error while setting up spill space");
                 setStatus("exception");
                 return;
             }
 
-            const img_res_id : number = jdata["res_id"];
+            if(typeof jdata["err"]!=="undefined") {
+                addLog("Error while setting up spill space: "+jdata["err"]);
+                setStatus("exception");
+                return;
+            }
 
-            addLog("Restore is running")
+            partpath = jdata["path"];
+            orig_dev_sz = jdata["orig_size"];
+        }
 
-            while(true) {
-                await sleep(1000);
+        addLog("Starting image restore...");
 
-                try {
-                    const resp = await fetch("x?a=download_progress",
-                        {method: "POST",
-                        body: new URLSearchParams({
-                            "res_id": ("" + img_res_id)
-                        })});
-                    jdata = await resp.json();
-                } catch(error) {
-                    addLog("Error while checking image restore status");
+        let jdata;
+        try {
+            const resp = await fetch("x?a=start_download",
+                {method: "POST",
+                body: new URLSearchParams({
+                    "img_id": ("" + img.id),
+                    "img_time": ("" + img.time_s),
+                    "out": partpath
+                })});
+            jdata = await resp.json();
+        } catch(error) {
+            addLog("Error while starting image restore");
+            setStatus("exception");
+            return;
+        }
+
+        const img_res_id : number = jdata["res_id"];
+
+        addLog("Restore is running")
+
+        while(true) {
+            await sleep(1000);
+
+            try {
+                const resp = await fetch("x?a=download_progress",
+                    {method: "POST",
+                    body: new URLSearchParams({
+                        "res_id": ("" + img_res_id)
+                    })});
+                jdata = await resp.json();
+            } catch(error) {
+                addLog("Error while checking image restore status");
+                setStatus("exception");
+                return;
+            }
+
+            if(jdata["finished"]) {
+                const ec : number = jdata["ec"];
+
+                if(ec===11 ) {
+                    setDiskSizeError(true);
+                }
+
+                if(ec===11 && 
+                    (props.props.spillSpace.live_medium ||
+                        props.props.spillSpace.disks.length>0)) {
+                    setRetryWithSpillSpace(true);
+                }
+
+                if(ec===0) {
+                    addLog("Restoring image finished");
+                    setPercent(100);
+                    setStatus("success");
+
+                    if(withSpillSpace)
+                    {
+                        if(!await resizeSpilledImage(partpath, orig_dev_sz, partnum))
+                        {
+                            return;
+                        }
+                    }
+
+                    setImageDone(true);
+                } else {
+                    addLog("Restoring image failed: "+restoreEcToString(ec));
                     setStatus("exception");
                     return;
                 }
+                break;
+            } else if(typeof jdata["running_processes"]==="object") {
+                let restore_proc : RestoreStatus = jdata["running_processes"].find( 
+                    (proc:RestoreStatus) => (proc.action && proc.action==="RESTORE_IMAGE")
+                );
+                if(restore_proc!==undefined) {
+                    if(restore_proc.percent_done >=0)
+                        setPercent(restore_proc.percent_done);
 
-                if(jdata["finished"]) {
-                    const ec : number = jdata["ec"];
-                    if(ec===0) {
-                        addLog("Restoring image finished");
-                        setPercent(100);
-                        setStatus("success");
-                        setImageDone(true);
-                    } else {
-                        addLog("Restoring image failed: "+restoreEcToString(ec));
-                        setStatus("exception");
-                        return;
+                    if(typeof restore_proc.done_bytes !== "undefined" )
+                    {
+                        setDownloadStats({
+                            doneBytes: restore_proc.done_bytes,
+                            totalBytes: restore_proc.total_bytes,
+                            pcdone: restore_proc.percent_done,
+                            speedBpms: restore_proc.speed_bpms
+                        });
+                        setSpeedHist(produce(
+                            draft => {
+                                draft.push(restore_proc.speed_bpms*1000*8);
+                                if(draft.length>20)
+                                {
+                                    draft.shift();
+                                }
+                            }));
                     }
-                    break;
-                } else if(typeof jdata["running_processes"]==="object") {
-                    let restore_proc : RestoreStatus = jdata["running_processes"].find( 
-                        (proc:RestoreStatus) => (proc.action && proc.action==="RESTORE_IMAGE")
-                    );
-                    if(restore_proc!==undefined) {
-                        if(restore_proc.percent_done >=0)
-                            setPercent(restore_proc.percent_done);
-
-                        if(typeof restore_proc.done_bytes !== "undefined" )
-                        {
-                            setDownloadStats({
-                                doneBytes: restore_proc.done_bytes,
-                                totalBytes: restore_proc.total_bytes,
-                                pcdone: restore_proc.percent_done,
-                                speedBpms: restore_proc.speed_bpms
-                            });
-                            setSpeedHist(produce(
-                                draft => {
-                                    draft.push(restore_proc.speed_bpms*1000*8);
-                                    if(draft.length>20)
-                                    {
-                                        draft.shift();
-                                    }
-                                }));
-                        }
-                    } else if(downloadStats!==null) {
-                        setDownloadStats(produce( draft => {
-                            draft.speed_bpms = 0;
-                        }));
-                    }
+                } else if(downloadStats!==null) {
+                    setDownloadStats(produce( draft => {
+                        draft.speed_bpms = 0;
+                    }));
                 }
             }
+        }
+    };
+
+    const runRestore = async (withSpillSpace: boolean) => {
+        if(restoreRunning.current)
+            return;
+
+        restoreRunning.current = true;
+
+        setStatus("normal");
+        if(!props.props.restoreToPartition) {
+            await restoreMBR();
+
+            if(props.props.restoreOnlyMBR)
+                return;
+        }
+
+
+        let restoreImages = [props.props.restoreImage];
+
+        for(const assoc_img of props.props.restoreImage.assoc)
+            restoreImages.push(assoc_img);
+
+        if(restoreImages.length>1)
+            addLog("Restoring "+restoreImages.length+" images of client "+props.props.restoreImage.clientname+": ");
+
+        for(const img of restoreImages) {
+            addLog("Restoring "+img.letter+" at " + toIsoDateTime(new Date(img.time_s*1000)));
+        }
+
+        assert(!props.props.restoreToPartition || restoreImages.length==1);
+
+        for(const img of restoreImages) {
+            await restoreImage(img, props.props.restoreToPartition,
+                props.props.restoreToDisk, withSpillSpace);
+        }
+
+        restoreRunning.current = false;
+    }
+
+    useMountEffect( () => {
+        (async () => {
+            await runRestore(false);            
         })();
     })
 
@@ -298,6 +503,17 @@ function Restoring(props: WizardComponent) {
             console.log(error);
             return;
         }
+    }
+
+    const doRetryWithSpillSpace = async () => {
+        await runRestore(true);
+    }
+
+    const configureSpillSpace = async () => {
+        props.update(produce(props.props, draft => {
+            draft.state = WizardState.ConfigSpillSpace;
+            draft.disableMenu = false;
+        }));
     }
 
     return (<div>
@@ -326,13 +542,25 @@ function Restoring(props: WizardComponent) {
         <br />
         <br />
         {status==="exception" &&
-            <><Button type="primary" onClick={() => {
+            <>
+            {!diskSizeError &&
+                <><Button type="primary" onClick={() => {
                 props.update(produce(props.props, draft => {
                     draft.state = WizardState.ReviewRestore;
                     draft.max_state = draft.state;
                     draft.disableMenu = false;
                 }))
-            }}>Retry</Button>
+            }}>Retry</Button></>}
+            {!retryWithSpillSpace && diskSizeError &&
+                    <><br /><br /><Button type="primary" onClick={configureSpillSpace}>
+                        Configure spill space to restore to smaller disk
+                    </Button></>
+                }
+                {retryWithSpillSpace &&
+                    <><br /><br /><Button type="primary" onClick={doRetryWithSpillSpace}>
+                    Retry with configured spill space
+                </Button></>
+                }
             <br /><br /></>}
         {imageDone &&
             <>

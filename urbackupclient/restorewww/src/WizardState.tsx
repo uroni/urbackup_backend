@@ -7,6 +7,7 @@ export enum WizardState {
     WaitForConnection,
     LoginToServer,
     ConfigRestore,
+    ConfigSpillSpace,
     ReviewRestore,
     Restoring
 }
@@ -17,6 +18,7 @@ export interface BackupImage {
     time_s: number;
     time_str: string;
     clientname: string;
+    assoc: BackupImage[];
 }
 
 export interface LocalDisk {
@@ -25,6 +27,21 @@ export interface LocalDisk {
     path: string;
     size: string;
     type: string;
+}
+
+export interface SpillDisk {
+    path: string;
+    model: string;
+    size: number;
+    space: number;
+    fstype: string;
+    destructive: boolean;
+}
+
+export interface SpillSpace {
+    live_medium: boolean,
+    live_medium_space: number,
+    disks: SpillDisk[]
 }
   
 export interface WizardStateProps {
@@ -41,6 +58,9 @@ export interface WizardStateProps {
     restoreImage: BackupImage;
     disableMenu: boolean;
     keyboardLayout: string;
+    restoreOnlyMBR: boolean;
+    restoreToPartition: boolean;
+    spillSpace: SpillSpace;
 }
 
 export interface WizardComponent {

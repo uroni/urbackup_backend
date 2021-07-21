@@ -19,12 +19,12 @@ function ReviewRestore(props: WizardComponent) {
         Please review before starting restore. <br />
         <Alert type="warning" message="Data on the destination disk will be overwritten!" />
         <br />
-        Image to restore: <br />
-        <strong>Image of client {props.props.restoreImage.clientname} volume {props.props.restoreImage.letter} at {toIsoDateTime(new Date(props.props.restoreImage.time_s*1000))}</strong>
+        {props.props.restoreOnlyMBR ? "MBR and GPT" : "Image"} to restore: <br />
+        <strong>{props.props.restoreOnlyMBR ? "MBR and GPT" : "Image"} of client {props.props.restoreImage.clientname} of volume {props.props.restoreImage.letter} at {toIsoDateTime(new Date(props.props.restoreImage.time_s*1000))}</strong>
 
         <br />
         <br />
-        Restore to disk:<br />
+        Restore to {props.props.restoreToPartition ? "partition" : "disk"}:<br />
         <strong>{props.props.restoreToDisk.model} size {props.props.restoreToDisk.size} (path {props.props.restoreToDisk.path} maj:min {props.props.restoreToDisk.maj_min})</strong>
 
         <br />

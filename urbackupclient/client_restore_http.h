@@ -30,6 +30,13 @@ namespace Actions
 	ACTION(get_keyboard_layouts);
 	ACTION(set_keyboard_layout);
 	ACTION(get_connection_settings);
+	ACTION(get_spill_disks);
+	ACTION(test_spill_disks);
+	ACTION(setup_spill_disks);
+	ACTION(cleanup_spill_disks);
+	ACTION(resize_disk);
+	ACTION(restore_finished);
+	ACTION(resize_part);
 }
 
 namespace restore

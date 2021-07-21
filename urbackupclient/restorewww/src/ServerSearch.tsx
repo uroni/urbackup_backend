@@ -121,7 +121,7 @@ function ServerSearch(props: WizardComponent) {
     return (<div>
         <Spin size="large" /> <br /> <br />
         Searching for UrBackup server in local network...
-        <div>
+        <div style={{marginTop: "20pt"}}>
             <Button onClick={() => {
                 props.update(produce(props.props, draft => {
                     draft.state = WizardState.ConfigureServerConnectionDetails;

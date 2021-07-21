@@ -78,7 +78,7 @@ function SelectKeyboard(props: WizardComponent) {
                         {getName(layout) &&
                         <>
                             <ReactCountryFlag countryCode={layout} />
-                            {getName(layout)}
+                            &nbsp; {getName(layout)}
                         </>
                         } ({layout})
                     </Select.Option>;

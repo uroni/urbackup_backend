@@ -16,6 +16,7 @@ import ConfigRestore from './ConfigRestore';
 import ReviewRestore from './ReviewRestore';
 import Restoring from './Restoring';
 import SelectKeyboard from './SelectKeyboard';
+import ConfigureSpillSpace from './ConfigureSpillSpace';
 
 export const useMountEffect = (fun : React.EffectCallback) => useEffect(fun, []);
 export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
@@ -50,6 +51,8 @@ function CurrentContent(args: WizardComponent) {
       return <Login props={args.props} update={args.update} />;
     case WizardState.ConfigRestore:
       return <ConfigRestore props={args.props} update={args.update} />;
+    case WizardState.ConfigSpillSpace:
+      return <ConfigureSpillSpace props={args.props} update={args.update} />;
     case WizardState.ReviewRestore:
       return <ReviewRestore props={args.props} update={args.update} />;
     case WizardState.Restoring:
@@ -61,7 +64,7 @@ function CurrentContent(args: WizardComponent) {
 
 function App() {
   const [wizard_state, setWizardState] = useState<WizardStateProps>({
-    state: WizardState.Init,
+    state: WizardState.ConfigSpillSpace,
     max_state: WizardState.Init,
     serverFound: false,
     internetServer: false,
@@ -82,10 +85,18 @@ function App() {
       id: 0,
       letter: "",
       time_s: 0,
-      time_str: ""
+      time_str: "",
+      assoc: []
     },
     disableMenu: false,
-    keyboardLayout: "us"
+    keyboardLayout: "us",
+    restoreOnlyMBR: false,
+    restoreToPartition: false,
+    spillSpace: {
+      live_medium: false,
+      live_medium_space: -1,
+      disks: []
+    }
   });
 
   const menuSelected = () => {
@@ -179,10 +190,6 @@ function App() {
 
   return (
     <Layout style={{height: "100%"}}>
-      <Header>
-        <div className="logo" />
-        <Title style={{color: 'white', textAlign: 'center'}}>UrBackup Image Restore</Title>
-      </Header>
       <Layout hasSider={true}>
         <Sider width={200} className="site-layout-background">
           <Menu theme="dark" mode="inline" selectedKeys={menuSelected()}
@@ -195,6 +202,7 @@ function App() {
             <Menu.Item key={"" + WizardState.WaitForConnection} disabled={menuItemDisabled(WizardState.WaitForConnection)}>Wait for connection</Menu.Item>
             <Menu.Item key={"" + WizardState.LoginToServer} disabled={menuItemDisabled(WizardState.LoginToServer)}>Login to server</Menu.Item>
             <Menu.Item key={"" + WizardState.ConfigRestore} disabled={menuItemDisabled(WizardState.ConfigRestore)}>Configure restore</Menu.Item>
+            <Menu.Item key={"" + WizardState.ConfigSpillSpace} disabled={menuItemDisabled(WizardState.ConfigSpillSpace)}>Configure spill space</Menu.Item>
             <Menu.Item key={"" + WizardState.ReviewRestore} disabled={menuItemDisabled(WizardState.ReviewRestore)}>Review restore</Menu.Item>
             <Menu.Item key={"" + WizardState.Restoring} disabled={menuItemDisabled(WizardState.Restoring)}>Restore</Menu.Item>
           </Menu>

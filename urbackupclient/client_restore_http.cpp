@@ -5,6 +5,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
 #include "../fsimageplugin/IFSImageFactory.h"
+#include "../urbackupcommon/os_functions.h"
 
 extern IFSImageFactory* image_fak;
 
@@ -19,6 +20,7 @@ namespace
 		restore::DownloadStatus dl_status;
 		restore::EDownloadResult ec;
 		bool finished;
+		std::string err;
 	};
 
 	std::map<int64, SRestoreRes> restore_results;
@@ -336,14 +338,35 @@ ACTION_IMPL(get_disks)
 {
 	std::vector<restore::SLsblk> drives = restore::lsblk("");
 
+	bool get_parts = POST["partitions"] == "1";
+
 	JSON::Array j_disks;
+
+	std::string last_model;
 
 	for (restore::SLsblk& blk : drives)
 	{
-		if (blk.type == "disk")
+		if(blk.path.find("/dev/sr")==0)
+			continue;
+		if(blk.path.find("/dev/cdrom")==0)
+			continue;
+		if(blk.path.find("/dev/loop")==0)
+			continue;
+		if(blk.path.find("/dev/mapper")==0)
+			continue;
+
+		if(blk.type=="disk")
+			last_model = blk.model;
+
+		if (!get_parts && blk.type == "disk" ||
+			get_parts && blk.type=="part")
 		{
 			JSON::Object disk;
 			disk.set("model", blk.model);
+			if(blk.type=="part" && blk.model.empty() &&
+				!last_model.empty())
+				disk.set("model", last_model);
+
 			disk.set("maj_min", blk.maj_min);
 			disk.set("path", blk.path);
 			disk.set("size", blk.size);
@@ -492,6 +515,7 @@ ACTION_IMPL(get_partition)
 	ret.set("ok", true);
 	ret.set("success", true);
 	ret.set("partpath", partpath);
+	ret.set("partnum", mbrdata.partition_number);
 	restore::writeJsonResponse(tid, ret);
 	return;
 }
@@ -550,3 +574,521 @@ ACTION_IMPL(get_connection_settings)
 	Server->setContentType(tid, "application/json");
 	Server->Write(tid, getFile(settingsfn));
 }
+
+bool test_spill_space(const std::string& path)
+{
+	IFile* f = Server->openFile(path+"/32d59234-64cc-42dd-bc56-48e59dd4db6a.test", MODE_WRITE);
+	ScopedDeleteFile del_f(f);
+
+	if(f==nullptr)
+		return false;
+
+	return f->Write("test")==4 && f->Sync();
+}
+
+std::string get_fs(const std::string& dev)
+{
+	std::string out;
+	int rc = os_popen("file -s -L -b \""+dev+"\"", out);
+
+	if(rc!=0)
+		return std::string();
+
+	if(out.find("NTFS, ")!=std::string::npos)
+		return "ntfs";
+
+	if(out.find("FAT ")!=std::string::npos)
+		return "fat";
+
+	if(out.find("ext2 ")!=std::string::npos ||
+		out.find("ext3 ")!=std::string::npos ||
+		out.find("ext4 ")!=std::string::npos)
+		return "ext";
+
+	if(out.find("XFS ")!=std::string::npos)
+		return "xfs";
+
+	return "unknown";
+}
+
+ACTION_IMPL(get_spill_disks)
+{
+	std::vector<restore::SLsblk> drives = restore::lsblk("-b");
+
+	std::string exclude = POST["exclude"];
+
+	JSON::Object ret;
+
+	if(test_spill_space("/run/live/medium"))
+	{
+		ret.set("live_medium", true);
+		ret.set("live_medium_space", os_free_space("/run/live/medium"));
+	}
+
+	ret.set("ok", true);
+
+	std::string last_model;
+	std::string disk_path;
+	JSON::Array j_disks;
+	for (restore::SLsblk& blk : drives)
+	{
+		if(blk.path.find("/dev/sr")==0)
+			continue;
+		if(blk.path.find("/dev/cdrom")==0)
+			continue;
+		if(blk.path.find("/dev/loop")==0)
+			continue;
+		if(blk.path.find("/dev/mapper")==0)
+			continue;
+
+		if(blk.type=="disk")
+		{
+			last_model = blk.model;
+			disk_path = blk.path;
+		}
+
+		if(disk_path==exclude ||
+			blk.path==exclude)
+			continue;
+
+		JSON::Object disk;
+		disk.set("model", blk.model);
+		if(blk.type=="part" && blk.model.empty() &&
+			!last_model.empty())
+			disk.set("model", last_model);
+
+		disk.set("maj_min", blk.maj_min);
+		disk.set("path", blk.path);
+		disk.set("devpath", disk_path);
+		disk.set("size", watoi64(blk.size));
+		disk.set("type", blk.type);
+		disk.set("fstype", get_fs(blk.path));
+		j_disks.add(disk);
+	}
+
+	ret.set("disks", j_disks);
+	restore::writeJsonResponse(tid, ret);
+}
+
+namespace
+{
+	struct SSpillFile
+	{
+		std::string fn;
+		int64 size;
+		std::string lodev;
+		int64 sizesz;
+	};
+
+	void cleanup_spill(const std::vector<SSpillFile>& spill_files)
+	{
+		for(auto sf: spill_files) 
+		{
+			if(!sf.lodev.empty())
+			{
+				system(("losetup -d \""+sf.lodev+"\"").c_str());
+			}
+		}
+
+		std::string out;
+		int rc = os_popen("losetup -l -n", out);
+		if(rc==0)
+		{
+			std::vector<std::string> toks;
+			Tokenize(out, toks, "\n");
+			for(auto& tok: toks) 
+			{
+				if(tok.find("32d59234-64cc-42dd-bc56-48e59dd4db6a")!=std::string::npos)
+				{
+					system(("losetup -d \""+getuntil(" ", tok)+"\"").c_str());
+				}
+			}
+		}
+
+		std::vector<SFile> mnts = getFiles("/mnt");
+
+		for(const SFile& m: mnts)
+		{
+			if(m.isdir && m.name.find("spilldisk")==0)
+			{
+				std::vector<SFile> spillfiles = getFiles("/mnt/"+m.name);
+
+				for(const SFile& f: spillfiles)
+				{
+					if(f.name.find("32d59234-64cc-42dd-bc56-48e59dd4db6a")!=std::string::npos)
+					{
+						Server->deleteFile("/mnt/"+m.name+"/"+f.name);
+					}
+				}
+
+				system(("umount \"/mnt/"+m.name+"\"").c_str());
+				os_remove_dir("/mnt/"+m.name);
+			}
+		}
+
+		system("dmsetup remove spill_disk");
+	}
+}
+
+ACTION_IMPL(test_spill_disks)
+{
+	system("dmsetup remove spill_disk");
+	
+	std::vector<SSpillFile> spill_files;
+	cleanup_spill(spill_files);
+
+	std::vector<std::string> disks;
+	for(size_t idx=0;POST.find("disk"+std::to_string(idx))!=POST.end();++idx)
+	{
+		disks.push_back(POST["disk"+std::to_string(idx)]);
+	}
+
+	os_create_dir_recursive("/mnt/spilltest");
+	system("umount /mnt/spilltest");
+
+	JSON::Array j_disks;
+
+	for(std::string& disk: disks) {
+
+		std::string out;
+		int rc = os_popen("mount \""+disk+"\" /mnt/spilltest 2>&1", out);
+
+		if(rc==0) {
+			JSON::Object obj;
+			obj.set("path", disk);
+			obj.set("space", os_free_space("/mnt/spilltest"));
+			j_disks.add(obj);
+		} else {
+			Server->Log("Mounting "+disk+" failed: "+out);
+		}
+
+		system("umount /mnt/spilltest");
+	}
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	ret.set("disks", j_disks);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(setup_spill_disks)
+{
+	system("dmsetup remove spill_disk");
+	
+	std::vector<SSpillFile> spill_files;
+	cleanup_spill(spill_files);
+
+	struct SSpillDisk
+	{
+		std::string path;
+		int destructive;
+		size_t idx;
+		std::string mountpath;
+	};
+	std::vector<SSpillDisk> disks;
+	for(size_t idx=0;POST.find("disk"+std::to_string(idx))!=POST.end();++idx)
+	{
+		SSpillDisk sd;
+		sd.path = POST["disk"+std::to_string(idx)];
+		sd.destructive = watoi(POST["destructive"+std::to_string(idx)]);
+		sd.idx = idx;
+		disks.push_back(sd);
+	}	
+
+	std::string orig_dev = POST["orig_dev"];
+
+	int64 orig_dev_sz;
+	{
+		std::string out;
+		int rc = os_popen("blockdev --getsz \""+orig_dev+"\" 2>&1", out);
+
+		if(rc!=0)
+		{
+			JSON::Object ret;
+			ret.set("ok", true);
+			ret.set("err", "Error getting orig dev size "+orig_dev+": "+out);
+			restore::writeJsonResponse(tid, ret);
+			return;
+		}
+
+		orig_dev_sz = watoi(trim(out));
+	}
+
+	std::string dm_table = "0 "+std::to_string(orig_dev_sz)+" linear "+orig_dev+" 0";
+
+	int64 dm_offs = orig_dev_sz;
+
+	for(auto& sd: disks)
+	{
+		if(sd.path=="live_medium")
+		{
+			sd.mountpath="/run/live/medium";
+		}
+		else
+		{
+			sd.mountpath = "/mnt/spilldisk"+std::to_string(sd.idx);
+			os_create_dir_recursive(sd.mountpath);
+
+			system(("umount "+sd.mountpath).c_str());
+
+			if(sd.destructive!=0) 
+			{
+				std::string out;
+				int rc = os_popen("mkfs.ext4 -F \""+sd.path+"\" 2>&1", out);
+
+				if(rc!=0)
+				{
+					cleanup_spill(spill_files);
+
+					JSON::Object ret;
+					ret.set("ok", true);
+					ret.set("err", "Error creating filesystem at "+sd.path+": "+out);
+					restore::writeJsonResponse(tid, ret);
+					return;
+				}
+			}
+
+			std::string out;
+			int rc = os_popen("mount \""+sd.path+"\" "+sd.mountpath+" 2>&1", out);
+
+			if(rc!=0)
+			{
+				cleanup_spill(spill_files);
+
+				JSON::Object ret;
+				ret.set("ok", true);
+				ret.set("err", "Error mounting "+sd.path+" at "+sd.mountpath+": "+out);
+				restore::writeJsonResponse(tid, ret);
+				return;
+			}
+		}
+
+		const int64 freespace_leave = 250LL*1024*1024;
+
+		int64 freespace = os_free_space(sd.mountpath);
+
+		if(freespace<freespace_leave)
+			freespace = 0;
+		else
+			freespace-=freespace_leave;
+
+		size_t idx=0;
+
+		const int64 spill_file_size_max = 1LL*1024*1024*1024*1024;
+		const int64 spill_file_size_min = 1LL*1024*1024*1024;
+
+		while(freespace>freespace_leave)
+		{
+			SSpillFile sf;
+
+			sf.size = std::min(spill_file_size_max, freespace);
+			sf.fn = sd.mountpath+"/spill-32d59234-64cc-42dd-bc56-48e59dd4db6a-"+std::to_string(idx)+".img";
+
+			++idx;
+
+			std::unique_ptr<IFsFile> f(Server->openFile(sf.fn , MODE_WRITE));
+
+			bool resize_ok=false;
+			if(f)
+			{
+				if(!f->Resize(sf.size, true))
+				{
+					if(sf.size>spill_file_size_min)
+					{
+						sf.size = spill_file_size_min;
+						resize_ok = f->Resize(sf.size, true);
+					}
+				}
+				else
+				{
+					resize_ok=true;
+				}
+			}
+
+			if(resize_ok)
+			{
+				freespace -= sf.size;
+				std::string out;
+				int rc = os_popen("losetup -f --show \""+sf.fn+"\" 2>&1", out);
+
+				if(rc!=0)
+				{
+					cleanup_spill(spill_files);
+
+					JSON::Object ret;
+					ret.set("ok", true);
+					ret.set("err", "Error setting up loop device for "+sf.fn+ ": "+out);
+					restore::writeJsonResponse(tid, ret);
+					return;
+				}
+
+				sf.lodev = trim(out);
+
+				out.clear();
+				rc = os_popen("blockdev --getsz \""+sf.lodev+"\" 2>&1", out);
+
+				if(rc!=0)
+				{
+					cleanup_spill(spill_files);
+
+					JSON::Object ret;
+					ret.set("ok", true);
+					ret.set("err", "Error loop device size of "+sf.lodev+ ": "+out);
+					restore::writeJsonResponse(tid, ret);
+					return;
+				}
+
+				sf.sizesz = watoi64(trim(out));
+
+				dm_table+="\n"+std::to_string(dm_offs)+" "+std::to_string(sf.sizesz)+" linear "+sf.lodev+" 0";
+				dm_offs+=sf.sizesz;
+
+				spill_files.push_back(sf);
+			}
+			else
+			{
+				f.reset();
+				Server->deleteFile(sf.fn);				
+
+				cleanup_spill(spill_files);
+
+				JSON::Object ret;
+				ret.set("ok", true);
+				ret.set("err", "Error creating spill file at \""+sf.fn+"\"");
+				restore::writeJsonResponse(tid, ret);
+				return;
+			}
+		}
+	}
+
+	writestring(dm_table, "spill_disk_dm_table");
+
+	std::string out;
+	int rc = os_popen("cat spill_disk_dm_table | dmsetup create spill_disk 2>&1", out);
+
+	if(rc!=0)
+	{
+		cleanup_spill(spill_files);
+
+		JSON::Object ret;
+		ret.set("ok", true);
+		ret.set("err", "Error setting up spill disk: "+trim(out));
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	for(auto sf: spill_files) 
+	{
+		if(!sf.lodev.empty())
+		{
+			system(("losetup -d \""+sf.lodev+"\"").c_str());
+		}
+	}
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	ret.set("path", "/dev/mapper/spill_disk");
+	ret.set("orig_size", std::to_string(orig_dev_sz));
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(cleanup_spill_disks)
+{
+	std::vector<SSpillFile> spill_files;
+	cleanup_spill(spill_files);
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(resize_disk)
+{
+	std::string disk_fn = POST["disk_fn"];
+
+	int64 new_size = watoi64(POST["new_size"]);
+
+	SRestoreRes* restore_res;
+	int64 curr_res_id;
+	{
+		std::lock_guard<std::mutex> lock(g_restore_data_mutex);
+		curr_res_id = res_id++;
+		restore_res = &restore_results[curr_res_id];
+	}
+
+	std::thread t([disk_fn, new_size, restore_res]() {
+		std::string out;
+		int rc = os_popen("ntfsresize -s "+std::to_string(new_size*512)+" -P \""+disk_fn+"\" 2>&1", out);
+		if(rc!=0)
+		{
+			restore_res->err=trim(out);
+		}
+		restore_res->ec=restore::EDownloadResult_Ok;
+		restore_res->finished=true;
+	});
+
+	t.detach();
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	ret.set("res_id", curr_res_id);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(restore_finished)
+{
+	int64 res_id = watoi64(POST["res_id"]);
+
+	SRestoreRes* restore_res = nullptr;
+
+	{
+		std::lock_guard<std::mutex> lock(g_restore_data_mutex);
+		auto it = restore_results.find(res_id);
+		if (it != restore_results.end())
+			restore_res = &it->second;
+	}
+
+	JSON::Object ret;
+
+	ret.set("ok", true);
+
+	if (restore_res == nullptr)
+	{
+		ret.set("err", "Restore not found");
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	if (restore_res->finished)
+	{
+		ret.set("finished", true);
+		ret.set("ec", restore_res->ec);
+		if(!restore_res->err.empty())
+		{
+			ret.set("err", restore_res->err);
+		}
+	}
+
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(resize_part)
+{
+	std::string disk_fn = POST["disk_fn"];
+	int partnum = watoi(POST["partnum"]);
+
+	int64 new_size = watoi64(POST["new_size"]);
+
+	std::string out;
+	int rc = os_popen("parted -sm resizepart "+std::to_string(partnum)+" "+std::to_string(new_size*512)+"B 2>&1", out);
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	if(rc!=0)
+	{
+		ret.set("err", out);
+	}
+
+	restore::writeJsonResponse(tid, ret);
+}
+

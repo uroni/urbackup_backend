@@ -883,7 +883,7 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::string& clientname)
 		q->Reset();
 		for(size_t j=0;j<res2.size();++j)
 		{
-			r+="#|"+convert(img_id_offset+watoi(res2[j]["id"]))+"|"+(res2[j]["timestamp"])+"|"+(res2[j]["backuptime"])+"\n";
+			r+="#|"+convert(img_id_offset+watoi(res2[j]["id"]))+"|"+(res2[j]["timestamp"])+"|"+(res2[j]["backuptime"])+"|"+(res[i]["letter"])+"\n";
 		}
 	}
 	tcpstack.Send(input, r);

@@ -384,6 +384,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(get_keyboard_layouts);
 		ADD_ACTION(set_keyboard_layout);
 		ADD_ACTION(get_connection_settings);
+		ADD_ACTION(get_spill_disks);
+		ADD_ACTION(test_spill_disks);
+		ADD_ACTION(setup_spill_disks);
+		ADD_ACTION(cleanup_spill_disks);
+		ADD_ACTION(resize_disk);
+		ADD_ACTION(restore_finished);
+		ADD_ACTION(resize_part);
 		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}

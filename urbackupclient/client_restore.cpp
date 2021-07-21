@@ -994,12 +994,17 @@ namespace restore
 				}
 				ret.push_back(si);
 			}
-			else if (t2.size() == 4 && t2[0] == "#" && !ret.empty())
+			else if ( (t2.size() == 4 || t2.size() == 5) &&
+				t2[0] == "#" && !ret.empty())
 			{
 				SImage si;
 				si.id = atoi(t2[1].c_str());
 				si.time_s = os_atoi64(t2[2]);
 				si.time_str = t2[3];
+				if (t2.size() == 5)
+				{
+					si.letter = t2[4];
+				}
 				ret[ret.size() - 1].assoc.push_back(si);
 			}
 		}
