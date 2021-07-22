@@ -64,7 +64,7 @@ function CurrentContent(args: WizardComponent) {
 
 function App() {
   const [wizard_state, setWizardState] = useState<WizardStateProps>({
-    state: WizardState.ConfigSpillSpace,
+    state: WizardState.Init,
     max_state: WizardState.Init,
     serverFound: false,
     internetServer: false,

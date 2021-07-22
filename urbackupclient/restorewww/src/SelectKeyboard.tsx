@@ -27,12 +27,14 @@ function SelectKeyboard(props: WizardComponent) {
                 return;
             }
 
-            if(!jdata["layouts"]) {
+            if(!jdata || !jdata["layouts"]) {
                 setFetchError("No layouts found");
                 return;
             }
 
-            setKeyboardLayouts(jdata["layouts"]);
+            const layouts: string[] = jdata["layouts"];
+
+            setKeyboardLayouts(layouts);;
             setIsLoading(false);
         })();
     });
@@ -74,7 +76,7 @@ function SelectKeyboard(props: WizardComponent) {
                 onChange={onSelectChange} defaultValue={props.props.keyboardLayout} style={{width: "200pt"}}
                 optionFilterProp="label">
                 {keyboardLayouts.map( (layout:string) => {
-                    return <Select.Option value={layout} label={getName(layout) ? (getName(layout) + " "+layout) : layout}>
+                    return <Select.Option key={layout} value={layout} label={getName(layout) ? (getName(layout) + " "+layout) : layout}>
                         {getName(layout) &&
                         <>
                             <ReactCountryFlag countryCode={layout} />

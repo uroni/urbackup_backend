@@ -8,8 +8,9 @@ import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-spark
 import assert from "assert";
 
 interface LogTableItem {
-    time: Date,
-    message: string
+    time: Date;
+    message: string;
+    key: number;
 }
 
 interface DownloadStats {
@@ -30,13 +31,17 @@ interface RestoreStatus {
     done_bytes: number;
 }
 
-const AlwaysScrollToBottom = () => {
+type ScrollLogT = {
+    logItems: LogTableItem[];
+};
+
+function AlwaysScrollToBottom(logItems: ScrollLogT) {
     const elementRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if(elementRef &&
             elementRef.current)
             elementRef.current.scrollIntoView()
-    });
+    }, [logItems.logItems]);
     return <div ref={elementRef} />;
   };
 
@@ -51,6 +56,9 @@ function Restoring(props: WizardComponent) {
     const [speedHist, setSpeedHist] = useState<number[]>([])
     const [retryWithSpillSpace, setRetryWithSpillSpace] = useState(false);
     const [diskSizeError, setDiskSizeError] = useState(false);
+    const [triedWithSpillSpace, setTriedWithSpillSpace] = useState(false);
+
+    const logId = useRef(0);
 
     //Needed for dev, otherwise it would restart restore on hot-reload
     let restoreRunning = useRef(false);
@@ -72,7 +80,8 @@ function Restoring(props: WizardComponent) {
     const [logTableData, setLogTableData] = useState<LogTableItem[]>([]);
 
     const addLog = (msg: string) => {
-        setLogTableData(produce(draft => {draft.push({time: new Date(), message: msg})}));
+        const currLogId = logId.current++;
+        setLogTableData(produce(draft => {draft.push({time: new Date(), message: msg, key: currLogId})}));
     }
 
     const restoreEcToString = (ec: number) => {
@@ -320,7 +329,7 @@ function Restoring(props: WizardComponent) {
 
             for(const sp of props.props.spillSpace.disks) {
                 params.append("disk"+idx, sp.path);
-                params.append("destructive"+idx, sp.space>=0 ? "0" : "1");
+                params.append("destructive"+idx, sp.destructive ? "1" : "0");
             }
 
             let jdata;
@@ -388,6 +397,11 @@ function Restoring(props: WizardComponent) {
 
                 if(ec===11 ) {
                     setDiskSizeError(true);
+
+                    if(withSpillSpace)
+                    {
+                        setTriedWithSpillSpace(true);
+                    }
                 }
 
                 if(ec===11 && 
@@ -543,7 +557,7 @@ function Restoring(props: WizardComponent) {
         <br />
         {status==="exception" &&
             <>
-            {!diskSizeError &&
+            {(!diskSizeError || triedWithSpillSpace ) &&
                 <><Button type="primary" onClick={() => {
                 props.update(produce(props.props, draft => {
                     draft.state = WizardState.ReviewRestore;
@@ -577,7 +591,7 @@ function Restoring(props: WizardComponent) {
         }
         <div style={{overflow: "auto", height: "50vh", border: "1px solid black"}}>
             <Table pagination={false} showHeader={false} columns={logTableColumns} dataSource={logTableData} />
-            <AlwaysScrollToBottom />
+            <AlwaysScrollToBottom logItems={logTableData}/>
         </div>
     </div>);
 }

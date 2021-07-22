@@ -54,6 +54,7 @@ function ServerSearch(props: WizardComponent) {
     }
 
     useMountEffect(() => {
+    let exitEffect = false;
     (async () => {
         if(props.props.internetServer) {
             console.log("Skip local server search because internet server is configured");
@@ -88,7 +89,7 @@ function ServerSearch(props: WizardComponent) {
         setIsLoading(false);
 
         var cnt = 0;
-        while(props.props.state===WizardState.ServerSearch) {
+        while(!exitEffect) {
             const res = await checkConnected();
             if(res.res===ConnectedResult.Connected)
                 break;
@@ -104,7 +105,7 @@ function ServerSearch(props: WizardComponent) {
             await sleep(1000);
         }
 
-        if(props.props.state!==WizardState.ServerSearch) {
+        if(exitEffect) {
             console.log("Server search aborted");
             return;
         }
@@ -116,6 +117,7 @@ function ServerSearch(props: WizardComponent) {
             draft.max_state = draft.state;
         }));
     })() ;
+    return () => {exitEffect = true};
     });
     
     return (<div>

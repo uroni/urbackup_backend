@@ -50,11 +50,12 @@ function WaitForConnection(props: WizardComponent) {
     }
 
     useMountEffect(() => {
+    let exitEffect = false;
     (async () => {
         console.log("Server wait for connection started");
 
         var cnt = 0;
-        while(props.props.state===WizardState.WaitForConnection) {
+        while(!exitEffect) {
             const res = await checkConnected();
             if(res.res===ConnectedResult.Connected)
                 break;
@@ -88,7 +89,7 @@ function WaitForConnection(props: WizardComponent) {
             await sleep(1000);
         }
 
-        if(props.props.state!==WizardState.WaitForConnection) {
+        if(exitEffect) {
             console.log("Server wait for connection aborted");
             return;
         }
@@ -100,6 +101,7 @@ function WaitForConnection(props: WizardComponent) {
             draft.max_state = draft.state;
         }));
     })() ;
+    return () => { exitEffect=true};
     });
 
     return (<div>

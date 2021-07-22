@@ -207,7 +207,7 @@ function ConfigRestore(props: WizardComponent) {
             Select client: <br />
             <Select showSearch loading={!hasClients} onChange={onClientChange} style={{ width: "600px" }} defaultValue="Please select...">
                 {clients.map( client => 
-                    (<Select.Option value={client}>{client}</Select.Option>)
+                    (<Select.Option key={client} value={client}>{client}</Select.Option>)
                 ) }
             </Select>
             <br />
@@ -218,7 +218,7 @@ function ConfigRestore(props: WizardComponent) {
                     setSelImage( getSelImageSet().find( image => image.id===parseInt(val) ) as (BackupImage|undefined));
                 } }>
                 {getSelImageSet().map( image => (
-                    <Select.Option value={image.id}>{image.letter} - {toIsoDateTime(new Date(image.time_s*1000))}</Select.Option>
+                    <Select.Option key={image.id} value={image.id}>{image.letter} - {toIsoDateTime(new Date(image.time_s*1000))}</Select.Option>
                 ))}
             </Select>
 
@@ -229,7 +229,7 @@ function ConfigRestore(props: WizardComponent) {
                 onChange={ val => setSelDisk(disks.find(disk => disk.path === val) as LocalDisk) }
                 value={selDisk === undefined ? "Please select..." : selDisk.path}>
                  {disks.map( disk => 
-                    (<Select.Option value={disk.path}>{disk.model} - size {disk.size} at {disk.path}</Select.Option>)
+                    (<Select.Option key={disk.path} value={disk.path}>{disk.model} - size {disk.size} at {disk.path}</Select.Option>)
                 ) }
             </Select>
             <br /><br />

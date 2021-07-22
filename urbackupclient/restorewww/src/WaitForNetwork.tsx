@@ -11,9 +11,10 @@ function WaitForNetwork(props: WizardComponent) {
     const [displayHint, setDisplayHint] = useState(false);
     
     useMountEffect(() => {
+        let exitEffect = false;
         (async () => {
             var cnt = 0;
-            while(props.props.state===WizardState.WaitForNetwork) {
+            while(!exitEffect) {
                 let jdata;
                 try {
                     const resp = await fetch("x?a=has_network_device",
@@ -23,7 +24,10 @@ function WaitForNetwork(props: WizardComponent) {
                     setFetchError("Error retrieving data from HTTP server");
                 }
 
-                if(jdata["ret"]) {
+                if(exitEffect)
+                    return;
+
+                if(jdata && jdata["ret"]) {
                     props.update(produce(props.props, draft => {
                         draft.state = WizardState.ServerSearch;
                         draft.max_state = draft.state;
@@ -38,6 +42,7 @@ function WaitForNetwork(props: WizardComponent) {
                     setDisplayHint(true);
             }
         })();
+        return () => {exitEffect=true};
     });
 
     return (
