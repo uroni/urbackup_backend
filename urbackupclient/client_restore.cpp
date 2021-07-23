@@ -26,10 +26,12 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "client_restore.h"
+#include "client_restore_http.h"
 #include <iostream>
 #include <stdlib.h>
 #include <memory.h>
 #include <algorithm>
+#include <thread>
 #include "../urbackupcommon/fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
@@ -1269,6 +1271,58 @@ void do_restore(void)
 
 		exit(0);
 	}
+	else if(cmd=="resize_ntfs")
+	{
+		std::string dev_fn = Server->getServerParameter("device_fn");
+		std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+
+		if (dev.get() == nullptr)
+		{
+			Server->Log("Error opening device at " + dev_fn+". "+os_last_error_str(), LL_ERROR);
+			exit(5);
+		}
+
+		dev.reset();
+
+		std::string s_new_size = Server->getServerParameter("new_size");
+		if(s_new_size.empty())
+		{
+			Server->Log("new_size paramater missing", LL_ERROR);
+			exit(6);
+		}
+
+		int64 new_size = watoi64(s_new_size);
+
+		std::string err;
+		std::atomic<int> complete_pc;
+		std::atomic<bool> done(false);
+		std::thread t( [&err, dev_fn, new_size, &complete_pc, &done]()
+		{
+			err = restore::resize_ntfs(new_size, dev_fn, complete_pc);
+			done=true;
+		});
+
+		t.detach();
+
+		int last_pc = complete_pc;
+		while(!done)
+		{
+			Server->wait(1000);
+			if(complete_pc!=last_pc)
+			{
+				last_pc = complete_pc;
+				Server->Log("Resize "+std::to_string(last_pc)+"% complete", LL_INFO);
+			}
+		}
+
+		if(!err.empty())
+		{
+			Server->Log("Resize error: "+err, LL_ERROR);
+			exit(1);
+		}
+
+		exit(0);
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -1282,7 +1336,8 @@ void do_restore(void)
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
-		Server->Log("read_mbr(device)", LL_INFO);
+		Server->Log("read_mbr(device_fn)", LL_INFO);
+		Server->Log("resize_ntfs(device_fn,new_size)", LL_INFO);
 		exit(0);
 	}
 	else if(cmd=="ping_server")

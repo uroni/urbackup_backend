@@ -21,6 +21,7 @@ namespace
 		restore::EDownloadResult ec;
 		bool finished;
 		std::string err;
+		std::atomic<int> pc_complete;
 	};
 
 	std::map<int64, SRestoreRes> restore_results;
@@ -846,6 +847,8 @@ ACTION_IMPL(setup_spill_disks)
 					restore::writeJsonResponse(tid, ret);
 					return;
 				}
+
+				system(("tune2fs -m 0 \""+sd.path+"\"").c_str());
 			}
 
 			std::string out;
@@ -1016,13 +1019,19 @@ ACTION_IMPL(resize_disk)
 		restore_res = &restore_results[curr_res_id];
 	}
 
-	std::thread t([disk_fn, new_size, restore_res]() {
-		std::string out;
-		int rc = os_popen("ntfsresize -s "+std::to_string(new_size*512)+" -P \""+disk_fn+"\" 2>&1", out);
-		if(rc!=0)
+	std::thread t([disk_fn, new_size, restore_res]()
+	{
+		if(get_fs(disk_fn)!="ntfs")
 		{
-			restore_res->err=trim(out);
+			restore_res->err = "Only resizing NTFS is currently supported";
+			restore_res->ec=restore::EDownloadResult_Ok;
+			restore_res->finished=true;
+			return;	
 		}
+
+		std::string err = restore::resize_ntfs(new_size*512, disk_fn, restore_res->pc_complete);
+
+		restore_res->err = err;
 		restore_res->ec=restore::EDownloadResult_Ok;
 		restore_res->finished=true;
 	});
@@ -1068,6 +1077,10 @@ ACTION_IMPL(restore_finished)
 			ret.set("err", restore_res->err);
 		}
 	}
+	else
+	{
+		ret.set("pcdone", restore_res->pc_complete.load());
+	}
 
 	restore::writeJsonResponse(tid, ret);
 }
@@ -1092,3 +1105,59 @@ ACTION_IMPL(resize_part)
 	restore::writeJsonResponse(tid, ret);
 }
 
+namespace restore
+{
+	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
+	{
+		FILE* in = NULL;
+		in = popen(("stdbuf -o0 ntfsresize -f -f -s "+std::to_string(new_size)+" \""+disk_fn+"\" 2>&1").c_str(), "re");
+		if(in==NULL)
+		{
+			return "Error opening command: "+ os_last_error_str();
+		}
+
+		char buf[4096];
+		std::string out;
+		std::string line;
+		while(true)
+		{
+			int ich = fgetc(in);
+
+			if(ich==EOF)
+				break;
+
+			char ch = static_cast<char>(ich);
+
+			if(ch!='\n' && ch!='\r')
+			{
+				line += ch;
+			}
+			else
+			{
+				if(line.find("percent completed")!=std::string::npos)
+				{
+					std::string str_pc = trim(getuntil("percent", line));
+					if(!str_pc.empty())
+						pc_complete = watoi(str_pc);
+				}
+				else
+				{
+					Server->Log("ntrfsresize: "+line, LL_INFO);
+
+					out += line + "\n";
+				}
+
+				line.clear();
+			}
+		}
+
+		int rc = pclose(in);
+
+		if(rc!=0)
+		{
+			return "Error runnning resize command. Rc: "+std::to_string(rc)+". Output: "+out;
+		}
+
+		return std::string();
+	}
+}

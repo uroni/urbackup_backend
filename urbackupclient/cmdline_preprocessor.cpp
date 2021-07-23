@@ -457,6 +457,21 @@ int restoreclient_main(int argc, char* argv[])
 		}
 	}
 
+	if (argc > 0 &&
+		std::string(argv[1]) == "--internal")
+	{
+		std::vector<std::string> real_args;
+
+		real_args.push_back(argv[0]);
+
+		for (size_t i = 2; i < argc; ++i)
+		{
+			real_args.push_back(argv[i]);
+		}
+
+		return run_real_main(real_args);
+	}
+
 	try
 	{
 		TCLAP::CmdLine cmd("Run UrBackup Restore Client", ' ', cmdline_version);

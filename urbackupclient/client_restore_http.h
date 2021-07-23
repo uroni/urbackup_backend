@@ -7,6 +7,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/settings.h"
 #include <stdlib.h>
+#include <atomic>
 
 #include "../Interface/Action.h"
 
@@ -46,4 +47,6 @@ namespace restore
 		Server->setContentType(tid, "application/json");
 		Server->Write(tid, ret.stringify(false));
 	}
+
+	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete);
 }

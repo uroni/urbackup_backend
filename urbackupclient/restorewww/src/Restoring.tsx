@@ -228,6 +228,7 @@ function Restoring(props: WizardComponent) {
             }
 
             if(jdata["finished"]) {
+                setPercent(100);
                 if(typeof jdata["err"]!=="undefined") {
                     addLog("Error resizing partition: "+jdata["err"]);
                     setStatus("exception");
@@ -268,6 +269,8 @@ function Restoring(props: WizardComponent) {
                 addLog("Done.");
 
                 return true;
+            } else if(typeof jdata["pcdone"]==="number") {
+                setPercent(jdata["pcdone"]);
             }
         }
     }
@@ -417,8 +420,10 @@ function Restoring(props: WizardComponent) {
 
                     if(withSpillSpace)
                     {
+                        setStatus("normal");
                         if(!await resizeSpilledImage(partpath, orig_dev_sz, partnum))
                         {
+                            setStatus("exception");
                             return;
                         }
                     }
@@ -586,7 +591,8 @@ function Restoring(props: WizardComponent) {
                     }))
                 }}>Restore another image</Button>
                 <Button onClick={restartSystem}
-                    loading={restartLoading}>Restart machine</Button>
+                    loading={restartLoading} style={{marginLeft: "10pt"}}>Restart machine</Button>
+                <br /> <br />
             </>
         }
         <div style={{overflow: "auto", height: "50vh", border: "1px solid black"}}>
