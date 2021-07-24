@@ -200,7 +200,7 @@ function Restoring(props: WizardComponent) {
         }
     }
 
-    const resizeSpilledImage = async (disk_fn: string, new_size: string, partnum: number) => {
+    const resizeSpilledImage = async (disk_fn: string, new_size: string, partnum: number, orig_dev_fn: string) => {
         addLog("Resizing partition...");
 
         let jdata;
@@ -261,7 +261,7 @@ function Restoring(props: WizardComponent) {
                         const resp = await fetch("x?a=resize_part",
                             {method: "POST",
                             body: new URLSearchParams({
-                                "disk_fn": disk_fn,
+                                "disk_fn": orig_dev_fn,
                                 "new_size": new_size,
                                 "partnum": (""+partnum)
                             })});
@@ -437,7 +437,7 @@ function Restoring(props: WizardComponent) {
                     if(withSpillSpace)
                     {
                         setStatus("normal");
-                        if(!await resizeSpilledImage(partpath, orig_dev_sz, partnum))
+                        if(!await resizeSpilledImage(partpath, orig_dev_sz, partnum, restoreToDisk.path))
                         {
                             setStatus("exception");
                             return false;
@@ -521,6 +521,7 @@ function Restoring(props: WizardComponent) {
                 restore_ok = false;
                 break;
             }
+            withSpillSpace = false;
         }
 
         if(restore_ok)
