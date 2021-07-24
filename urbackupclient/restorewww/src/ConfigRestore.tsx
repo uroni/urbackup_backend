@@ -93,8 +93,17 @@ function ConfigRestore(props: WizardComponent) {
             return;
         }
 
-        const new_images : BackupImage[] = jdata["images"].map(
+        let new_images : BackupImage[] = jdata["images"].map(
             (image: any) => ({...image, "clientname": value}));
+
+        for(let img of new_images) {
+            for(let assoc_img of img.assoc) {
+                assoc_img.clientname = img.clientname;
+                if(assoc_img.letter.length==0)
+                    assoc_img.letter = "sysvol";
+            }
+        }
+        
         setImages(new_images);
 
         let new_images_flattened = [];
@@ -104,11 +113,7 @@ function ConfigRestore(props: WizardComponent) {
             img_no_assoc.assoc = [];
             new_images_flattened.push(img_no_assoc);
             for(const assoc_img of img.assoc) {
-                let timg_assoc = {...assoc_img};
-                if(timg_assoc.letter.length===0) {
-                    timg_assoc.letter = "sysvol?";
-                }
-                new_images_flattened.push(timg_assoc);
+                new_images_flattened.push(assoc_img);
             }
         }
 

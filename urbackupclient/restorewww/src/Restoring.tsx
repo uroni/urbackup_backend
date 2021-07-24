@@ -295,13 +295,13 @@ function Restoring(props: WizardComponent) {
             } catch(error) {
                 addLog("Error getting partition to restore to");
                 setStatus("exception");
-                return;
+                return false;
             }
 
             if(!jdata["success"]) {
                 addLog("Error getting partition to restore to");
                 setStatus("exception");
-                return;
+                return false;
             }
 
             partpath = jdata["partpath"];
@@ -344,13 +344,13 @@ function Restoring(props: WizardComponent) {
             } catch(error) {
                 addLog("Error while setting up spill space");
                 setStatus("exception");
-                return;
+                return false;
             }
 
             if(typeof jdata["err"]!=="undefined") {
                 addLog("Error while setting up spill space: "+jdata["err"]);
                 setStatus("exception");
-                return;
+                return false;
             }
 
             partpath = jdata["path"];
@@ -372,7 +372,7 @@ function Restoring(props: WizardComponent) {
         } catch(error) {
             addLog("Error while starting image restore");
             setStatus("exception");
-            return;
+            return false;
         }
 
         const img_res_id : number = jdata["res_id"];
@@ -392,7 +392,7 @@ function Restoring(props: WizardComponent) {
             } catch(error) {
                 addLog("Error while checking image restore status");
                 setStatus("exception");
-                return;
+                return false;
             }
 
             if(jdata["finished"]) {
@@ -424,15 +424,13 @@ function Restoring(props: WizardComponent) {
                         if(!await resizeSpilledImage(partpath, orig_dev_sz, partnum))
                         {
                             setStatus("exception");
-                            return;
+                            return false;
                         }
                     }
-
-                    setImageDone(true);
                 } else {
                     addLog("Restoring image failed: "+restoreEcToString(ec));
                     setStatus("exception");
-                    return;
+                    return false;
                 }
                 break;
             } else if(typeof jdata["running_processes"]==="object") {
@@ -467,6 +465,8 @@ function Restoring(props: WizardComponent) {
                 }
             }
         }
+
+        return true;
     };
 
     const runRestore = async (withSpillSpace: boolean) => {
@@ -498,10 +498,17 @@ function Restoring(props: WizardComponent) {
 
         assert(!props.props.restoreToPartition || restoreImages.length===1);
 
+        let restore_ok: boolean = true;
         for(const img of restoreImages) {
-            await restoreImage(img, props.props.restoreToPartition,
-                props.props.restoreToDisk, withSpillSpace);
+            if(!await restoreImage(img, props.props.restoreToPartition,
+                props.props.restoreToDisk, withSpillSpace) ) {
+                restore_ok = false;
+                break;
+            }
         }
+
+        if(restore_ok)
+            setImageDone(true);
 
         restoreRunning.current = false;
     }

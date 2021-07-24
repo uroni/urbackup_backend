@@ -486,8 +486,6 @@ ACTION_IMPL(get_partition)
 					if (partitions.size() - i == mbrdata.partition_number)
 					{
 						Server->Log("Cannot delete last GPT partition. This is the partition to be restored. DISK IS PROBABLY TOO SMALL TO RESTORE TO.", LL_ERROR);
-						system("read -n1 -r -p \"Press any key to continue...\" key");
-						fix_gpt = false;
 						try_c = 100;
 					}
 

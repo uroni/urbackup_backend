@@ -1051,6 +1051,131 @@ namespace restore
 		return backup_images_output_to_json(data).stringify(false);
 	}
 
+	struct SgdiskPart
+	{
+		size_t number;
+		int64 start;
+		int64 end;
+		std::string size;
+		std::string code;
+		std::string type_name;
+		std::string part_guid;
+		std::string unique_guid;
+		std::string name;
+		std::string flags;
+	};
+
+	std::vector<SgdiskPart> getSgdiskParts(const std::string& dev)
+	{
+		std::vector<SgdiskPart> ret;
+		std::string out;
+		int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+		if(rc!=0)
+			return ret;
+
+		if(out.find("Number")==std::string::npos)
+			return ret;
+
+		std::string table = getafter("\n", getafter("Number", out));
+
+		std::vector<std::string> lines;
+		Tokenize(table, lines, "\n");
+
+		for(auto& line: lines)
+		{
+			std::vector<std::string> cols;
+			Tokenize(line, cols, " ");
+
+			SgdiskPart new_part;
+			new_part.number = 0;
+			new_part.start = -1;
+			new_part.end = -1;
+			size_t idx=0;
+			for(auto& col: cols)
+			{
+				std::string cd = trim(col);
+				if(!cd.empty())
+				{
+					if(idx==0)					
+						new_part.number = watoi(cd);
+					else if(idx==1)
+						new_part.start = watoi64(cd);
+					else if(idx==2)
+						new_part.end = watoi64(cd);
+					else if(idx==3)
+						new_part.size = cd;
+					else if(idx==4)
+						new_part.size += " "+ cd;
+					else if(idx==5)
+						new_part.code = cd;
+					else 
+						new_part.type_name += cd;
+					++idx;
+				}
+			}
+
+			if(new_part.start!=-1 && 
+				new_part.number!=0 &&
+				new_part.end!=-1)
+			{
+				std::string iout;
+				rc = os_popen("sgdisk -i "+std::to_string(new_part.number)+" \""+dev+"\" 2>&1", iout);
+				if(rc==0)
+				{
+					new_part.part_guid=trim(getbetween("Partition GUID code: ", " ", iout));
+					if(new_part.part_guid.empty())
+						new_part.part_guid=trim(getbetween("Partition GUID code: ", "\n", iout));
+
+					new_part.unique_guid = trim(getbetween("Partition unique GUID: ", "\n", iout));
+					new_part.flags = trim(getbetween("Attribute flags: ", "\n", iout));
+					new_part.name = trim(getbetween("Partition name: '", "\n", iout));
+					if(!new_part.name.empty() && new_part.name[new_part.name.size()-1]=='\'')
+						new_part.name = new_part.name.substr(0, new_part.name.size()-1);
+				}
+				else
+				{
+					Server->Log("Getting detailed info for partition "+std::to_string(new_part.number)+" failed: "+iout, LL_ERROR);
+				}
+
+				ret.push_back(new_part);
+			}
+		}
+
+		return ret;
+	}
+
+	std::string createSgdiskPart(const SgdiskPart& lp, const std::string& out_device)
+	{
+		std::string out;
+		int rc = os_popen("sgdisk -n "+std::to_string(lp.number)+":"+std::to_string(lp.start)+":0 "
+							"-A "+std::to_string(lp.number)+":=:"+lp.flags+" "
+							"-c "+std::to_string(lp.number)+":\""+lp.name+"\" "
+							"-t "+std::to_string(lp.number)+":"+lp.part_guid+" "
+							"-u "+std::to_string(lp.number)+":"+lp.unique_guid+" "
+							+out_device, out);
+
+		if(rc!=0)
+		{
+			return "Error creating partition "+std::to_string(lp.number)+": "+trim(out);
+		}
+
+		return std::string();
+	}
+
+	int64 getSgdiskDiskSize(const std::string& dev)
+	{
+		std::string out;
+		int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+		if(rc!=0)
+			return -1;
+
+		std::string s = trim(getbetween("Disk "+dev+": ", " sectors", out));
+		if(s.empty())
+			return -1;
+
+		return watoi64(s);
+	}
+
 	bool do_restore_write_mbr(const std::string& mbr_filename, const std::string& out_device,
 		bool fix_gpt, std::string& errmsg)
 	{
@@ -1146,8 +1271,68 @@ namespace restore
 		if(curr_fix_gpt && fix_gpt)
 		{
 			std::string fix_output;
-			os_popen(("echo -e \"w\\nY\\nY\" | gdisk " + out_device).c_str(), fix_output);
+			int rc = os_popen("sgdisk -e " + out_device + " 2>&1", fix_output);
 			errmsg="Fixed GPT backup table: "+trim(fix_output);
+			if(fix_output.find("too big for the disk")!=std::string::npos)
+			{
+				std::vector<SgdiskPart> partitions = getSgdiskParts(out_device);
+
+				int64 sgdisk_size = getSgdiskDiskSize(out_device);
+				while(!partitions.empty())
+				{
+					if(sgdisk_size<0)
+						break;
+
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					if(lp.start>=sgdisk_size)
+					{
+						Server->Log("Partition "+std::to_string(lp.number)+" not on disk. Removing...");
+						std::string out;
+						rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+						if(rc!=0)
+						{
+							errmsg="Error deleting last partition (1): "+trim(out);
+							Server->Log(errmsg, LL_ERROR);
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				if(!partitions.empty())
+				{
+					Server->Log("Partition too big. Resizing last partition", LL_WARNING);
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					Server->Log("Last partition num="+std::to_string(lp.number)+" start="+std::to_string(lp.start)+" end="+std::to_string(lp.end)
+						+" size="+lp.size, LL_INFO);
+
+					std::string out;
+					rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+					if(rc!=0)
+					{
+						errmsg="Error deleting last partition: "+trim(out);
+						Server->Log(errmsg, LL_ERROR);
+					}
+
+					std::string err = createSgdiskPart(lp, out_device);
+
+					if(!err.empty())
+					{
+						errmsg="Error re-creating last partition: "+trim(err);
+						Server->Log(errmsg, LL_ERROR);
+					}
+				}
+				else
+				{
+					Server->Log("No partitions found", LL_ERROR);
+				}
+			}
 		}
 
 		Server->destroy(dev);
@@ -1319,6 +1504,24 @@ void do_restore(void)
 		{
 			Server->Log("Resize error: "+err, LL_ERROR);
 			exit(1);
+		}
+
+		exit(0);
+	}
+	else if(cmd=="get_sgparts")
+	{
+		std::string dev_fn = Server->getServerParameter("device_fn");
+
+		Server->Log("Device size: "+PrettyPrintBytes(getSgdiskDiskSize(dev_fn)*512), LL_INFO);
+
+		std::vector<SgdiskPart> parts = getSgdiskParts(dev_fn);
+
+		for(const SgdiskPart& part: parts)
+		{
+			Server->Log("part number="+std::to_string(part.number)
+				+" start="+std::to_string(part.start)+" end="+std::to_string(part.end)
+				+" size="+part.size+" part_uuid="+part.part_guid+" unique_uuid="+part.unique_guid
+				+" name=\""+part.name+"\" flags="+part.flags, LL_INFO);
 		}
 
 		exit(0);
