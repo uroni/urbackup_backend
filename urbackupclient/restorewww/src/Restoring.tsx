@@ -296,6 +296,8 @@ function Restoring(props: WizardComponent) {
                 return false;
             }
 
+            setStatus("normal");
+
             addLog("Getting partition to restore to...");
             let jdata;
             try {
@@ -546,6 +548,7 @@ function Restoring(props: WizardComponent) {
     }
 
     const doRetryWithSpillSpace = async () => {
+        setDiskSizeError(false);
         await runRestore(true);
     }
 
