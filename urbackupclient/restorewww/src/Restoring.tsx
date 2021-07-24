@@ -106,10 +106,7 @@ function Restoring(props: WizardComponent) {
         }
     }
 
-    const restoreMBR = async () => {
-        setRestoreAction("MBR and GPT");
-        setPercent(0);
-
+    const getMBR = async (restoreImage: BackupImage) => {
         addLog("Loading MBR and GPT data...");
 
         let jdata;
@@ -117,8 +114,8 @@ function Restoring(props: WizardComponent) {
             const resp = await fetch("x?a=start_download",
                 {method: "POST",
                 body: new URLSearchParams({
-                    "img_id": ("" + props.props.restoreImage.id),
-                    "img_time": ("" + props.props.restoreImage.time_s),
+                    "img_id": ("" + restoreImage.id),
+                    "img_time": ("" + restoreImage.time_s),
                     "out": "/tmp/mbr.dat",
                     "mbr": "1"
                 })});
@@ -126,7 +123,7 @@ function Restoring(props: WizardComponent) {
         } catch(error) {
             addLog("Error while loading MBR");
             setStatus("exception");
-            return;
+            return false;
         }
 
         const mbr_res_id : number = jdata["res_id"];
@@ -144,7 +141,7 @@ function Restoring(props: WizardComponent) {
             } catch(error) {
                 addLog("Error while checking MBR restore status");
                 setStatus("exception");
-                return;
+                return false;
             }
 
             if(jdata["finished"]) {
@@ -154,7 +151,7 @@ function Restoring(props: WizardComponent) {
                 } else {
                     addLog("Loading MBR failed: " + restoreEcToString(jdata["ec"]));
                     setStatus("exception");
-                    return;
+                    return false;
                 }
                 break;
             } else if(jdata["pc"]) {
@@ -162,10 +159,22 @@ function Restoring(props: WizardComponent) {
             }
         }
 
+        return true;
+    }
+
+    const restoreMBR = async () => {
+        setRestoreAction("MBR and GPT");
+        setPercent(0);
+
+        if(!await getMBR(props.props.restoreImage)) {
+            return;
+        }
+
         addLog("Writing MBR and GPT to disk...");
         setPercent(0);
         setStatus("normal");
 
+        let jdata;
         try {
             const resp = await fetch("x?a=write_mbr",
                 {method: "POST",
@@ -282,6 +291,11 @@ function Restoring(props: WizardComponent) {
         let partpath: string;
         let partnum: number;
         if(!restoreToPartition) {
+
+            if(!await getMBR(img)) {
+                return false;
+            }
+
             addLog("Getting partition to restore to...");
             let jdata;
             try {

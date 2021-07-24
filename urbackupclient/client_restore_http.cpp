@@ -168,7 +168,7 @@ ACTION_IMPL(start_download)
 		writestring("", out);
 	}
 
-	Server->Log("Start_download: id = \""+std::to_string(img_id)+" time = \""+img_time+ "\"", LL_INFO);
+	Server->Log("Start_download: id = \""+std::to_string(img_id)+"\" time = \""+img_time+ "\"", LL_INFO);
 
 	std::thread dl_thread([img_id, img_time, mbr, out, restore_res]() {
 		restore_res->ec = restore::downloadImage(img_id, img_time, out, mbr, g_login_data, restore_res->dl_status);
@@ -1091,7 +1091,7 @@ ACTION_IMPL(resize_part)
 	int64 new_size = watoi64(POST["new_size"]);
 
 	std::string out;
-	int rc = os_popen("parted -sm resizepart "+std::to_string(partnum)+" "+std::to_string(new_size*512)+"B 2>&1", out);
+	int rc = os_popen("parted \""+disk_fn+"\" -sm resizepart "+std::to_string(partnum)+" "+std::to_string(new_size*512)+"B 2>&1", out);
 
 	JSON::Object ret;
 	ret.set("ok", true);
