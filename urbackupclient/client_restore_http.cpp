@@ -1090,14 +1090,56 @@ ACTION_IMPL(resize_part)
 
 	int64 new_size = watoi64(POST["new_size"]);
 
-	std::string out;
-	int rc = os_popen("parted \""+disk_fn+"\" -sm resizepart "+std::to_string(partnum)+" "+std::to_string(new_size*512)+"B 2>&1", out);
-
 	JSON::Object ret;
 	ret.set("ok", true);
+
+	std::string out;
+	int rc = os_popen("parted \""+disk_fn+"\" -sm unit B print", out);
 	if(rc!=0)
 	{
 		ret.set("err", out);
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	int64 start = -1;
+
+	std::vector<std::string> lines;
+	Tokenize(out, lines, "\n");
+	for(auto line: lines)
+	{
+		std::vector<std::string> toks;
+		Tokenize(line, toks, ":");
+
+		if(toks.size()>2)
+		{
+			int cpartnum = watoi(toks[0]);
+
+			if(cpartnum==partnum)
+			{
+				start = watoi64(toks[1]);
+				break;
+			}
+		}
+	}
+
+	if(start==-1)
+	{
+		ret.set("err", "Error finding partition start. Out: "+out);
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	out.clear();
+	rc = os_popen("parted \""+disk_fn+"\" -sm resizepart "+std::to_string(partnum)+" "+std::to_string(start + new_size*512)+"B 2>&1", out);
+	
+	if(rc!=0)
+	{
+		rc = os_popen("echo -e \"resizepart "+std::to_string(partnum)+" "+std::to_string(start + new_size*512)+"B\\nYes\\n\" | parted \""+disk_fn+"\" ---pretend-input-tty", out);
+		if(rc!=0)
+		{
+			ret.set("err", out);
+		}
 	}
 
 	restore::writeJsonResponse(tid, ret);
