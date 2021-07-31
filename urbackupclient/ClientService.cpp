@@ -3995,6 +3995,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
 		}
 
+		if (res_paths.empty() &&
+			!FileExists(settings_fn))
+			continue;
+
 		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 		if (curr_settings.get() != NULL)

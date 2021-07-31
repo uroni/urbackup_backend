@@ -394,10 +394,10 @@ namespace
 
 		int64 curr_pos=0;
 
-		std::unique_ptr<IVHDFile> vhdout(open_device_file(output, false, total_size, std::string(), true));
+		std::auto_ptr<IVHDFile> vhdout(open_device_file(output, false, total_size, std::string(), true));
 		IFile* vhdout_file = reinterpret_cast<IFile*>(vhdout.get());
 
-		if (vhdout.get()==nullptr || !vhdout->isOpen())
+		if (vhdout.get()==NULL || !vhdout->isOpen())
 		{
 			Server->Log("Error opening output VHD(X)-File \"" + output + "\"", LL_ERROR);
 			return false;
@@ -974,9 +974,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		Server->Log("VHDMake.");
 
-		std::unique_ptr<IFsFile> inFile(Server->openFile(vhdmake_in, MODE_READ));
+		std::auto_ptr<IFsFile> inFile(Server->openFile(vhdmake_in, MODE_READ));
 
-		if (inFile.get() == nullptr)
+		if (inFile.get() == NULL)
 		{
 			Server->Log("Error opening " + vhdmake_in + ". ", LL_ERROR);
 			exit(1);
@@ -984,7 +984,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		std::string vhd_out = Server->getServerParameter("vhd_out");
 		IVHDFile* vhdfile = open_device_file(vhd_out, false, inFile->Size());
-		if (vhdfile == nullptr)
+		if (vhdfile == NULL)
 		{
 			Server->Log("Error opening " + vhd_out + ". ", LL_ERROR);
 			exit(1);
@@ -1018,9 +1018,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		Server->Log("VHDMake Diff.");
 
-		std::unique_ptr<IFsFile> inFile(Server->openFile(vhdmake_diff_in, MODE_READ));
+		std::auto_ptr<IFsFile> inFile(Server->openFile(vhdmake_diff_in, MODE_READ));
 
-		if (inFile.get() == nullptr)
+		if (inFile.get() == NULL)
 		{
 			Server->Log("Error opening " + vhdmake_diff_in + ". ", LL_ERROR);
 			exit(1);
@@ -1042,9 +1042,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(2);
 		}
 
-		std::unique_ptr<IFsFile> inParentFile(Server->openFile(vhdmake_in_parent, MODE_READ));
+		std::auto_ptr<IFsFile> inParentFile(Server->openFile(vhdmake_in_parent, MODE_READ));
 
-		if (inParentFile.get() == nullptr)
+		if (inParentFile.get() == NULL)
 		{
 			Server->Log("Error opening " + vhdmake_in_parent + ". ", LL_ERROR);
 			exit(1);
@@ -1053,7 +1053,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string vhd_out = Server->getServerParameter("vhd_out");
 		Server->deleteFile(vhd_out); //TODO: rm
 		IVHDFile* vhdfile = open_device_file(vhd_out, false, inFile->Size(), vhd_out_parent);
-		if (vhdfile == nullptr)
+		if (vhdfile == NULL)
 		{
 			Server->Log("Error opening " + vhd_out + ". ", LL_ERROR);
 			exit(1);

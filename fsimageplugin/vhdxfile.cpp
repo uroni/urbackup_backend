@@ -40,8 +40,7 @@ namespace
 	const int64 allocate_size_add_size = 100 * 1024 * 1024;
 	const _u32 log_sector_size = 4096;
 
-	template<typename T>
-	auto roundUp(T numToRound, T multiple)
+	size_t roundUp(size_t numToRound, size_t multiple)
 	{
 		return ((numToRound + multiple - 1) / multiple) * multiple;
 	}
@@ -477,10 +476,11 @@ namespace
 			parent_locator_size = sizeof(VhdxParentLocatorHeader);
 			parent_locator_size += sizeof(VhdxParentLocatorEntry) * parent_loc_entries.size();
 
-			for (auto it : parent_loc_entries)
+			for (str_map::iterator it = parent_loc_entries.begin();
+				it!=parent_loc_entries.end();++it)
 			{
-				parent_locator_size += it.first.size();
-				parent_locator_size += it.second.size();
+				parent_locator_size += it->first.size();
+				parent_locator_size += it->second.size();
 			}
 		}
 
@@ -573,20 +573,21 @@ namespace
 			size_t str_pos = parent_locator_entry->Offset + sizeof(VhdxParentLocatorHeader) +
 				sizeof(VhdxParentLocatorEntry) * parent_loc_entries.size();
 
-			for (auto it: parent_loc_entries)
+			for (str_map::iterator it = parent_loc_entries.begin();
+				it!=parent_loc_entries.end();++it)
 			{
 				VhdxParentLocatorEntry* entry = reinterpret_cast<VhdxParentLocatorEntry*>(ret.data() + entry_pos);
 				entry_pos += sizeof(VhdxParentLocatorEntry);
 
 				entry->KeyOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
-				entry->KeyLength = static_cast<_u16>(it.first.size());
-				memcpy(ret.data() + str_pos, it.first.data(), it.first.size());
-				str_pos += it.first.size();
+				entry->KeyLength = static_cast<_u16>(it->first.size());
+				memcpy(ret.data() + str_pos, it->first.data(), it->first.size());
+				str_pos += it->first.size();
 
 				entry->ValueOffset = static_cast<_u32>(str_pos - parent_locator_entry->Offset);
-				entry->ValueLength = static_cast<_u16>(it.second.size());
-				memcpy(ret.data() + str_pos, it.second.data(), it.second.size());
-				str_pos += it.second.size();
+				entry->ValueLength = static_cast<_u16>(it->second.size());
+				memcpy(ret.data() + str_pos, it->second.data(), it->second.size());
+				str_pos += it->second.size();
 			}
 
 			assert(str_pos == ret.size());
@@ -646,9 +647,12 @@ namespace
 
 	struct LogEntry
 	{
+		LogEntry()
+			: sequence_number(-1) {}
+
 		std::vector<LogZeroDescriptor> to_zero;
 		std::vector<LogData> to_write;
-		int64 sequence_number = -1;
+		int64 sequence_number;
 		int64 length;
 		int64 fsize;
 		int64 new_fsize;
@@ -695,7 +699,7 @@ namespace
 
 		if (f->Read(off, entry_buf.data(), static_cast<_u32>(entry_buf.size())) != entry_buf.size())
 		{
-			Server->Log("Error reading log entry (size=" + std::to_string(header->EntryLength) + "). "
+			Server->Log("Error reading log entry (size=" + convert(header->EntryLength) + "). "
 				+ os_last_error_str(), LL_WARNING);
 			return loge;
 		}
@@ -801,7 +805,7 @@ VHDXFile::VHDXFile(const std::string& fn, bool pRead_only, uint64 pDstsize, unsi
 	: dst_size(pDstsize), fast_mode(fast_mode), read_only(pRead_only), sector_bitmap_mutex(Server->createMutex()),
 	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
 	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
-	is_open(false)
+	is_open(false), next_payload_mutex(Server->createMutex()), log_mutex(Server->createMutex())
 {
 	is_open = open(fn, compress, compress_n_threads);
 }
@@ -812,7 +816,7 @@ VHDXFile::VHDXFile(const std::string& fn, const std::string& parent_fn, bool pRe
 	parent_fn(parent_fn), sector_bitmap_mutex(Server->createMutex()),
 	pending_sector_bitmaps_mutex(Server->createMutex()), finished(false),
 	log_sequence_num(1), spos(0), data_write_uuid_updated(false),
-	is_open(false)
+	is_open(false), next_payload_mutex(Server->createMutex()), log_mutex(Server->createMutex())
 {
 	if (!FileExists(fn))
 	{
@@ -904,7 +908,7 @@ bool VHDXFile::has_sector(_i64 sector_size)
 {
 	if (!has_sector_int(spos))
 	{
-		if (parent.get() != nullptr)
+		if (parent.get() != NULL)
 			return parent->has_sector_int(spos);
 	}
 	
@@ -932,7 +936,7 @@ bool VHDXFile::finish()
 
 		bool ret = syncInt(true);
 
-		if (ret && parent.get()!=nullptr)
+		if (ret && parent.get()!=NULL)
 		{
 			ret = parent->finish();
 		}
@@ -1150,12 +1154,12 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 		}
 		else if (bat_entry->State != PAYLOAD_BLOCK_ZERO)
 		{
-			Server->Log("Unknown bat entry state " + std::to_string(bat_entry->State), LL_ERROR);
+			Server->Log("Unknown bat entry state " + convert(bat_entry->State), LL_ERROR);
 			return false;
 		}
 
 		if (copy_prev && curr_sector_size < sector_size &&
-			parent.get()!=nullptr)
+			parent.get()!=NULL)
 		{
 			std::vector<char> prev_buf(sector_size - curr_sector_size);
 
@@ -1247,7 +1251,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 {
 	if (spos> dst_size)
 	{
-		if (has_error != nullptr)
+		if (has_error != NULL)
 			*has_error = true;
 
 		return 0;
@@ -1276,7 +1280,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (rc < toread)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1285,13 +1289,13 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			continue;
 		}
 
-		if (parent.get()==nullptr)
+		if (parent.get()==NULL)
 		{
 			_u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1309,7 +1313,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1332,7 +1336,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 				bool set;
 				if (!isSectorSet(spos, set))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1354,7 +1358,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1377,7 +1381,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return read;
@@ -1385,7 +1389,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return read;
@@ -1411,7 +1415,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 {
 	if (spos > dst_size)
 	{
-		if (has_error != nullptr)
+		if (has_error != NULL)
 			*has_error = true;
 
 		return 0;
@@ -1429,7 +1433,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 		if (!fast_mode && !updateHeader())
 		{
-			if (has_error != nullptr)
+			if (has_error != NULL)
 				*has_error = true;
 
 			return 0;
@@ -1454,7 +1458,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1463,13 +1467,13 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			continue;
 		}
 
-		if (parent.get()==nullptr)
+		if (parent.get()==NULL)
 		{
 			_u32 towrite = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - written);
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1479,7 +1483,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 				bat_entry->State != PAYLOAD_BLOCK_ZERO &&
 				bat_entry->State != PAYLOAD_BLOCK_UNMAPPED)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1487,7 +1491,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (!allocateBatBlockFull(block))
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1501,7 +1505,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1515,7 +1519,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			{
 				if (!setSector(spos, spos+towrite))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1526,7 +1530,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 				bat_entry->State != PAYLOAD_BLOCK_ZERO &&
 				bat_entry->State != PAYLOAD_BLOCK_UNMAPPED)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1535,7 +1539,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 			{
 				if (!allocateBatBlockFull(block))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1545,7 +1549,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 				if (!setSector(spos, spos+towrite))
 				{
-					if (has_error != nullptr)
+					if (has_error != NULL)
 						*has_error = true;
 
 					return written;
@@ -1561,7 +1565,7 @@ _u32 VHDXFile::Write(int64 spos, const char* buffer, _u32 bsize, bool* has_error
 
 			if (rc < towrite)
 			{
-				if (has_error != nullptr)
+				if (has_error != NULL)
 					*has_error = true;
 
 				return written;
@@ -1596,8 +1600,11 @@ bool VHDXFile::syncInt(bool full)
 	{
 		IScopedLock lock(pending_sector_bitmaps_mutex.get());
 
-		for (_u32 sector_block : pending_sector_bitmaps)
+		for (std::set<_u32>::iterator it = pending_sector_bitmaps.begin();
+			it!=pending_sector_bitmaps.end(); ++it)
 		{
+			_u32 sector_block = *it;
+
 			VhdxBatEntry* sector_bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + sector_block;
 
 			if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT)
@@ -1606,7 +1613,7 @@ bool VHDXFile::syncInt(bool full)
 				return false;
 			}
 
-			auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+			std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 			if (it_sector_bitmap == sector_bitmap_bufs.end())
 			{
 				assert(false);
@@ -1630,7 +1637,7 @@ bool VHDXFile::syncInt(bool full)
 	{
 		retry = false;
 
-		std::unique_lock<std::mutex> lock(log_mutex);
+		IScopedLock lock(log_mutex.get());
 
 		int64 stop_idx = -1;
 		if (!fast_mode)
@@ -1649,8 +1656,10 @@ bool VHDXFile::syncInt(bool full)
 
 			int64 b_idx = -1;
 			int64 last_log_idx = -1;
-			for (int64 entry_idx : pending_bat_entries)
+			for (std::set<int64>::iterator it = pending_bat_entries.begin();
+				it!=pending_bat_entries.end();++it)
 			{
+				int64 entry_idx = *it;
 				int64 c_b_idx = (entry_idx * sizeof(int64)) / log_sector_size;
 
 				if (b_idx != c_b_idx)
@@ -1684,7 +1693,7 @@ bool VHDXFile::syncInt(bool full)
 		}
 
 		int64 b_idx = -1;
-		for (auto it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
+		for (std::set<int64>::iterator it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
 		{
 			int64 entry_idx = *it;
 
@@ -1708,7 +1717,7 @@ bool VHDXFile::syncInt(bool full)
 
 			if (stop_idx != -1)
 			{
-				auto it_prev = it;
+				std::set<int64>::iterator it_prev = it;
 				++it;
 				pending_bat_entries.erase(it_prev);
 			}
@@ -1823,7 +1832,7 @@ bool VHDXFile::createNew()
 	std::string parent_data_uuid;
 	std::string parent_abs_path;
 	std::string parent_rel_path;
-	if (parent.get() != nullptr)
+	if (parent.get() != NULL)
 	{
 		VhdxGUID g;
 		parent->getDataWriteGUID(g);
@@ -1865,8 +1874,9 @@ bool VHDXFile::createNew()
 			}
 
 			parent_rel_path = cparent_fn;
-			for (char ch : fn)
+			for (size_t i=0;i<fn.size();++i)
 			{
+				char ch = fn[i];
 				if (ch == '\\')
 					parent_rel_path += "..\\";
 			}
@@ -1909,7 +1919,7 @@ bool VHDXFile::updateHeader()
 
 	if (file->Write(curr_header_pos, reinterpret_cast<char*>(&curr_header), sizeof(curr_header)) != sizeof(curr_header))
 	{
-		Server->Log("Error writing VHDX header to pos " + std::to_string(curr_header_pos) + ". " + os_last_error_str());
+		Server->Log("Error writing VHDX header to pos " + convert(curr_header_pos) + ". " + os_last_error_str());
 		return false;
 	}
 
@@ -1947,13 +1957,14 @@ bool VHDXFile::replayLog()
 
 	if (file->Size() < head_entry.fsize)
 	{
-		Server->Log("VHDX size smaller than expected from log expected="+std::to_string(head_entry.fsize)
-			+" got="+std::to_string(file->Size()), LL_WARNING);
+		Server->Log("VHDX size smaller than expected from log expected="+convert(head_entry.fsize)
+			+" got="+convert(file->Size()), LL_WARNING);
 		return false;
 	}
 
-	for (int64 entry_pos : seq.entries)
+	for (size_t i=0;i<seq.entries.size();++i)
 	{
+		int64 entry_pos = seq.entries[i];
 		LogEntry loge = readLogEntry(file, curr_header.LogGuid, entry_pos);
 
 		if (loge.sequence_number == -1)
@@ -1964,13 +1975,14 @@ bool VHDXFile::replayLog()
 
 		if (file->Size() < loge.fsize)
 		{
-			Server->Log("VHDX size smaller than expected from log entry expected=" + std::to_string(loge.fsize)
-				+ " got=" + std::to_string(file->Size()), LL_WARNING);
+			Server->Log("VHDX size smaller than expected from log entry expected=" + convert(loge.fsize)
+				+ " got=" + convert(file->Size()), LL_WARNING);
 			return false;
 		}
 
-		for (LogZeroDescriptor& zero_desc : loge.to_zero)
+		for (size_t j=0;j<loge.to_zero.size();++j)
 		{
+			LogZeroDescriptor& zero_desc =  loge.to_zero[j];
 			std::vector<char> zero_buf(zero_desc.ZeroLength);
 			if (file->Write(zero_desc.FileOffset, zero_buf.data(), static_cast<_u32>(zero_buf.size())) != zero_buf.size())
 			{
@@ -1979,8 +1991,9 @@ bool VHDXFile::replayLog()
 			}
 		}
 
-		for (LogData& log_data : loge.to_write)
+		for (size_t j=0;j<loge.to_write.size();++j)
 		{
+			LogData& log_data = loge.to_write[j];
 			if (file->Write(log_data.offset, log_data.data, sizeof(log_data.data)) != sizeof(log_data.data))
 			{
 				Server->Log("Error writing data from log. " + os_last_error_str(), LL_WARNING);
@@ -2037,7 +2050,7 @@ bool VHDXFile::readHeader()
 		return false;
 	}
 
-	VhdxHeader* sel_header = nullptr;
+	VhdxHeader* sel_header = NULL;
 
 	if (checkHeader(file, header1))
 	{
@@ -2050,7 +2063,7 @@ bool VHDXFile::readHeader()
 		sel_header = &header2;
 	}
 
-	if (sel_header == nullptr)
+	if (sel_header == NULL)
 	{
 		Server->Log("Both VHDX headers are invalid", LL_WARNING);
 		return false;
@@ -2130,7 +2143,7 @@ bool VHDXFile::readRegionTable(int64 off)
 
 	if ((found ^ (1 | 2)) != 0)
 	{
-		Server->Log("Did not find required region table entry. Found="+std::to_string(found), LL_WARNING);
+		Server->Log("Did not find required region table entry. Found="+convert(found), LL_WARNING);
 		return false;
 	}
 
@@ -2148,8 +2161,8 @@ bool VHDXFile::readBat()
 		_u32 toread = (std::min)(read_size, bat_region.Length - i);
 		if (file->Read(bat_region.FileOffset + i, bat_buf.data() + i, toread) != toread)
 		{
-			Server->Log("Error reading VHDX BAT at pos " + std::to_string(bat_region.FileOffset + i)
-				+ " toread " + std::to_string(toread) + ". " + os_last_error_str(), LL_WARNING);
+			Server->Log("Error reading VHDX BAT at pos " + convert(bat_region.FileOffset + i)
+				+ " toread " + convert(toread) + ". " + os_last_error_str(), LL_WARNING);
 			return false;
 		}
 	}
@@ -2170,7 +2183,7 @@ bool VHDXFile::readMeta()
 	if (file->Read(meta_table_region.FileOffset, meta_table.data(), static_cast<_u32>(meta_table.size())) != meta_table.size())
 	{
 		Server->Log("Error reading VHDX meta table from pos " +
-			std::to_string(meta_table_region.FileOffset) + ". " + os_last_error_str(), LL_WARNING);
+			convert(meta_table_region.FileOffset) + ". " + os_last_error_str(), LL_WARNING);
 		return false;
 	}
 
@@ -2216,12 +2229,12 @@ bool VHDXFile::readMeta()
 
 		if (table_entry->Offset < 64 * 1024)
 		{
-			Server->Log("Meta table offset wrong: " + std::to_string(table_entry->Offset), LL_WARNING);
+			Server->Log("Meta table offset wrong: " + convert(table_entry->Offset), LL_WARNING);
 			return false;
 		}
 		if (table_entry->Offset + table_entry->Length > meta_table_region.Length)
 		{
-			Server->Log("Meta table offset+length wrong: " + std::to_string(table_entry->Offset + table_entry->Length), LL_WARNING);
+			Server->Log("Meta table offset+length wrong: " + convert(table_entry->Offset + table_entry->Length), LL_WARNING);
 			return false;
 		}
 
@@ -2316,8 +2329,8 @@ bool VHDXFile::readMeta()
 				if (parent_locator_entry->KeyOffset + parent_locator_entry->KeyLength >= entry_buf.size()
 					|| parent_locator_entry->KeyOffset>10*1024*1024)
 				{
-					Server->Log("Parent locator entry key offset not plausible: "+std::to_string(parent_locator_entry->KeyOffset)+
-						" length: "+std::to_string(parent_locator_entry->KeyLength),
+					Server->Log("Parent locator entry key offset not plausible: "+convert(parent_locator_entry->KeyOffset)+
+						" length: "+convert(parent_locator_entry->KeyLength),
 						LL_WARNING);
 					return false;
 				}
@@ -2325,8 +2338,8 @@ bool VHDXFile::readMeta()
 				if (parent_locator_entry->ValueOffset + parent_locator_entry->ValueLength >= entry_buf.size()
 					|| parent_locator_entry->ValueOffset > 10 * 1024 * 1024)
 				{
-					Server->Log("Parent locator entry key offset not plausible: " + std::to_string(parent_locator_entry->ValueOffset)+
-						" length: " + std::to_string(parent_locator_entry->ValueLength),
+					Server->Log("Parent locator entry key offset not plausible: " + convert(parent_locator_entry->ValueOffset)+
+						" length: " + convert(parent_locator_entry->ValueLength),
 						LL_WARNING);
 					return false;
 				}
@@ -2371,10 +2384,10 @@ bool VHDXFile::readMeta()
 		vhdx_params.BlockSize == 0 ||
 		dst_size == -1)
 	{
-		Server->Log("Missing VHDX parameter. sector_size=" + std::to_string(sector_size) +
-			" physical_sector_size=" + std::to_string(physical_sector_size) +
-			" vhdx_params.BlockSize=" + std::to_string(vhdx_params.BlockSize)+
-			" dst_size=" + std::to_string(dst_size), LL_WARNING);
+		Server->Log("Missing VHDX parameter. sector_size=" + convert(sector_size) +
+			" physical_sector_size=" + convert(physical_sector_size) +
+			" vhdx_params.BlockSize=" + convert(vhdx_params.BlockSize)+
+			" dst_size=" + convert(dst_size), LL_WARNING);
 		return false;
 	}
 
@@ -2399,7 +2412,7 @@ bool VHDXFile::readMeta()
 				true, 0));
 		}
 
-		if (parent.get() == nullptr ||
+		if (parent.get() == NULL ||
 			!parent->isOpen())
 		{
 			Server->Log("Could not open parent vhdx at \"" + absolute_win32_parent_path + "\" or "
@@ -2426,7 +2439,12 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 
 	bat_entry->State = PAYLOAD_BLOCK_FULLY_PRESENT;
 
-	int64 new_pos = next_payload_pos.fetch_add(block_size, std::memory_order_relaxed);
+	int64 new_pos;
+	{
+		IScopedLock lock(next_payload_mutex.get());
+		new_pos = next_payload_pos;
+		next_payload_pos += block_size;
+	}
 
 	if (new_pos > file->Size())
 	{
@@ -2436,7 +2454,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 			!backing_file->Resize(allocated_size, false))
 		{
 			Server->Log("Error resizing backing file to new allocated size " 
-				+ std::to_string(allocated_size) + ". " + os_last_error_str(),
+				+ convert(allocated_size) + ". " + os_last_error_str(),
 				LL_WARNING);
 			return false;
 		}
@@ -2447,7 +2465,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 	bat_entry->Reserved = 0;
 
 	{
-		std::unique_lock<std::mutex> lock(log_mutex);
+		IScopedLock lock(log_mutex.get());
 		pending_bat_entries.insert(block);
 	}
 
@@ -2483,7 +2501,7 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 {
 	backing_file.reset(Server->openFile(fn, read_only ? MODE_READ : MODE_RW_CREATE));
 
-	if (backing_file.get() == nullptr)
+	if (backing_file.get() == NULL)
 	{
 		Server->Log("Error opening VHDX backing file at \"" 
 			+ fn + "\". " + os_last_error_str(), LL_WARNING);
@@ -2699,9 +2717,9 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 			return false;
 	}
 
-	size_t desc_count = roundUp(bsize, size_t{ log_sector_size }) / log_sector_size;
+	size_t desc_count = roundUp(bsize, static_cast<size_t>(log_sector_size)) / log_sector_size;
 
-	std::vector<char> log_entry(log_sector_size + roundUp(bsize, size_t{ log_sector_size } ) );
+	std::vector<char> log_entry(log_sector_size + roundUp(bsize, static_cast<size_t>(log_sector_size) ) );
 
 	if (log_pos + log_entry.size() > curr_header.LogLength)
 	{
@@ -2767,7 +2785,7 @@ bool VHDXFile::logWrite(int64 off, const char* buf, size_t bsize,
 char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 {
 	IScopedLock lock(sector_bitmap_mutex.get());
-	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+	std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
 		lock.relock(NULL);
@@ -2778,9 +2796,9 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 			sector_bitmap_buf.data(), 
 			static_cast<_u32>(sector_bitmap_buf.size())) != block_size)
 		{
-			Server->Log("Reading sector bitmap from mb offset " + std::to_string(FileOffsetMB)
+			Server->Log("Reading sector bitmap from mb offset " + convert(FileOffsetMB)
 				+ " failed. " + os_last_error_str(), LL_ERROR);
-			return nullptr;
+			return NULL;
 		}
 
 		lock.relock(sector_bitmap_mutex.get());
@@ -2801,7 +2819,7 @@ char* VHDXFile::getSectorBitmap(_u32 sector_block, uint64 FileOffsetMB)
 char* VHDXFile::addZeroBitmap(_u32 sector_block)
 {
 	IScopedLock lock(sector_bitmap_mutex.get());
-	auto it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
+	std::map<_u32, std::vector<char> >::iterator it_sector_bitmap = sector_bitmap_bufs.find(sector_block);
 	if (it_sector_bitmap == sector_bitmap_bufs.end())
 	{
 		std::vector<char> sector_bitmap_buf(block_size);
@@ -2818,15 +2836,15 @@ bool VHDXFile::isSectorSet(int64 spos, bool& set)
 
 	if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT)
 	{
-		Server->Log("Sector bitmap " + std::to_string(sector_block) + " not fully present", LL_WARNING);
+		Server->Log("Sector bitmap " + convert(sector_block) + " not fully present", LL_WARNING);
 		return false;
 	}
 
 	char* sector_bitmap = getSectorBitmap(sector_block, sector_bat_entry->FileOffsetMB);
 
-	if (sector_bitmap == nullptr)
+	if (sector_bitmap == NULL)
 	{
-		Server->Log("Error reading sector bitmap of sector block " + std::to_string(sector_block), LL_ERROR);
+		Server->Log("Error reading sector bitmap of sector block " + convert(sector_block), LL_ERROR);
 		return false;
 	}
 
@@ -2849,8 +2867,8 @@ bool VHDXFile::setSector(int64 start, int64 end)
 	if (sector_bat_entry->State != PAYLOAD_BLOCK_FULLY_PRESENT &&
 		sector_bat_entry->State != PAYLOAD_BLOCK_NOT_PRESENT)
 	{
-		Server->Log("Sector bitmap " + std::to_string(sector_block) + " wrong state "
-			+std::to_string(sector_bat_entry->State), LL_WARNING);
+		Server->Log("Sector bitmap " + convert(sector_block) + " wrong state "
+			+convert(sector_bat_entry->State), LL_WARNING);
 		return false;
 	}
 
@@ -2867,7 +2885,7 @@ bool VHDXFile::setSector(int64 start, int64 end)
 		sector_bitmap = getSectorBitmap(sector_block, sector_bat_entry->FileOffsetMB);
 	}
 
-	if (sector_bitmap == nullptr)
+	if (sector_bitmap == NULL)
 		return false;
 
 	setSectorInt(sector_bitmap, start, end, block_size, sector_size);
@@ -2891,7 +2909,7 @@ bool VHDXFile::has_block(bool use_parent)
 {
 	if (!has_sector_int(spos))
 	{
-		if (use_parent && parent.get() != nullptr)
+		if (use_parent && parent.get() != NULL)
 			return parent->has_block(true);
 
 		return false;
