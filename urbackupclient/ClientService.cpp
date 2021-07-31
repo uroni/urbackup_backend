@@ -818,7 +818,11 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 	do
 	{
 		ReceivePacketsInt(p_run_other);
-	} while (pipe != orig_pipe && pipe->isReadable());
+	} while (pipe != orig_pipe 
+		&& wantReceive()
+		&& state!= CCSTATE_UPDATE_FINISH
+		&& !do_quit 
+		&& pipe->isReadable());
 }
 
 void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
