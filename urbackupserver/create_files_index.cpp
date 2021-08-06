@@ -27,6 +27,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "serverinterface/helper.h"
 #include "dao/ServerBackupDao.h"
+#include "server_hash.h"
 
 namespace
 {
@@ -155,10 +156,17 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	db_files_new->Write("DROP INDEX IF EXISTS files_backupid");
 
+	Server->Log("Resetting pointers...", LL_INFO);
+
+	db->Write("UPDATE files SET next_entry=0, prev_entry=0, pointed_to=0 "
+		"WHERE length(shahash)<16 OR filesize<" + std::to_string(link_file_min_size));
 
 	Server->Log("Starting creating files index...", LL_INFO);
 
-	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry, pointed_to FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
+	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry, pointed_to "
+		"FROM files "
+		"WHERE length(shahash)>=16 AND filesize>"+std::to_string(link_file_min_size)+" "
+		"ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
 
 	SCallbackData data;
 	data.cur=q_read->Cursor();
