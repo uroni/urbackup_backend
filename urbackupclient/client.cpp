@@ -286,6 +286,20 @@ namespace
 		assert(cbtMutexLocked>=0);
 	}
 
+	void force_unlock_cbt_mutex()
+	{
+		assert(cbtMutex != NULL);
+		if (cbtMutex == NULL)
+		{
+			return;
+		}
+		if (cbtMutexLocked > 0)
+		{
+			ReleaseMutex(cbtMutex);
+			cbtMutexLocked = 0;
+		}
+	}
+
 	struct ScopedUnlockCbtMutex
 	{
 		~ScopedUnlockCbtMutex() {
@@ -1072,6 +1086,8 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
+					force_unlock_cbt_mutex();
+
 					if (!disableCbt(scd->orig_target))
 					{
 						VSSLog("Error disabling change block tracking for " + scd->orig_target+" (2)", LL_ERROR);
@@ -1113,6 +1129,8 @@ void IndexThread::operator()(void)
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
+					force_unlock_cbt_mutex();
+
 					if(scd->fileserv)
 					{
 						shareDir(std::string(), scd->dir, scd->target);
@@ -1615,6 +1633,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				VSS_ID ssetid;
 				if (!start_shadowcopy_components(ssetid, &has_active_transaction))
 				{
+					force_unlock_cbt_mutex();
+
 					index_error = true;
 					VSSLog("Indexing Windows components failed", LL_ERROR);
 					return IndexErrorInfo_Error;
@@ -6980,7 +7000,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		{
 			wchar_t buf[300];
 
-			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf) == ERROR_SUCCESS); ++i)
+			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf)) == ERROR_SUCCESS; ++i)
 			{
 				DWORD rsize = sizeof(buf) * sizeof(wchar_t);
 				if (RegGetValueW(profile_list, std::wstring(buf).c_str(), L"ProfileImagePath",
@@ -7228,6 +7248,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		Server->deleteFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt");
 	} //for_image_backup
+
+	Server->deleteFile("urbackup\\hdat_other_" + conv_filename(strlower(volume)) + ".cbt");
 
 #ifndef _DEBUG
 	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, &bytesReturned, NULL);
