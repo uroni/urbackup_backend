@@ -1095,6 +1095,7 @@ aws_sdk_headers = \
 	external/aws-cpp-sdk/include/aws/common/private/array_list.h \
 	external/aws-cpp-sdk/include/aws/common/private/byte_buf.h \
 	external/aws-cpp-sdk/include/aws/common/private/hash_table_impl.h \
+	external/aws-cpp-sdk/include/aws/common/config.h \
 	external/aws-cpp-sdk/include/aws/testing/aws_test_allocators.h \
 	external/aws-cpp-sdk/include/aws/testing/aws_test_harness.h \
 	external/aws-cpp-sdk/include/aws/event-stream/event_stream.h \
