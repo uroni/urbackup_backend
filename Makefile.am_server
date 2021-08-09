@@ -103,6 +103,12 @@ urbackupsrv_LDADD += $(AWS_SDK_LIBS)
 urbackupsrv_CPPFLAGS += $(AWS_SDK_INCLUDES) 
 endif
 
+if WITH_OPENSSL
+urbackupsrv_CPPFLAGS += $(OPENSSL_INCLUDES) -DWITH_OPENSSL
+urbackupsrv_LDADD += $(OPENSSL_LIBS)
+urbackupsrv_LDFLAGS += $(OPENSSL_LDFLAGS)
+endif
+
 if EMBEDDED_ZSTD
 urbackupsrv_SOURCES += external/zstd/common/debug.c \
 	external/zstd/common/entropy_common.c \
