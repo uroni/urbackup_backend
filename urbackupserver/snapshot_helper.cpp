@@ -58,7 +58,12 @@ bool SnapshotHelper::snapshotFileSystem(bool image, std::string clientname, std:
 
 bool SnapshotHelper::removeFilesystem(bool image, std::string clientname, std::string name)
 {
-	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	if (!image &&
+		BackupServer::getSnapshotMethod(image) == BackupServer::ESnapshotMethod_ZfsFile &&
+		name.find(".startup-del") != std::string::npos)
+		name = greplace(".startup-del", "", name);
+
+	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " remove \""+clientname+"\" \""+name+"\"").c_str());
 	return rc==0;
 }
 
