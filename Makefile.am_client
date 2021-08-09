@@ -630,10 +630,11 @@ endif
 
 urbackupclientbackend_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
 urbackupclientbackend_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(FORTIFY_FLAGS) $(SUID_CFLAGS) -Ibtrfs/fuse/nt -Ibtrfs/fuse/linnt
-urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"'
+urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"' -DNO_JEMALLOC
 if DISABLE_CERTAIN_WARNINGS
 urbackupclientbackend_CXXFLAGS += -Wno-subobject-linkage
 endif
+urbackupclientbackend_CXXFLAGS += -DNO_JEMALLOC
 if WITH_EMBEDDED_AWS_CPP_SDK
 urbackupclientbackend_CPPFLAGS += $(LIBCURL_CPPFLAGS) -Iexternal/aws-cpp-sdk/include -DHAVE_BUILTIN_CPU_SUPPORTS -DAWS_SDK_VERSION_MAJOR=1 -DAWS_SDK_VERSION_MINOR=8 -DAWS_SDK_VERSION_PATCH=186
 urbackupclientbackend_LDADD += $(LIBCURL)
