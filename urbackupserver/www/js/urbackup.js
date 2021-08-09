@@ -4944,22 +4944,22 @@ function transRights()
 	var n=0;
 	while(true)
 	{
-		var right=I('right'+n);
+		var right=getSelectValues('right'+n);
 		var right_trans=I('right_trans'+n);
-		if( right!=null && right_trans!=null )
+		if( right !== null && right_trans!=null )
 		{
 			var t="";
-			if(right.value=="all")
+			if(right === 'all')
 			{
 				t=trans("right_all");
 			}
-			else if(right.value=="none")
+			else if(right === 'none')
 			{
 				t=trans("right_none");
 			}
 			else
 			{
-				var s=right.value.split(",");
+				var s=right;
 				for(var j=0;j<s.length;++j)
 				{
 					var f=false;
@@ -4994,17 +4994,21 @@ function transRights()
 
 function changeUserRights(uid, name)
 {
+
 	var rows="";
-	for(var i=0;i<g.user_rights[uid].length;++i)
+	let rights = g.user_rights[uid];
+	var i;
+	for(i=0;i<rights.length;++i)
 	{
-		var obj=g.user_rights[uid][i];
+		var obj=rights[i];
 		obj.userid=uid;
 		obj.username=name;
 		obj.n=i;
-		
-		
+
+
 		rows+=dustRender("settings_user_rights_change_row", obj);
 	}
+
 	var ndata=dustRender("settings_user_rights_change", {userid: uid, username: name, rows: rows});
 	if(g.data_f!=ndata)
 	{
@@ -5012,6 +5016,25 @@ function changeUserRights(uid, name)
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
+
+	var clients = []
+
+	new getJSON("settings", "", function (data) {
+		if(data.hasOwnProperty('navitems') && data['navitems'].hasOwnProperty('clients')) {
+			var client_data = data['navitems']['clients'];
+			for (let i = 0; i < client_data.length; i++) {
+				clients.push({
+					id: client_data[i]['id'],
+					name: client_data[i]['name']
+				});
+			}
+			for (i=0;i<rights.length;i++) {
+				addClientsToSelect(clients, `#right${i}`, rights, i)
+			}
+		}
+	});
+
+
 	transRights();
 }
 function deleteDomain(uid, name, n)
@@ -5033,11 +5056,12 @@ function submitChangeUserRights(uid)
 	var rights=[];
 	while(true)
 	{
-		var right=I('right'+n);
+		var right=getSelectValues('right'+n);
+		console.log(right)
 		var domain=I('domain'+n);
 		if( right!=null && domain!=null )
 		{
-			rights.push( { right: right.value, domain: domain.value } );
+			rights.push( { right: right, domain: domain.value } );
 		}
 		else
 		{
