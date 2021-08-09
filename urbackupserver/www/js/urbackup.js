@@ -4400,7 +4400,8 @@ function getInternetSettings()
 
 		var server_regex = /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^(urbackup):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i;
 
-		if(!server_regex.test(internet_server))
+		if(internet_server.length>0 && internet_server!=="urbackup://" &&
+			!server_regex.test(internet_server))
 		{
 			alert(trans("validate_err_notregexp_internet_server"));
 			return null;
