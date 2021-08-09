@@ -148,8 +148,6 @@ urbackupsrv_SOURCES += \
 	external/aws-cpp-sdk/AwsChecksums/source/arm/crc32c_arm.c \
 	external/aws-cpp-sdk/AwsChecksums/source/intel/cpuid.c \
 	external/aws-cpp-sdk/AwsChecksums/source/intel/crc32c_sse42_asm.c \
-	external/aws-cpp-sdk/AwsChecksums/source/visualc/visualc_cpuid.c \
-	external/aws-cpp-sdk/AwsChecksums/source/visualc/visualc_crc32c_sse42.c \
 	external/aws-cpp-sdk/AwsCCommon/source/allocator.c \
 	external/aws-cpp-sdk/AwsCCommon/source/allocator_sba.c \
 	external/aws-cpp-sdk/AwsCCommon/source/array_list.c \

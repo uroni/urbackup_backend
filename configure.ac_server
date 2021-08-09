@@ -69,6 +69,14 @@ AX_CXX_COMPILE_STDCXX([17])
 
 # Checks for libraries.
 
+AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
+AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
+
+if test "x$with_openssl" != "xtrue"
+then
+    AC_MSG_ERROR([OpenSSL library not present or not recent enough.])
+fi
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h linux/fiemap.h sys/random.h])
