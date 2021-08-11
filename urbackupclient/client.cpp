@@ -171,72 +171,72 @@ namespace
 
 	struct ON_DISK_USN_JOURNAL_DATA
 	{
-		uint64 MaximumSize; 
+		uint64 MaximumSize;
 		uint64 AllocationDelta;
 		uint64 UsnJournalID;
 		int64 LowestValidUsn;
 	};
 
-	int64 getUsnNum( const std::string& dir, int64& sequence_id )
+	int64 getUsnNum(const std::string& dir, int64& sequence_id)
 	{
-		WCHAR volume_path[MAX_PATH]; 
+		WCHAR volume_path[MAX_PATH];
 		BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir).c_str(), volume_path, MAX_PATH);
-		if(!ok)
+		if (!ok)
 		{
 			Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in getUsnNum", LL_ERROR);
 			return -1;
 		}
 
-		std::string vol=Server->ConvertFromWchar(volume_path);
+		std::string vol = Server->ConvertFromWchar(volume_path);
 
-		if(vol.size()>0)
+		if (vol.size() > 0)
 		{
-			if(vol[vol.size()-1]=='\\')
+			if (vol[vol.size() - 1] == '\\')
 			{
-				vol.erase(vol.size()-1,1);
+				vol.erase(vol.size() - 1, 1);
 			}
 		}
 
-		if(!vol.empty() && vol[0]!='\\')
+		if (!vol.empty() && vol[0] != '\\')
 		{
-			vol = "\\\\.\\"+vol;
+			vol = "\\\\.\\" + vol;
 		}
 
-		HANDLE hVolume=CreateFileW(Server->ConvertToWchar(vol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if(hVolume==INVALID_HANDLE_VALUE)
+		HANDLE hVolume = CreateFileW(Server->ConvertToWchar(vol).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hVolume == INVALID_HANDLE_VALUE)
 		{
-			Server->Log("CreateFile of volume '"+vol+"' failed. - getUsnNum", LL_ERROR);
+			Server->Log("CreateFile of volume '" + vol + "' failed. - getUsnNum", LL_ERROR);
 			return -1;
 		}
 
 		USN_JOURNAL_DATA data;
 		DWORD r_bytes;
-		BOOL b=DeviceIoControl(hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
+		BOOL b = DeviceIoControl(hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
 
 		CloseHandle(hVolume);
 
-		if(b)
+		if (b)
 		{
-			sequence_id=data.UsnJournalID;
+			sequence_id = data.UsnJournalID;
 			return data.NextUsn;
 		}
 		else
 		{
-			std::auto_ptr<IFile> journal_info(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal_info(Server->openFile(vol + "\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
 
-			if(journal_info.get()==NULL) return -1;
+			if (journal_info.get() == NULL) return -1;
 
 			ON_DISK_USN_JOURNAL_DATA journal_data = {};
-			if(journal_info->Read(reinterpret_cast<char*>(&journal_data), sizeof(journal_data))!=sizeof(journal_data))
+			if (journal_info->Read(reinterpret_cast<char*>(&journal_data), sizeof(journal_data)) != sizeof(journal_data))
 			{
 				return -1;
 			}
 
 			sequence_id = journal_data.UsnJournalID;
 
-			std::auto_ptr<IFile> journal(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal(Server->openFile(vol + "\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
 
-			if(journal.get()==NULL) return -1;
+			if (journal.get() == NULL) return -1;
 
 			return journal->Size();
 		}
@@ -257,7 +257,7 @@ namespace
 		{
 			return false;
 		}
-		if (cbtMutexLocked>0)
+		if (cbtMutexLocked > 0)
 		{
 			++cbtMutexLocked;
 			return true;
@@ -283,7 +283,7 @@ namespace
 		{
 			ReleaseMutex(cbtMutex);
 		}
-		assert(cbtMutexLocked>=0);
+		assert(cbtMutexLocked >= 0);
 	}
 
 	void force_unlock_cbt_mutex()
@@ -314,16 +314,16 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			WCHAR szBuffer[8192];
-			DWORD dwBufferSize = sizeof(szBuffer)*sizeof(WCHAR);
+			DWORD dwBufferSize = sizeof(szBuffer) * sizeof(WCHAR);
 			ULONG nError;
 			DWORD dwType = REG_MULTI_SZ;
 			nError = RegQueryValueExW(urbackup_cbt_key, L"cbt_paths", 0, &dwType,
 				(LPBYTE)szBuffer, &dwBufferSize);
 			RegCloseKey(urbackup_cbt_key);
 			if (ERROR_SUCCESS == nError
-				&& dwType==REG_MULTI_SZ)
+				&& dwType == REG_MULTI_SZ)
 			{
-				std::wstring rval(szBuffer, szBuffer + dwBufferSize/sizeof(wchar_t));
+				std::wstring rval(szBuffer, szBuffer + dwBufferSize / sizeof(wchar_t));
 				std::string strValue = Server->ConvertFromWchar(rval);
 				std::vector<std::string> toks;
 				std::string sep;
@@ -374,14 +374,20 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			LSTATUS status = RegSetValueExW(urbackup_cbt_key, L"cbt_paths", 0,
-				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1)*sizeof(wchar_t)));
+				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1) * sizeof(wchar_t)));
 			RegCloseKey(urbackup_cbt_key);
 			return status
 				== ERROR_SUCCESS;
 		}
 		return false;
 	}
-#endif
+#else //!_WIN32
+
+	void force_unlock_cbt_mutex()
+	{
+	}
+
+#endif //!_WIN32
 
 #ifndef _WIN32
 	std::string getFolderMount(const std::string& path)

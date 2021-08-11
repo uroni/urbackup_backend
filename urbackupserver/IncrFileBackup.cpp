@@ -323,9 +323,11 @@ bool IncrFileBackup::doFileBackup()
 		}
 
 		ServerLogger::Log(logid, clientname+": Creating snapshot...", LL_INFO);
+
+		std::string snap_startup_del = zfs_file ? "" : ".startup-del";
 		std::string errmsg;
-		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single+ ".startup-del", errmsg)
-			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single+ ".startup-del") )
+		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single+ snap_startup_del, errmsg)
+			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single+ snap_startup_del) )
 		{
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
