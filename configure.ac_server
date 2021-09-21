@@ -41,6 +41,10 @@ AC_ARG_ENABLE([embedded-zstd],
      AS_HELP_STRING([--enable-embedded-zstd], [Compile and use ZSTD included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_ZSTD, test "x$enable_embedded_zstd" = xyes)
 
+AC_ARG_WITH([embedded-aws-cpp-sdk],
+     AS_HELP_STRING([--without-embedded-aws-cpp-sdk], [Disables the embedded AWS c++ sdk (for S3) and uses the system one. Not recommended.]))
+AM_CONDITIONAL(WITH_EMBEDDED_AWS_CPP_SDK, test "x$with_embedded_aws_cpp_sdk" != "xno")
+
 
 # Checks for programs.
 AC_PROG_CXX
@@ -61,7 +65,17 @@ fi
 
 AC_LANG([C++])
 
+AX_CXX_COMPILE_STDCXX([17])
+
 # Checks for libraries.
+
+AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
+AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
+
+if test "x$with_openssl" != "xtrue"
+then
+    AC_MSG_ERROR([OpenSSL library not present or not recent enough.])
+fi
 
 # Checks for header files.
 AC_HEADER_STDC

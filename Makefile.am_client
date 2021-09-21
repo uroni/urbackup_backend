@@ -29,6 +29,21 @@ urbackupclientbackend_SOURCES += urbackupclient/dllmain.cpp urbackupclient/clien
 
 urbackupclientbackend_SOURCES += fileservplugin/dllmain.cpp fileservplugin/bufmgr.cpp fileservplugin/CClientThread.cpp fileservplugin/CriticalSection.cpp fileservplugin/CTCPFileServ.cpp fileservplugin/CUDPThread.cpp fileservplugin/FileServ.cpp fileservplugin/FileServFactory.cpp fileservplugin/log.cpp fileservplugin/main.cpp fileservplugin/map_buffer.cpp fileservplugin/pluginmgr.cpp fileservplugin/ChunkSendThread.cpp fileservplugin/PipeFile.cpp fileservplugin/PipeSessions.cpp fileservplugin/PipeFileUnix.cpp fileservplugin/PipeFileBase.cpp fileservplugin/FileMetadataPipe.cpp fileservplugin/PipeFileTar.cpp fileservplugin/PipeFileExt.cpp
 
+urbackupclientbackend_SOURCES += \
+	clouddrive/CdZlibCompressor.cpp \
+	clouddrive/CdZstdCompressor.cpp \
+	clouddrive/ClouddriveFactory.cpp \
+	clouddrive/CloudFile.cpp \
+	clouddrive/CompressEncrypt.cpp \
+	clouddrive/dllmain.cpp \
+	clouddrive/KvStoreBackendS3.cpp \
+	clouddrive/KvStoreDao.cpp \
+	clouddrive/KvStoreFrontend.cpp \
+	clouddrive/LzmaCompressor.cpp \
+	clouddrive/ObjectCollector.cpp \
+	clouddrive/pluginmgr.cpp \
+	clouddrive/TransactionalKvStore.cpp
+
 urbackupclientbackend_SOURCES += btrfs/btrfsplugin/BackupFileSystem.cpp \
 	btrfs/btrfsplugin/BtrfsFactory.cpp \
 	btrfs/btrfsplugin/dllmain.cpp \
@@ -615,10 +630,11 @@ endif
 
 urbackupclientbackend_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
 urbackupclientbackend_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(FORTIFY_FLAGS) $(SUID_CFLAGS) -Ibtrfs/fuse/nt -Ibtrfs/fuse/linnt
-urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"'
+urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"' -DNO_JEMALLOC
 if DISABLE_CERTAIN_WARNINGS
 urbackupclientbackend_CXXFLAGS += -Wno-subobject-linkage
 endif
+urbackupclientbackend_CXXFLAGS += -DNO_JEMALLOC
 if WITH_EMBEDDED_AWS_CPP_SDK
 urbackupclientbackend_CPPFLAGS += $(LIBCURL_CPPFLAGS) -Iexternal/aws-cpp-sdk/include -DHAVE_BUILTIN_CPU_SUPPORTS -DAWS_SDK_VERSION_MAJOR=1 -DAWS_SDK_VERSION_MINOR=8 -DAWS_SDK_VERSION_PATCH=186
 urbackupclientbackend_LDADD += $(LIBCURL)
@@ -1079,6 +1095,7 @@ aws_sdk_headers = \
 	external/aws-cpp-sdk/include/aws/common/private/array_list.h \
 	external/aws-cpp-sdk/include/aws/common/private/byte_buf.h \
 	external/aws-cpp-sdk/include/aws/common/private/hash_table_impl.h \
+	external/aws-cpp-sdk/include/aws/common/config.h \
 	external/aws-cpp-sdk/include/aws/testing/aws_test_allocators.h \
 	external/aws-cpp-sdk/include/aws/testing/aws_test_harness.h \
 	external/aws-cpp-sdk/include/aws/event-stream/event_stream.h \
@@ -1577,6 +1594,26 @@ aws_sdk_headers = \
 	external/aws-cpp-sdk/include/aws/s3/model/VersioningConfiguration.h \
 	external/aws-cpp-sdk/include/aws/s3/model/WebsiteConfiguration.h \
 	external/aws-cpp-sdk/include/aws/s3/model/WriteGetObjectResponseRequest.h
+
+clouddrive_headers = \
+	clouddrive/Auto.h \
+	clouddrive/CdZlibCompressor.h \
+	clouddrive/CdZstdCompressor.h \
+	clouddrive/ClouddriveFactory.h \
+	clouddrive/CloudFile.h \
+	clouddrive/CompressEncrypt.h \
+	clouddrive/IClouddriveFactory.h \
+	clouddrive/ICompressEncrypt.h \
+	clouddrive/IKvStoreBackend.h \
+	clouddrive/IKvStoreFrontend.h \
+	clouddrive/IOnlineKvStore.h \
+	clouddrive/KvStoreBackendS3.h \
+	clouddrive/KvStoreDao.h \
+	clouddrive/KvStoreFrontend.h \
+	clouddrive/LzmaCompressor.h \
+	clouddrive/ObjectCollector.h \
+	clouddrive/pluginmgr.h \
+	clouddrive/TransactionalKvStore.h
 			 
 noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h \
 	file.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h \
@@ -1595,7 +1632,8 @@ noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h 
 	$(btrfsplugin_headers) \
 	$(btrfsfuse_headers) \
 	$(btrfs_headers) \
-	$(aws_sdk_headers)
+	$(aws_sdk_headers) \
+	$(clouddrive_headers)
 
 
 EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm \

@@ -1857,7 +1857,8 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			ServerBackupDao::CondString curr_uid = backup_dao->getClientUid(clientid);
 			if (curr_uid.exists &&
 				!curr_uid.value.empty() &&
-				server_settings->getSettings()->local_encrypt)
+				server_settings->getSettings()->local_encrypt &&
+				!internet_connection)
 			{
 				ServerLogger::Log(logid, "Client UID not received from client. Expecting \"" + curr_uid.value + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
 				ServerStatus::setStatusError(clientname, se_uid_changed);

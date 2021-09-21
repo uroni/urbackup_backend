@@ -1,6 +1,6 @@
 var fs = require('fs');
 var path = require('path');
-var dust = require("dustjs-linkedin");
+var dust = require('dustjs-linkedin');
 var EventEmitter=require('events').EventEmitter,
     filesEE=new EventEmitter();
 
