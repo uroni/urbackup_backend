@@ -391,6 +391,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(resize_disk);
 		ADD_ACTION(restore_finished);
 		ADD_ACTION(resize_part);
+		ADD_ACTION(capabilities);
+		ADD_ACTION(get_tmpfn);
 		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}

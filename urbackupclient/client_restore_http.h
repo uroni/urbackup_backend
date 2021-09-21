@@ -38,6 +38,8 @@ namespace Actions
 	ACTION(resize_disk);
 	ACTION(restore_finished);
 	ACTION(resize_part);
+	ACTION(capabilities);
+	ACTION(get_tmpfn);
 }
 
 namespace restore

@@ -61,6 +61,8 @@ export interface WizardStateProps {
     restoreOnlyMBR: boolean;
     restoreToPartition: boolean;
     spillSpace: SpillSpace;
+    canRestoreSpill: boolean;
+    canKeyboardConfig: boolean;
 }
 
 export interface WizardComponent {

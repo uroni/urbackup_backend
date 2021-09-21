@@ -106,24 +106,50 @@ function Restoring(props: WizardComponent) {
         }
     }
 
-    const getMBR = async (restoreImage: BackupImage) => {
+    interface GetMbrRes 
+    {
+        ok: boolean;
+        tmpfn: string;
+    }
+
+    const getMBR = async (restoreImage: BackupImage) : Promise<GetMbrRes> => {
+
         addLog("Loading MBR and GPT data...");
 
         let jdata;
+
+        try {
+            const resp = await fetch("x?a=get_tmpfn",
+                {method: "POST"});
+            jdata = await resp.json();
+        } catch(error) {
+            addLog("Error while getting temporary file name");
+            setStatus("exception");
+            return {ok: false, tmpfn: ""};
+        }
+        
+        if(typeof jdata["err"]!=="undefined") {
+            addLog("Error while getting temporary file name: "+jdata["err"]);
+            setStatus("exception");
+            return {ok: false, tmpfn: ""};
+        }
+
+        const tmpfn : string = jdata["fn"];
+        
         try {
             const resp = await fetch("x?a=start_download",
                 {method: "POST",
                 body: new URLSearchParams({
                     "img_id": ("" + restoreImage.id),
                     "img_time": ("" + restoreImage.time_s),
-                    "out": "/tmp/mbr.dat",
+                    "out": tmpfn,
                     "mbr": "1"
                 })});
             jdata = await resp.json();
         } catch(error) {
             addLog("Error while loading MBR");
             setStatus("exception");
-            return false;
+            return {ok: false, tmpfn: ""};
         }
 
         const mbr_res_id : number = jdata["res_id"];
@@ -141,7 +167,7 @@ function Restoring(props: WizardComponent) {
             } catch(error) {
                 addLog("Error while checking MBR restore status");
                 setStatus("exception");
-                return false;
+                return {ok: false, tmpfn: ""};
             }
 
             if(jdata["finished"]) {
@@ -151,7 +177,7 @@ function Restoring(props: WizardComponent) {
                 } else {
                     addLog("Loading MBR failed: " + restoreEcToString(jdata["ec"]));
                     setStatus("exception");
-                    return false;
+                    return {ok: false, tmpfn: ""};
                 }
                 break;
             } else if(jdata["pc"]) {
@@ -159,16 +185,16 @@ function Restoring(props: WizardComponent) {
             }
         }
 
-        return true;
+        return {ok: true, tmpfn: tmpfn};
     }
 
     const restoreMBR = async () => {
         setRestoreAction("MBR and GPT");
         setPercent(0);
 
-        if(!await getMBR(props.props.restoreImage)) {
-            return;
-        }
+        const gmbr_res = await getMBR(props.props.restoreImage);
+        if(!gmbr_res.ok)
+            return "";
 
         addLog("Writing MBR and GPT to disk...");
         setPercent(0);
@@ -179,14 +205,14 @@ function Restoring(props: WizardComponent) {
             const resp = await fetch("x?a=write_mbr",
                 {method: "POST",
                 body: new URLSearchParams({
-                    "mbrfn": "/tmp/mbr.dat",
+                    "mbrfn": gmbr_res.tmpfn,
                     "out_device": props.props.restoreToDisk.path
                 })});
             jdata = await resp.json();
         } catch(error) {
             addLog("Error while writing MBR");
             setStatus("exception");
-            return;
+            return "";
         }
 
         if(jdata["success"] && jdata["errmsg"] && jdata["errmsg"].length>0) {
@@ -196,8 +222,10 @@ function Restoring(props: WizardComponent) {
         if(!jdata["success"]) {
             addLog("Error writing to MBR and GPT: "+jdata["errmsg"]);
             setStatus("exception");
-            return;
+            return "";
         }
+
+        return gmbr_res.tmpfn;
     }
 
     const resizeSpilledImage = async (disk_fn: string, new_size: string, partnum: number, orig_dev_fn: string) => {
@@ -285,7 +313,7 @@ function Restoring(props: WizardComponent) {
     }
 
     const restoreImage = async (img: BackupImage, restoreToPartition: boolean,
-        restoreToDisk: LocalDisk, withSpillSpace: boolean) => {
+        restoreToDisk: LocalDisk, withSpillSpace: boolean, mbrfn: string) => {
         setRestoreAction(img.letter +" - "+toIsoDateTime(new Date(img.time_s*1000)) + " client "+img.clientname);
 
         let partpath: string;
@@ -304,7 +332,7 @@ function Restoring(props: WizardComponent) {
                 const resp = await fetch("x?a=get_partition",
                     {method: "POST",
                     body: new URLSearchParams({
-                        "mbrfn": "/tmp/mbr.dat",
+                        "mbrfn": mbrfn,
                         "out_device": restoreToDisk.path
                     })});
                 jdata = await resp.json();
@@ -492,8 +520,9 @@ function Restoring(props: WizardComponent) {
         restoreRunning.current = true;
 
         setStatus("normal");
+        let mbrfn = "";
         if(!props.props.restoreToPartition) {
-            await restoreMBR();
+            mbrfn = await restoreMBR();
 
             if(props.props.restoreOnlyMBR)
                 return;
@@ -517,7 +546,7 @@ function Restoring(props: WizardComponent) {
         let restore_ok: boolean = true;
         for(const img of restoreImages) {
             if(!await restoreImage(img, props.props.restoreToPartition,
-                props.props.restoreToDisk, withSpillSpace) ) {
+                props.props.restoreToDisk, withSpillSpace, mbrfn) ) {
                 restore_ok = false;
                 break;
             }
@@ -595,12 +624,12 @@ function Restoring(props: WizardComponent) {
                     draft.disableMenu = false;
                 }))
             }}>Retry</Button></>}
-            {!retryWithSpillSpace && diskSizeError &&
+            {!retryWithSpillSpace && diskSizeError && props.props.canRestoreSpill &&
                     <><br /><br /><Button type="primary" onClick={configureSpillSpace}>
                         Configure spill space to restore to smaller disk
                     </Button></>
                 }
-                {retryWithSpillSpace &&
+                {retryWithSpillSpace && props.props.canRestoreSpill &&
                     <><br /><br /><Button type="primary" onClick={doRetryWithSpillSpace}>
                     Retry with configured spill space
                 </Button></>

@@ -1201,3 +1201,40 @@ namespace restore
 		return std::string();
 	}
 }
+
+ACTION_IMPL(capabilities)
+{
+	JSON::Object ret;
+	ret.set("ok", true);
+
+#ifndef _WIN32
+	ret.set("keyboard_config", true);
+	ret.set("restore_spill", true);
+#else
+	ret.set("keyboard_config", false);
+	ret.set("restore_spill", false);
+#endif
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(get_tmpfn)
+{
+	JSON::Object ret;
+	ret.set("ok", true);
+
+	std::unique_ptr<IFsFile> tmpf(Server->openTemporaryFile());
+
+	if(!tmpf)
+	{
+		ret.set("err", "Cannot open tmpfile: "+os_last_error_str());
+	}
+	else
+	{
+		std::string tmpfn = tmpf->getFilename();
+		ret.set("fn", tmpfn);
+		tmpf.reset();
+		Server->deleteFile(tmpfn);
+	}
+
+	restore::writeJsonResponse(tid, ret);
+}

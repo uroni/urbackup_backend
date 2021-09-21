@@ -96,7 +96,9 @@ function App() {
       live_medium: false,
       live_medium_space: -1,
       disks: []
-    }
+    },
+    canKeyboardConfig: true,
+    canRestoreSpill: true
   });
 
   const menuSelected = () => {
@@ -127,6 +129,28 @@ function App() {
   (async () => {
     let jdata;
     try {
+      const resp = await fetch("x?a=capabilities", 
+        {method: "POST"})
+      jdata = await resp.json();
+    } catch(error) {
+      jdata = {"keyboard_config": true,
+               "restore_spill": true}
+    }
+
+    let canKeyboardConfig = true;
+    if(!jdata["keyboard_config"]) {
+      setWizardState(produce(draft => {
+        draft.canKeyboardConfig = false;
+      }))
+      canKeyboardConfig = false;
+    }
+
+    if(!jdata["restore_spill"])
+      setWizardState(produce(draft => {
+        draft.canRestoreSpill = false;
+      }))
+
+    try {
         const resp = await fetch("x?a=get_connection_settings",
             {method: "POST"})
         jdata = await resp.json();
@@ -136,7 +160,7 @@ function App() {
 
     if(jdata["no_config"]) {
       setWizardState(produce(draft => {
-        draft.state = WizardState.SelectKeyboard;
+        draft.state = canKeyboardConfig ? WizardState.SelectKeyboard : WizardState.WaitForNetwork;
         draft.max_state = WizardState.WaitForNetwork;
       }));
       return;
@@ -149,7 +173,8 @@ function App() {
       if(jdata["serverProxy"])
         serverProxy = jdata["serverProxy"];
       
-      if(jdata["keyboardLayout"] && jdata["keyboardLayout"]!=="ask") {
+      if(jdata["keyboardLayout"] && jdata["keyboardLayout"]!=="ask" &&
+         canKeyboardConfig) {
         let keyboardLayout : string = jdata["keyboardLayout"];
         try {
           await fetch("x?a=set_keyboard_layout",
@@ -159,7 +184,7 @@ function App() {
               })})
         } catch(error) {
             setWizardState(produce(draft => {
-              draft.state = WizardState.SelectKeyboard;
+                draft.state = WizardState.SelectKeyboard;
               draft.max_state = WizardState.WaitForNetwork;
             }));
             return;
@@ -180,7 +205,7 @@ function App() {
           draft.serverAuthkey = serverAuthkey;
           draft.serverProxy = serverProxy;
           draft.internetServer = true;
-          draft.state = WizardState.SelectKeyboard;
+          draft.state = canKeyboardConfig ? WizardState.SelectKeyboard : WizardState.WaitForNetwork;
           draft.max_state = WizardState.WaitForNetwork;
         }));
       }
@@ -195,14 +220,18 @@ function App() {
           <Menu theme="dark" mode="inline" selectedKeys={menuSelected()}
             style={{ height: '100%', borderRight: 0 }} 
             onClick={menuClick}>
-            <Menu.Item key={"" + WizardState.SelectKeyboard} disabled={menuItemDisabled(WizardState.SelectKeyboard)}>Select keyboard layout</Menu.Item>
+            {wizard_state.canKeyboardConfig &&
+              <Menu.Item key={"" + WizardState.SelectKeyboard} disabled={menuItemDisabled(WizardState.SelectKeyboard)}>Select keyboard layout</Menu.Item>
+            }
             <Menu.Item key={"" + WizardState.WaitForNetwork} disabled={menuItemDisabled(WizardState.WaitForNetwork)}>Waiting for network</Menu.Item>
             <Menu.Item key={"" + WizardState.ServerSearch} disabled={menuItemDisabled(WizardState.ServerSearch)}>Search for server</Menu.Item>
             <Menu.Item key={"" + WizardState.ConfigureServerConnectionDetails} disabled={menuItemDisabled(WizardState.ConfigureServerConnectionDetails)}>Configure server connection</Menu.Item>
             <Menu.Item key={"" + WizardState.WaitForConnection} disabled={menuItemDisabled(WizardState.WaitForConnection)}>Wait for connection</Menu.Item>
             <Menu.Item key={"" + WizardState.LoginToServer} disabled={menuItemDisabled(WizardState.LoginToServer)}>Login to server</Menu.Item>
             <Menu.Item key={"" + WizardState.ConfigRestore} disabled={menuItemDisabled(WizardState.ConfigRestore)}>Configure restore</Menu.Item>
-            <Menu.Item key={"" + WizardState.ConfigSpillSpace} disabled={menuItemDisabled(WizardState.ConfigSpillSpace)}>Configure spill space</Menu.Item>
+            {wizard_state.canRestoreSpill &&
+              <Menu.Item key={"" + WizardState.ConfigSpillSpace} disabled={menuItemDisabled(WizardState.ConfigSpillSpace)}>Configure spill space</Menu.Item>
+            }
             <Menu.Item key={"" + WizardState.ReviewRestore} disabled={menuItemDisabled(WizardState.ReviewRestore)}>Review restore</Menu.Item>
             <Menu.Item key={"" + WizardState.Restoring} disabled={menuItemDisabled(WizardState.Restoring)}>Restore</Menu.Item>
           </Menu>
