@@ -1,0 +1,21 @@
+# macos_exclusion_overrides.txt
+#
+# This file determines which of the standard macOS backup exclusions, as defined
+# in Urbackup, are overridden - so as to force their inclusion in backups.
+#
+# This should not normally be required - and indeed, forcing the backup of some items
+# may produce errors in the backup if the system does not allow access to them.
+#
+# The specific exclusion required to be overridden can be found in the Urbackup Client
+# logfile - /Library/Logs/urbackup_client_backend.log
+# Any item which is excluded due to a standard backup exclusion is noted against the
+# exclusion term which prevents its backup.
+#
+# So, for example, to override the exclusion of the .Trash folder inside each user
+# account, uncomment the following entry:
+#
+# /Users/:/.Trash
+#
+# Override entries should be exactly as quoted in the Urbackup Client logfile, and
+# should be entered one-per-line without a preceding #
+
