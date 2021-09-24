@@ -2,6 +2,12 @@
 
 set -e
 
+if test ! -f "/Library/Application Support/UrBackup Client/var/urbackup/macOS_exclusion_overrides.txt"
+then
+    cp "$2/Contents/Resources/macOS_exclusion_overrides.txt" "/Library/Application Support/UrBackup Client/var/urbackup/macOS_exclusion_overrides.txt"
+    chmod 755 "/Library/Application Support/UrBackup Client/var/urbackup/macOS_exclusion_overrides.txt"
+fi
+
 if test -e "$1.cfg"
 then
 	cp "$1.cfg" "/Library/Application Support/UrBackup Client/var/urbackup/initial_settings.cfg"
@@ -29,4 +35,3 @@ else
 	done
 fi
 
-"$2/Contents/MacOS/bin/buildmacOSexclusions"
