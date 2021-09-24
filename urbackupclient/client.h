@@ -44,6 +44,12 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef __APPLE__
+#include <iostream>
+#include <sys/xattr.h>
+#include <sys/types.h>
+#endif
+
 const int c_group_vss_components = -1;
 const int c_group_default = 0;
 const int c_group_continuous = 1;
@@ -542,8 +548,17 @@ private:
 	static void addFileExceptions(std::vector<std::string>& exclude_dirs);
 
 	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
-	static void addMacosExcludes(std::vector<std::string>& exclude_dirs);
-
+    
+#ifdef __APPLE__
+    static std::vector<std::string> macos_exclusions;
+    static std::vector<std::string> macos_overrides;
+    
+    static void addMacOSExcludes(std::vector<std::string>& exclude_dirs);
+    static void logMacOSExclude(const std::string path);
+    static std::string returnExcludeDirsMatch(std::vector<std::string> exclude_dirs, std::string path);
+    static bool isExcludedByXattr(const std::string path);
+    static void logIsExcludedByXattr(const std::string path);
+#endif
 
 	void handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume);
 
