@@ -50,13 +50,16 @@ make install DESTDIR=$PWD/osx-pkg2
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
+
 cp osx_installer/info.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
 
+
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
-cp osx_installer/buildmacOSexclusions "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/buildmacOSexclusions"
+cp osx_installer/macOS_exclusion_overrides.txt "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 mv "osx-pkg2/Library/Application Support" "osx-pkg/Library"
 rm -R "osx-pkg2/Library"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
+
 if !($development); then
 	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
 	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend"
