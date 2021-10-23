@@ -1441,6 +1441,9 @@ bool FileClient::Reconnect(void)
 						return ERR_ERROR;
 					}
 
+					if(received>0)
+						file->Seek(received);
+
 					{
 						IScopedLock lock(mutex);
 						sparse_bytes += sparse_file->getSparseSize();

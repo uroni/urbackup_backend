@@ -309,9 +309,10 @@ SparseFile::SPosMap SparseFile::nextBackingOffset()
 
 SparseFile::SPosMap SparseFile::lastBackingOffset(int64 offset)
 {
-	std::vector<SPosMap>::iterator it = std::lower_bound(sparse_offsets.begin(), sparse_offsets.end(), SPosMap(offset, -1));
-	if (it != sparse_offsets.end())
+	std::vector<SPosMap>::iterator it = std::upper_bound(sparse_offsets.begin(), sparse_offsets.end(), SPosMap(offset, -1));
+	if (it != sparse_offsets.begin())
 	{
+		--it;
 		return *it;
 	}
 	else
