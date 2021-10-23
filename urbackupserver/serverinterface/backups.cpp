@@ -453,7 +453,7 @@ namespace backupaccess
 		}
 
 		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, "
-			"archived, archive_timeout, path, delete_pending, deletion_protection, delete_client_pending FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+			"archived, archive_timeout, path, delete_pending, deletion_protected, delete_client_pending FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
@@ -480,7 +480,7 @@ namespace backupaccess
 			obj.set("backuptime", watoi64(res[i]["t_backuptime"]));
 			obj.set("incremental", watoi(res[i]["incremental"]));
             obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
-			obj.set("deletion_protection", watoi(res[i]["deletion_protection"]));
+			obj.set("deletion_protected", watoi(res[i]["deletion_protected"]));
 			obj.set("delete_client_pending", watoi(res[i]["delete_client_pending"]));
             int archived = watoi(res[i]["archived"]);
             obj.set("archived", watoi(res[i]["archived"]));
