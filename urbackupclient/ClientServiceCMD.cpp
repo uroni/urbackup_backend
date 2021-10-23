@@ -389,7 +389,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd, const st
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient(clientsubname))
+	if(calculateFilehashesOnClient(clientsubname, facet_id))
 	{
 		flags |= flag_calc_checksums;
 	}
@@ -582,7 +582,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd, const st
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient(clientsubname))
+	if(calculateFilehashesOnClient(clientsubname, facet_id))
 	{
 		flags |= flag_calc_checksums;
 	}

@@ -3441,14 +3441,14 @@ void ClientConnector::update_silent(void)
 	Server->getThreadPool()->execute(new UpdateSilentThread(), "silent client update");
 }
 
-bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubname)
+bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubname, int facet_id)
 {
 	if(internet_conn)
 	{
-		std::string settings_fn = "urbackup/data/settings.cfg";
+		std::string settings_fn = "urbackup/data_" + convert(facet_id) + "/settings.cfg";
 		if(!clientsubname.empty())
 		{
-			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
+			settings_fn = "urbackup/data_" + convert(facet_id) + "/settings_"+clientsubname+".cfg";
 		}
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
