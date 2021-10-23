@@ -1149,6 +1149,7 @@ namespace restore
 {
 	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
 	{
+#ifndef _WIN32
 		FILE* in = NULL;
 		in = popen(("stdbuf -o0 ntfsresize -f -f -s "+std::to_string(new_size)+" \""+disk_fn+"\" 2>&1").c_str(), "re");
 		if(in==NULL)
@@ -1197,6 +1198,8 @@ namespace restore
 		{
 			return "Error runnning resize command. Rc: "+std::to_string(rc)+". Output: "+out;
 		}
+
+#endif
 
 		return std::string();
 	}
