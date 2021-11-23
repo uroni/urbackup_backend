@@ -29,6 +29,6 @@
   <key>LSMultipleInstancesProhibited</key>
   <true />
   <key>NSPrincipalClass</key>
-	<string>wxNSApplication</string>
+  <string>wxNSApplication</string>
 </dict>
 </plist>
