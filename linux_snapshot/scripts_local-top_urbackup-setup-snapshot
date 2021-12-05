@@ -21,10 +21,21 @@ if grep "setup-snapshot=0" /proc/cmdline; then
 	exit 0
 fi
 
+if [ "x$ROOT" = "x" ]; then
+	echo "urbackup-setup-snapshot: root device not defined. Not setting up snapshotting." > /dev/kmsg
+	exit 0
+fi
+
+if echo "$ROOT" | grep "root-98d1f8b1f435"; then
+	panic "urbackup-setup-snapshot: Root device is snapshot (clobbered: $ROOT). Please edit root= boot parameter to be the root device and add 'setup-snapshot=0' to boot parameters to fix boot. Then run 'update-grub' to fix grub config."
+	exit 0
+fi
+
 RBD=$(resolve_device "$ROOT")
 
 if [ "x$RBD" = "x" ]; then
 	echo "urbackup-setup-snapshot: root device not found. Not setting up snapshotting." > /dev/kmsg
+	exit 0
 fi
 
 echo "urbackup-setup-snapshot: root block device $RBD" > /dev/kmsg
