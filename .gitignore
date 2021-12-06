@@ -268,3 +268,7 @@ blockalign/x64/*
 /blockalign/Debug/*
 /luaplugin/Debug/*
 /urbackupserver/www/templates/post/*
+/vcpkg_installed
+/urbackupserver/Release
+/blockalign_src/Release
+/luaplugin/Release

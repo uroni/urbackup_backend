@@ -6,8 +6,8 @@
 #include "FileWrapper.h"
 #include <Windows.h>
 #include <Subauth.h>
-#include <imdproxy.h>
-#include <imdisk.h>
+#include "../external/imdisk/imdproxy.h"
+#include "../external/imdisk/imdisk.h"
 #include <string>
 #include <algorithm>
 #include <memory>
