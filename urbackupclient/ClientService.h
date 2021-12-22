@@ -278,7 +278,7 @@ private:
 	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
-	bool calculateFilehashesOnClient(const std::string& clientsubname);
+	bool calculateFilehashesOnClient(const std::string& clientsubname, int facet_id);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);

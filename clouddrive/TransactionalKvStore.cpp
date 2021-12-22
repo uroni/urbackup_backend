@@ -2114,11 +2114,15 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 									continue;
 								}
 
-								in_submission = true;
+								bool copy_src = false;
+								std::shared_ptr<IFsFile> memf_src;
+								if (max_transid > 0 &&
+									!it_submission->second->compressed)
+								{
+									copy_src = true;
+								}
 
-								//Do not evict non-dirty item after submission
-								if (it_submission->second->keys.empty())
-									it_submission->second->keys.push_back(std::string());
+								in_submission = true;
 
 								SMemFile* memf;
 								{
@@ -2130,11 +2134,29 @@ IFsFile* TransactionalKvStore::get_retrieve(const std::string& key, BitmapInfo b
 										Server->Log("Memfile key wrong. Expected " + hexpath(key) + " got " + hexpath(memf->key), LL_ERROR);
 										abort();
 									}
+
+									if (copy_src && memf != nullptr)
+									{
+										memf_src = memf->file;
+									}
 								}
+
+								if (copy_src && memf_src)
+									break;
+
+								if (copy_src)
+								{
+									keypath2(key, it->first);
+								}
+
 								if (memf != nullptr)
 								{
 									submission_queue_memfile_first = submission_queue.end();
 								}
+
+								//Do not evict non-dirty item after submission
+								if (it_submission->second->keys.empty())
+									it_submission->second->keys.push_back(std::string());
 
 								submission_queue.splice(submission_queue.begin(), submission_queue, it_submission->second);
 
