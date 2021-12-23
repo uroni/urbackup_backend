@@ -776,7 +776,7 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 
 bool FileBackup::doBackup()
 {
-	if(!client_main->handle_not_enough_space(""))
+	if(!client_main->handle_not_enough_space("", logid, *server_settings.get()))
 	{
 		return false;
 	}
@@ -1084,7 +1084,7 @@ bool FileBackup::create_hardlink(const std::string & linkname, const std::string
 
 bool FileBackup::handle_not_enough_space(const std::string & path)
 {
-	return client_main->handle_not_enough_space(path, logid);
+	return client_main->handle_not_enough_space(path, logid, *server_settings.get());
 }
 
 std::string FileBackup::convertToOSPathFromFileClient(std::string path)

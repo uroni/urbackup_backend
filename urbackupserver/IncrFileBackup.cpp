@@ -966,7 +966,7 @@ bool IncrFileBackup::doFileBackup()
 								{
 									if(!copy_file(metadata_srcpath, metadata_fn))
 									{
-										if(client_main->handle_not_enough_space(metadata_fn))
+										if(client_main->handle_not_enough_space(metadata_fn, logid, *server_settings.get()))
 										{
 											if(!copy_file(metadata_srcpath, metadata_fn))
 											{

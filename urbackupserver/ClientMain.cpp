@@ -2741,7 +2741,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	return rp;
 }
 
-bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
+bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid, ServerSettings& server_settings)
 {
 	int64 free_space=-1;
 	if(!path.empty())
@@ -2754,7 +2754,7 @@ bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
 	}
 	if(free_space==-1)
 	{
-		free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
+		free_space=os_free_space(os_file_prefix(server_settings.getSettings()->backupfolder));
 	}
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
@@ -2773,7 +2773,13 @@ bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
 
 bool ClientMain::handle_not_enough_space(const std::string & path)
 {
-	return handle_not_enough_space(path, logid);
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if (db == this->db)
+		return handle_not_enough_space(path, logid, *server_settings.get());
+
+	ServerSettings server_settings(db, clientid);
+	return handle_not_enough_space(path, logid, server_settings);
 }
 
 unsigned int ClientMain::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
