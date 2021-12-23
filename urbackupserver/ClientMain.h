@@ -182,7 +182,7 @@ public:
 
 	virtual bool handle_not_enough_space(const std::string &path);
 
-	virtual bool handle_not_enough_space(const std::string &path, logid_t logid);
+	virtual bool handle_not_enough_space(const std::string &path, logid_t logid, ServerSettings& server_settings);
 
 	static IFsFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
 
