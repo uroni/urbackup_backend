@@ -70,8 +70,13 @@ public:
 
 	ISharedMutex* getSingleUseMutex();
 private:
+	void assert_thread_id();
+
 
 	DATABASE_ID database_id;
+#ifndef NDEBUG
+	THREAD_ID db_thread_id;
+#endif
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB, IBackupProgress* progress);
 

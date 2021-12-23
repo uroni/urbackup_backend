@@ -80,6 +80,9 @@ void ServerSettings::clear_cache()
 ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 	: local_settings(NULL), clientid(pClientid), db(db)
 {
+#ifndef NDEBUG
+	init_thread_id = Server->getThreadID();
+#endif
 	IScopedLock lock(g_mutex);
 		
 	std::map<int, SSettings*>::iterator iter=g_settings_cache.find(clientid);
@@ -300,6 +303,7 @@ void ServerSettings::update(bool force_update)
 
 void ServerSettings::updateInternal(bool* was_updated)
 {
+	assert(init_thread_id == Server->getThreadID());
 	if(local_settings->needs_update)
 	{
 		if(was_updated!=NULL)
