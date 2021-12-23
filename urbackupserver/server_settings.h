@@ -307,6 +307,9 @@ private:
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 
 	SSettings* local_settings;
+#ifndef NDEBUG
+	THREAD_ID init_thread_id;
+#endif
 
 	IDatabase* db;
 
