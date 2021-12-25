@@ -135,12 +135,14 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
             upath+dirp->d_name=="/private/var/db/ConfigurationProfiles/Store" ||
             upath+dirp->d_name=="/private/var/db/CoreDuet/Knowledge" ||
             upath+dirp->d_name=="/private/var/db/DifferentialPrivacy" ||
+            upath+dirp->d_name=="/private/var/db/DumpPanic" ||
             upath+dirp->d_name=="/private/var/db/fpsd/dvp" ||
             upath+dirp->d_name=="/private/var/db/KernelExtensionManagement/Staging" ||
             upath+dirp->d_name=="/private/var/db/lockdown" ||
             upath+dirp->d_name=="/private/var/db/MobileIdentityService" ||
             upath+dirp->d_name=="/private/var/db/oah" ||
             upath+dirp->d_name=="/private/var/db/searchparty" ||
+            upath+dirp->d_name=="/private/var/db/sysdiagnose/com.apple.sysdiagnose" ||
             upath+dirp->d_name=="/private/var/networkd/db" ||
             upath+dirp->d_name=="/private/var/protected/trustd/private" ||
             upath+dirp->d_name=="/System/Library/Templates/Data/private/var/db/oah")
