@@ -747,7 +747,7 @@ msgid "tChange password"
 msgstr "Ändra lösenord"
 
 msgid "tSeparate settings for this client"
-msgstr "Sepparata inställningar för denna klient"
+msgstr "Separata inställningar för denna klient"
 
 msgid "tArchival"
 msgstr "Arkivering"
