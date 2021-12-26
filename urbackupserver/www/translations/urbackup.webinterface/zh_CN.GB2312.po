@@ -1295,7 +1295,7 @@ msgid "tList"
 msgstr "列表"
 
 msgid "tRestore"
-msgstr "回复"
+msgstr "恢复"
 
 msgid "tRestore folder to client"
 msgstr "将文件夹恢复至客户端"
