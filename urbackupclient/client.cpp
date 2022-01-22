@@ -5670,7 +5670,7 @@ void IndexThread::commitModifyHardLinks()
 #ifdef _WIN32
 uint128 IndexThread::getFrn(const std::string & fn)
 {
-	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS| FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
