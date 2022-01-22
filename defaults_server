@@ -10,11 +10,19 @@
 FASTCGI_PORT=55413
 
 #Enable internal HTTP server
+#	Required for serving web interface without FastCGI
+#	and for websocket connections from client
 HTTP_SERVER="true"
 
 #Port for the web interface
 #(if internal HTTP server is enabled)
 HTTP_PORT=55414
+
+#Bind HTTP server to localhost only
+HTTP_LOCALHOST_ONLY=false
+
+#Bind Internet port to localhost only 
+INTERNET_LOCALHOST_ONLY=false
 
 #log file name
 LOGFILE="/var/log/urbackup.log"
