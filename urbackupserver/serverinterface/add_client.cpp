@@ -48,9 +48,19 @@ ACTION_IMPL(add_client)
 
 			SSettings* s = settings.getSettings();
 
+			std::string server_url = s->internet_server;
+
+			if (server_url.find("urbackup://") != 0 &&
+				server_url.find("ws://") != 0 &&
+				server_url.find("wss://") != 0)
+			{
+				server_url = "urbackup://" + s->internet_server + ":" + convert(s->internet_server_port);
+			}
+
 			ret.set("new_clientid", id);
 			ret.set("new_clientname", POST["clientname"]);
 			ret.set("new_authkey", new_authkey);
+			ret.set("server_url", server_url);
 			ret.set("internet_server", s->internet_server);
 			ret.set("internet_server_port", s->internet_server_port);
 			if (!s->internet_server_proxy.empty())

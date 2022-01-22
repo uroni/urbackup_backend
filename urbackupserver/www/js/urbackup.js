@@ -5996,7 +5996,7 @@ function addNewClient3(data)
 		data.mac_url = downloadClientURL(data.new_clientid, data.new_authkey, "mac");
 		if(data.internet_server_proxy)
 		{
-			data.internet_proxy_settings = " -k internet_server_proxy -v \""+data.internet_server_proxy+"\"";
+			data.internet_proxy_settings = " --proxy \""+data.internet_server_proxy+"\"";
 		}
 		var ndata=dustRender("client_added", data);
 	

@@ -43,7 +43,7 @@
 										sh $TF &&\<br>
 										rm -f $TF &&\<br>
 										urbackupclientctl wait-for-backend &&\<br>
-										urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}{internet_proxy_settings} &&\<br>
+										urbackupclientctl set-settings --server-url "{server_url}" --name "{new_clientname}" --authkey "{new_authkey}"{internet_proxy_settings} &&\<br>
 										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
 										( [ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient )
 								</code>
@@ -59,9 +59,8 @@
 						<ul>
 							<li>{tGo to the settings screen on the client}</li>
 							<li>{tEnable the internet mode on the client}</li>
-							<li>{tSet the internet server to:} {internet_server}</li>
-							<li>{tSet the internet server port to:} {internet_server_port}</li>
-							<li>{tSet the computer name to:} {new_clientname}</li>
+							<li>{tSet the URL to connect to:} {server_url}</li>
+							<li>{tSet the name to:} {new_clientname}</li>
 							<li>{tSet the authentication key to:} {new_authkey}</li>
 							<li>{tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient}</li>
 						</ul>
@@ -72,7 +71,7 @@
 							<p>
 								<code>
 									urbackupclientctl wait-for-backend<br>
-									urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}{internet_proxy_settings}<br>
+									urbackupclientctl set-settings --server-url "{server-url}" --name "{new_clientname}" --authkey "{new_authkey}"{internet_proxy_settings}<br>
 									[ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient<br>
 									[ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient
 								</code>
