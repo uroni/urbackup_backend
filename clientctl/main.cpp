@@ -900,6 +900,9 @@ int action_set_settings(std::vector<std::string> args)
 		"New value to set the setting to",
 		false, "setting value", cmd);
 
+	TCLAP::SwitchArg no_merge_arg("n", "no-merge",
+		"Don't merge server and client settings if possible", cmd);
+
 	cmd.parse(args);
 
 	if (key_arg.getValue().size() != value_arg.getValue().size())
@@ -919,7 +922,12 @@ int action_set_settings(std::vector<std::string> args)
 		s_settings += key_arg.getValue()[i] + "=" + value_arg.getValue()[i] + "\n";
 	}
 
-	s_settings += "keep_old_settings=true\n";
+	s_settings += "set_client_settings=1\n";
+
+	if (!no_merge_arg.getValue())
+	{
+		s_settings += "merge_client_settings=0\n";
+	}
 
 	bool no_perm;
 	bool b = Connector::updateSettings(s_settings, no_perm);
