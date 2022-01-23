@@ -26,6 +26,7 @@
 #include "ClientBitmap.h"
 #include "IFilesystem.h"
 #include "fs/ntfs.h"
+#include "vhdfile.h"
 
 #define PAYLOAD_BLOCK_NOT_PRESENT 0
 #define PAYLOAD_BLOCK_UNDEFINED 1
@@ -2519,7 +2520,8 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 		if (compress)
 		{
 			compressed_file.reset(new CompressedFile(backing_file.get(),
-				false, read_only, compress_n_threads));
+				false, read_only, 
+				compress_n_threads == 0 ? VHDFile::getNumCompThreads(read_only) : compress_n_threads));
 
 			if (compressed_file->hasError())
 			{
@@ -2541,7 +2543,8 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 		if (check_if_compressed())
 		{
 			compressed_file.reset(new CompressedFile(backing_file.get(),
-				true, read_only, compress_n_threads));
+				true, read_only, 
+				compress_n_threads == 0 ? VHDFile::getNumCompThreads(read_only) : compress_n_threads));
 
 			if (compressed_file->hasError())
 			{
