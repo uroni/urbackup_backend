@@ -1204,7 +1204,7 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 
 bool VHDXFile::setBackingFileSize(_i64 fsize)
 {
-	if (file != backing_file.get())
+	if (file != backing_file)
 	{
 		return false;
 	}
@@ -1893,7 +1893,7 @@ bool VHDXFile::createNew()
 		return false;
 	}
 
-	if (file == backing_file.get() &&
+	if (file == backing_file &&
 		!backing_file->Resize(bat_region.FileOffset + bat_region.Length + allocate_size_add_size, false))
 	{
 		Server->Log("Error writing new bat region. " + os_last_error_str(), LL_WARNING);
@@ -2007,7 +2007,7 @@ bool VHDXFile::replayLog()
 	
 	int64 new_fsize = -1;
 	if (file->Size() < head_entry.new_fsize &&
-		file == backing_file.get())
+		file == backing_file)
 	{
 		if (backing_file->Resize(head_entry.new_fsize, false))
 			new_fsize = head_entry.new_fsize;
@@ -2451,7 +2451,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 	{
 		allocated_size = new_pos + block_size + allocate_size_add_size;
 
-		if (file == backing_file.get() &&
+		if (file == backing_file &&
 			!backing_file->Resize(allocated_size, false))
 		{
 			Server->Log("Error resizing backing file to new allocated size " 
@@ -2500,14 +2500,16 @@ void VHDXFile::calcNextPayloadPos()
 
 bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_threads)
 {
-	backing_file.reset(Server->openFile(fn, read_only ? MODE_READ : MODE_RW_CREATE));
+	backing_file_holder.reset(Server->openFile(fn, read_only ? MODE_READ : MODE_RW_CREATE));
 
-	if (backing_file.get() == NULL)
+	if (backing_file_holder.get() == NULL)
 	{
 		Server->Log("Error opening VHDX backing file at \"" 
 			+ fn + "\". " + os_last_error_str(), LL_WARNING);
 		return false;
 	}
+
+	backing_file = backing_file_holder.get();
 
 	if (backing_file->Size() == 0)
 	{
@@ -2519,9 +2521,11 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 
 		if (compress)
 		{
-			compressed_file.reset(new CompressedFile(backing_file.get(),
+			compressed_file.reset(new CompressedFile(backing_file,
 				false, read_only, 
 				compress_n_threads == 0 ? VHDFile::getNumCompThreads(read_only) : compress_n_threads));
+
+			backing_file_holder.release();
 
 			if (compressed_file->hasError())
 			{
@@ -2533,7 +2537,7 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 		}
 		else
 		{
-			file = backing_file.get();
+			file = backing_file;
 		}
 
 		return createNew();
@@ -2542,9 +2546,11 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 	{
 		if (check_if_compressed())
 		{
-			compressed_file.reset(new CompressedFile(backing_file.get(),
+			compressed_file.reset(new CompressedFile(backing_file,
 				true, read_only, 
 				compress_n_threads == 0 ? VHDFile::getNumCompThreads(read_only) : compress_n_threads));
+
+			backing_file_holder.release();
 
 			if (compressed_file->hasError())
 			{
@@ -2556,7 +2562,7 @@ bool VHDXFile::open(const std::string& fn, bool compress, size_t compress_n_thre
 		}
 		else
 		{
-			file = backing_file.get();
+			file = backing_file;
 		}
 
 		if (!readHeader())

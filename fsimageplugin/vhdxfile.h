@@ -153,7 +153,8 @@ private:
 	std::vector<char> bat_buf;
 	std::set<int64> pending_bat_entries;
 
-	std::auto_ptr<IFsFile> backing_file;
+	IFsFile* backing_file;
+	std::auto_ptr<IFsFile> backing_file_holder;
 	IFile* file;
 	std::auto_ptr<CompressedFile> compressed_file;
 	int64 allocated_size;
