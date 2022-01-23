@@ -68,7 +68,7 @@ CompressedFile::CompressedFile( std::string pFilename, int pMode, size_t n_threa
 		blocksize = c_cacheBuffersize;
 		writeHeader();
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
-		initCompressedBuffers(n_threads + 1);
+		initCompressedBuffers(n_threads);
 	}
 
 	if(hotCache.get())
@@ -93,7 +93,7 @@ CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly, si
 		blocksize = c_cacheBuffersize;
 		writeHeader();
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems, n_threads));
-		initCompressedBuffers(n_threads + 1);
+		initCompressedBuffers(n_threads);
 	}
 	if(hotCache.get()!=NULL)
 	{
