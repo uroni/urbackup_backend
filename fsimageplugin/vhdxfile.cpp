@@ -2331,7 +2331,7 @@ bool VHDXFile::readMeta()
 					|| parent_locator_entry->KeyOffset>10*1024*1024)
 				{
 					Server->Log("Parent locator entry key offset not plausible: "+convert(parent_locator_entry->KeyOffset)+
-						" length: "+convert(parent_locator_entry->KeyLength),
+						" length: "+convert(parent_locator_entry->KeyLength)+" entry_buf.size()="+convert(entry_buf.size()),
 						LL_WARNING);
 					return false;
 				}
@@ -2339,8 +2339,8 @@ bool VHDXFile::readMeta()
 				if (parent_locator_entry->ValueOffset + parent_locator_entry->ValueLength >= entry_buf.size()
 					|| parent_locator_entry->ValueOffset > 10 * 1024 * 1024)
 				{
-					Server->Log("Parent locator entry key offset not plausible: " + convert(parent_locator_entry->ValueOffset)+
-						" length: " + convert(parent_locator_entry->ValueLength),
+					Server->Log("Parent locator entry value offset not plausible: " + convert(parent_locator_entry->ValueOffset)+
+						" length: " + convert(parent_locator_entry->ValueLength) + " entry_buf.size()=" + convert(entry_buf.size()),
 						LL_WARNING);
 					return false;
 				}
