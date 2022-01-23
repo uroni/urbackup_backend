@@ -48,13 +48,40 @@ ACTION_IMPL(add_client)
 
 			SSettings* s = settings.getSettings();
 
-			std::string server_url = s->internet_server;
+			std::vector<std::string> internet_servers;
+			Tokenize(s->internet_server, internet_servers, ";");
 
-			if (server_url.find("urbackup://") != 0 &&
-				server_url.find("ws://") != 0 &&
-				server_url.find("wss://") != 0)
+			std::vector<std::string> internet_server_ports;
+			Tokenize(s->internet_server_port, internet_server_ports, ";");
+
+			std::string server_url;
+
+			for (size_t i = 0; i < internet_servers.size(); ++i)
 			{
-				server_url = "urbackup://" + s->internet_server + ":" + convert(s->internet_server_port);
+				std::string& internet_server = internet_servers[i];
+
+				std::string port = "55415";
+				if (i < internet_server_ports.size())
+					port = internet_server_ports[i];
+				else if (!internet_server_ports.empty())
+					port = internet_server_ports[internet_server_ports.size()-1];
+
+				if (i > 0)
+					server_url += ";";
+
+				if (internet_server.find("urbackup://") != 0 &&
+					internet_server.find("ws://") != 0 &&
+					internet_server.find("wss://") != 0)
+				{
+					if(port!="55415")
+						server_url += "urbackup://" + internet_server + ":" + port;
+					else
+						server_url += "urbackup://" + internet_server;
+				}
+				else
+				{
+					server_url += internet_server;
+				}
 			}
 
 			ret.set("new_clientid", id);

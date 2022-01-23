@@ -936,28 +936,44 @@ int action_set_settings(std::vector<std::string> args)
 
 	if (server_url_arg.isSet())
 	{
-		std::string server_url = server_url_arg.getValue();
-		std::string internet_server_port = "55415";
-
-		if (server_url.find("urbackup://") != 0 &&
-			server_url.find("wss://") != 0 &&
-			server_url.find("ws://") != 0)
+		std::vector<std::string> server_urls;
+		Tokenize(server_url_arg.getValue(), server_urls, ";");
+		std::string internet_server;
+		std::string internet_server_port;
+		for (size_t i = 0; i < server_urls.size(); ++i)
 		{
-			std::cerr << "Server URL must start with urbackup://, wss:// or ws://" << std::endl;
-			return 4;
-		}
+			std::string server_url = server_urls[i];
+			std::string server_port = "55415";
 
-		if (server_url.find("urbackup://") == 0)
-		{
-			std::string hostname = server_url.substr(11);
-			if (hostname.find(":") != std::string::npos)
+			if (server_url.find("urbackup://") != 0 &&
+				server_url.find("wss://") != 0 &&
+				server_url.find("ws://") != 0)
 			{
-				internet_server_port = getafter(":", server_url);
+				std::cerr << "Server URL must start with urbackup://, wss:// or ws://" << std::endl;
+				return 4;
 			}
+
+			if (server_url.find("urbackup://") == 0)
+			{
+				std::string hostname = server_url.substr(11);
+				if (hostname.find(":") != std::string::npos)
+				{
+					server_port = getafter(":", server_url);
+				}
+				server_url = hostname;
+			}
+
+			if (!internet_server.empty())
+				internet_server += ";";
+			if (!internet_server_port.empty())
+				internet_server_port += ";";
+
+			internet_server += server_url;
+			internet_server_port += server_port;
 		}
 
 		arg_settings["internet_server_port"] = internet_server_port;
-		arg_settings["internet_server"] = server_url;
+		arg_settings["internet_server"] = internet_server;
 		arg_settings["internet_mode_enabled"] = "true";
 	}
 
