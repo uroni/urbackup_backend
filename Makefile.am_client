@@ -680,6 +680,7 @@ urbackupclientbackend_CXXFLAGS += -DURB_WITH_CLIENTUPDATE
 endif
 
 if !WITH_EMBEDDED_SQLITE3
+urbackupclientbackend_LDADD += -lsqlite3
 urbackupclientbackend_CPPFLAGS += $(SQLITE3_CFLAGS) -DUSE_SYSTEM_SQLITE
 urbackupclientbackend_LDFLAGS += $(SQLITE3_LDFLAGS)
 endif
