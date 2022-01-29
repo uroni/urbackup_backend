@@ -2309,7 +2309,7 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 				_u32 read;
 				do 
 				{
-					bool has_error;
+					bool has_error = false;
 					read = m_chunkhashes->Read(&buffer[0], 4096, &has_error);
 
 					if(has_error)
@@ -2455,3 +2455,4 @@ _i64 FileClientChunked::getRealTransferredBytes()
 	}
 	return tbytes;
 }
+
