@@ -1333,14 +1333,14 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			header_map[key] = trim(getafter(":", headers[i]));
 		}
 
-		if (header_map["sec-websocket-protocol"] != "urbackup")
+		if (strlower(header_map["sec-websocket-protocol"]) != "urbackup")
 		{
 			Server->Log("Unknown web socket protocol \"" + header_map["sec-websocket-protocol"] + "\"", LL_ERROR);
 			Server->destroy(cs);
 			return NULL;
 		}
 
-		if (header_map["upgrade"] != "websocket")
+		if (strlower(header_map["upgrade"]) != "websocket")
 		{
 			Server->Log("Unknown web socket upgrade value \"" + header_map["upgrade"] + "\"", LL_ERROR);
 			Server->destroy(cs);
