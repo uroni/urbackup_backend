@@ -528,9 +528,10 @@ bool CHTTPClient::processRequest(void)
 		size_t pstart;
 		str_map::iterator upgrade_param = http_params.find("UPGRADE");
 		if (upgrade_param != http_params.end()
-			&& upgrade_param->second == "websocket")
+			&& strlower(upgrade_param->second) == "websocket")
 		{
 			std::string name = getuntil("?", *pl);
+			if (name.empty()) name = *pl;
 			std::string gparams = getafter("?", *pl);
 			CHTTPSocket* socket_handler = new CHTTPSocket(name, gparams, http_params, pipe, endpoint);
 			request_ticket = Server->getThreadPool()->execute(socket_handler, "http websocket");
