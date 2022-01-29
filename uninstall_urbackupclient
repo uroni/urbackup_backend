@@ -29,6 +29,13 @@ then
 	/etc/init.d/urbackupclientbackend stop || true
 fi
 
+if [ -e "/usr/share/initramfs-tools/hooks/urbackup-setup-snapshot" ]
+then
+	echo "Removing device mapper boot volume snapshot..."
+	rm /usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot
+	update-initramfs -u
+fi
+
 
 if [ ! -e "$PREFIX/var/urbackup/backup_server.db" ]
 then
