@@ -9,7 +9,7 @@ extern ICryptoFactory* crypto_fak;
 
 void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, IPipe* pipe, const std::string& endpoint_name)
 {
-	if (PARAMS["CONNECTION"] != "Upgrade")
+	if (strlower(PARAMS["CONNECTION"]) != "upgrade")
 	{
 		pipe->Write("HTTP/1.1 500 Expecting Connection: Upgrade\r\nConnection: Close\r\n\r\n");
 		delete pipe;
@@ -21,7 +21,7 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 	Tokenize(protocol_list, protocols, ",");
 
 	for (size_t i = 0; i < protocols.size(); ++i)
-		protocols[i] = trim(protocols[i]);
+		protocols[i] = strlower(trim(protocols[i]));
 
 	if (std::find(protocols.begin(), protocols.end(), "urbackup") == protocols.end())
 	{
