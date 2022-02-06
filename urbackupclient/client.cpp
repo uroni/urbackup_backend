@@ -9176,21 +9176,18 @@ void IndexThread::addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out)
 
 void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, const std::string & volume)
 {
-	if (ref!=NULL
-		&& ref->cbt)
-	{
 #ifdef _WIN32
-		std::string vol = volume;
-		normalizeVolume(vol);
-		vol = strlower(vol);
+	std::string vol = volume;
+	normalizeVolume(vol);
+	vol = strlower(vol);
 #else
-		std::string vol = getMountDevice(volume);
-		if(vol.empty())
-		{
-			return;
-		}
+	std::string vol = getMountDevice(volume);
 #endif
 
+	if (ref!=NULL
+		&& ref->cbt
+		&& !vol.empty())
+	{
 		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE));
 		index_hdat_fs_block_size = -1;
 
