@@ -11,7 +11,7 @@ if [ "x$MARIADB_DUMP_ENABLED" != "x0" ]
 then
         if [ "x$MARIADB_DUMP_PER_BASE" != "x0" ]
         then
-                baselist=$(mysql -u $MARIADB_BACKUP_USER -p=$MARIADB_BACKUP_PASSWORD -e 'show databases' -s --skip-column-names | grep -E -v 'information_schema|performance_schema')
+                baselist=$(mysql -u $MARIADB_BACKUP_USER -p$MARIADB_BACKUP_PASSWORD -e 'show databases' -s --skip-column-names | grep -E -v 'information_schema|performance_schema')
                 for i in $baselist
                 do
                         echo "scriptname=mariadbdump&outputname=mariadbdump_$i.sql"
