@@ -1927,11 +1927,16 @@ namespace restore
 	{
 		system("systemctl stop restore-client");
 
-		std::string internet_server_port = "55415";
-		if (server_url.find(":") != std::string::npos)
+		int internet_server_port = 55415;
+
+		if (next(server_url, 0, "urbackup://"))
 		{
-			internet_server_port = getafter(":", server_url);
-			server_url = getuntil(":", server_url);
+			server_url.erase(0, 10);
+			if (server_url.find(":") != std::string::npos)
+			{
+				internet_server_port = watoi(getafter(":", server_url));
+				server_url = getuntil(":", server_url);
+			}
 		}
 
 		std::string rnd;
@@ -1944,7 +1949,7 @@ namespace restore
 
 		writestring("internet_mode_enabled=true\n"
 			"internet_server=" + server_url + "\n"
-			"internet_server_port=" + internet_server_port + "\n"
+			"internet_server_port=" + std::to_string(internet_server_port) + "\n"
 			"internet_authkey=" + server_authkey + "\n"
 			"computername=" + clientname + "\n", "urbackup/data_1/settings.cfg");
 
