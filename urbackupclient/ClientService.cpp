@@ -312,6 +312,11 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 
 ClientConnector::~ClientConnector(void)
 {
+	if (state != CCSTATE_FILESERV && pipe != orig_pipe)
+	{
+		Server->destroy(pipe);
+	}
+
 	if (curr_result_id != 0)
 	{
 		IndexThread::removeResult(curr_result_id);
@@ -3598,7 +3603,14 @@ bool ClientConnector::closeSocket( void )
 {
 	if(state!=CCSTATE_FILESERV)
 	{
-		return true;
+		if (pipe != orig_pipe)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 	else
 	{
