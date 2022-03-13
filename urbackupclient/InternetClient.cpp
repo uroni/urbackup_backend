@@ -241,7 +241,8 @@ void InternetClient::operator()(void)
 			}
 			else
 			{
-				if(n_connections<spare_connections)
+				if(n_connections<spare_connections &&
+					server_settings.selected_server<server_settings.servers.size())
 				{
 					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings, NULL), "internet client");
 					newConnection();
