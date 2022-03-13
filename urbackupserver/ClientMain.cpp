@@ -2696,8 +2696,10 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 			std::string server_keyadd;
 			if (!secret_session_key.empty())
 			{
-				server_keyadd.resize(16);
-				Server->randomFill(&server_keyadd[0], server_keyadd.size());
+				server_keyadd.resize(16 + sizeof(int64));
+				Server->randomFill(&server_keyadd[0], server_keyadd.size()- sizeof(int64));
+				int64 ctime = Server->getTimeSeconds();
+				memcpy(&server_keyadd[16], &ctime, sizeof(int64));
 			}
 			std::string tosend = identity + "ENC?keyadd="+ base64_encode_dash(server_keyadd)+"&compress="+EscapeParamString(compression)+"&compress_level="+convert(compression_level);
 			size_t rc = tcpstack.Send(ret, tosend);
