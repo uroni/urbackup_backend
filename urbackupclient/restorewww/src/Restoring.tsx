@@ -32,6 +32,11 @@ interface RestoreStatus {
     done_bytes: number;
 }
 
+interface MbrInfo {
+    fn: string;
+    wholeDisk: boolean;
+}
+
 type ScrollLogT = {
     logItems: LogTableItem[];
 };
@@ -113,6 +118,26 @@ function Restoring(props: WizardComponent) {
         tmpfn: string;
     }
 
+    const isDiskMBR = async (mbrfn: string) : Promise<boolean> => {
+        try {
+            const resp = await fetch("x?a=get_is_disk_mbr", {
+                method: "POST",
+                body: new URLSearchParams({
+                    "mbrfn": mbrfn
+                })
+            });
+            const jdata = await resp.json();
+            if(!jdata["ok"])
+                throw Error("get_is_disk_mbr response not ok");
+
+            return jdata["res"];
+        } catch(error) {
+            addLog("Error while getting if this is a disk MBR");
+            setStatus("exception");
+            return false;
+        }
+    }
+
     const getMBR = async (restoreImage: BackupImage) : Promise<GetMbrRes> => {
 
         addLog("Loading MBR and GPT data...");
@@ -189,13 +214,20 @@ function Restoring(props: WizardComponent) {
         return {ok: true, tmpfn: tmpfn};
     }
 
-    const restoreMBR = async () => {
+    const restoreMBR = async () : Promise<MbrInfo>  => {
         setRestoreAction("MBR and GPT");
         setPercent(0);
 
+        const errRet = {fn: "", wholeDisk: false};
         const gmbr_res = await getMBR(props.props.restoreImage);
         if(!gmbr_res.ok)
-            return "";
+            return errRet;
+
+        if(await isDiskMBR(gmbr_res.tmpfn)) {
+            addLog("MBR has disk information. Restoring whole disk...");
+            setStatus("normal");
+            return {fn: gmbr_res.tmpfn, wholeDisk: true};
+        }
 
         addLog("Writing MBR and GPT to disk...");
         setPercent(0);
@@ -213,7 +245,7 @@ function Restoring(props: WizardComponent) {
         } catch(error) {
             addLog("Error while writing MBR");
             setStatus("exception");
-            return "";
+            return errRet;
         }
 
         if(jdata["success"] && jdata["errmsg"] && jdata["errmsg"].length>0) {
@@ -223,10 +255,10 @@ function Restoring(props: WizardComponent) {
         if(!jdata["success"]) {
             addLog("Error writing to MBR and GPT: "+jdata["errmsg"]);
             setStatus("exception");
-            return "";
+            return errRet;
         }
 
-        return gmbr_res.tmpfn;
+        return {fn: gmbr_res.tmpfn, wholeDisk: false};
     }
 
     const resizeSpilledImage = async (disk_fn: string, new_size: string, partnum: number, orig_dev_fn: string) => {
@@ -314,43 +346,55 @@ function Restoring(props: WizardComponent) {
     }
 
     const restoreImage = async (img: BackupImage, restoreToPartition: boolean,
-        restoreToDisk: LocalDisk, withSpillSpace: boolean, mbrfn: string) => {
+        restoreToDisk: LocalDisk, withSpillSpace: boolean, mbrInfo: MbrInfo) => {
         setRestoreAction(img.letter +" - "+imageDateTime(img) + " client "+img.clientname);
 
         let partpath: string;
         let partnum: number;
         if(!restoreToPartition) {
 
-            if(!await getMBR(img)) {
+            if(mbrInfo.fn.length===0) {
+                addLog("MBR info not found. Cannot restore to partition")
                 return false;
             }
+            
+            if(!mbrInfo.wholeDisk) {            
+                const currMbr = await getMBR(img);
+                if(!currMbr.ok) {
+                    addLog("Error loading MBR of partition.")
+                    return false;
+                }
 
-            setStatus("normal");
+                setStatus("normal");
 
-            addLog("Getting partition to restore to...");
-            let jdata;
-            try {
-                const resp = await fetch("x?a=get_partition",
-                    {method: "POST",
-                    body: new URLSearchParams({
-                        "mbrfn": mbrfn,
-                        "out_device": restoreToDisk.path
-                    })});
-                jdata = await resp.json();
-            } catch(error) {
-                addLog("Error getting partition to restore to");
-                setStatus("exception");
-                return false;
+                addLog("Getting partition to restore to...");
+                let jdata;
+                try {
+                    const resp = await fetch("x?a=get_partition",
+                        {method: "POST",
+                        body: new URLSearchParams({
+                            "mbrfn": currMbr.tmpfn,
+                            "out_device": restoreToDisk.path
+                        })});
+                    jdata = await resp.json();
+                } catch(error) {
+                    addLog("Error getting partition to restore to");
+                    setStatus("exception");
+                    return false;
+                }
+
+                if(!jdata["success"]) {
+                    addLog("Error getting partition to restore to");
+                    setStatus("exception");
+                    return false;
+                }
+
+                partpath = jdata["partpath"];
+                partnum = jdata["partnum"];
+            } else {
+                partpath = restoreToDisk.path;
+                partnum = -1;
             }
-
-            if(!jdata["success"]) {
-                addLog("Error getting partition to restore to");
-                setStatus("exception");
-                return false;
-            }
-
-            partpath = jdata["partpath"];
-            partnum = jdata["partnum"];
         } else {
             partpath = restoreToDisk.path;
             partnum = -1;
@@ -522,9 +566,9 @@ function Restoring(props: WizardComponent) {
         restoreRunning.current = true;
 
         setStatus("normal");
-        let mbrfn = "";
+        let mbrInfo = {fn: "", wholeDisk: false};
         if(!props.props.restoreToPartition) {
-            mbrfn = await restoreMBR();
+            mbrInfo = await restoreMBR();
 
             if(props.props.restoreOnlyMBR)
                 return;
@@ -548,7 +592,7 @@ function Restoring(props: WizardComponent) {
         let restore_ok: boolean = true;
         for(const img of restoreImages) {
             if(!await restoreImage(img, props.props.restoreToPartition,
-                props.props.restoreToDisk, withSpillSpace, mbrfn) ) {
+                props.props.restoreToDisk, withSpillSpace, mbrInfo) ) {
                 restore_ok = false;
                 break;
             }
