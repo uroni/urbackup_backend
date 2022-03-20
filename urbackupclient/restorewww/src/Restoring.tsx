@@ -6,6 +6,7 @@ import { sleep, toIsoDateTime, useMountEffect } from "./App";
 import { BackupImage, LocalDisk, WizardComponent, WizardState } from "./WizardState";
 import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
 import assert from "assert";
+import { imageDateTime } from "./ConfigRestore";
 
 interface LogTableItem {
     time: Date;
@@ -314,7 +315,7 @@ function Restoring(props: WizardComponent) {
 
     const restoreImage = async (img: BackupImage, restoreToPartition: boolean,
         restoreToDisk: LocalDisk, withSpillSpace: boolean, mbrfn: string) => {
-        setRestoreAction(img.letter +" - "+toIsoDateTime(new Date(img.time_s*1000)) + " client "+img.clientname);
+        setRestoreAction(img.letter +" - "+imageDateTime(img) + " client "+img.clientname);
 
         let partpath: string;
         let partnum: number;
@@ -504,7 +505,8 @@ function Restoring(props: WizardComponent) {
                     }
                 } else if(downloadStats!==null) {
                     setDownloadStats(produce( draft => {
-                        draft.speed_bpms = 0;
+                        if(draft)
+                            draft.speedBpms = 0;
                     }));
                 }
             }
@@ -538,7 +540,7 @@ function Restoring(props: WizardComponent) {
             addLog("Restoring "+restoreImages.length+" images of client "+props.props.restoreImage.clientname+": ");
 
         for(const img of restoreImages) {
-            addLog("Restoring "+img.letter+" at " + toIsoDateTime(new Date(img.time_s*1000)));
+            addLog("Restoring "+img.letter+" at " + imageDateTime(img));
         }
 
         assert(!props.props.restoreToPartition || restoreImages.length===1);
