@@ -15,7 +15,7 @@ make -j4
 LANG=en
 
 cd urbackupclient/restorewww
-npm install
+npm ci
 npm run build
 cd ..
 cd ..
