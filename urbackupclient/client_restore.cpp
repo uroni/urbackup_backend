@@ -1026,20 +1026,18 @@ namespace restore
 			image.set("time_str", images[i].time_str);
 			image.set("letter", images[i].letter);
 
-			if (!images[i].assoc.empty())
+			JSON::Array assoc;
+			for (size_t j = 0; j < images[i].assoc.size(); ++j)
 			{
-				JSON::Array assoc;
-				for (size_t j = 0; j < images[i].assoc.size(); ++j)
-				{
-					JSON::Object image_assoc;
-					image_assoc.set("id", images[i].assoc[j].id);
-					image_assoc.set("time_s", images[i].assoc[j].time_s);
-					image_assoc.set("time_str", images[i].assoc[j].time_str);
-					image_assoc.set("letter", images[i].assoc[j].letter);
-					assoc.add(image_assoc);
-				}
-				image.set("assoc", assoc);
+				JSON::Object image_assoc;
+				image_assoc.set("id", images[i].assoc[j].id);
+				image_assoc.set("time_s", images[i].assoc[j].time_s);
+				image_assoc.set("time_str", images[i].assoc[j].time_str);
+				image_assoc.set("letter", images[i].assoc[j].letter);
+				assoc.add(image_assoc);
 			}
+			image.set("assoc", assoc);
+
 			ret.add(image);
 		}
 
