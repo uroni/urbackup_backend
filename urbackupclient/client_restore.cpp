@@ -1929,7 +1929,7 @@ namespace restore
 
 		if (next(server_url, 0, "urbackup://"))
 		{
-			server_url.erase(0, 10);
+			server_url.erase(0, 11);
 			if (server_url.find(":") != std::string::npos)
 			{
 				internet_server_port = watoi(getafter(":", server_url));
