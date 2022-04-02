@@ -317,7 +317,8 @@ namespace
 				os_remove_dir(os_file_prefix(test1_path));
 			}
 
-			if (!server_settings->no_file_backups)
+			if (!server_settings->no_file_backups &&
+				!is_stop_show(db, "virus_error"))
 			{
 				bool use_tmpfiles = server_settings->use_tmpfiles;
 				std::string tmpfile_path;
