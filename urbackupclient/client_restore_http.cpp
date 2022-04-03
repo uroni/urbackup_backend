@@ -42,7 +42,7 @@ namespace
 	public:
 		void operator()()
 		{
-			int rc = system(("curl -f \"https://app.urbackup.com/api/online\" > "+timezone_data_file).c_str());
+			int rc = system(("wget -q \"https://app.urbackup.com/api/online\" > "+timezone_data_file).c_str());
 
 			if (rc != 0)
 			{
