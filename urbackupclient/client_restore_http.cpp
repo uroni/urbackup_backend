@@ -6,6 +6,7 @@
 #include "../urbackupcommon/mbrdata.h"
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../Interface/Thread.h"
 
 extern IFSImageFactory* image_fak;
 
@@ -14,6 +15,8 @@ namespace
 	std::mutex g_restore_data_mutex;
 	restore::LoginData g_login_data;
 	int64 res_id = 0;
+
+	std::atomic<bool> timezone_download_started(false);
 
 	struct SRestoreRes
 	{
@@ -31,6 +34,24 @@ namespace
 		std::lock_guard<std::mutex> lock(g_restore_data_mutex);
 		g_login_data = login_data;
 	}
+
+	const std::string timezone_data_file = "/tmp/timezone_data.json";
+
+	class DownloadTimezoneData : public IThread
+	{
+	public:
+		void operator()()
+		{
+			int rc = system(("curl -f \"https://app.urbackup.com/api/online\" > "+timezone_data_file).c_str());
+
+			if (rc != 0)
+			{
+				Server->deleteFile(timezone_data_file);
+			}
+
+			delete this;
+		}
+	};
 }
 
 ACTION_IMPL(status)
@@ -284,7 +305,14 @@ ACTION_IMPL(has_network_device)
 	JSON::Object ret;
 
 	ret.set("ok", true);
-	ret.set("ret", restore::has_network_device());
+	bool has_device = restore::has_network_device();
+	ret.set("ret", has_device);
+
+	bool did_not_start = false;
+	if (has_device && timezone_download_started.compare_exchange_strong(did_not_start, true))
+	{
+		Server->createThread(new DownloadTimezoneData(), "dl tz data");
+	}
 
 	restore::writeJsonResponse(tid, ret);
 }
@@ -1241,3 +1269,117 @@ ACTION_IMPL(get_tmpfn)
 
 	restore::writeJsonResponse(tid, ret);
 }
+
+ACTION_IMPL(get_timezone_data)
+{
+	std::string data;
+	int64 starttime = Server->getTimeMS();
+
+	while (data.empty() && Server->getTimeMS() - starttime < 1000)
+	{
+		data = getFile(timezone_data_file);
+
+		if (data.empty())
+		{
+			Server->wait(50);
+		}
+	}
+
+	if (data.empty())
+	{
+		JSON::Object ret;
+		ret.set("ok", false);
+		restore::writeJsonResponse(tid, ret);
+	}
+	else
+	{
+		Server->setContentType(tid, "application/json");
+		Server->Write(tid, data);
+	}
+}
+
+static std::vector<std::pair<std::string, std::string> > getTimezones()
+{
+	std::vector<std::pair<std::string, std::string> > ret;
+	std::string tzdata;
+	int rc = os_popen("timedatectl list-timezones", tzdata);
+	if (rc != 0)
+	{
+		return ret;
+	}
+
+	std::vector<std::string> lines;
+	Tokenize(tzdata, lines, "\n");
+
+	for (auto& line : lines)
+	{
+		if (line.find("/") != std::string::npos)
+		{
+			ret.push_back(std::make_pair(getuntil("/", line), getafter("/", line)));
+		}
+		else
+		{
+			ret.push_back(std::make_pair(trim(line), ""));
+		}
+	}
+
+	return ret;
+}
+
+ACTION_IMPL(get_timezone_areas)
+{
+	auto tzs = getTimezones();
+
+	JSON::Object ret;
+	ret.set("ok", true);
+	JSON::Array areas;
+	for (auto tz : tzs)
+	{
+		areas.add(tz.first);
+	}
+
+	ret.set("areas", areas);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(get_timezone_cities)
+{
+	std::string area = POST["area"];
+	auto tzs = getTimezones();
+
+	JSON::Object ret;
+	ret.set("ok", true);
+
+	JSON::Array cities;
+	for (auto tz : tzs)
+	{
+		if(tz.first == area && !tz.second.empty())
+			cities.add(tz.second);
+	}
+
+	ret.set("cities", cities);
+	restore::writeJsonResponse(tid, ret);
+}
+
+ACTION_IMPL(set_timezone)
+{
+	std::string tz = POST["tz"];
+
+	JSON::Object ret;
+	ret.set("ok", true);
+
+	if (tz.empty() || tz.find('"')!=std::string::npos)
+	{
+		ret.set("ok", false);
+		restore::writeJsonResponse(tid, ret);
+		return;
+	}
+
+	int rc = system(("timedatectl set-timezone \"" + tz + "\"").c_str());
+
+	if (rc != 0)
+		ret.set("ok", false);
+
+	restore::writeJsonResponse(tid, ret);
+}
+

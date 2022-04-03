@@ -2,6 +2,7 @@ export enum WizardState {
     Init = 1,
     SelectKeyboard,
     WaitForNetwork,
+    SelectTimezone,
     ServerSearch,
     ConfigureServerConnectionDetails,
     WaitForConnection,
@@ -63,6 +64,8 @@ export interface WizardStateProps {
     spillSpace: SpillSpace;
     canRestoreSpill: boolean;
     canKeyboardConfig: boolean;
+    timezoneArea: string;
+    timezoneCity: string;
 }
 
 export interface WizardComponent {

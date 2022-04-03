@@ -29,7 +29,7 @@ function WaitForNetwork(props: WizardComponent) {
 
                 if(jdata && jdata["ret"]) {
                     props.update(produce(props.props, draft => {
-                        draft.state = WizardState.ServerSearch;
+                        draft.state = WizardState.SelectTimezone;
                         draft.max_state = draft.state;
                     }));
                     return;

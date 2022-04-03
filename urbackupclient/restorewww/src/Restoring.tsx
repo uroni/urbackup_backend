@@ -347,7 +347,7 @@ function Restoring(props: WizardComponent) {
 
     const restoreImage = async (img: BackupImage, restoreToPartition: boolean,
         restoreToDisk: LocalDisk, withSpillSpace: boolean, mbrInfo: MbrInfo) => {
-        setRestoreAction(img.letter +" - "+imageDateTime(img) + " client "+img.clientname);
+        setRestoreAction(img.letter +" - "+imageDateTime(img, props.props) + " client "+img.clientname);
 
         let partpath: string;
         let partnum: number;
@@ -584,7 +584,7 @@ function Restoring(props: WizardComponent) {
             addLog("Restoring "+restoreImages.length+" images of client "+props.props.restoreImage.clientname+": ");
 
         for(const img of restoreImages) {
-            addLog("Restoring "+img.letter+" at " + imageDateTime(img));
+            addLog("Restoring "+img.letter+" at " + imageDateTime(img, props.props));
         }
 
         assert(!props.props.restoreToPartition || restoreImages.length===1);

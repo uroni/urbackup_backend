@@ -40,6 +40,10 @@ namespace Actions
 	ACTION(resize_part);
 	ACTION(capabilities);
 	ACTION(get_tmpfn);
+	ACTION(get_timezone_data);
+	ACTION(get_timezone_areas);
+	ACTION(get_timezone_cities);
+	ACTION(set_timezone);
 }
 
 namespace restore

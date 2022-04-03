@@ -3,14 +3,13 @@ import Checkbox, { CheckboxChangeEvent } from "antd/lib/checkbox/Checkbox";
 import produce from "immer";
 import { useCallback, useEffect } from "react";
 import { useState } from "react";
-import { toIsoDateTime } from "./App";
-import { BackupImage, LocalDisk, WizardComponent, WizardState } from "./WizardState";
+import { serverTimezoneDef, toIsoDateTime } from "./App";
+import { BackupImage, LocalDisk, WizardComponent, WizardState, WizardStateProps } from "./WizardState";
 
-export function imageDateTime(img: BackupImage) {
-    if (img.time_str.length>0)
+export function imageDateTime(img: BackupImage, props: WizardStateProps) {
+    if (img.time_str.length>0 && props.timezoneArea===serverTimezoneDef)
         return img.time_str;
-
-    //Perhaps todo: Add a time zone configuration step and always use this one
+        
     return toIsoDateTime(new Date(img.time_s*1000))
 }
 
@@ -107,7 +106,7 @@ function ConfigRestore(props: WizardComponent) {
         for(let img of new_images) {
             for(let assoc_img of img.assoc) {
                 assoc_img.clientname = img.clientname;
-                if(assoc_img.letter.length==0)
+                if(assoc_img.letter.length===0)
                     assoc_img.letter = "sysvol";
             }
         }
@@ -226,12 +225,12 @@ function ConfigRestore(props: WizardComponent) {
             <br />
             Select image: <br />
             <Select loading={!hasImages} style={{ width: "600px" }} 
-                value={selImage === undefined ? "Please select..." : (selImage.letter + " - " + imageDateTime(selImage))}
+                value={selImage === undefined ? "Please select..." : (selImage.letter + " - " + imageDateTime(selImage, props.props))}
                 onChange={(val) => {
                     setSelImage( getSelImageSet().find( image => image.id===parseInt(val) ) as (BackupImage|undefined));
                 } }>
                 {getSelImageSet().map( image => (
-                    <Select.Option key={image.id} value={image.id}>{image.letter} - {imageDateTime(image)}</Select.Option>
+                    <Select.Option key={image.id} value={image.id}>{image.letter} - {imageDateTime(image, props.props)}</Select.Option>
                 ))}
             </Select>
 

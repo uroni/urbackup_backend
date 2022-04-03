@@ -16,10 +16,12 @@ import ReviewRestore from './ReviewRestore';
 import Restoring from './Restoring';
 import SelectKeyboard from './SelectKeyboard';
 import ConfigureSpillSpace from './ConfigureSpillSpace';
+import SelectTimezone from './SelectTimezone';
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
 export const useMountEffect = (fun : React.EffectCallback) => useEffect(fun, []);
-export const sleep = (m: number) => new Promise(r => setTimeout(r, m))
+export const sleep = (m: number) => new Promise(r => setTimeout(r, m));
+export const serverTimezoneDef = "Server timezone";
 
 export const toIsoDateTime = (d: Date) => {
   let y = d.getFullYear();
@@ -41,6 +43,8 @@ function CurrentContent(args: WizardComponent) {
       return <SelectKeyboard props={args.props} update={args.update} />;
     case WizardState.WaitForNetwork:
       return <WaitForNetwork props={args.props} update={args.update} />;
+    case WizardState.SelectTimezone:
+        return <SelectTimezone props={args.props} update={args.update} />;
     case WizardState.ServerSearch:
       return <ServerSearch props={args.props} update={args.update} />;
     case WizardState.ConfigureServerConnectionDetails:
@@ -98,7 +102,9 @@ function App() {
       disks: []
     },
     canKeyboardConfig: true,
-    canRestoreSpill: true
+    canRestoreSpill: true,
+    timezoneArea: serverTimezoneDef,
+    timezoneCity: ""
   });
 
   const menuSelected = () => {
@@ -224,6 +230,7 @@ function App() {
               <Menu.Item key={"" + WizardState.SelectKeyboard} disabled={menuItemDisabled(WizardState.SelectKeyboard)}>Select keyboard layout</Menu.Item>
             }
             <Menu.Item key={"" + WizardState.WaitForNetwork} disabled={menuItemDisabled(WizardState.WaitForNetwork)}>Waiting for network</Menu.Item>
+            <Menu.Item key={"" + WizardState.SelectTimezone} disabled={menuItemDisabled(WizardState.SelectTimezone)}>Select time zone</Menu.Item>
             <Menu.Item key={"" + WizardState.ServerSearch} disabled={menuItemDisabled(WizardState.ServerSearch)}>Search for server</Menu.Item>
             <Menu.Item key={"" + WizardState.ConfigureServerConnectionDetails} disabled={menuItemDisabled(WizardState.ConfigureServerConnectionDetails)}>Configure server connection</Menu.Item>
             <Menu.Item key={"" + WizardState.WaitForConnection} disabled={menuItemDisabled(WizardState.WaitForConnection)}>Wait for connection</Menu.Item>
