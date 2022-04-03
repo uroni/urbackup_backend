@@ -2,6 +2,7 @@
 #include "client_restore.h"
 #include <mutex>
 #include <thread>
+#include <set>
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
 #include "../fsimageplugin/IFSImageFactory.h"
@@ -1330,13 +1331,19 @@ ACTION_IMPL(get_timezone_areas)
 {
 	auto tzs = getTimezones();
 
+	std::set<std::string> tzAreas;
+	for (auto tz : tzs)
+	{
+		if (!tz.first.empty())
+			tzAreas.insert(tz.first);
+	}
+
 	JSON::Object ret;
 	ret.set("ok", true);
 	JSON::Array areas;
-	for (auto tz : tzs)
-	{
-		areas.add(tz.first);
-	}
+
+	for (auto tz : tzAreas)
+		areas.add(tz);
 
 	ret.set("areas", areas);
 	restore::writeJsonResponse(tid, ret);
