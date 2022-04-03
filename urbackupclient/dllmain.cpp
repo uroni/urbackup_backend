@@ -396,6 +396,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(get_timezone_data);
 		ADD_ACTION(get_timezone_areas);
 		ADD_ACTION(get_timezone_cities);
+		ADD_ACTION(set_timezone);
 		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}
