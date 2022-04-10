@@ -2769,6 +2769,66 @@ function unescapeCurrentSettings(settings)
 			setting.value_group = unescapeHTML(setting.value_group);
 	}
 }
+function settingSwitchReset(key)
+{
+	var use = g.curr_settings[key].use;
+	if(use==1)
+		use=2;
+	else if(use==2)
+		use=4;
+	else if(use==4)
+		use=3;
+	else if(use==3)
+		use=1;
+
+	g.curr_settings[key].use=use;
+
+	for(var i=0;i<g.settings_list.length;++i)
+	{
+		var lkey = g.settings_list[i];
+		var lval = g.curr_settings[lkey];
+	
+		if(typeof lval=="undefined")
+			continue;
+		
+		if(typeof lval.use=="undefined")
+			continue
+
+		luse = fixupUse(lkey, use);
+		
+		if(luse==1)
+		{
+			if(typeof g.curr_settings[lkey].orig_html!="undefined")
+			{
+				I(lkey+"_div").innerHTML = lval.orig_html;
+			}
+		}
+
+		if(luse==2 &&
+			typeof lval.value == "undefined")
+		{
+			lval.value = getVal(g.curr_settings[lkey])
+		}
+
+		lval.use = luse;
+	}
+
+	renderSettingSwitchAll();
+}
+function fixupUse(key, use)
+{
+	if($.inArray(key, g.client_settings_list)==-1
+		&& use==4 && $.inArray(key, g.mergable_settings_list)!=-1)
+		use=3;
+	else if($.inArray(key, g.client_settings_list)==-1
+		&& use>2)
+		use=1;
+	if($.inArray(key, g.mergable_settings_list)==-1
+		&& (use==3 || use>4))
+		use=1;
+
+	return use;
+}
 function settingSwitch()
 {
 	var key = $(this).attr("id");
@@ -2780,6 +2840,12 @@ function settingSwitch()
 
 	if(key=="backup_window")
 		key="backup_window_incr_file";
+
+	if(key=="reset")
+	{
+		settingSwitchReset(key);
+		return;
+	}
 
 	var use = g.curr_settings[key].use;
 
@@ -2798,15 +2864,7 @@ function settingSwitch()
 		use=1;
 	}
 
-	if($.inArray(key, g.client_settings_list)==-1
-		&& use==4 && $.inArray(key, g.mergable_settings_list)!=-1)
-		use=3;
-	else if($.inArray(key, g.client_settings_list)==-1
-		&& use>2)
-		use=1;
-	if($.inArray(key, g.mergable_settings_list)==-1
-		&& (use==3 || use>4))
-		use=1;
+	use = fixupUse(key, use);
 
 	if(use==2 &&
 		typeof g.curr_settings[key].value == "undefined")
@@ -2933,10 +2991,48 @@ function settingChange(p_key)
 	
 	settingChangeKey(key);
 }
+
+function getResetVal(settings)
+{
+	var use = 0;
+	for (var key in settings) {
+		if (!settings.hasOwnProperty(key)) {
+			continue;
+		}
+
+		var setting = settings[key];
+
+		if(typeof setting!="object")
+			continue;
+
+		use |= setting.use;
+	}
+
+	if(use!=1 && use!=2 && use!=4)
+		use = 1;
+
+	return {"use": use,
+		value: "",
+		value_client: "",
+		value_group: ""};
+}
+
 function renderSettingSwitch(key)
 {
 	var val;
-	if(key=="backup_window")
+	if(key=="reset")
+	{
+		if(typeof g.curr_settings["reset"] === "undefined")
+		{
+			val = getResetVal(g.curr_settings);
+			g.curr_settings["reset"] = val;
+		}
+		else
+		{
+			val = g.curr_settings[key];
+		}
+	}
+	else if(key=="backup_window")
 	{
 		val = g.curr_settings["backup_window_incr_file"];
 	}
@@ -3047,7 +3143,7 @@ function mergeSettingUpdateUse(key)
 }
 function renderMergeSetting(key)
 {
-	if(key=="archive")
+	if(key=="archive" || key=="reset")
 		return;
 
 	var val = g.curr_settings[key];
@@ -3152,6 +3248,11 @@ function renderSettingSwitchAll()
 	if(I("backup_window_sw"))
 	{
 		renderSettingSwitch("backup_window");
+	}
+
+	if(I("reset_sw"))
+	{
+		renderSettingSwitch("reset");
 	}
 }
 function show_settings2(data)
