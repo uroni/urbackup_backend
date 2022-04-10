@@ -2026,6 +2026,10 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		{
 			std::string& new_key = new_keys[i];
 
+			if (new_key == "merge_client_settings" ||
+				new_key == "set_client_settings")
+				continue;
+
 			std::string val;
 			if(new_settings->getValue(new_keys[i], &val))
 			{
