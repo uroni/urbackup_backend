@@ -233,14 +233,14 @@ namespace
 	_u32 getBatEntry(int64 pos, _u32 block_size, _u32 sector_size)
 	{
 		int64 data_blocks = pos / block_size;
-		return static_cast<_u32>(data_blocks + (data_blocks - 1) / getChunkRatio(block_size, sector_size));
+		return static_cast<_u32>(data_blocks + data_blocks / getChunkRatio(block_size, sector_size));
 	}
 
 	_u32 getSectorBitmapEntry(int64 pos, _u32 block_size, _u32 sector_size)
 	{
 		int64 data_blocks = pos / block_size;
 		_u32 chunk_ratio = getChunkRatio(block_size, sector_size);
-		return static_cast<_u32>(data_blocks + (data_blocks - 1) / chunk_ratio +
+		return static_cast<_u32>(data_blocks + data_blocks / chunk_ratio +
 			(chunk_ratio - data_blocks%chunk_ratio));
 	}
 
@@ -1060,7 +1060,7 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
 	if (!Seek(unused_start))
 	{
-		Server->Log("Error while sseking to " + convert(unused_end) + " in VHDX file."
+		Server->Log("Error while seeking to " + convert(unused_end) + " in VHDX file."
 			"Size is " + convert(dst_size) + " -2", LL_ERROR);
 		return false;
 	}
