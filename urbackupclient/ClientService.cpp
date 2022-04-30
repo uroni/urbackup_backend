@@ -2053,7 +2053,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 						skip_new_keys.push_back(new_key);
 					}
 
-					int old_use = old_settings->getValue(new_key + ".use", 0);
+					int old_use = old_settings->getValue(new_key + ".use", c_use_group);
 					int64 old_use_lm = old_settings->getValue(new_key + ".use_lm", 0);
 					int64 new_use_lm = Server->getTimeSeconds();
 					if (old_use_lm == new_use_lm)
