@@ -669,7 +669,7 @@ std::string translate_tokens(uid_t uid, gid_t gid, mode_t mode, ClientDAO* dao, 
 
 		if( (mode & igrp) == igrp)
 		{
-			int64 tid = read_token_lazy_cache(cache, dao, false, uid);
+			int64 tid = read_token_lazy_cache(cache, dao, false, gid);
 			if(tid==0)
 			{
 				Server->Log("Error getting internal id for group with id "+convert(gid), LL_ERROR);
