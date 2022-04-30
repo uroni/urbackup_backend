@@ -639,7 +639,8 @@ void ServerCleanupThread::do_remove_unknown(void)
 					{
 						std::string extension = findextension(image_files[l].name);
 
-						if (extension != "vhd" && extension != "vhdz" && extension != "raw")
+						if (extension != "vhd" && extension != "vhdz" && extension != "raw"
+							&& extension != "vhdx" && extension != "vhdxz")
 							continue;
 
 						found_image = true;
@@ -694,7 +695,8 @@ void ServerCleanupThread::do_remove_unknown(void)
 			{
 				std::string extension=findextension(cf.name);
 
-				if(extension!="vhd" && extension!="vhdz" && extension!="raw")
+				if(extension!="vhd" && extension!="vhdz" && extension!="raw" &&
+					extension != "vhdx" && extension != "vhdxz")
 					continue;
 
 				bool found=false;
