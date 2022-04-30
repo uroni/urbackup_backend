@@ -1003,6 +1003,11 @@ namespace backupaccess
 			{
 				vhdfile.reset(image_fak->createVHDFile(path, true, 0));
 			}
+			else if (extension == "vhdx"
+				|| extension == "vhdxz")
+			{
+				vhdfile.reset(image_fak->createVHDFile(path, true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX));
+			}
 			else if(extension=="raw")
 			{
 				vhdfile.reset(image_fak->createVHDFile(path, true, 0, 2*1024*1024, false, IFSImageFactory::ImageFormat_RawCowFile));
