@@ -791,7 +791,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					else
 					{
 						Server->Log(clientname +": Trying to reconnect in doImage", LL_DEBUG);
-						cc = client_main->getClientCommandConnection(server_settings.get(), 60000);
+						cc = client_main->getClientCommandConnection(server_settings.get(), 60000, NULL, true, true);
 						if (cc == NULL)
 						{
 							Server->wait(60000);

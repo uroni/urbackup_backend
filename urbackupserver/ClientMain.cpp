@@ -2630,7 +2630,8 @@ bool ClientMain::inBackupWindow(Backup * backup)
 	}
 }
 
-IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr, bool do_encrypt)
+IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms,
+	std::string* clientaddr, bool do_encrypt, bool allow_reauth)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
@@ -2724,6 +2725,15 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 
 				if (tcpstack.getPacket(msg))
 				{					
+					if (allow_reauth && msg == "ERR")
+					{
+						if (authenticateIfNeeded(false, true))
+						{
+							Server->destroy(ret);
+							return getClientCommandConnection(server_settings, timeoutms, clientaddr, do_encrypt, false);
+						}
+					}
+
 					ParseParamStrHttp(msg, &enc_response);
 					break;
 				}
