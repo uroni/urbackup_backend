@@ -309,7 +309,7 @@ namespace
 				fileserv->registerMetadataCallback("clientdl" + convert(i), identity, callback);
 			}
 			
-			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity, false);
+			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretkldf", identity, false);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("urbackup", identity, false, false));
 
 
