@@ -84,6 +84,8 @@ private:
 
 	static void timeout_restore_tokens_used();
 
+	void startReauth();
+
 	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;

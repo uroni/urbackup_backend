@@ -261,10 +261,15 @@ void ServerChannelThread::run()
 	{
 		if(input==NULL)
 		{
-			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr);
+			bool require_reauth = false;
+			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr, false, &require_reauth);
 			if(np==NULL)
 			{
-				Server->Log("Connecting Channel to "+clientname+" failed - CONNECT error -55", LL_DEBUG);
+				if (require_reauth)
+				{
+					startReauth();
+				}
+				Server->Log("Connecting Channel to "+clientname+" failed - CONNECT error -55 require_reauth="+convert(require_reauth), LL_DEBUG);
 				Server->wait(10000);
 			}
 			else
@@ -385,18 +390,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 	if(msg=="ERR")
 	{
-		if (next_reauth_time == 0
-			|| Server->getTimeMS() > next_reauth_time)
-		{
-			client_main->forceReauthenticate();
-			client_main->sendToPipe("WAKEUP");
-
-			++reauth_tries;
-
-			unsigned int waittime = (std::min)(static_cast<unsigned int>(1000.*pow(2., static_cast<double>(reauth_tries))), (unsigned int)30 * 60 * 1000);
-			waittime = (std::max)((unsigned int)60000, waittime);
-			next_reauth_time = Server->getTimeMS()+waittime;
-		}
+		startReauth();
 		return std::string();
 	}
 	else if(msg=="START BACKUP INCR")
@@ -1759,6 +1753,22 @@ void ServerChannelThread::timeout_restore_tokens_used()
 		{
 			++it;
 		}
+	}
+}
+
+void ServerChannelThread::startReauth()
+{
+	if (next_reauth_time == 0
+		|| Server->getTimeMS() > next_reauth_time)
+	{
+		client_main->forceReauthenticate();
+		client_main->sendToPipe("WAKEUP");
+
+		++reauth_tries;
+
+		unsigned int waittime = (std::min)(static_cast<unsigned int>(1000. * pow(2., static_cast<double>(reauth_tries))), (unsigned int)30 * 60 * 1000);
+		waittime = (std::max)((unsigned int)60000, waittime);
+		next_reauth_time = Server->getTimeMS() + waittime;
 	}
 }
 
