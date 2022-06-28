@@ -619,7 +619,7 @@ bool IncrFileBackup::doFileBackup()
 						if(cf.name=="..")
 						{
 							--skip_dir_completely;
-							if(skip_dir_completely>0)
+							if(skip_dir_completely>0 && !folder_files.empty())
 							{
 								curr_os_path=ExtractFilePath(curr_os_path, "/");
 								curr_path=ExtractFilePath(curr_path, "/");
@@ -1032,7 +1032,7 @@ bool IncrFileBackup::doFileBackup()
 							}							
 						}
 					}
-					else //cf.name==".."
+					else if(!folder_files.empty()) //cf.name==".."
 					{
 						if((indirchange || dir_diff_stack.top()) && client_main->getProtocolVersions().file_meta>0 && !script_dir)
 						{
@@ -1481,11 +1481,11 @@ bool IncrFileBackup::doFileBackup()
 		tmp_filelist->Seek(0);
 		line = 0;
 		size_t output_offset=0;
-		std::stack<size_t> last_modified_offsets;
 		list_parser.reset();
 		script_dir=false;
 		indirchange=false;
 		has_read_error = false;
+		depth = 0;
 		while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 		{
 			if (has_read_error)
@@ -1513,7 +1513,7 @@ bool IncrFileBackup::doFileBackup()
 
 						if(cf.name!="..")
 						{
-							if(cf.name=="urbackup_backup_scripts")
+							if(depth == 0 && cf.name=="urbackup_backup_scripts")
 							{
 								script_dir=true;
 							}
@@ -1545,7 +1545,8 @@ bool IncrFileBackup::doFileBackup()
 								indirchange=false;
 							}
 
-							script_dir=false;
+							if(depth==0)
+								script_dir=false;
 						}
 
 
@@ -1930,7 +1931,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 		{
 			if(list_parser.nextEntry(buffer[i], curr_file, NULL))
 			{
-				if(curr_file.isdir && curr_file.name=="..")
+				if(curr_file.isdir && curr_file.name==".." && !folder_files.empty())
 				{
 					folder_files.pop();
 					curr_path=ExtractFilePath(curr_path, os_file_sep());
