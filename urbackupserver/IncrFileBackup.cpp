@@ -605,6 +605,13 @@ bool IncrFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
+				if (folder_files.empty())
+				{
+					ServerLogger::Log(logid, "File list is corrupted (folder_files is empty)", LL_ERROR);
+					has_read_error = true;
+					break;
+				}
+
 				std::string osspecific_name;
 
 				if(!cf.isdir || cf.name!="..")

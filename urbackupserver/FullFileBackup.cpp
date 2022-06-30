@@ -267,6 +267,13 @@ bool FullFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
+				if (folder_files.empty())
+				{
+					ServerLogger::Log(logid, "File list is corrupted (folder_files is empty)", LL_ERROR);
+					has_read_error = true;
+					break;
+				}
+
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
