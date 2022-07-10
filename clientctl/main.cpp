@@ -1252,6 +1252,17 @@ int action_add_backupdir(std::vector<std::string> args)
 
 	SBackupDir new_dir;
 	new_dir.path = path_arg.getValue();
+
+	if (!os_path_absolute(new_dir.path))
+	{
+		new_dir.path = os_get_final_path(new_dir.path);
+	}
+
+	if (!new_dir.path.empty() && new_dir.path[new_dir.path.size() - 1] == os_file_sep()[0])
+	{
+		new_dir.path.erase(new_dir.path.size() - 1, 1);
+	}
+
 	if (name_arg.getValue().empty())
 	{
 		new_dir.name = getDefaultDirname(backup_dirs, new_dir.path);
