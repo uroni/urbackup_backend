@@ -272,6 +272,7 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
 	std::string args="all_virtual_clients=1&enable_client_paths_use=1";
+	size_t idx = 0;
 	for (size_t i = 0; i<res.size(); ++i)
 	{
 		if (res[i].server_default)
@@ -287,14 +288,16 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 			name += "/" + res[i].flags;
 		}
 
-		args += "dir_" + convert(i) + "=" + path;
-		args += "&dir_" + convert(i) + "_name=" + name;
-		args += "&dir_" + convert(i) + "_group=" + convert(res[i].group);
+		args += "dir_" + convert(idx) + "=" + path;
+		args += "&dir_" + convert(idx) + "_name=" + name;
+		args += "&dir_" + convert(idx) + "_group=" + convert(res[i].group);
 
 		if (!res[i].virtual_client.empty())
 		{
-			args += "&dir_" + convert(i) + "_virtual_client=" + EscapeParamString(res[i].virtual_client);
+			args += "&dir_" + convert(idx) + "_virtual_client=" + EscapeParamString(res[i].virtual_client);
 		}
+
+		++idx;
 	}
 
 	std::string d = getResponse("SAVE BACKUP DIRS", args, true);
