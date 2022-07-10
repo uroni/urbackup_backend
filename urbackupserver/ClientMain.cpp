@@ -1913,7 +1913,7 @@ void ClientMain::sendSettings(void)
 			if (!setting.exists)
 			{
 				s_settings += key + "=" + value_default + "\n";
-				s_settings += key+".use=" + convert(c_use_group);
+				s_settings += key+".use=" + convert(c_use_group) + "\n";
 			}
 			else
 			{
