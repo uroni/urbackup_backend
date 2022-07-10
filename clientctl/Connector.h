@@ -26,6 +26,10 @@ typedef long long int int64;
 
 struct SBackupDir
 {
+	SBackupDir()
+		: id(0), group(0), server_default(0)
+	{}
+
 	std::string path;
 	std::string name;
 	int id;
