@@ -249,15 +249,13 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 			std::string virtual_client = dir.get("virtual_client", std::string()).asString();
 
 			SBackupDir rdir =
-			{
-				dir["path"].asString(),
-				dir["name"].asString(),
-				dir["id"].asInt(),
-				dir["group"].asInt(),
-				virtual_client,
-				dir["flags"].asString(),
-				dir["server_default"].asInt()
-			};
+				SBackupDir(	dir["path"].asString(),
+					dir["name"].asString(),
+					dir["id"].asInt(),
+					dir["group"].asInt(),
+					virtual_client,
+					dir["flags"].asString(),
+					dir["server_default"].asInt());
 
 			ret.push_back(rdir);
 		}
