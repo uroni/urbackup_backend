@@ -262,7 +262,7 @@ void ServerChannelThread::run()
 		if(input==NULL)
 		{
 			bool require_reauth = false;
-			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr, false, &require_reauth);
+			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr, true, &require_reauth);
 			if(np==NULL)
 			{
 				if (require_reauth)
@@ -382,7 +382,8 @@ void ServerChannelThread::doExit(void)
 
 std::string ServerChannelThread::processMsg(const std::string &msg)
 {
-	if (msg != "ERR")
+	if (msg != "ERR" &&
+		msg != "ERR REQUIRE ENC")
 	{
 		reauth_tries = 0;
 		next_reauth_time = 0;
