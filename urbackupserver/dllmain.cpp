@@ -2395,7 +2395,7 @@ void upgrade(void)
 
 	if(qp==NULL)
 	{
-	    Server->Log("db_version is still not there, abrorting upgrade", LL_WARNING);
+	    Server->Log("db_version is still not there, aborting upgrade", LL_WARNING);
 	    return;
 	}
 
