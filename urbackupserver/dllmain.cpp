@@ -2388,11 +2388,15 @@ void upgrade(void)
 	IQuery *qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
 	if(qp==NULL)
 	{
-		Server->Log("Importing data...");
+		Server->Log("Importing data, because db_version is not there...", LL_WARNING);
 		db->Import("urbackup/backup_server.dat");
 		qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
+	}
 
-		return;
+	if(qp==NULL)
+	{
+	    Server->Log("db_version is still not there, abrorting upgrade", LL_WARNING);
+	    return;
 	}
 
 	db_results res_v=qp->Read();
