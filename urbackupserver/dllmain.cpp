@@ -2381,7 +2381,7 @@ bool upgrade65_66()
 
 void upgrade(void)
 {
-    Server->Log("Check for necessary database updates...");
+    Server->Log("Check for necessary database updates...", LL_WARNING);
 
 	Server->destroyAllDatabases();
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -2455,7 +2455,7 @@ void upgrade(void)
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
 		} else {
-		    Server->Log("No (more) database upgrade needed.");
+		    Server->Log("No (more) database upgrade needed.", LL_WARNING);
 		}
 
 		db->BeginWriteTransaction();
