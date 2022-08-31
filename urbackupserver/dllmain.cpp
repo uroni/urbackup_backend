@@ -2455,7 +2455,7 @@ void upgrade(void)
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
 		} else {
-		    Server->Log("No database upgrade needed.");
+		    Server->Log("No (more) database upgrade needed.");
 		}
 
 		db->BeginWriteTransaction();
