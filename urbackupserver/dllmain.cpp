@@ -2381,6 +2381,8 @@ bool upgrade65_66()
 
 void upgrade(void)
 {
+    Server->Log("Check for necessary database updates...");
+
 	Server->destroyAllDatabases();
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
@@ -2389,14 +2391,15 @@ void upgrade(void)
 		Server->Log("Importing data...");
 		db->Import("urbackup/backup_server.dat");
 		qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
-	}
-	if(qp==NULL)
-	{
+
 		return;
 	}
+
 	db_results res_v=qp->Read();
-	if(res_v.empty())
+	if(res_v.empty()) {
+	    Server->Log("db_version is empty!", LL_WARNING);
 		return;
+	}
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
@@ -2407,6 +2410,9 @@ void upgrade(void)
 		startup_status.curr_db_version=ver;
 	}
 	bool do_upgrade=false;
+
+	Server->Log("Current db_version: "+convert(ver));
+
 	if(ver<max_v)
 	{
 		do_upgrade=true;
@@ -2442,13 +2448,16 @@ void upgrade(void)
 		{
 		    Server->Log("Upgrading database to version "+convert(ver+1), LL_WARNING);
 		}
-		if(ver>max_v)
+		else if(ver>max_v)
 		{
 			Server->Log("Current UrBackup database version is "+convert(ver)+". This UrBackup"
 				" server version only supports databases up to version "+convert(max_v)+"."
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
+		} else {
+		    Server->Log("No database upgrade needed.");
 		}
+
 		db->BeginWriteTransaction();
 		old_v=ver;
 		bool has_error=false;
@@ -2857,7 +2866,7 @@ void upgrade(void)
 	if(do_upgrade)
 	{
 		detach_other_dbs(db);
-		Server->Log("Done.", LL_WARNING);
+		Server->Log("Database upgrade done.", LL_WARNING);
 	}
 
 	if(!cache_res.empty())
