@@ -1168,11 +1168,12 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 			q_insert_newclient->Reset();
 			db->destroyQuery(q_insert_newclient);
 
-			IQuery *q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES (?,?,?)", false);
+			IQuery *q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid, use) VALUES (?,?,?,?)", false);
 			std::string new_authkey = ServerSettings::generateRandomAuthKey();
 			q_insert_setting->Bind("internet_authkey");
 			q_insert_setting->Bind(new_authkey);
 			q_insert_setting->Bind(rid);
+			q_insert_setting->Bind(c_use_value);
 			q_insert_setting->Write();
 			q_insert_setting->Reset();
 
@@ -2023,7 +2024,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
-		std::string &key=setting_names[i];
+		const std::string& key=setting_names[i];
 		std::string value;
 
 		int use = c_use_value;
@@ -2074,9 +2075,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified)
 {
-	if (key == "update_freq_incr")
-		int abct = 45;
-
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
 	db_results res = q_get_setting->Read();
