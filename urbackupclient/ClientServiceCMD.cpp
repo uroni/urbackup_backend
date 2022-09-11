@@ -898,6 +898,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 {
 	if(last_capa & DONT_ALLOW_CONFIG_PATHS)
 	{
+		Server->Log("Changing paths to backup is disabled", LL_WARNING);
 		tcpstack.Send(pipe, "FAILED");
 		return;
 	}

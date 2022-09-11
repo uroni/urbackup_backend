@@ -391,6 +391,7 @@ private:
 	static db_results cached_status;
 	static std::map<std::string, int64> last_token_times;
 	static int last_capa;
+	static int last_capa_db;
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;

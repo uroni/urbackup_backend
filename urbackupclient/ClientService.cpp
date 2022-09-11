@@ -89,6 +89,7 @@ std::vector<SChannel> ClientConnector::channel_pipes;
 db_results ClientConnector::cached_status;
 std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
+int ClientConnector::last_capa_db = 0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
@@ -239,11 +240,13 @@ void ClientConnector::init_mutex(void)
 	if(!res.empty())
 	{
 		last_capa=watoi(res[0]["last_capa"]);
+		last_capa_db = last_capa;
 	}
 	else
 	{
 		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_capa', '0');");
 		last_capa=0;
+		last_capa_db = 0;
 	}
 
 	ClientDAO clientdao(db);
@@ -3476,24 +3479,37 @@ int ClientConnector::getCapabilities(IDatabase* db)
 		capa=INT_MAX;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (!channel_pipes[i].virtual_client.empty())
+				continue;
+
 			capa=capa & channel_pipes[i].capa;
 		}
 
-		if(capa!=last_capa)
+		if (capa == INT_MAX)
+		{
+			for (size_t i = 0; i < channel_pipes.size(); ++i)
+			{
+				capa = capa & channel_pipes[i].capa;
+			}
+		}
+
+		if(capa!=last_capa_db)
 		{
 			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
 			if(cq!=NULL)
 			{
 				cq->Bind(capa);
-				if(cq->Write(0))
+				if(cq->Write(100))
 				{
-					last_capa=capa;
+					last_capa_db=capa;
 				}
 				cq->Reset();				
 				db->destroyQuery(cq);
 			}
 		}
+
+		last_capa = capa;
 	}
 
 	if (!retrieved_has_components)
