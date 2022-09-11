@@ -4418,7 +4418,7 @@ function getSettingSave(key)
 		|| key=="backup_window_full_file"
 		|| key=="backup_window_incr_image"
 		|| key=="backup_window_full_image" )
-		&& I("backup_window"))
+		&& !g.showing_backup_window_details)
 	{
 		key= "backup_window_incr_file";
 	}
@@ -5981,9 +5981,13 @@ function showBackupWindowDetails()
 }
 function hideBackupWindowDetails()
 {
+	g.showing_backup_window_details=true;
 	if(I('backup_window_incr_file').value==I('backup_window_full_file').value
 	    && I('backup_window_full_file').value==I('backup_window_incr_image').value
-	    && I('backup_window_incr_image').value==I('backup_window_full_image').value )
+	    && I('backup_window_incr_image').value==I('backup_window_full_image').value 
+		&& getSettingSave('backup_window_incr_file').use ==  getSettingSave('backup_window_full_file').use
+		&& getSettingSave('backup_window_full_file').use ==  getSettingSave('backup_window_incr_image').use
+		&& getSettingSave('backup_window_incr_image').use ==  getSettingSave('backup_window_full_image').use )
 	{
 		setBackupWindowDisplay("none");
 		I('backup_window').value=I('backup_window_incr_file').value;
