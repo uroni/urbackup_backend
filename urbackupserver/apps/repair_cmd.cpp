@@ -80,7 +80,8 @@ int repair_cmd(void)
 			return 1;
 		}
 
-		if (db_names[i] == "_files")
+		if (db_names[i] == "_files" &&
+			!db->Read("SELECT * FROM sqlite_master WHERE name = 'lost_and_found' AND type = 'table'").empty())
 		{
 			Server->Log("Moving rows from lost+found...", LL_INFO);
 			db->Write("INSERT OR IGNORE INTO files SELECT id, c1 AS backupid, c2 AS fullpath, c3 AS shahash, c4 AS filesize, c5 AS created, c6 AS rsize, "
