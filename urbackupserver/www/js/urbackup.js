@@ -2888,7 +2888,7 @@ function settingSwitch()
 		{
 			if(key=="archive")
 			{
-				renderArchiveSettings(g.curr_settings_type==0);
+				renderArchiveSettings(g.curr_settings_type==0 || g.curr_settings_type == 1);
 			}
 			else
 			{
@@ -5838,7 +5838,7 @@ function deleteArchiveItem(id)
 
 	if(rerender)
 	{
-		renderArchiveSettings(g.curr_settings_type==0);
+		renderArchiveSettings(g.curr_settings_type==0 || g.curr_settings_type==1);
 	}
 }
 function changeArchiveForUnit()
@@ -6412,6 +6412,8 @@ function renderArchiveSettings(global)
 		var prefix="c";
 		if(typeof setting.use=="undefined" )
 			prefix="d";
+		else if(global)
+			prefix="g";
 
 		var idx=0;
 		while(typeof params["every_"+prefix+idx] != "undefined")
