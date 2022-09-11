@@ -3261,7 +3261,7 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 
 	if (!clientsubname.empty())
 	{
-		params = "&clientsubname=" + EscapeParamString(clientsubname);
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
 		params[0] = ' ';
 	}
 
