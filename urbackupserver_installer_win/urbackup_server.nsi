@@ -69,6 +69,26 @@ Section "install"
 		Quit
 	${EndIf}
 	
+	${If} ${IsWin7}
+		MessageBox MB_OK "Sorry, installation on Windows 7 is not supported."
+		Quit
+	${EndIf}
+	
+	${If} ${IsWinVista}
+		MessageBox MB_OK "Sorry, installation on Windows Vista is not supported."
+		Quit
+	${EndIf}
+	
+	${If} ${IsWin2008}
+		MessageBox MB_OK "Sorry, installation on Windows 2008 is not supported."
+		Quit
+	${EndIf}
+	
+	${If} ${IsWin2008R2}
+		MessageBox MB_OK "Sorry, installation on Windows 2008R2 is not supported."
+		Quit
+	${EndIf}
+	
 	SetOutPath "$TEMP"
 	${If} ${RunningX64}
 		; Push $R0
