@@ -22,7 +22,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 call "%~dp0urbackupserver_installer_win/generate_msi.bat"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-"C:\Program Files (x86)\NSIS\Unicode\makensis.exe" "%~dp0urbackupserver_installer_win/urbackup_server.nsi"
+"C:\Program Files (x86)\NSIS\makensis.exe" "%~dp0urbackupserver_installer_win/urbackup_server.nsi"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 if NOT "%STORE_SYMBOLS%" == "true" GOTO skip_symbols
