@@ -1182,6 +1182,7 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 				q_insert_setting->Bind("group_id");
 				q_insert_setting->Bind(*client_group);
 				q_insert_setting->Bind(rid);
+				q_insert_setting->Bind(c_use_value);
 				q_insert_setting->Write();
 				q_insert_setting->Reset();
 
