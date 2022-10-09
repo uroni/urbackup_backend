@@ -49,16 +49,13 @@ std::string strip_mapper(std::string dev)
     return dev;
 }
 
-bool do_task_simple(int task, const std::string& dev, uint32_t cookie)
+bool do_task_simple(int task, const std::string& dev)
 {
     struct dm_task* dmt;
     if (!(dmt = dm_task_create(task)))
         return false;
     
     if (!dm_task_set_name(dmt, strip_mapper(dev).c_str()))
-        return false;
-
-    if (!dm_task_set_cookie(dmt, &cookie, 0))
         return false;
 
     if (!dm_task_run(dmt))
@@ -98,16 +95,13 @@ bool do_create_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, c
     return true;
 }
 
-bool do_reload_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, const std::string& params, bool readonly, const std::string& dev, uint32_t cookie)
+bool do_reload_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, const std::string& params, bool readonly, const std::string& dev)
 {
     struct dm_task* dmt;
     if (!(dmt = dm_task_create(DM_DEVICE_RELOAD)))
         return false;
 
     if (!dm_task_set_name(dmt, strip_mapper(dev).c_str()))
-        return false;
-
-    if (!dm_task_set_cookie(dmt, &cookie, 0))
         return false;
 
     if (readonly && !dm_task_set_ro(dmt))
@@ -259,7 +253,7 @@ struct DMResumeDev
 
     ~DMResumeDev()
     {
-        if (!do_task_simple(DM_DEVICE_RESUME, dev, cookie))
+        if (!do_task_simple(DM_DEVICE_RESUME, dev))
         {
             std::cerr << "Error resuming dev " << dev << std::endl;
         }
@@ -291,8 +285,14 @@ bool do_create_dm_snapshot(const std::string& dev, const std::string& dev_clone,
         return false;
     }
 
-    if (!do_task_simple(DM_DEVICE_SUSPEND, dev, cookie))
+    if (!do_task_simple(DM_DEVICE_SUSPEND, dev))
+    {
+        if (!dm_udev_wait(cookie))
+        {
+            std::cerr << "Error waiting for udev cookie release (1)" << std::endl;
+        }
         return false;
+    }
 
     int64_t init_era;
     if (get_era(dev_clone, init_era))
@@ -300,7 +300,13 @@ bool do_create_dm_snapshot(const std::string& dev, const std::string& dev_clone,
         std::cout << "Checkpointing device for CBT..." << std::endl;
 
         if (!do_message(dev_clone, "checkpoint"))
+        {
+            if (!dm_udev_wait(cookie))
+        {
+            std::cerr << "Error waiting for udev cookie release (2)" << std::endl;
+        }
             return false;
+        }
 
         int64_t starttime = getTimeMS();
 
@@ -361,7 +367,7 @@ bool do_create_dm_snapshot(const std::string& dev, const std::string& dev_clone,
 
     if (!b_snapshot_origin)
     {
-        if (!do_reload_dm_dev(0, dev_size, "snapshot-origin", origin_params, false, dev, cookie))
+        if (!do_reload_dm_dev(0, dev_size, "snapshot-origin", origin_params, false, dev))
             return false;
     }
 
