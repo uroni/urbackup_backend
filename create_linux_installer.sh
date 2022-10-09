@@ -130,6 +130,8 @@ do
 	else
 		build_ndk $arch
 	fi
+
+	rm urbackupclient_dmsnaptool || true
 	
     make clean
     make -j4
