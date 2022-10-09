@@ -150,7 +150,11 @@ fi
 test -e "$PREFIX/sbin" || install -c -m 755 -d "$PREFIX/sbin"
 test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
 install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
-install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
+install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
+if test -e "$TARGET/urbackupclient_dmsnaptool"
+then
+	install -c "$TARGET/urbackupclient_dmsnaptool" "$PREFIX/sbin"
+fi
 
 ORIG_TARGET=$TARGET
 
@@ -188,6 +192,10 @@ if [ $TARGET != $ORIG_TARGET ]
 then
 	install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
 	install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
+	if test -e "$TARGET/urbackupclient_dmsnaptool"
+	then
+		install -c "$TARGET/urbackupclient_dmsnaptool" "$PREFIX/sbin"
+	fi
 fi
 
 if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
@@ -624,6 +632,8 @@ then
 		then
 			echo "## Install thin-provisioning tools for changed block detection and partclone for used space optimization ##"
 			apt-get install thin-provisioning-tools partclone || true
+			echo "## Install libdevmapper1.02.1 for snapshotting device"
+			apt-get install libdevmapper1.02.1
 		fi
 		
 		echo "Convert root device into device mapper device on boot (initramfs)? This is required for root device/filesystem backup. [Y/n]"

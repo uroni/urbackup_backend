@@ -146,6 +146,13 @@ do
 	cp blockalign install-data/$arch/
 	cp blockalign install-data-dbg/$arch/
 	$STRIP_CMD install-data/$arch/blockalign
+
+	if test -e urbackupclient_dmsnaptool
+	then
+		cp urbackupclient_dmsnaptool install-data/$arch/
+		cp urbackupclient_dmsnaptool install-data-dbg/$arch/
+		$STRIP_CMD install-data/$arch/urbackupclient_dmsnaptool
+	fi
 	
 	export PATH="$ORIG_PATH"
 	./switch_build.sh client

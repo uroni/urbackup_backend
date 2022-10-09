@@ -232,5 +232,14 @@ AS_IF([test "x$opsys" != "xosx"],
 		[AC_MSG_FAILURE([No library for clock_gettime found])] )
 ])
 
+AC_CHECK_LIB(devmapper, dm_task_set_name, [HAVE_LIB_DEVICEMAPPER=1])
+AS_IF([test "x$HAVE_LIB_DEVICEMAPPER" = "x"],
+	[
+		AC_MSG_WARN([
+				Did not find libdevmapper. Not compiling UrBackup dmsnapshot tool. Dm-snapshot method will not be available.
+				])
+	])
+AM_CONDITIONAL([WITH_DMTOOL], [test x$HAVE_LIB_DEVICEMAPPER = x1])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
