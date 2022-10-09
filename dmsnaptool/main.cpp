@@ -172,7 +172,6 @@ bool has_snapshot_origin(const std::string& dev, bool& ret, uint64_t& start, uin
 
     void* next = NULL;
     do {
-        uint64_t start, length;
         char* target_type, * ptr_params;
         next = dm_get_next_target(dmt, next, &start, &length,
             &target_type, &ptr_params);
