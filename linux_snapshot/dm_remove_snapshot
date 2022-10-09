@@ -37,11 +37,11 @@ remove_dm() {
 
     echo "Removing dm snapshot..."
 
-    dmsetup remove "$DEVNAME-$SNAP_ID-wsnap"
-    dmsetup remove "$DEVNAME-$SNAP_ID"
+    dmsetup remove "$DEVNAME-$SNAP_ID-wsnap" || true
+    dmsetup remove "$DEVNAME-$SNAP_ID" || true
 
     echo "Removing snapshot cow storage..."
-    dmsetup remove "$DEVNAME-$SNAP_ID-cow-storage"
+    dmsetup remove "$DEVNAME-$SNAP_ID-cow-storage" || true
 
     rm "${SNAP_MOUNTPOINT}-name"
     rm "${SNAP_MOUNTPOINT}-dev"
