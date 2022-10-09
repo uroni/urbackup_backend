@@ -339,30 +339,37 @@ bool do_create_dm_snapshot(const std::string& dev, const std::string& dev_clone,
     if (!do_create_dm_dev(0, dev_size, "snapshot", dev_clone + " " + cow_dev + " N 32", true, dev_snap, cookie))
         return false;
 
-    bool b_origin;
-    uint64_t start, length;
-    std::string origin_params;
-    if (!has_snapshot_origin(dev_origin, b_origin, start, length, origin_params))
-        return false;
-
-    if (!b_origin)
+    struct stat statbuf;
+    if (stat(dev_origin.c_str(), &statbuf)!=0 && errno==ENOENT)
     {
         std::cout << "Creating snapshot origin device..." << std::endl;
         if (!do_create_dm_dev(0, dev_size, "snapshot-origin", dev_clone, false, dev_origin, cookie))
             return false;
     }
 
+    bool b_origin;
+    uint64_t start, length;
+    std::string origin_params;
+    if (!has_snapshot_origin(dev_origin, b_origin, start, length, origin_params))
+        return false;
+
     if(start!=0 && length!=dev_size)
     {
-        std::wcerr << "Start (" << start << ") or length (" << length << ") of origin dev wrong. Expected "
+        std::cerr << "Start (" << start << ") or length (" << length << ") of origin dev wrong. Expected "
             << "0, " << dev_size << std::endl;
+        return false;
+    }
+
+    if(!b_origin)
+    {
+        std::cerr << "Origin dev " << dev_origin << " is not snapshot-origin" << std::endl;
         return false;
     }
 
     bool b_snapshot_origin;
     uint64_t tmp_start, tmp_length;
     std::string tmp_params;
-    if (!has_snapshot_origin(dev, b_snapshot_origin, start, length, origin_params))
+    if (!has_snapshot_origin(dev, b_snapshot_origin, tmp_start, tmp_length, tmp_params))
         return false;
 
     if (!b_snapshot_origin)
