@@ -11,6 +11,8 @@ Name "UrBackup Server $version_short$"
 OutFile "UrBackup Server $version_short$.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
+Unicode true
+ManifestSupportedOS all
 
 !include "servicelib.nsh"
 
@@ -54,38 +56,8 @@ Section "install"
 		SetRegView 64
 	${EndIf}
 	
-	${If} ${IsWinXP}
-		MessageBox MB_OK "Sorry, installation on Windows XP is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2003}
-		MessageBox MB_OK "Sorry, installation on Windows Server 2003 is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2000}
-		MessageBox MB_OK "Sorry, installation on Windows 2000 is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin7}
-		MessageBox MB_OK "Sorry, installation on Windows 7 is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWinVista}
-		MessageBox MB_OK "Sorry, installation on Windows Vista is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2008}
-		MessageBox MB_OK "Sorry, installation on Windows 2008 is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2008R2}
-		MessageBox MB_OK "Sorry, installation on Windows 2008R2 is not supported."
+	${If} ${AtMostWin8}
+		MessageBox MB_OK "Sorry, installation on this version of Windows (Windows 8 or older version) is not supported."
 		Quit
 	${EndIf}
 	

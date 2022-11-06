@@ -16,6 +16,9 @@
 	<Condition Message="You are attempting to run the 32-bit installer on a 64-bit version of Windows.">
 		<![CDATA[Msix64]]>
 	</Condition>
+	<Condition Message="This application is only supported on Windows 8.1 or higher.">
+		<![CDATA[Installed OR (VersionNT64 >= 602)]]>
+	</Condition>
 	<?endif?>	
 
 						   
