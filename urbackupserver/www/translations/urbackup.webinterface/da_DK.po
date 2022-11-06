@@ -10,10 +10,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2018-02-11 09:49+0000\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Danish (Denmark) (http://www.transifex.com/uroni/urbackup/language/da_DK/)\n"
 "MIME-Version: 1.0\n"

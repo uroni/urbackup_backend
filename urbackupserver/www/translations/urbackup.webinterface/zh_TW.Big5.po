@@ -9,10 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Chinese (Taiwan) (Big5)  (http://www.transifex.com/uroni/urbackup/language/zh_TW.Big5/)\n"
 "MIME-Version: 1.0\n"
