@@ -9,12 +9,16 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # Jussi Bergström <jbergstr@gmail.com>, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: Jussi Bergström <jbergstr@gmail.com>, 2016\n"
 "Language-Team: Finnish (http://www.transifex.com/uroni/urbackup/language/fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"

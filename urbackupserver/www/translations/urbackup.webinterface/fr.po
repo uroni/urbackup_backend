@@ -12,18 +12,19 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2014-2019
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2014-2020
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2019-09-06 10:10+0000\n"
-"Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: Charles Peltier <charles@cl-info.fr>, 2014-2020\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: fr\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 msgid "nav_item_3"
 msgstr "Journaux"
@@ -554,7 +555,7 @@ msgid "really_remove_client"
 msgstr "Etes vous sûr de vouloir supprimer ce client ? Cela implique que tous les fichiers et images sauvegardés seront supprimés !"
 
 msgid "tImages"
-msgstr "images système"
+msgstr "Images système"
 
 msgid "validate_err_notregexp_cleanup_window"
 msgstr "Format de l'intervalle de purge erroné"
@@ -1109,10 +1110,10 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Mode pour les sauvegardes complètes de fichiers LAN"
 
 msgid "tRaw"
-msgstr "Raw - rapide"
+msgstr "Brut - rapide"
 
 msgid "tHashed"
-msgstr "Empreinte prise"
+msgstr "Empreinte de contrôle"
 
 msgid "tInternet full file backup transfer mode"
 msgstr "Mode pour la sauvegarde complète des fichiers WAN"
