@@ -31,7 +31,7 @@ make -j8
 
 ### Building on macOS
 
-See the separate `readme-macos.md` for building instructions for macOS.
+See the separate [`readme-macos.md`](readme-macos.md) for building instructions for macOS.
 
 
 ### Building on Windows

@@ -238,7 +238,7 @@ getJSON = function(action, parameters, callback)
 	{ url: getURL(action),
 	  dataType: "json",
 	  method: "POST",
-	  contentType:"application/json; charset=utf-8",
+	  contentType:"application/x-www-form-urlencoded; charset=utf-8",
 	  data: parameters
 	}
 	).done(function(data)
