@@ -157,7 +157,7 @@ def translations_from_po():
             output.write("\n}\n")
                         
 
-po_from_translations() 
+translations_from_po() 
     
                                    
                         
