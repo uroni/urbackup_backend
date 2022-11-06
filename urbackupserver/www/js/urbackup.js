@@ -3627,6 +3627,7 @@ function show_settings2(data)
 			aparams = build_alert_params(data.settings.alert_script);
 			data.settings.alert_scripts = aparams.options;
 			data.settings.mod_alert_params = aparams.params;
+			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			data.settings.client_settings=false;
 			
@@ -3755,6 +3756,7 @@ function show_settings2(data)
 			aparams = build_alert_params(data.settings.alert_script);
 			data.settings.alert_scripts = aparams.options;
 			data.settings.mod_alert_params = aparams.params;
+			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			group_membership_selectpicker=true;
 						
