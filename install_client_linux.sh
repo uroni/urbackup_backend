@@ -150,7 +150,7 @@ fi
 test -e "$PREFIX/sbin" || install -c -m 755 -d "$PREFIX/sbin"
 test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
 install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
-install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
+install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 if test -e "$TARGET/urbackupclient_dmsnaptool"
 then
 	install -c "$TARGET/urbackupclient_dmsnaptool" "$PREFIX/sbin"
