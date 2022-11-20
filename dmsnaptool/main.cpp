@@ -74,8 +74,7 @@ bool do_create_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, c
     if (!dm_task_set_name(dmt, strip_mapper(dev).c_str()))
         return false;
 
-
-    if (!dm_task_set_cookie(dmt, &cookie, 0))
+    if (!dm_task_set_cookie(dmt, &cookie, DM_UDEV_DISABLE_LIBRARY_FALLBACK))
         return false;
 
     if (readonly && !dm_task_set_ro(dmt))
@@ -83,6 +82,9 @@ bool do_create_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, c
 
     if (!dm_task_add_target(dmt, start, size, ttype.c_str(), params.c_str()))
         return false;
+	
+	if (!dm_task_set_add_node(dmt, DM_ADD_NODE_ON_RESUME))
+		return false;
 
     if (!dm_task_run(dmt))
     {
