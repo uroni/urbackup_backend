@@ -121,8 +121,8 @@ public:
 	std::vector<std::string> getClientMovedFrom(const std::string& from_name);
 	CondString getSetting(int clientid, const std::string& key);
 	int hasFileBackups(int clientid);
-	void insertSetting(const std::string& key, const std::string& value, int clientid);
-	void updateSetting(const std::string& value, const std::string& key, int clientid);
+	void insertSetting(const std::string& key, const std::string& value, int clientid, int use);
+	void updateSetting(const std::string& value, const std::string& key, int clientid, int use);
 	CondString getMiscValue(const std::string& tkey);
 	void addMiscValue(const std::string& tkey, const std::string& tvalue);
 	void delMiscValue(const std::string& tkey);

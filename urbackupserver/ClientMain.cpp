@@ -1823,13 +1823,13 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
 			if (!setting.exists)
 			{
-				backup_dao->insertSetting(it->second, val, clientid);
+				backup_dao->insertSetting(it->second, val, clientid, c_use_value);
 				update_settings = true;
 			}
 			else if ( (it->second=="virtual_clients_add" || it->second =="image_snapshot_groups_def")
 				&& setting.value != val)
 			{
-				backup_dao->updateSetting(val, it->second, clientid);
+				backup_dao->updateSetting(val, it->second, clientid, c_use_value);
 				update_settings = true;
 			}
 			++idx;

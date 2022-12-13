@@ -562,17 +562,18 @@ int ServerBackupDao::hasFileBackups(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::insertSetting
 * @sql
-*      INSERT INTO settings_db.settings (key, value, clientid) VALUES ( :key(string), :value(string), :clientid(int) )
+*      INSERT INTO settings_db.settings (key, value, clientid, use) VALUES ( :key(string), :value(string), :clientid(int), :use(int) )
 */
-void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, int clientid)
+void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, int clientid, int use)
 {
 	if(q_insertSetting==NULL)
 	{
-		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ( ?, ?, ? )", false);
+		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ( ?, ?, ?, ?)", false);
 	}
 	q_insertSetting->Bind(key);
 	q_insertSetting->Bind(value);
 	q_insertSetting->Bind(clientid);
+	q_insertSetting->Bind(use);
 	q_insertSetting->Write();
 	q_insertSetting->Reset();
 }
@@ -581,15 +582,16 @@ void ServerBackupDao::insertSetting(const std::string& key, const std::string& v
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateSetting
 * @sql
-*      UPDATE settings_db.settings SET value=:value(string) WHERE key=:key(string) AND clientid=:clientid(int)
+*      UPDATE settings_db.settings SET value=:value(string), use=:use(int) WHERE key=:key(string) AND clientid=:clientid(int)
 */
-void ServerBackupDao::updateSetting(const std::string& value, const std::string& key, int clientid)
+void ServerBackupDao::updateSetting(const std::string& value, const std::string& key, int clientid, int use)
 {
 	if(q_updateSetting==NULL)
 	{
-		q_updateSetting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
+		q_updateSetting=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid=?", false);
 	}
 	q_updateSetting->Bind(value);
+	q_updateSetting->Bind(use);
 	q_updateSetting->Bind(key);
 	q_updateSetting->Bind(clientid);
 	q_updateSetting->Write();

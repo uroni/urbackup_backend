@@ -2335,6 +2335,13 @@ bool upgrade64_65()
 	return b;
 }
 
+bool upgrade65_66()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	return db->Write(std::string("UPDATE settings_db.settings SET use=") + c_use_value_str + " WHERE key='virtual_clients_add'");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2356,7 +2363,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=65;
+	int max_v=66;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2750,6 +2757,13 @@ void upgrade(void)
 				break;
 			case 64:
 				if (!upgrade64_65())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 65:
+				if (!upgrade65_66())
 				{
 					has_error = true;
 				}
