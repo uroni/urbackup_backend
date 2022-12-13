@@ -2490,7 +2490,7 @@ IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 void ClientMain::updateClientAccessKey()
 {
 	std::string access_key = ServerSettings::generateRandomAuthKey(32);
-	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
+	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, c_use_value);
 	ServerSettings::updateClient(clientid);
 
 	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",
@@ -4010,13 +4010,13 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");
 	if (internet_authkey.exists)
 	{
-		backup_dao->updateSetting(internet_authkey.value, "internet_authkey", rename_from);
+		backup_dao->updateSetting(internet_authkey.value, "internet_authkey", rename_from, c_use_value);
 	}
 
 	ServerBackupDao::CondString computername = backup_dao->getSetting(clientid, "computername");
 	if (computername.exists)
 	{
-		backup_dao->updateSetting(computername.value, "computername", rename_from);
+		backup_dao->updateSetting(computername.value, "computername", rename_from, c_use_value);
 	}
 
 	ServerCleanupThread::deleteClientSQL(db, clientid);

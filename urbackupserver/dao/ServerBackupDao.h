@@ -188,7 +188,7 @@ public:
 	void updateClientWithHashes(int with_hashes, int clientid);
 	//@-SQLGenFunctionsEnd
 
-	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
+	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value, int use);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}

@@ -2208,14 +2208,14 @@ void ServerBackupDao::destroyQueries( void )
 }
 
 
-void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value )
+void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value, int use)
 {
 	if(getSetting(clientid, key).exists)
 	{
-		updateSetting(value, key, clientid);
+		updateSetting(value, key, clientid, use);
 	}
 	else
 	{
-		insertSetting(key, value, clientid);
+		insertSetting(key, value, clientid, use);
 	}
 }

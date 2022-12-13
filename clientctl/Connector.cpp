@@ -17,7 +17,13 @@
 **************************************************************************/
 
 #include "Connector.h"
+#ifdef OS_FUNC_NO_SERVER
 #include "tcpstack.h"
+#else
+#include "../urbackupcommon/fileclient/tcpstack.h"
+#include "../Interface/Server.h"
+#include <memory>
+#endif
 #include "../stringtools.h"
 #include "../urbackupcommon/escape.h"
 #include "../urbackupcommon/os_functions.h"
@@ -177,7 +183,12 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 		t_args=args;
 
 	CTCPStack tcpstack;
-	tcpstack.Send(p, cmd+"#pw="+pw+t_args);
+#ifdef OS_FUNC_NO_SERVER
+	tcpstack.Send(p, cmd + "#pw=" + pw + t_args);
+#else
+	std::unique_ptr<IPipe> pp(Server->PipeFromSocket(p));
+	tcpstack.Send(pp.get(), cmd+"#pw="+pw+t_args);
+#endif
 
 	char *resp=NULL;
 	char buffer[1024];
