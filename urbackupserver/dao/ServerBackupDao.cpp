@@ -568,7 +568,7 @@ void ServerBackupDao::insertSetting(const std::string& key, const std::string& v
 {
 	if(q_insertSetting==NULL)
 	{
-		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ( ?, ?, ?, ?)", false);
+		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES ( ?, ?, ?, ?)", false);
 	}
 	q_insertSetting->Bind(key);
 	q_insertSetting->Bind(value);
