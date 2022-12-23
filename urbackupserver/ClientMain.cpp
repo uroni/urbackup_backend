@@ -1823,13 +1823,13 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
 			if (!setting.exists)
 			{
-				backup_dao->insertSetting(it->second, val, clientid, c_use_value);
+				backup_dao->insertSetting(it->second, val, "", c_use_value, 0, clientid);
 				update_settings = true;
 			}
 			else if ( (it->second=="virtual_clients_add" || it->second =="image_snapshot_groups_def")
 				&& setting.value != val)
 			{
-				backup_dao->updateSetting(val, it->second, clientid, c_use_value);
+				backup_dao->updateSetting(val, it->second, clientid);
 				update_settings = true;
 			}
 			++idx;
@@ -2490,7 +2490,7 @@ IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 void ClientMain::updateClientAccessKey()
 {
 	std::string access_key = ServerSettings::generateRandomAuthKey(32);
-	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, c_use_value);
+	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, "", c_use_value, 0);
 	ServerSettings::updateClient(clientid);
 
 	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",
@@ -4010,13 +4010,13 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");
 	if (internet_authkey.exists)
 	{
-		backup_dao->updateSetting(internet_authkey.value, "internet_authkey", rename_from, c_use_value);
+		backup_dao->updateSetting(internet_authkey.value, "internet_authkey", rename_from);
 	}
 
 	ServerBackupDao::CondString computername = backup_dao->getSetting(clientid, "computername");
 	if (computername.exists)
 	{
-		backup_dao->updateSetting(computername.value, "computername", rename_from, c_use_value);
+		backup_dao->updateSetting(computername.value, "computername", rename_from);
 	}
 
 	ServerCleanupThread::deleteClientSQL(db, clientid);

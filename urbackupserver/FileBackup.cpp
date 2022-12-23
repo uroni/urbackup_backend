@@ -561,7 +561,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer, bool request
 		!access_key.empty() &&
 		access_key != client_access_key )
 	{
-		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, c_use_value);
+		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, "", c_use_value, 0);
 
 		if(!client_access_key.empty())
 		{
