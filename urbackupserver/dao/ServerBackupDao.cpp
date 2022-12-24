@@ -562,13 +562,13 @@ int ServerBackupDao::hasFileBackups(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::insertSetting
 * @sql
-*      INSERT INTO settings_db.settings (key, value, value_client, use, use_lm, clientid) VALUES ( :key(string), :value(string), :value_client(string), :use(int), :use(int64), :clientid(int))
+*      INSERT INTO settings_db.settings (key, value, value_client, use, use_last_modified, clientid) VALUES ( :key(string), :value(string), :value_client(string), :use(int), :use_lm(int64), :clientid(int))
 */
 void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, const std::string& value_client, int use, int64 use_lm, int clientid)
 {
 	if(q_insertSetting==NULL)
 	{
-		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, use, use_lm, clientid) VALUES ( ?, ?, ?, ?, ?, ?)", false);
+		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, use, use_last_modified, clientid) VALUES ( ?, ?, ?, ?, ?, ?)", false);
 	}
 	q_insertSetting->Bind(key);
 	q_insertSetting->Bind(value);
@@ -603,13 +603,13 @@ void ServerBackupDao::updateSetting(const std::string& value, const std::string&
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateSettingAll
 * @sql
-*      UPDATE settings_db.settings SET value=:value(string), value_client=:value_client(string, use=:use(int), use_lm=:use_lm(int64) WHERE key=:key(string) AND clientid=:clientid(int)
+*      UPDATE settings_db.settings SET value=:value(string), value_client=:value_client(string, use=:use(int), use_last_modified=:use_lm(int64) WHERE key=:key(string) AND clientid=:clientid(int)
 */
 void ServerBackupDao::updateSettingAll(const std::string& value, const std::string& value_client, int use, int64 use_lm, const std::string& key, int clientid)
 {
 	if(q_updateSettingAll==NULL)
 	{
-		q_updateSettingAll=db->Prepare("UPDATE settings_db.settings SET value=?, value_client=?, use=?, use_lm=? WHERE key=? AND clientid=?", false);
+		q_updateSettingAll=db->Prepare("UPDATE settings_db.settings SET value=?, value_client=?, use=?, use_last_modified=? WHERE key=? AND clientid=?", false);
 	}
 	q_updateSettingAll->Bind(value);
 	q_updateSettingAll->Bind(value_client);
