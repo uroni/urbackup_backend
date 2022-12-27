@@ -55,7 +55,7 @@ echo "Snapshotting device $DEVICE via dattobd..."
 
 NUM=0
 
-while [ -e "/dev/datto$NUM" ] && has_num $NUM
+while [ -e "/dev/datto$NUM" ] || has_num $NUM
 do
         NUM=`expr $NUM + 1`
 done
