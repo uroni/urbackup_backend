@@ -7,6 +7,11 @@ ExecStart=/usr/bin/urbackupsrv run --config /etc/default/urbackupsrv --no-consol
 User=root
 TasksMax=infinity
 
+MemoryAccounting=true
+MemoryHigh=`awk '/^MemTotal:/ {printf("%.0fG",$2*40/100/(1024*1024))}' /proc/meminfo`
+MemoryMax=`awk '/^MemTotal:/ {printf("%.0fG",$2*60/100/(1024*1024))}' /proc/meminfo`
+MemorySwapMax=`awk '/^SwapTotal:/ {printf("%.0fM",$2*15/100/1024)}' /proc/meminfo`
+
 [Install]
 WantedBy=multi-user.target
 
