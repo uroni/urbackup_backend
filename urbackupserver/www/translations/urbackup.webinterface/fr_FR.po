@@ -12,18 +12,19 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2018-2019
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2018-2021
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2019-09-06 10:10+0000\n"
-"Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: Charles Peltier <charles@cl-info.fr>, 2018-2021\n"
 "Language-Team: French (France) (http://www.transifex.com/uroni/urbackup/language/fr_FR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: fr_FR\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 msgid "nav_item_3"
 msgstr "Journaux"
@@ -811,7 +812,7 @@ msgid "tTotal max backup speed for internet connection"
 msgstr "Débit global maximum en mode réseau internet"
 
 msgid "tEncrypted transfer"
-msgstr "Encrypter les échanges"
+msgstr "Chiffrer les échanges"
 
 msgid "tCompressed transfer"
 msgstr "Compresser les échanges"
@@ -1109,7 +1110,7 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Mode pour les sauvegardes complètes de fichiers LAN"
 
 msgid "tRaw"
-msgstr "Raw"
+msgstr "Brut"
 
 msgid "tHashed"
 msgstr "Hashage - transfert contrôlé"
@@ -1154,7 +1155,7 @@ msgid "Show _MENU_ entries"
 msgstr "Afficher  _MENU_"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr "connecter au serveur de sauvegarde internet si déjà connecté au serveur local"
+msgstr "se connecter au serveur de sauvegarde internet si déjà connecté au serveur local"
 
 msgid "tYou need to create a user to be able to send reports"
 msgstr "Vous devez créer un utilisateur pour pouvoir envoyer un rapport"
@@ -1169,7 +1170,7 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "VHD compressé (disque dur virtuel compressé - format propriétaire)"
 
 msgid "tBlock differences - hashed"
-msgstr "Différence bloc à bloc, avec hachage de contrôle"
+msgstr "Différence bloc à bloc, avec empreinte de contrôle"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
 msgstr "Montrer _START_ to _END_ of _TOTAL_ enregistrements"
@@ -1362,7 +1363,7 @@ msgid "tAdd Email Address"
 msgstr "Ajouter une adresse mail"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr "Arrêt sans erreur à cause d'un dépassement de délai client."
+msgstr "Arrêt sans erreur mais causé par un dépassement de délai client."
 
 msgid "tMinimum log level"
 msgstr "Niveau de log minimum"
@@ -1440,7 +1441,7 @@ msgid "tDebugging: End-to-end verification of all file backups"
 msgstr "Débogage : vérification de toutes les sauvegardes de fichiers"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr "Débogage : vérification de tous les fichiers de sauvegarde utilisant un \"hash\" coté client"
+msgstr "Débogage : vérification de tous les fichiers de sauvegarde utilisant une empreinte de contrôle coté client"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
@@ -1678,7 +1679,7 @@ msgstr "Monter l'image"
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr "UrBackup va utiliser une fonctionnalité non isolée pour monter l'image système. Ne monter cette image que si vous êtes sur de la source."
+msgstr "UrBackup va monter l'image dans un environnement non isolé. Ne monter cette image que si vous êtes sur de la source."
 
 msgid "tMounting image failed. Please see server log file for details."
 msgstr "Erreur de montage de l'image. Merci de consulter les journaux serveur pour plus de détails."

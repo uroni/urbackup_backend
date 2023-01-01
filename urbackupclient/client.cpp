@@ -45,6 +45,13 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "ImageThread.h"
 #include "../common/adler32.h"
+#include <string.h>
+
+#ifdef __APPLE__
+#include <iostream>
+#include <sys/xattr.h>
+#include <sys/types.h>
+#endif
 
 //For truncating files
 #ifdef _WIN32
@@ -107,6 +114,11 @@ const char IndexThread::IndexThreadAction_WriteTokens = 13;
 const char IndexThread::IndexThreadAction_UpdateCbt = 14;
 
 extern PLUGIN_ID filesrv_pluginid;
+
+#ifdef __APPLE__
+    std::vector<std::string> IndexThread::macos_exclusions;
+    std::vector<std::string> IndexThread::macos_overrides;
+#endif
 
 namespace
 {
@@ -171,72 +183,72 @@ namespace
 
 	struct ON_DISK_USN_JOURNAL_DATA
 	{
-		uint64 MaximumSize; 
+		uint64 MaximumSize;
 		uint64 AllocationDelta;
 		uint64 UsnJournalID;
 		int64 LowestValidUsn;
 	};
 
-	int64 getUsnNum( const std::string& dir, int64& sequence_id )
+	int64 getUsnNum(const std::string& dir, int64& sequence_id)
 	{
-		WCHAR volume_path[MAX_PATH]; 
+		WCHAR volume_path[MAX_PATH];
 		BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir).c_str(), volume_path, MAX_PATH);
-		if(!ok)
+		if (!ok)
 		{
 			Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in getUsnNum", LL_ERROR);
 			return -1;
 		}
 
-		std::string vol=Server->ConvertFromWchar(volume_path);
+		std::string vol = Server->ConvertFromWchar(volume_path);
 
-		if(vol.size()>0)
+		if (vol.size() > 0)
 		{
-			if(vol[vol.size()-1]=='\\')
+			if (vol[vol.size() - 1] == '\\')
 			{
-				vol.erase(vol.size()-1,1);
+				vol.erase(vol.size() - 1, 1);
 			}
 		}
 
-		if(!vol.empty() && vol[0]!='\\')
+		if (!vol.empty() && vol[0] != '\\')
 		{
-			vol = "\\\\.\\"+vol;
+			vol = "\\\\.\\" + vol;
 		}
 
-		HANDLE hVolume=CreateFileW(Server->ConvertToWchar(vol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if(hVolume==INVALID_HANDLE_VALUE)
+		HANDLE hVolume = CreateFileW(Server->ConvertToWchar(vol).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hVolume == INVALID_HANDLE_VALUE)
 		{
-			Server->Log("CreateFile of volume '"+vol+"' failed. - getUsnNum", LL_ERROR);
+			Server->Log("CreateFile of volume '" + vol + "' failed. - getUsnNum", LL_ERROR);
 			return -1;
 		}
 
 		USN_JOURNAL_DATA data;
 		DWORD r_bytes;
-		BOOL b=DeviceIoControl(hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
+		BOOL b = DeviceIoControl(hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
 
 		CloseHandle(hVolume);
 
-		if(b)
+		if (b)
 		{
-			sequence_id=data.UsnJournalID;
+			sequence_id = data.UsnJournalID;
 			return data.NextUsn;
 		}
 		else
 		{
-			std::auto_ptr<IFile> journal_info(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal_info(Server->openFile(vol + "\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
 
-			if(journal_info.get()==NULL) return -1;
+			if (journal_info.get() == NULL) return -1;
 
 			ON_DISK_USN_JOURNAL_DATA journal_data = {};
-			if(journal_info->Read(reinterpret_cast<char*>(&journal_data), sizeof(journal_data))!=sizeof(journal_data))
+			if (journal_info->Read(reinterpret_cast<char*>(&journal_data), sizeof(journal_data)) != sizeof(journal_data))
 			{
 				return -1;
 			}
 
 			sequence_id = journal_data.UsnJournalID;
 
-			std::auto_ptr<IFile> journal(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal(Server->openFile(vol + "\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
 
-			if(journal.get()==NULL) return -1;
+			if (journal.get() == NULL) return -1;
 
 			return journal->Size();
 		}
@@ -257,7 +269,7 @@ namespace
 		{
 			return false;
 		}
-		if (cbtMutexLocked>0)
+		if (cbtMutexLocked > 0)
 		{
 			++cbtMutexLocked;
 			return true;
@@ -283,7 +295,21 @@ namespace
 		{
 			ReleaseMutex(cbtMutex);
 		}
-		assert(cbtMutexLocked>=0);
+		assert(cbtMutexLocked >= 0);
+	}
+
+	void force_unlock_cbt_mutex()
+	{
+		assert(cbtMutex != NULL);
+		if (cbtMutex == NULL)
+		{
+			return;
+		}
+		if (cbtMutexLocked > 0)
+		{
+			ReleaseMutex(cbtMutex);
+			cbtMutexLocked = 0;
+		}
 	}
 
 	struct ScopedUnlockCbtMutex
@@ -300,16 +326,16 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			WCHAR szBuffer[8192];
-			DWORD dwBufferSize = sizeof(szBuffer)*sizeof(WCHAR);
+			DWORD dwBufferSize = sizeof(szBuffer) * sizeof(WCHAR);
 			ULONG nError;
 			DWORD dwType = REG_MULTI_SZ;
 			nError = RegQueryValueExW(urbackup_cbt_key, L"cbt_paths", 0, &dwType,
 				(LPBYTE)szBuffer, &dwBufferSize);
 			RegCloseKey(urbackup_cbt_key);
 			if (ERROR_SUCCESS == nError
-				&& dwType==REG_MULTI_SZ)
+				&& dwType == REG_MULTI_SZ)
 			{
-				std::wstring rval(szBuffer, szBuffer + dwBufferSize/sizeof(wchar_t));
+				std::wstring rval(szBuffer, szBuffer + dwBufferSize / sizeof(wchar_t));
 				std::string strValue = Server->ConvertFromWchar(rval);
 				std::vector<std::string> toks;
 				std::string sep;
@@ -360,14 +386,20 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			LSTATUS status = RegSetValueExW(urbackup_cbt_key, L"cbt_paths", 0,
-				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1)*sizeof(wchar_t)));
+				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1) * sizeof(wchar_t)));
 			RegCloseKey(urbackup_cbt_key);
 			return status
 				== ERROR_SUCCESS;
 		}
 		return false;
 	}
-#endif
+#else //!_WIN32
+
+	void force_unlock_cbt_mutex()
+	{
+	}
+
+#endif //!_WIN32
 
 #ifndef _WIN32
 	std::string getFolderMount(const std::string& path)
@@ -1072,6 +1104,8 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
+					force_unlock_cbt_mutex();
+
 					if (!disableCbt(scd->orig_target))
 					{
 						VSSLog("Error disabling change block tracking for " + scd->orig_target+" (2)", LL_ERROR);
@@ -1113,6 +1147,8 @@ void IndexThread::operator()(void)
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
+					force_unlock_cbt_mutex();
+
 					if(scd->fileserv)
 					{
 						shareDir(std::string(), scd->dir, scd->target);
@@ -1615,6 +1651,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				VSS_ID ssetid;
 				if (!start_shadowcopy_components(ssetid, &has_active_transaction))
 				{
+					force_unlock_cbt_mutex();
+
 					index_error = true;
 					VSSLog("Indexing Windows components failed", LL_ERROR);
 					return IndexErrorInfo_Error;
@@ -4365,7 +4403,7 @@ std::vector<std::string> IndexThread::buildExcludeList(const std::string& val)
 	addFileExceptions(exclude_dirs_combined);
 	addHardExcludes(exclude_dirs_combined);
 #ifdef __APPLE__
-	addMacosExcludes(exclude_dirs_combined);
+	addMacOSExcludes(exclude_dirs_combined);
 #endif
 	return exclude_dirs_combined;
 }
@@ -4500,10 +4538,20 @@ bool IndexThread::isExcluded(const std::vector<std::string>& exclude_dirs, const
 			bool b=amatch(wpath.c_str(), exclude_dirs[i].c_str());
 			if(b)
 			{
+#ifdef __APPLE__
+                logMacOSExclude(path);
+#endif
 				return true;
 			}
 		}
 	}
+#ifdef __APPLE__
+    if(isExcludedByXattr(path))
+    {
+        logIsExcludedByXattr(path);
+        return true;
+    };
+#endif
 	return false;
 }
 
@@ -4998,23 +5046,222 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 #endif
 }
 
-void IndexThread::addMacosExcludes(std::vector<std::string>& exclude_dirs)
-{
-	std::string macos_exclusion_list = getFile("urbackup/macos_exclusions.txt");
+#ifdef __APPLE__
+    void IndexThread::addMacOSExcludes(std::vector<std::string>& exclude_dirs)
+    {
+//        Read the overrides list
+        std::ifstream overrides_file("urbackup/macOS_exclusion_overrides.txt");
+        if (overrides_file.is_open())
+        {
+            std::string file_line;
+            while (std::getline(overrides_file, file_line))
+            {
+                const char * file_line_prefix = &file_line[0];
+                if (strncmp (file_line_prefix, "#", 1) != 0)
+                {
+                    IndexThread::macos_overrides.push_back(sanitizePattern(file_line));
+                }
+            }
+            overrides_file.close();
+        }
 
-	if(!macos_exclusion_list.empty())
-	{
-		macos_exclusion_list = greplace("\n", ";", macos_exclusion_list);
+        
+//        Exclude these items entirely
+        IndexThread::macos_exclusions.push_back("/.MobileBackups*");
+        IndexThread::macos_exclusions.push_back("/MobileBackups.trash*");
+        IndexThread::macos_exclusions.push_back("/.MobileBackups.trash*");
+        IndexThread::macos_exclusions.push_back("/.Spotlight-V100*");
+        IndexThread::macos_exclusions.push_back("/.TemporaryItems*");
+        IndexThread::macos_exclusions.push_back("/.Trashes*");
+        IndexThread::macos_exclusions.push_back("/.com.apple.backupd.mvlist.plist*");
+        IndexThread::macos_exclusions.push_back("/.fseventsd*");
+        IndexThread::macos_exclusions.push_back("/.hotfiles.btree*");
+        IndexThread::macos_exclusions.push_back("/Backups.backupdb*");
+        IndexThread::macos_exclusions.push_back("/Desktop DB*");
+        IndexThread::macos_exclusions.push_back("/Desktop DF*");
+        IndexThread::macos_exclusions.push_back("/Network/Servers*");
+        IndexThread::macos_exclusions.push_back("/Library/Updates*");
+        IndexThread::macos_exclusions.push_back("/Previous Systems*");
+        IndexThread::macos_exclusions.push_back("/Users/Shared/SC Info*");
+        IndexThread::macos_exclusions.push_back("/Users/Guest*");
+        IndexThread::macos_exclusions.push_back("/dev*");
+        IndexThread::macos_exclusions.push_back("/home*");
+        IndexThread::macos_exclusions.push_back("/net*");
+    IndexThread::macos_exclusions.push_back("/private/var/db/com.apple.backupd.backupVerification*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/efw_cache*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/Spotlight*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/Spotlight-V100*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/systemstats*");
+        IndexThread::macos_exclusions.push_back("/private/var/lib/postfix/greylist.db*");
+        
+        IndexThread::macos_exclusions.push_back("/.DocumentRevisions-V100*");
+        IndexThread::macos_exclusions.push_back("/.HFS+ Private Directory Data*");
+        IndexThread::macos_exclusions.push_back("/private/etc/kcpassword*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/dyld*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/dyld/shared_region_roots*");
+        
+//        Backup the top level folder, but exclude all contents
+        IndexThread::macos_exclusions.push_back("/Volumes/*");
+        IndexThread::macos_exclusions.push_back("/Network/*");
+        IndexThread::macos_exclusions.push_back("/automount/*");
+        IndexThread::macos_exclusions.push_back("/.vol/*");
+        IndexThread::macos_exclusions.push_back("/tmp/*");
+        IndexThread::macos_exclusions.push_back("/cores/*");
+        IndexThread::macos_exclusions.push_back("/private/tmp/*");
+        IndexThread::macos_exclusions.push_back("/private/Network/*");
+        IndexThread::macos_exclusions.push_back("/private/tftpboot/*");
+        IndexThread::macos_exclusions.push_back("/private/var/automount/*");
+        IndexThread::macos_exclusions.push_back("/private/var/folders/*");
+        IndexThread::macos_exclusions.push_back("/private/var/run/*");
+        IndexThread::macos_exclusions.push_back("/private/var/tmp/*");
+        IndexThread::macos_exclusions.push_back("/private/var/vm/*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/dhcpclient/*");
+        IndexThread::macos_exclusions.push_back("/private/var/db/fseventsd/*");
+        IndexThread::macos_exclusions.push_back("/Library/Caches/*");
+        IndexThread::macos_exclusions.push_back("/Library/Logs/*");
+        IndexThread::macos_exclusions.push_back("/System/Library/Caches/*");
+        IndexThread::macos_exclusions.push_back("/System/Library/Extensions/Caches/*");
+        
+        
+//        Backup folder structure, but exclude all files
+        IndexThread::macos_exclusions.push_back("/private/var/log/*");
+        IndexThread::macos_exclusions.push_back("/private/var/spool/cups/*");
+        IndexThread::macos_exclusions.push_back("/private/var/spool/fax/*");
+        IndexThread::macos_exclusions.push_back("/private/var/spool/uucp/*");
+        
+        
+//        Exclude these items within each user account
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Application Support/SyncServices/data.version*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Application Support/Ubiquity*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Caches*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Logs*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/Envelope Index*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/Envelope Index-journal*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/AvailableFeeds*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/Metadata/BackingStoreUpdateJournal*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/Envelope Index*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/Envelope Index-journal*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/AvailableFeeds*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/BackingStoreUpdateJournal*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/Envelope Index-shm*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mail/V2/MailData/Envelope Index-wal*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Mirrors*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/PubSub/Database*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/PubSub/Downloads*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/PubSub/Feeds*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Safari/Icons.db*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Safari/WebpageIcons.db*");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Safari/HistoryIndex.sk*");
+        IndexThread::macos_exclusions.push_back("/Users/:/.Trash*");
+        
+        //        Exclude DataVaults
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/VoiceTrigger/SAT");
+        IndexThread::macos_exclusions.push_back("/Users/:/Library/Containers/com.apple.mail/Data/DataVaults");
+        IndexThread::macos_exclusions.push_back("/var/folders/:/:/:/com.apple.nsurlsessiond");
+        
+//        Exclude volumes from macOS 10.14+
+        IndexThread::macos_exclusions.push_back("/System/Volumes/*");
 
-		std::vector<std::string> macos_exclusions;
-		macos_exclusions = parseExcludePatterns(macos_exclusion_list);
+        
+//        Filter the standard exclusions with the overrides list
+        std::string overridden_macos_exclusions;
+        for(size_t i=0; i<IndexThread::macos_exclusions.size(); i++)
+        {
+            if ( std::find(IndexThread::macos_overrides.begin(), IndexThread::macos_overrides.end(), IndexThread::macos_exclusions[i]) == IndexThread::macos_overrides.end())
+            {
+                overridden_macos_exclusions = overridden_macos_exclusions + IndexThread::macos_exclusions[i] + ";";
+            }
+        }
+        
+        IndexThread::macos_exclusions = parseExcludePatterns(overridden_macos_exclusions);
 
-		for(size_t i=0;i<macos_exclusions.size();i++)
-		{
-			exclude_dirs.push_back(macos_exclusions[i]);
-		}
-	}
-}
+//        Add the filtered exclusions to the exclude_dirs array
+        for(size_t i=0; i<IndexThread::macos_exclusions.size(); i++)
+        {
+            exclude_dirs.push_back(IndexThread::macos_exclusions[i]);
+        }
+
+    }
+    
+
+    void IndexThread::logMacOSExclude(const std::string path)
+    {
+//        Get the exclusion term which caused the file to be skipped, if it was a standard exclusion
+        std::string pathMatch = returnExcludeDirsMatch(IndexThread::macos_exclusions, path);
+        
+//        Log the exclusion
+        if(!pathMatch.empty())
+        {
+            Server->Log("[macOS] Skipping \""+path+"\" due to macOS exclusion \""+pathMatch+"\"", LL_INFO);
+        }
+    }
+
+
+//      Based on isExcluded, but returning the exclusion term
+    std::string IndexThread::returnExcludeDirsMatch(std::vector<std::string> exclude_dirs, std::string path)
+    {
+        std::string wpath=path;
+
+        for(size_t i=0;i<exclude_dirs.size();++i)
+        {
+            if(!exclude_dirs[i].empty())
+            {
+                bool b=amatch(wpath.c_str(), exclude_dirs[i].c_str());
+                if(b)
+                {
+                    return exclude_dirs[i];
+                }
+            }
+        }
+        return std::string();
+    }
+
+    bool IndexThread::isExcludedByXattr(const std::string path)
+    {
+        ssize_t xattr_size = 0;
+        char xattr_out[1024];
+        std::string backup_excludeItem_string = "com.apple.metadata:com_apple_backup_excludeItem";
+        
+        xattr_size = listxattr(path.c_str(), NULL, 0,  XATTR_NOFOLLOW);
+        listxattr(path.c_str(), xattr_out, 1024,  XATTR_NOFOLLOW);
+        if(xattr_size > 0) {
+            std::string xattr_str(reinterpret_cast<char*>(xattr_out), xattr_size);
+            
+            if (xattr_str.find(backup_excludeItem_string) != std::string::npos) {
+                //      Based on isExcluded
+                std::string wpath=path;
+
+                for(size_t i=0;i<macos_overrides.size();++i)
+                {
+                    if(!macos_overrides[i].empty())
+                    {
+                        bool b=amatch(wpath.c_str(), macos_overrides[i].c_str());
+                        if(b)
+                        {
+    //                        File is overridden
+                            Server->Log("[macOS] Backing up \""+path+"\" due to overridden macOS extended attribute exclusion", LL_INFO);
+                            return false;
+                        }
+                    }
+                }
+    //            File is not overridden, and contains backup_excludeItem xattr
+                return true;
+            }
+    //        Does not contain backup_excludeItem xattr
+            return false;
+        } else {
+//            Does not contain any xattr
+            return false;
+        }
+    }
+
+    void IndexThread::logIsExcludedByXattr(const std::string path)
+    {
+        Server->Log("[macOS] Skipping \""+path+"\" due to macOS extended attribute exclusion", LL_INFO);
+    }
+
+#endif
+
 
 void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume)
 {
@@ -5401,7 +5648,7 @@ void IndexThread::commitModifyHardLinks()
 #ifdef _WIN32
 uint128 IndexThread::getFrn(const std::string & fn)
 {
-	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS| FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -6980,7 +7227,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		{
 			wchar_t buf[300];
 
-			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf) == ERROR_SUCCESS); ++i)
+			for (DWORD i = 0; RegEnumKeyW(profile_list, i, buf, sizeof(buf)) == ERROR_SUCCESS; ++i)
 			{
 				DWORD rsize = sizeof(buf) * sizeof(wchar_t);
 				if (RegGetValueW(profile_list, std::wstring(buf).c_str(), L"ProfileImagePath",
@@ -7228,6 +7475,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		Server->deleteFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt");
 	} //for_image_backup
+
+	Server->deleteFile("urbackup\\hdat_other_" + conv_filename(strlower(volume)) + ".cbt");
 
 #ifndef _DEBUG
 	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, &bytesReturned, NULL);
@@ -8927,21 +9176,18 @@ void IndexThread::addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out)
 
 void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, const std::string & volume)
 {
-	if (ref!=NULL
-		&& ref->cbt)
-	{
 #ifdef _WIN32
-		std::string vol = volume;
-		normalizeVolume(vol);
-		vol = strlower(vol);
+	std::string vol = volume;
+	normalizeVolume(vol);
+	vol = strlower(vol);
 #else
-		std::string vol = getMountDevice(volume);
-		if(vol.empty())
-		{
-			return;
-		}
+	std::string vol = getMountDevice(volume);
 #endif
 
+	if (ref!=NULL
+		&& ref->cbt
+		&& !vol.empty())
+	{
 		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE));
 		index_hdat_fs_block_size = -1;
 

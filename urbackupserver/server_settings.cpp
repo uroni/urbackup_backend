@@ -321,7 +321,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->max_sim_backups = settings_global->getValue("max_sim_backups", 100);
 		settings->cleanup_window = settings_global->getValue("cleanup_window", "1-7/3-4");
 		settings->backup_database = (settings_global->getValue("backup_database", "true") == "true");
-		settings->internet_server_port = (unsigned short)(atoi(settings_global->getValue("internet_server_port", "55415").c_str()));
+		settings->internet_server_port = settings_global->getValue("internet_server_port", "55415");
 		settings->internet_server_proxy = settings_global->getValue("internet_server_proxy", "");
 		settings->internet_server = settings_global->getValue("internet_server", "");
 		settings->global_internet_speed = settings_global->getValue("global_internet_speed", "-1");

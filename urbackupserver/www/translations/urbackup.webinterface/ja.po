@@ -11,12 +11,14 @@
 # Translators:
 # Translators:
 # Translators:
-# Ikeguchi Naoki <siketyan@sikeserver.com>, 2019
+# Translators:
+# Translators:
+# Naoki Ikeguchi <root@siketyan.dev>, 2019
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2019-06-01 13:37+0000\n"
-"Last-Translator: Ikeguchi Naoki <siketyan@sikeserver.com>\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: Naoki Ikeguchi <root@siketyan.dev>, 2019\n"
 "Language-Team: Japanese (http://www.transifex.com/uroni/urbackup/language/ja/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"

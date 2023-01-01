@@ -7,8 +7,8 @@ import polib
 def write_po_header(f, lang):
     
     f.writelines(["# UrBackup translation\n",
-                  "# Copyright (C) 2011-2014 See translators\n",
-                  "# This file is distributed under the same license as the UrBackup package.\n",
+                  "# Copyright (C) 2011-2022 See translators\n",
+                  "# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).\n",
                   "msgid \"\"\n",
                   "msgstr \"\"\n",
                   "\"MIME-Version: 1.0\\n\"\n",

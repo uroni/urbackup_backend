@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -352,6 +352,11 @@ void ClientMain::operator ()(void)
 	{
 		curr_image_version = 0;
 	}
+	else if (server_settings->getImageFileFormat() == image_file_format_vhdx
+		|| server_settings->getImageFileFormat() == image_file_format_vhdxz)
+	{
+		curr_image_version = 2;
+	}
 	else
 	{
 		curr_image_version = 1;
@@ -675,6 +680,11 @@ void ClientMain::operator ()(void)
 					if(server_settings->getImageFileFormat()==image_file_format_cowraw)
 					{
 						curr_image_version = 0;
+					}
+					else if (server_settings->getImageFileFormat() == image_file_format_vhdxz
+						|| server_settings->getImageFileFormat() == image_file_format_vhdx)
+					{
+						curr_image_version = 2;
 					}
 					else
 					{
@@ -1158,11 +1168,12 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 			q_insert_newclient->Reset();
 			db->destroyQuery(q_insert_newclient);
 
-			IQuery *q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES (?,?,?)", false);
+			IQuery *q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid, use) VALUES (?,?,?,?)", false);
 			std::string new_authkey = ServerSettings::generateRandomAuthKey();
 			q_insert_setting->Bind("internet_authkey");
 			q_insert_setting->Bind(new_authkey);
 			q_insert_setting->Bind(rid);
+			q_insert_setting->Bind(c_use_value);
 			q_insert_setting->Write();
 			q_insert_setting->Reset();
 
@@ -1171,6 +1182,7 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 				q_insert_setting->Bind("group_id");
 				q_insert_setting->Bind(*client_group);
 				q_insert_setting->Bind(rid);
+				q_insert_setting->Bind(c_use_value);
 				q_insert_setting->Write();
 				q_insert_setting->Reset();
 
@@ -1750,9 +1762,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			if (curr_uid.exists &&
 				!curr_uid.value.empty() &&
 				it->second!=curr_uid.value &&
-				server_settings->getSettings()->local_encrypt )
+				server_settings->getSettings()->local_encrypt &&
+				!internet_connection)
 			{
-				ServerLogger::Log(logid, "Client UID changed from \"" + curr_uid.value + "\" to \"" + it->second + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
+				ServerLogger::Log(logid, "Client UID changed from \"" + curr_uid.value + "\" to \"" + it->second + "\". "
+					"Disallowing client because connection to local/passive client is encrypted.", LL_WARNING);
 				ServerStatus::setStatusError(clientname, se_uid_changed);
 				return false;
 			}
@@ -1768,7 +1782,8 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			ServerBackupDao::CondString curr_uid = backup_dao->getClientUid(clientid);
 			if (curr_uid.exists &&
 				!curr_uid.value.empty() &&
-				server_settings->getSettings()->local_encrypt)
+				server_settings->getSettings()->local_encrypt &&
+				!internet_connection)
 			{
 				ServerLogger::Log(logid, "Client UID not received from client. Expecting \"" + curr_uid.value + "\". Disallowing client because connection to client is encrypted.", LL_WARNING);
 				ServerStatus::setStatusError(clientname, se_uid_changed);
@@ -1900,6 +1915,7 @@ void ClientMain::sendSettings(void)
 			if (!setting.exists)
 			{
 				s_settings += key + "=" + value_default + "\n";
+				s_settings += key+".use=" + convert(c_use_group) + "\n";
 			}
 			else
 			{
@@ -1910,9 +1926,6 @@ void ClientMain::sendSettings(void)
 				}
 				else
 				{
-					if (key == "update_freq_incr")
-						int abct = 5;
-
 					s_settings += key + ".home=" + setting.value + "\n";
 					s_settings += key + ".client=" + setting.value_client + "\n";
 					s_settings += key + ".use=" + convert(setting.use) + "\n";
@@ -1988,12 +2001,9 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
-	std::vector<std::string> setting_names=getSettingsList();
+	std::vector<std::string> setting_names=getClientConfigurableSettingsList();
 
 	bool mod=false;
-
-	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
-
 	bool has_use = false;
 
 	for (size_t i = 0; i < setting_names.size(); ++i)
@@ -2005,17 +2015,18 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			break;
 		}
 	}
+
+	int def_use = c_use_group;
+
+	if (sr->getValue("client_set_settings") == "true")
+	{
+		def_use = c_use_value_client;
+	}
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
-		std::string &key=setting_names[i];
+		const std::string& key=setting_names[i];
 		std::string value;
-
-		if(std::find(only_server_settings.begin(), only_server_settings.end(),
-			key)!=only_server_settings.end())
-		{
-			continue;
-		}
 
 		int use = c_use_value;
 
@@ -2041,14 +2052,15 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			}
 		}
 		else if (!has_use
-			&& sr->getValue(key, &value))
+			&& sr->getValue(key, &value)
+			&& def_use==c_use_value_client)
 		{
 			if (internet_connection && key == "computername")
 			{
 				continue;
 			}
 
-			bool b = updateClientSetting(key, value, c_use_undefined, 0);
+			bool b = updateClientSetting(key, value, def_use, 0);
 			if (b)
 				mod = true;
 		}
@@ -2064,9 +2076,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified)
 {
-	if (key == "update_freq_incr")
-		int abct = 45;
-
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
 	db_results res = q_get_setting->Read();
@@ -2620,7 +2629,8 @@ bool ClientMain::inBackupWindow(Backup * backup)
 	}
 }
 
-IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr, bool do_encrypt)
+IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms,
+	std::string* clientaddr, bool do_encrypt, bool allow_reauth, bool* require_reauth)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
@@ -2684,8 +2694,10 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 			std::string server_keyadd;
 			if (!secret_session_key.empty())
 			{
-				server_keyadd.resize(16);
-				Server->randomFill(&server_keyadd[0], server_keyadd.size());
+				server_keyadd.resize(16 + sizeof(int64));
+				Server->randomFill(&server_keyadd[0], server_keyadd.size()- sizeof(int64));
+				int64 ctime = Server->getTimeSeconds();
+				memcpy(&server_keyadd[16], &ctime, sizeof(int64));
 			}
 			std::string tosend = identity + "ENC?keyadd="+ base64_encode_dash(server_keyadd)+"&compress="+EscapeParamString(compression)+"&compress_level="+convert(compression_level);
 			size_t rc = tcpstack.Send(ret, tosend);
@@ -2712,6 +2724,21 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 
 				if (tcpstack.getPacket(msg))
 				{					
+					if (msg == "ERR" || msg == "ERR REQUIRE ENC")
+					{
+						if (require_reauth != NULL)
+							*require_reauth = true;
+
+						if (allow_reauth)
+						{
+							if (authenticateIfNeeded(false, true))
+							{
+								Server->destroy(ret);
+								return getClientCommandConnection(server_settings, timeoutms, clientaddr, do_encrypt, false);
+							}
+						}
+					}
+
 					ParseParamStrHttp(msg, &enc_response);
 					break;
 				}
@@ -3235,7 +3262,7 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 
 	if (!clientsubname.empty())
 	{
-		params = "&clientsubname=" + EscapeParamString(clientsubname);
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
 		params[0] = ' ';
 	}
 

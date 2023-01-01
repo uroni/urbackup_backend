@@ -502,6 +502,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
 
 	ClientConnector::init_mutex();
+
+	filesrv_pluginid = Server->StartPlugin("fileserv", params);
+
+	IndexThread* it = new IndexThread();
+	if (!do_leak_check)
+	{
+		Server->createThread(it, "file indexing");
+	}
+	else
+	{
+		indexthread_ticket = Server->getThreadPool()->execute(it, "file indexing");
+	}
+
 	unsigned short urbackup_serviceport = default_urbackup_serviceport;
 	if(!Server->getServerParameter("urbackup_serviceport").empty())
 	{
@@ -515,18 +528,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, -1, serviceport_bind_target);
-
-	filesrv_pluginid=Server->StartPlugin("fileserv", params);
-
-	IndexThread *it=new IndexThread();
-	if(!do_leak_check)
-	{
-		Server->createThread(it, "file indexing");
-	}
-	else
-	{
-		indexthread_ticket=Server->getThreadPool()->execute(it, "file indexing");
-	}
 
 	internetclient_ticket=InternetClient::start(do_leak_check);
 

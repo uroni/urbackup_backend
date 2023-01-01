@@ -7,7 +7,19 @@ CDIR=`dirname $0`
 . "SYSCONFDIR/postgresbase.conf"
 . "SYSCONFDIR/mariadbxtrabackup.conf"
 
-if [ "x$MARIADB_DUMP_ENABLED" != "x0" ]; then echo "scriptname=mariadbdump&outputname=mariadbdump.sql"; fi
+if [ "x$MARIADB_DUMP_ENABLED" != "x0" ]
+then
+        if [ "x$MARIADB_DUMP_PER_BASE" != "x0" ]
+        then
+                baselist=$(mysql -u $MARIADB_BACKUP_USER -p$MARIADB_BACKUP_PASSWORD -e 'show databases' -s --skip-column-names | grep -E -v 'information_schema|performance_schema')
+                for i in $baselist
+                do
+                        echo "scriptname=mariadbdump&outputname=mariadbdump_$i.sql"
+                done
+        else
+                echo "scriptname=mariadbdump&outputname=mariadbdump.sql"
+        fi
+fi
 if [ "x$POSTGRESQL_DUMP_ENABLED" != "x0" ]; then echo "scriptname=postgresqldump&outputname=postgresqldump.sql"; fi
 if [ "x$POSTGRESQL_BASE_ENABLED" != "x0" ]; then echo "scriptname=postgresbase&outputname=postgresbase&tar=1&orig_path=$POSTGRESQL_BASE_DIR"; fi
 if [ "x$MARIADB_XTRABACKUP_ENABLED" != "x0" ]; then echo "scriptname=mariadbxtrabackup&outputname=mariadbxtrabackup.xbstream.blockalign&orig_path=$MARIADB_TEMP_INCRDIR/mariadbxtrabackup.xbstream.blockalign"; fi

@@ -1,28 +1,12 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
 msgid ""
 msgstr ""
-"Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
-"Language-Team: English (http://www.transifex.com/uroni/urbackup/language/en/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "nav_item_3"
 msgstr "Logs"
@@ -705,9 +689,7 @@ msgstr "Send mails only with SSL/TLS"
 msgid "tCheck SSL/TLS certificate"
 msgstr "Check SSL/TLS certificate"
 
-msgid ""
-"tSend test mail to this email address after saving the settings (leave empty"
-" to not send a test mail)"
+msgid "tSend test mail to this email address after saving the settings (leave empty to not send a test mail)"
 msgstr "Send test mail to this email address after saving the settings (leave empty to not send a test mail)"
 
 msgid "tTest Mail sent successfully"
@@ -944,10 +926,7 @@ msgstr "Successfull"
 msgid "tTarget version"
 msgstr "Target version"
 
-msgid ""
-"tWarning: The settings configured on the client will overwrite the settings "
-"configured here. If you want to change this behaviour do not allow the "
-"client to change settings."
+msgid "tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings."
 msgstr "Warning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings."
 
 msgid "tNext archival"
@@ -974,8 +953,7 @@ msgstr "Enable internet mode"
 msgid "tInternet auth key"
 msgstr "Internet auth key"
 
-msgid ""
-"tClients are removed during the cleanup time window, if they are offline."
+msgid "tClients are removed during the cleanup time window, if they are offline."
 msgstr "Clients are removed during the cleanup time window, if they are offline."
 
 msgid "tArchived"
@@ -1131,10 +1109,7 @@ msgstr "Internet image backup transfer mode"
 msgid "tUse symlinks during incremental file backups"
 msgstr "Use symlinks during incremental file backups"
 
-msgid ""
-"tWarning: The settings configured on the client will overwrite the settings "
-"configured here. If you want to change this behaviour do not allow the "
-"client to change settings. "
+msgid "tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. "
 msgstr "Warning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. "
 
 msgid "tClient download"
@@ -1233,18 +1208,13 @@ msgstr "About UrBackup"
 msgid "tAdd client"
 msgstr "Add client"
 
-msgid ""
-"tUrBackup automatically discovers clients in your local network. If the "
-"server is in the same sub-network as the client just install the client and "
-"wait for it to be discovered."
+msgid "tUrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered."
 msgstr "UrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered."
 
 msgid "tDownload the client from:"
 msgstr "Download the client from:"
 
-msgid ""
-"tIf you want a client to use multiple backup servers this server's identity "
-"is:"
+msgid "tIf you want a client to use multiple backup servers this server's identity is:"
 msgstr "If you want a client to use multiple backup servers this server's identity is:"
 
 msgid "tAdd new Internet client/client behind NAT"
@@ -1265,9 +1235,7 @@ msgstr "Cancel"
 msgid "tAccess denied"
 msgstr "Access denied"
 
-msgid ""
-"tSorry, something went wrong or you do not have the required rights to "
-"access this file or folder."
+msgid "tSorry, something went wrong or you do not have the required rights to access this file or folder."
 msgstr "Sorry, something went wrong or you do not have the required rights to access this file or folder."
 
 msgid "tLogin with username and password"
@@ -1342,10 +1310,7 @@ msgstr "Set the computer name to:"
 msgid "tSet the authentication key to:"
 msgstr "Set the authentication key to:"
 
-msgid ""
-"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
-" client via internet. On Linux by changing INTERNET_ONLY to true in "
-"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgid "tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
 msgstr "Without firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
@@ -1441,30 +1406,22 @@ msgstr "Debugging: End-to-end verification of all file backups"
 msgid "tDebugging: Verify file backups using client side hashes"
 msgstr "Debugging: Verify file backups using client side hashes"
 
-msgid ""
-"tPeriodically readd file entries of internet clients to database (disable "
-"only if you do not run fulls)"
+msgid "tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)"
 msgstr "Periodically readd file entries of internet clients to database (disable only if you do not run fulls)"
 
 msgid "tRun backups with background priority on the clients"
 msgstr "Run backups with background priority on the clients"
 
-msgid ""
-"tCreate symbolically linked views for each user on the clients after file "
-"backups"
+msgid "tCreate symbolically linked views for each user on the clients after file backups"
 msgstr "Create symbolically linked views for each user on the clients after file backups"
 
 msgid "tMaximum number of simultaneous jobs per client"
 msgstr "Maximum number of simultaneous jobs per client"
 
-msgid ""
-"tList of volumes for which change block tracking should be used (if "
-"available)"
+msgid "tList of volumes for which change block tracking should be used (if available)"
 msgstr "List of volumes for which change block tracking should be used (if available)"
 
-msgid ""
-"tList of volumes for which the change block tracking should be crash "
-"persistent"
+msgid "tList of volumes for which the change block tracking should be crash persistent"
 msgstr "List of volumes for which the change block tracking should be crash persistent"
 
 msgid "tEnable logins via LDAP/AD"
@@ -1674,9 +1631,7 @@ msgstr "Serial number"
 msgid "tMount image"
 msgstr "Mount image"
 
-msgid ""
-"tUrBackup will use non-sandboxed server operating system functionality to "
-"mount the image. Only mount the image if you trust its source."
+msgid "tUrBackup will use non-sandboxed server operating system functionality to mount the image. Only mount the image if you trust its source."
 msgstr "UrBackup will use non-sandboxed server operating system functionality to mount the image. Only mount the image if you trust its source."
 
 msgid "tMounting image failed. Please see server log file for details."
@@ -1688,9 +1643,7 @@ msgstr "Ok. Reset this error"
 msgid "tOk. Stop showing this error"
 msgstr "Ok. Stop showing this error"
 
-msgid ""
-"tThis server has discovered clients which are currently not configured to "
-"use this server."
+msgid "tThis server has discovered clients which are currently not configured to use this server."
 msgstr "This server has discovered clients which are currently not configured to use this server."
 
 msgid "tSee here for details on how this can happen."
@@ -1738,14 +1691,10 @@ msgstr "Volume letters"
 msgid "tImage backup"
 msgstr "Image backup"
 
-msgid ""
-"tDo not start file backups if current estimated data usage limit per month "
-"is smaller than"
+msgid "tDo not start file backups if current estimated data usage limit per month is smaller than"
 msgstr "Do not start file backups if current estimated data usage limit per month is smaller than"
 
-msgid ""
-"tDo not start image backups if current estimated data usage limit per month "
-"is smaller than"
+msgid "tDo not start image backups if current estimated data usage limit per month is smaller than"
 msgstr "Do not start image backups if current estimated data usage limit per month is smaller than"
 
 msgid "tUpdate data limit estimation database"
@@ -1855,3 +1804,217 @@ msgstr "Edit scripts"
 
 msgid "tInternet restore authentication key"
 msgstr "Internet restore authentication key"
+
+msgid "validate_text_notregexp"
+msgstr "Format for {name} wrong. Please correct."
+
+msgid "uid_changed_err"
+msgstr "Client identifier changed"
+
+msgid "authenticating"
+msgstr "Authenticating server"
+
+msgid "exchanging_settings"
+msgstr "Exchanging settings"
+
+msgid "client_starting_up"
+msgstr "Starting up client"
+
+msgid "confirm_allow_new_client"
+msgstr "Are you sure that you want to use a new client with the same name?"
+
+msgid "interval_milliseconds"
+msgstr "milliseconds"
+
+msgid "interval_seconds"
+msgstr "seconds"
+
+msgid "interval_minutes"
+msgstr "minutes"
+
+msgid "interval_hours"
+msgstr "hours"
+
+msgid "interval_days"
+msgstr "days"
+
+msgid "interval_months"
+msgstr "months"
+
+msgid "interval_years"
+msgstr "years"
+
+msgid "tFor security reasons check/add following line in the file server_idents.txt on your client:"
+msgstr "For security reasons check/add following line in the file server_idents.txt on your client:"
+
+msgid "tAdd new Internet/active client"
+msgstr "Add new Internet/active client"
+
+msgid "tName of new Internet/active client"
+msgstr "Name of new Internet/active client"
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr "Discover new local/passive client accross networks"
+
+msgid "tChoice (separated by "
+msgstr "Choice (separated by "
+
+msgid "tTime interval (h, min, s)"
+msgstr "Time interval (h, min, s)"
+
+msgid "tRestore Linux image"
+msgstr "Restore Linux image"
+
+msgid "tSet the URL to connect to:"
+msgstr "Set the URL to connect to:"
+
+msgid "tSet the name to:"
+msgstr "Set the name to:"
+
+msgid "templates_js"
+msgstr "emplates_js"
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr "To restore your Linux disk please enter following in a terminal:"
+
+msgid "tArchival setting from group"
+msgstr "Archival setting from group"
+
+msgid "tArchival setting from here"
+msgstr "Archival setting from here"
+
+msgid "tLocal/passive clients"
+msgstr "Local/passive clients"
+
+msgid "tInternet/Active clients"
+msgstr "Internet/Active clients"
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr "Server URL for client file/backup access/browsing"
+
+msgid "tDirectories to backup are optional by default:"
+msgstr "Directories to backup are optional by default:"
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr "Compressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr "VHDX (Virtual HardDisk v2) (beta)"
+
+msgid "tAdditional virtual sub client names"
+msgstr "Additional virtual sub client names"
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr "Max backup speed for local/passive transfers"
+
+msgid "tEncrypt local/passive transfers"
+msgstr "Encrypt local/passive transfers"
+
+msgid "tCompress local/passive transfers"
+msgstr "Compress local/passive transfers"
+
+msgid "tClients try to connect via Internet/active client"
+msgstr "Clients try to connect via Internet/active client"
+
+msgid "tServer URL clients connect to"
+msgstr "Server URL clients connect to"
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr "Connect via HTTP(S) proxy (leave empty to connect without)"
+
+msgid "tTry to to connect via Internet/active client"
+msgstr "Try to to connect via Internet/active client"
+
+msgid "tAuth key"
+msgstr "Auth key"
+
+msgid "tDo image backups as Internet/active client"
+msgstr "Do image backups as Internet/active client"
+
+msgid "tDo full file backups as Internet/active client"
+msgstr "Do full file backups as Internet/active client"
+
+msgid "tMax backup speed as Internet/active client"
+msgstr "Max backup speed as Internet/active client"
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr "Total max backup speed for Internet/active connection"
+
+msgid "tEncrypted Internet/active transfer"
+msgstr "Encrypted Internet/active transfer"
+
+msgid "tCompressed Internet/active transfer"
+msgstr "Compressed Internet/active transfer"
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr "Calculate file-hashes on the client as Internet/active client"
+
+msgid "tConnect as Internet/active client if connected to as local/passive client"
+msgstr "Connect as Internet/active client if connected to as local/passive client"
+
+msgid "tInternet/active restore authentication key"
+msgstr "Internet/active restore authentication key"
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr "Non-default UrBackup Internet protocol TCP port"
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr "Local/passive full file backup transfer mode"
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr "Internet/active full file backup transfer mode"
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr "Local/passive incremental file backup transfer mode"
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr "Internet/active incremental file backup transfer mode"
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr "Local/passive image backup transfer mode"
+
+msgid "tInternet/active image backup transfer mode"
+msgstr "Internet/active image backup transfer mode"
+
+msgid "tLocal/passive incremental image style"
+msgstr "Local/passive incremental image style"
+
+msgid "tInternet/active incremental image style"
+msgstr "Internet/active incremental image style"
+
+msgid "tLocal/passive full image style"
+msgstr "Local/passive full image style"
+
+msgid "tInternet/active full image style"
+msgstr "Internet/active full image style"
+
+msgid "tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)"
+msgstr "List of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)"
+
+msgid "tRequire tray icon users to enter following text before being able to change settings"
+msgstr "Require tray icon users to enter following text before being able to change settings"
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr "Number of parallel file download threads per file backup"
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr "Number of parallel server file hash threads per file backup"
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr "Number of parallel client file hash threads per file backup"
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr "Number of threads to use for VHDZ compression (0: auto)"
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr "Use SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+
+msgid "tLocal/passive client"
+msgstr "Local/passive client"
+
+msgid "tInternet/Active client"
+msgstr "Internet/Active client"
+
+msgid "tAllow new client"
+msgstr "Allow new client"
+

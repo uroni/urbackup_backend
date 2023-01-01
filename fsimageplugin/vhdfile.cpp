@@ -43,34 +43,31 @@ const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
 
-namespace
+size_t VHDFile::getNumCompThreads(bool read_only)
 {
-	size_t getNumCompThreads(bool read_only)
-	{
-		if (read_only)
-			return 1;
+	if (read_only)
+		return 1;
 
-		const size_t maxCpus = 5;
+	const size_t maxCpus = 5;
 #ifdef _WIN32
-		SYSTEM_INFO system_info;
-		GetSystemInfo(&system_info);
-		DWORD numCpus = system_info.dwNumberOfProcessors;
-		if (numCpus == 0)
-			return 1;
-		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
+	SYSTEM_INFO system_info;
+	GetSystemInfo(&system_info);
+	DWORD numCpus = system_info.dwNumberOfProcessors;
+	if (numCpus == 0)
+		return 1;
+	return (std::min)(static_cast<size_t>(numCpus), maxCpus);
 #else
-		long numCpus = sysconf(_SC_NPROCESSORS_ONLN);
-		if (numCpus < 0)
-		{
-			numCpus = 2;
-		}
-		else if (numCpus == 0)
-		{
-			numCpus = 1;
-		}
-		return (std::min)(static_cast<size_t>(numCpus), maxCpus);
-#endif
+	long numCpus = sysconf(_SC_NPROCESSORS_ONLN);
+	if (numCpus < 0)
+	{
+		numCpus = 2;
 	}
+	else if (numCpus == 0)
+	{
+		numCpus = 1;
+	}
+	return (std::min)(static_cast<size_t>(numCpus), maxCpus);
+#endif
 }
 
 VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress, size_t compress_n_threads)

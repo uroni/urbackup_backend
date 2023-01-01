@@ -54,7 +54,7 @@ namespace
 		std::string ret="\r\n";
 		ret+="internet_mode_enabled="+convert(settingsptr->internet_mode_enabled)+"\r\n";
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
-		ret+="internet_server_port="+convert(settingsptr->internet_server_port)+"\r\n";
+		ret+="internet_server_port="+settingsptr->internet_server_port+"\r\n";
 		ret += "internet_server_proxy=" + settingsptr->internet_server_proxy + "\r\n";
 		ret+="internet_authkey="+(authkey.empty() ? settingsptr->internet_authkey : authkey ) +"\r\n";
 		if(!clientname.empty())
@@ -77,7 +77,7 @@ namespace
 
 		std::string ret = "RESTORE_IMAGE=1\n";
 		ret += "SERVER_NAME=\"" + settingsptr->internet_server + "\"\n";
-		ret += "SERVER_PORT=\"" + convert(settingsptr->internet_server_port) + "\"\n";
+		ret += "SERVER_PORT=\"" + settingsptr->internet_server_port + "\"\n";
 		ret += "SERVER_PROXY=\"" + settingsptr->internet_server_proxy + "\"\n";
 		ret += "RESTORE_AUTHKEY=\"" + restore_authkey+ "\"\n";
 		ret += "RESTORE_TOKEN=\"" + token + "\"\n";

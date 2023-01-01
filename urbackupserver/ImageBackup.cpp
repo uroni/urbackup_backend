@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2016 Martin Raiber
+*    Copyright (C) 2011-2021 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -38,6 +38,7 @@
 #include "../Interface/Pipe.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
+#include "../common/miniz.h"
 #include "server_ping.h"
 #include "snapshot_helper.h"
 #include "server.h"
@@ -790,7 +791,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					else
 					{
 						Server->Log(clientname +": Trying to reconnect in doImage", LL_DEBUG);
-						cc = client_main->getClientCommandConnection(server_settings.get(), 60000);
+						cc = client_main->getClientCommandConnection(server_settings.get(), 60000, NULL, true, true);
 						if (cc == NULL)
 						{
 							Server->wait(60000);
@@ -1053,21 +1054,47 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						image_format = IFSImageFactory::ImageFormat_RawCowFile;
 					}
+					else if (image_file_format == image_file_format_vhdx)
+					{
+						image_format = IFSImageFactory::ImageFormat_VHDX;
+					}
+					else if (image_file_format == image_file_format_vhdxz)
+					{
+						image_format = IFSImageFactory::ImageFormat_CompressedVHDX;
+					}
 					else //default
 					{
 						image_format = IFSImageFactory::ImageFormat_CompressedVHD;
 					}
 
+					int64 partition_table_add = mbr_size;
+
+					if (drivesize + partition_table_add > 2LL * 1024 * 1024 * 1024 * 1024)
+					{
+						//GPT backup
+						partition_table_add += 1 * 1024 * 1024 - (drivesize + partition_table_add) % (1 * 1024 * 1024);
+						partition_table_add += 2 * sector_size;
+					}
+
+					if ((image_format == IFSImageFactory::ImageFormat_VHDX ||
+						image_format == IFSImageFactory::ImageFormat_CompressedVHDX) &&
+						drivesize + partition_table_add > 64LL * 1024 * 1024 * 1024 * 1024)
+					{
+						ServerLogger::Log(logid, "Volume is too large for VHDX files with " + PrettyPrintBytes(drivesize + partition_table_add) +
+							". VHDX files have a maximum size of 64TiB. Please use another image file format.", LL_ERROR);
+						goto do_image_cleanup;
+					}
+
 					if(!has_parent)
 					{
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+mbr_size,
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+ partition_table_add,
 							(unsigned int)vhd_blocksize*blocksize, true,
 							image_format, server_settings->getSettings()->image_compress_threads);
 					}
 					else
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false,
-							true, image_format, drivesize + mbr_size,
+							true, image_format, drivesize + partition_table_add,
 							server_settings->getSettings()->image_compress_threads);
 					}
 
@@ -1100,7 +1127,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 
 					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images,
-						mbr_offset, hashfile, vhd_blocksize*blocksize, logid, drivesize + (int64)mbr_size);
+						mbr_offset, hashfile, vhd_blocksize*blocksize, logid, drivesize + partition_table_add);
 					vhdfile_ticket = Server->getThreadPool()->execute(vhdfile, "image backup writer");
 
 					blockdata=vhdfile->getBuffer();
@@ -1122,7 +1149,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if (!disk_backup)
 					{
-						mbr_offset = writeMBR(vhdfile, drivesize);
+						bool use_gpt = (drivesize + mbr_offset) > 2LL * 1024 * 1024 * 1024 * 1024;
+						mbr_offset = writeMBR(vhdfile, drivesize, use_gpt);
 						if (mbr_offset == 0)
 						{
 							ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
@@ -1130,6 +1158,15 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
+							if (use_gpt)
+							{
+								if (!writeGPT(vhdfile, drivesize, static_cast<unsigned int>(mbr_offset)))
+								{
+									ServerLogger::Log(logid, "Error writing image GPT", LL_ERROR);
+									goto do_image_cleanup;
+								}
+							}
+
 							vhdfile->setMbrOffset(mbr_offset);
 						}
 					}
@@ -1159,7 +1196,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 
 						if (vhd_size>0 && vhd_size >= 2040LL * 1024 * 1024 * 1024
-							&& image_file_format != image_file_format_cowraw)
+							&& (image_file_format == image_file_format_vhd
+								|| image_file_format == image_file_format_vhdz) )
 						{
 							ServerLogger::Log(logid, "Data on volume is too large for VHD files with " + PrettyPrintBytes(vhd_size) +
 								". VHD files have a maximum size of 2040GB. Please use another image file format.", LL_ERROR);
@@ -1886,7 +1924,7 @@ do_image_cleanup:
 	return false;
 }
 
-unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
+unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize, bool gpt_protective)
 {
 	unsigned char *mbr=(unsigned char *)vhdfile->getBuffer();
 	if(mbr==NULL)
@@ -1909,7 +1947,7 @@ unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
 	partition[1]=0xfe;
 	partition[2]=0xff;
 	partition[3]=0xff;
-	partition[4]=0x07; //ntfs
+	partition[4]= gpt_protective ? 0xEE : 0x07; //ntfs
 	partition[5]=0xfe;
 	partition[6]=0xff;
 	partition[7]=0xff;
@@ -1917,6 +1955,11 @@ unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
 	partition[9]=0x04;
 	partition[10]=0x00;
 	partition[11]=0x00;
+
+	if (gpt_protective)
+	{
+		volsize = 2LL * 1024 * 1024 * 1024 * 1024;
+	}
 
 	unsigned int sectors=(unsigned int)(volsize/((uint64)sector_size));
 	sectors = little_endian(sectors);
@@ -1945,6 +1988,134 @@ unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
 	}
 
 	return 1024*512;
+}
+
+namespace
+{
+	void randomGUID(char* g)
+	{
+		Server->randomFill(g, 16);
+		g[6] = 0x40 | (g[6] & 0xf);
+		g[8] = 0x80 | (g[8] & 0x3f);
+	}
+
+	void reorderGUID(char* g)
+	{
+		*reinterpret_cast<unsigned int*>(&g[0]) = big_endian(*reinterpret_cast<unsigned int*>(&g[0]));
+		*reinterpret_cast<unsigned short*>(&g[4]) = big_endian(*reinterpret_cast<unsigned short*>(&g[4]));
+		*reinterpret_cast<unsigned short*>(&g[6]) = big_endian(*reinterpret_cast<unsigned short*>(&g[6]));
+	}
+}
+
+bool ImageBackup::writeGPT(ServerVHDWriter* vhdfile, uint64 volsize, unsigned int mbr_offset)
+{
+#pragma pack(push)
+#pragma pack(1)
+	struct EfiHeader
+	{
+		uint64 signature;
+		_u32 revision;
+		_u32 header_size;
+		_u32 header_crc;
+		_u32 reserved;
+		int64 current_lba;
+		int64 backup_lba;
+		int64 first_lba;
+		int64 last_lba;
+		char disk_guid[16];
+		int64 partition_table_lba;
+		_u32 num_parition_entries;
+		_u32 partition_entry_size;
+		_u32 partition_table_crc;
+	};
+
+	struct GPTPartition
+	{
+		char partition_type_guid[16];
+		char unique_partition_guid[16];
+		int64 first_lba;
+		int64 last_lba;
+		uint64 flags;
+		char name[72];
+	};
+#pragma pack(pop)
+
+	char* header_buf = vhdfile->getBuffer();
+	if (header_buf == NULL)
+		return false;
+
+	char* table_buf = vhdfile->getBuffer();
+	if (table_buf == NULL)
+		return false;
+
+	char* header2_buf = vhdfile->getBuffer();
+	if (header2_buf == NULL)
+		return false;
+
+	char* table_buf2 = vhdfile->getBuffer();
+	if (table_buf2 == NULL)
+		return false;
+
+	memset(header_buf, 0, 512);
+
+	EfiHeader* efi_header = reinterpret_cast<EfiHeader*>(header_buf);
+
+	memcpy(efi_header, "EFI PART", 8);
+
+	efi_header->revision = 0x00010000;
+	efi_header->header_size = sizeof(EfiHeader);
+	efi_header->current_lba = 1;
+
+	uint64 vol_size_ru = mbr_offset + volsize;
+	vol_size_ru += 1 * 1024 * 1024 - (vol_size_ru % (1 * 1024 * 1024));
+
+	efi_header->backup_lba = ( vol_size_ru + sector_size)/sector_size;
+	efi_header->first_lba = 3;
+	efi_header->last_lba = efi_header->backup_lba - 1;
+	randomGUID(efi_header->disk_guid);
+	efi_header->partition_table_lba = 2;
+	efi_header->num_parition_entries = 1;
+	efi_header->partition_entry_size = 128;
+
+	memset(table_buf, 0, 512);
+	GPTPartition* partition = reinterpret_cast<GPTPartition*>(table_buf);
+
+	partition->first_lba = mbr_offset / sector_size;
+	partition->last_lba = (mbr_offset + volsize) / sector_size;
+	randomGUID(partition->unique_partition_guid);
+	unsigned char data_partition_guid[16] = { 0xEB, 0xD0, 0xA0, 0xA2,
+		0xB9, 0xE5, 0x44, 0x33, 0x87, 0xC0, 0x68, 0xB6, 0xB7,
+		0x26, 0x99, 0xC7 };
+	memcpy(partition->partition_type_guid, data_partition_guid, 16);
+	reorderGUID(partition->partition_type_guid);
+	const std::string name = Server->ConvertToUTF16("VOLUME BACKUP");
+	memcpy(partition->name, name.data(), name.size());
+
+	efi_header->partition_table_crc = mz_crc32(MZ_CRC32_INIT,
+		reinterpret_cast<unsigned char*>(partition), sizeof(GPTPartition));
+
+	efi_header->header_crc = mz_crc32(MZ_CRC32_INIT,
+			reinterpret_cast<unsigned char*>(efi_header), efi_header->header_size);
+
+	memcpy(table_buf2, table_buf, 512);
+	memcpy(header2_buf, header_buf, 512);
+
+	EfiHeader* efi_header2 = reinterpret_cast<EfiHeader*>(header2_buf);
+
+	efi_header2->header_crc = 0;
+	efi_header2->current_lba = efi_header->backup_lba;
+	efi_header2->backup_lba = 1;
+	efi_header2->partition_table_lba = efi_header2->current_lba - 1;
+
+	efi_header2->header_crc = mz_crc32(MZ_CRC32_INIT,
+		reinterpret_cast<unsigned char*>(efi_header2), efi_header2->header_size);
+
+	vhdfile->writeBuffer(efi_header->current_lba * sector_size, header_buf, 512);
+	vhdfile->writeBuffer(efi_header->partition_table_lba* sector_size, table_buf, 512);
+	vhdfile->writeBuffer(efi_header2->partition_table_lba* sector_size, table_buf2, 512);
+	vhdfile->writeBuffer(efi_header2->current_lba* sector_size, header2_buf, 512);
+
+	return true;
 }
 
 int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn,
@@ -2106,6 +2277,14 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	if(image_file_format==image_file_format_vhd)
 	{
 		imgpath+=".vhd";
+	}
+	else if (image_file_format == image_file_format_vhdx)
+	{
+		imgpath += ".vhdx";
+	}
+	else if (image_file_format == image_file_format_vhdxz)
+	{
+		imgpath += ".vhdxz";
 	}
 	else if(image_file_format==image_file_format_cowraw)
 	{

@@ -153,7 +153,6 @@ bool WebSocketPipe::Write(const char* buffer, size_t bsize, int timeoutms, bool 
 
 		memcpy(new_buf.data(), header, header_pos);
 
-		Server->Log("Masking key: " + convert(*((unsigned int*)masking_key)));
 		for (size_t i = 0; i < bsize; ++i)
 		{
 			size_t j = i % 4;

@@ -26,9 +26,32 @@ remove_overlay() {
 	fi
 }
 
+remove_dm() {
+    if ! [ -e "${SNAP_MOUNTPOINT}-name" ]
+    then
+        echo "Could not find snapshot device name at ${SNAP_MOUNTPOINT}-name. Cannot remove dm nodes"
+        return 1
+    fi
+
+    DEVNAME=$(cat "${SNAP_MOUNTPOINT}-name")
+
+    echo "Removing dm snapshot..."
+
+    dmsetup remove "$DEVNAME-$SNAP_ID-wsnap" || true
+    dmsetup remove "$DEVNAME-$SNAP_ID" || true
+
+    echo "Removing snapshot cow storage..."
+    dmsetup remove "$DEVNAME-$SNAP_ID-cow-storage" || true
+
+    rm "${SNAP_MOUNTPOINT}-name"
+    rm "${SNAP_MOUNTPOINT}-dev"
+    rmdir "${SNAP_MOUNTPOINT}"
+}
+
 if ! test -e $SNAP_MOUNTPOINT
 then
     echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+    remove_dm
     remove_overlay
     exit 0
 fi
@@ -52,6 +75,7 @@ fi
 if ! df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1
 then
     echo "Snapshot is not mounted. Already removed"
+    remove_dm
     remove_overlay
     exit 0
 fi
@@ -59,7 +83,6 @@ fi
 if ! [ -e "${SNAP_MOUNTPOINT}-name" ]
 then
 	echo "Could not find snapshot device name at ${SNAP_MOUNTPOINT}-name"
-	remove_overlay
 	exit 1
 fi
 
@@ -75,18 +98,6 @@ then
     umount /mnt/urbackup_snaps/$SNAP_ID
 fi
 
-rm "${SNAP_MOUNTPOINT}-name"
-rm "${SNAP_MOUNTPOINT}-dev"
-rmdir "${SNAP_MOUNTPOINT}"
-
-echo "Removing dm snapshot..."
-
-dmsetup remove "$DEVNAME-$SNAP_ID-wsnap"
-dmsetup remove "$DEVNAME-$SNAP_ID"
-
-echo "Removing snapshot cow storage..."
-dmsetup remove "$DEVNAME-$SNAP_ID-cow-storage"
-
+remove_dm
 remove_overlay
-
 exit 0

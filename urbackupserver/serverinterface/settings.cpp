@@ -644,8 +644,6 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 		str_map::iterator it_used = POST.find(sset[i] + ".use");
 		if(it!=POST.end())
 		{
-			if (sset[i] == "update_freq_incr")
-				int abct = 5;
 			int use = c_use_value;
 			if (it_used != POST.end())
 				use = watoi(it_used->second);

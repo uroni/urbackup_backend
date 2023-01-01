@@ -241,6 +241,7 @@ public:
 	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
 
 private:
+	void ReceivePacketsInt(IRunOtherCallback* run_other);
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
@@ -363,6 +364,7 @@ private:
 
 	unsigned int curr_result_id;
 	IPipe *pipe;
+	IPipe* orig_pipe;
 	THREAD_ID tid;
 	ClientConnectorState state;
 	int64 lasttime;
@@ -389,6 +391,7 @@ private:
 	static db_results cached_status;
 	static std::map<std::string, int64> last_token_times;
 	static int last_capa;
+	static int last_capa_db;
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;

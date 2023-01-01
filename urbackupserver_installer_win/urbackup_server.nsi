@@ -11,6 +11,8 @@ Name "UrBackup Server $version_short$"
 OutFile "UrBackup Server $version_short$.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
+Unicode true
+ManifestSupportedOS all
 
 !include "servicelib.nsh"
 
@@ -54,18 +56,8 @@ Section "install"
 		SetRegView 64
 	${EndIf}
 	
-	${If} ${IsWinXP}
-		MessageBox MB_OK "Sorry, installation on Windows XP is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2003}
-		MessageBox MB_OK "Sorry, installation on Windows Server 2003 is not supported."
-		Quit
-	${EndIf}
-	
-	${If} ${IsWin2000}
-		MessageBox MB_OK "Sorry, installation on Windows 2000 is not supported."
+	${If} ${AtMostWin8}
+		MessageBox MB_OK "Sorry, installation on this version of Windows (Windows 8 or older version) is not supported."
 		Quit
 	${EndIf}
 	
@@ -179,7 +171,6 @@ Section "install"
 		File "data_service\urbackup_srv.exe"
 		File "data\urlplugin.dll"
 		File "data\luaplugin.dll"
-		File "data\libzstd.dll"
 		SetOutPath "$INSTDIR"
 	${Else}
 		File "data_x64\fsimageplugin.dll"
@@ -190,7 +181,6 @@ Section "install"
 		File "data_x64\cryptoplugin.dll"
 		File "data_x64\urlplugin.dll"
 		File "data_x64\luaplugin.dll"
-		File "data_x64\libzstd.dll"
 		SetOutPath "$INSTDIR"
 	${EndIf}
 	

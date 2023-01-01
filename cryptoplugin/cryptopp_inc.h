@@ -1,21 +1,8 @@
 #ifdef _WIN32
-#include <aes.h>
-#include <sha.h>
-#include <modes.h>
-#include <zlib.h>
-#include <osrng.h>
-#include <files.h>
-#include <pwdbased.h>
-#include <hex.h>
-#include <eax.h>
-#include <gcm.h>
-#include <filters.h>
-#include <eccrypto.h>
-#include <oids.h>
-#include <dsa.h>
-#include <crc.h>
+#define CRYPTOPP_INCLUDE_PREFIX cryptopp
 #else
 #include "../config.h"
+#endif
 #define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
 #define CRYPTOPP_INCLUDE_SHA <CRYPTOPP_INCLUDE_PREFIX/sha.h>
 #define CRYPTOPP_INCLUDE_MODES <CRYPTOPP_INCLUDE_PREFIX/modes.h>
@@ -48,7 +35,6 @@
 #include CRYPTOPP_INCLUDE_DSA
 #if (CRYPTOPP_VERSION >= 564)
 #include CRYPTOPP_INCLUDE_CRC
-#endif
 #endif
 
 namespace CryptoPPCompat

@@ -12,7 +12,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <Subauth.h>
-#include <imdisk.h>
+#include "../external/imdisk/imdisk.h"
 bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname, void* transaction);
 #else
 #include <errno.h>

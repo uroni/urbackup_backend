@@ -26,6 +26,22 @@ typedef long long int int64;
 
 struct SBackupDir
 {
+	SBackupDir()
+		: id(0), group(0), server_default(0)
+	{}
+
+	SBackupDir(std::string path,
+		std::string name,
+		int id,
+		int group,
+		std::string virtual_client,
+		std::string flags,
+		int server_default)
+		: path(path), name(name), id(id),
+		group(group), virtual_client(virtual_client),
+		flags(flags), server_default(server_default)
+	{}
+
 	std::string path;
 	std::string name;
 	int id;

@@ -9,8 +9,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # Alabin Artem <kirpicheff@yandex.ru>, 2015,2017
 # Dmitry Ushakov <d.ushakov@yandex.com>, 2017
+# Gennadiy Zolotaryov <g.zolotaryov@gmail.com>, 2020
 # Konstantin <IncubusRK@gmail.com>, 2017
 # Oleg -- <ghost_mail2005-musor@yahoo.com>, 2017
 # OZ <orionplatinum7@gmail.com>, 2015
@@ -19,8 +24,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: Gennadiy Zolotaryov <g.zolotaryov@gmail.com>, 2020\n"
 "Language-Team: Russian (http://www.transifex.com/uroni/urbackup/language/ru/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1774,88 +1779,88 @@ msgid "tWith Selected"
 msgstr "С отмеченными"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "Не прописаны пути к бэкапу"
 
 msgid "disabled"
-msgstr ""
+msgstr "Выключено"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "Пожалуйста введите имя нового скрипта"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "Вы уверены в удалении этого скрипта?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Количество интервалов бэкапов файлов, после которых статус бэкапа установится в not ok"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Количество интервалов бэкапов образов, после которых статус бэкапа установится в not ok"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "E-Mail адреса (разделённые ';') для оповещения в случае имидж/файл бэкап имеет статус not ok"
 
 msgid "alert_important"
-msgstr ""
+msgstr "Добавить тэг [Important] в e-mail с алертом"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Отсылать e-mail после того, как статус бэкапа изменится с not ok на ok"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "Редактировать алертные скрипты"
 
 msgid "tAlert script"
-msgstr ""
+msgstr "Алертный скрипт"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Параметры алертного скрипта"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "Добавить параметр"
 
 msgid "tName:"
-msgstr ""
+msgstr "Имя:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Метка:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Значение по умолчанию:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Тип:"
 
 msgid "tString"
-msgstr ""
+msgstr "Строка:"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "Число с плавающей запятой:"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Целое:"
 
 msgid "tBoolean"
-msgstr ""
+msgstr "Булевое:"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "С Докером (web interface доступен клиенту)"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "С Докером (web interface не доступен клиенту)"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Редактировать отчётный скрипт "
 
 msgid "tPaused"
-msgstr ""
+msgstr "Пауза"
 
 msgid "tReport script"
-msgstr ""
+msgstr "Отчётный скрипт"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Алерты"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "Редактировать скрипты"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Восстановление ключа аутентификации через Интернет"

@@ -89,6 +89,7 @@ std::vector<SChannel> ClientConnector::channel_pipes;
 db_results ClientConnector::cached_status;
 std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
+int ClientConnector::last_capa_db = 0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
@@ -239,11 +240,13 @@ void ClientConnector::init_mutex(void)
 	if(!res.empty())
 	{
 		last_capa=watoi(res[0]["last_capa"]);
+		last_capa_db = last_capa;
 	}
 	else
 	{
 		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_capa', '0');");
 		last_capa=0;
+		last_capa_db = 0;
 	}
 
 	ClientDAO clientdao(db);
@@ -284,6 +287,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 {
 	tid=pTID;
 	pipe=pPipe;
+	orig_pipe = pipe;
 	state=CCSTATE_NORMAL;
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
@@ -311,6 +315,11 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 
 ClientConnector::~ClientConnector(void)
 {
+	if (state != CCSTATE_FILESERV && pipe != orig_pipe)
+	{
+		Server->destroy(pipe);
+	}
+
 	if (curr_result_id != 0)
 	{
 		IndexThread::removeResult(curr_result_id);
@@ -814,6 +823,18 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 
 void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 {
+	do
+	{
+		ReceivePacketsInt(p_run_other);
+	} while (pipe != orig_pipe 
+		&& wantReceive()
+		&& state!= CCSTATE_UPDATE_FINISH
+		&& !do_quit 
+		&& pipe->isReadable());
+}
+
+void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
+{
 	run_other = p_run_other;
 
 	if(state==CCSTATE_UPDATE_FINISH)
@@ -944,29 +965,15 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}			
 		}
 		else
-		{
-			return;
+			{
+				return;
+			}
 		}
-	}
 
 	tcpstack.AddData(cmd.data(), cmd.size());
 
-	while(true)
+	while(tcpstack.getPacket(cmd) && !cmd.empty())
 	{
-		if (!tcpstack.getPacket(cmd) || cmd.empty())
-		{
-			size_t rc = pipe->Read(&cmd, 0);
-			if (rc > 0)
-			{
-				tcpstack.AddData(cmd.data(), cmd.size());
-				continue;
-			}
-			else
-			{
-				break;
-			}
-		}
-
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
@@ -1972,9 +1979,12 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
 
+	bool set_client_settings = new_settings->getValue("set_client_settings", "0") == "1";
+	bool merge_client_settings = new_settings->getValue("merge_client_settings", "0") == "1";
+
 	std::vector<std::string> new_keys = new_settings->getKeys();
-	bool modified_settings=true;
-	if(old_settings.get()!=NULL)
+	bool modified_settings= set_client_settings;
+	if(old_settings.get()!=NULL && !set_client_settings)
 	{
 		modified_settings=false;
 		std::vector<std::string> old_keys = old_settings->getKeys();
@@ -2006,18 +2016,79 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		}
 	}
 
+	const std::vector<std::string> mergable_settings_list = getClientMergableSettingsList();
+
 	if(modified_settings)
 	{
 		std::string new_data;
 
+		std::vector<std::string> add_new_keys;
+		std::vector<std::string> skip_new_keys;
+
 		for(size_t i=0;i<new_keys.size();++i)
 		{
+			std::string& new_key = new_keys[i];
+
+			if (new_key == "merge_client_settings" ||
+				new_key == "set_client_settings")
+				continue;
+
 			std::string val;
 			if(new_settings->getValue(new_keys[i], &val))
 			{
-				new_data+=new_keys[i]+"="+val+"\n";
+				if (!set_client_settings)
+				{
+					new_data += new_key + "=" + val + "\n";
+				}
+				else
+				{
+					if (new_key == "internet_mode_enabled" ||
+						new_key == "internet_server" ||
+						new_key == "internet_server_port" ||
+						new_key == "internet_server_proxy" ||
+						new_key == "internet_authkey" ||
+						new_key == "computername")
+					{
+						new_data += new_key + "=" + val + "\n";
+					}
+					else
+					{
+						skip_new_keys.push_back(new_key);
+					}
+
+					int old_use = old_settings->getValue(new_key + ".use", c_use_group);
+					int64 old_use_lm = old_settings->getValue(new_key + ".use_lm", 0);
+					int64 new_use_lm = Server->getTimeSeconds();
+					if (old_use_lm == new_use_lm)
+						++new_use_lm;
+					std::string old_client_val;
+					old_settings->getValue(new_key +".client", &old_client_val);
+
+					int new_use = c_use_value_client;
+
+					if (merge_client_settings &&
+						std::find(mergable_settings_list.begin(),
+							mergable_settings_list.end(), new_key) != mergable_settings_list.end())
+					{
+						new_use = old_use & c_use_value_client;
+					}
+
+					if (new_use != old_use)
+					{
+						new_data += new_key + ".use=" + convert(new_use) + "\n";
+						add_new_keys.push_back(new_key + ".use");
+						new_data += new_key + ".use_lm=" + convert(new_use_lm) + "\n";
+						add_new_keys.push_back(new_key + ".use_lm");
+					}
+				}
 			}
 		}
+
+		new_keys.insert(new_keys.end(), add_new_keys.begin(),
+			add_new_keys.end());
+
+		std::sort(new_keys.begin(), new_keys.end());
+		std::sort(skip_new_keys.begin(), skip_new_keys.end());
 
 		if (old_settings.get() != NULL)
 		{
@@ -2025,7 +2096,8 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 			for (size_t i = 0; i < old_keys.size(); ++i)
 			{
-				if (std::find(new_keys.begin(), new_keys.end(), old_keys[i]) == new_keys.end())
+				if (std::binary_search(skip_new_keys.begin(), skip_new_keys.end(), old_keys[i]) ||
+					!std::binary_search(new_keys.begin(), new_keys.end(), old_keys[i]))
 				{
 					std::string val;
 					if (old_settings->getValue(old_keys[i], &val))
@@ -3407,24 +3479,37 @@ int ClientConnector::getCapabilities(IDatabase* db)
 		capa=INT_MAX;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (!channel_pipes[i].virtual_client.empty())
+				continue;
+
 			capa=capa & channel_pipes[i].capa;
 		}
 
-		if(capa!=last_capa)
+		if (capa == INT_MAX)
+		{
+			for (size_t i = 0; i < channel_pipes.size(); ++i)
+			{
+				capa = capa & channel_pipes[i].capa;
+			}
+		}
+
+		if(capa!=last_capa_db)
 		{
 			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
 			if(cq!=NULL)
 			{
 				cq->Bind(capa);
-				if(cq->Write(0))
+				if(cq->Write(100))
 				{
-					last_capa=capa;
+					last_capa_db=capa;
 				}
 				cq->Reset();				
 				db->destroyQuery(cq);
 			}
 		}
+
+		last_capa = capa;
 	}
 
 	if (!retrieved_has_components)
@@ -3538,7 +3623,14 @@ bool ClientConnector::closeSocket( void )
 {
 	if(state!=CCSTATE_FILESERV)
 	{
-		return true;
+		if (pipe != orig_pipe)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 	else
 	{
@@ -3999,6 +4091,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 		{
 			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
 		}
+
+		if (res_paths.empty() &&
+			!FileExists(settings_fn))
+			continue;
 
 		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 

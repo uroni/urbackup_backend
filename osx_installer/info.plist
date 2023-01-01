@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleGetInfoString</key>
-  <string>UrBackup Client Tray Icon GUI</string>
+  <string>UrBackup Client Tray Icon GUI $version_num_short$ ($git_rev$)</string>
   <key>CFBundleExecutable</key>
   <string>urbackupclientgui</string>
   <key>CFBundleIdentifier</key>
@@ -28,5 +28,7 @@
   <string>1</string>
   <key>LSMultipleInstancesProhibited</key>
   <true />
+  <key>NSPrincipalClass</key>
+  <string>wxNSApplication</string>
 </dict>
 </plist>

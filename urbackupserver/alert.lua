@@ -1,7 +1,7 @@
 --find largest (maximum of incr and full interval) interval for file and image backups
 local file_interval = params.incr_file_interval
 local full_file_interval = params.full_file_interval
-if full_file_interval>0 and full_file_interval<file_interval
+if full_file_interval>0 and (full_file_interval<file_interval or file_interval<0)
 then
 	file_interval = full_file_interval
 end

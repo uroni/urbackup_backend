@@ -122,6 +122,8 @@ public:
 
 	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
 
+	static size_t getNumCompThreads(bool read_only);
+
 private:
 
 	bool check_if_compressed();

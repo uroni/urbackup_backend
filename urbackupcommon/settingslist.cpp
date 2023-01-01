@@ -61,7 +61,6 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("internet_authkey");
 	ret.push_back("internet_speed");
 	ret.push_back("local_speed");
-	ret.push_back("internet_client_enabled");
 	ret.push_back("internet_image_backups");
 	ret.push_back("internet_full_file_backups");
 	ret.push_back("internet_encrypt");

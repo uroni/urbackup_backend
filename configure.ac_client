@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-client], [2.5.14.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-client], [2.5.22.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CANONICAL_SYSTEM
@@ -151,8 +151,15 @@ then
 		[CryptoPP::AlignedAllocate(5);])],
 	  [AC_MSG_RESULT([yes])], 
 	  [
-		CRYPTOPP_CPPFLAGS="$CRYPTOPP_CPPFLAGS -DCRYPTOPP_DISABLE_ASM"
-		AC_MSG_RESULT([no])
+		CRYPTOPP_INC="<$CRYPTOPP_INCLUDE_PREFIX/allocate.h>"
+		AC_LINK_IFELSE(
+		  [AC_LANG_PROGRAM([#include $CRYPTOPP_INC], 
+			[CryptoPP::AlignedAllocate(5);])],
+		  [AC_MSG_RESULT([yes])], 
+		  [
+			CRYPTOPP_CPPFLAGS="$CRYPTOPP_CPPFLAGS -DCRYPTOPP_DISABLE_ASM"
+			AC_MSG_RESULT([no])
+		  ])
 	  ])
 	LDFLAGS="$SAVED_LDFLAGS"
 	CPPFLAGS="$SAVED_CPPFLAGS"
@@ -224,6 +231,15 @@ AS_IF([test "x$opsys" != "xosx"],
 		[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
 		[AC_MSG_FAILURE([No library for clock_gettime found])] )
 ])
+
+AC_CHECK_LIB(devmapper, dm_task_set_name, [HAVE_LIB_DEVICEMAPPER=1])
+AS_IF([test "x$HAVE_LIB_DEVICEMAPPER" = "x"],
+	[
+		AC_MSG_WARN([
+				Did not find libdevmapper. Not compiling UrBackup dmsnapshot tool. Dm-snapshot method will not be available.
+				])
+	])
+AM_CONDITIONAL([WITH_DMTOOL], [test x$HAVE_LIB_DEVICEMAPPER = x1])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

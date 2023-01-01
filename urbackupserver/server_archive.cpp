@@ -331,7 +331,7 @@ namespace
 
 			i = 0;
 
-			if (params.find("every_" + prefix + convert(i)) == params.end())
+			if (params.find("every_" + prefix + convert(i)) != params.end())
 			{
 				idx = prefix + convert(i);
 				return true;

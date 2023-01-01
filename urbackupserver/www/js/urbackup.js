@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2005001300;
+g.current_version=2005002800;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -2769,6 +2769,66 @@ function unescapeCurrentSettings(settings)
 			setting.value_group = unescapeHTML(setting.value_group);
 	}
 }
+function settingSwitchReset(key)
+{
+	var use = g.curr_settings[key].use;
+	if(use==1)
+		use=2;
+	else if(use==2)
+		use=4;
+	else if(use==4)
+		use=3;
+	else if(use==3)
+		use=1;
+
+	g.curr_settings[key].use=use;
+
+	for(var i=0;i<g.settings_list.length;++i)
+	{
+		var lkey = g.settings_list[i];
+		var lval = g.curr_settings[lkey];
+	
+		if(typeof lval=="undefined")
+			continue;
+		
+		if(typeof lval.use=="undefined")
+			continue
+
+		luse = fixupUse(lkey, use);
+		
+		if(luse==1)
+		{
+			if(typeof g.curr_settings[lkey].orig_html!="undefined")
+			{
+				I(lkey+"_div").innerHTML = lval.orig_html;
+			}
+		}
+
+		if(luse==2 &&
+			typeof lval.value == "undefined")
+		{
+			lval.value = getVal(g.curr_settings[lkey])
+		}
+
+		lval.use = luse;
+	}
+
+	renderSettingSwitchAll();
+}
+function fixupUse(key, use)
+{
+	if($.inArray(key, g.client_settings_list)==-1
+		&& use==4 && $.inArray(key, g.mergable_settings_list)!=-1)
+		use=3;
+	else if($.inArray(key, g.client_settings_list)==-1
+		&& use>2)
+		use=1;
+	if($.inArray(key, g.mergable_settings_list)==-1
+		&& (use==3 || use>4))
+		use=1;
+
+	return use;
+}
 function settingSwitch()
 {
 	var key = $(this).attr("id");
@@ -2780,6 +2840,12 @@ function settingSwitch()
 
 	if(key=="backup_window")
 		key="backup_window_incr_file";
+
+	if(key=="reset")
+	{
+		settingSwitchReset(key);
+		return;
+	}
 
 	var use = g.curr_settings[key].use;
 
@@ -2798,15 +2864,7 @@ function settingSwitch()
 		use=1;
 	}
 
-	if($.inArray(key, g.client_settings_list)==-1
-		&& use==4 && $.inArray(key, g.mergable_settings_list)!=-1)
-		use=3;
-	else if($.inArray(key, g.client_settings_list)==-1
-		&& use>2)
-		use=1;
-	if($.inArray(key, g.mergable_settings_list)==-1
-		&& (use==3 || use>4))
-		use=1;
+	use = fixupUse(key, use);
 
 	if(use==2 &&
 		typeof g.curr_settings[key].value == "undefined")
@@ -2830,7 +2888,7 @@ function settingSwitch()
 		{
 			if(key=="archive")
 			{
-				renderArchiveSettings(g.curr_settings_type==0);
+				renderArchiveSettings(g.curr_settings_type==0 || g.curr_settings_type == 1);
 			}
 			else
 			{
@@ -2852,7 +2910,10 @@ function settingSwitch()
 	else
 	{
 		I(key).value = g.curr_settings[key].value;
-		I(key+"_client").value = g.curr_settings[key].value_client;
+
+		if(typeof g.curr_settings[key].value_client != "undefined")
+			I(key+"_client").value = g.curr_settings[key].value_client;
+			
 		I(key+"_group").value = g.curr_settings[key].value_group;
 	}
 }
@@ -2930,10 +2991,48 @@ function settingChange(p_key)
 	
 	settingChangeKey(key);
 }
+
+function getResetVal(settings)
+{
+	var use = 0;
+	for (var key in settings) {
+		if (!settings.hasOwnProperty(key)) {
+			continue;
+		}
+
+		var setting = settings[key];
+
+		if(typeof setting!="object")
+			continue;
+
+		use |= setting.use;
+	}
+
+	if(use!=1 && use!=2 && use!=4)
+		use = 1;
+
+	return {"use": use,
+		value: "",
+		value_client: "",
+		value_group: ""};
+}
+
 function renderSettingSwitch(key)
 {
 	var val;
-	if(key=="backup_window")
+	if(key=="reset")
+	{
+		if(typeof g.curr_settings["reset"] === "undefined")
+		{
+			val = getResetVal(g.curr_settings);
+			g.curr_settings["reset"] = val;
+		}
+		else
+		{
+			val = g.curr_settings[key];
+		}
+	}
+	else if(key=="backup_window")
 	{
 		val = g.curr_settings["backup_window_incr_file"];
 	}
@@ -3004,7 +3103,7 @@ function mergeSettingSwitch()
 
 		for(var i=0;i<ids.length;++i)
 		{
-			if(I(ids[i]).checked)
+			if(I(ids[i]) && I(ids[i]).checked)
 				num_checked+=1;
 		}
 
@@ -3013,6 +3112,7 @@ function mergeSettingSwitch()
 			for(var i=0;i<ids.length;++i)
 			{
 				if(!I(ids[i]).checked
+					&& I(ids[i]).checked
 					&& ids[i]!=$(this).attr("id"))
 				{
 					$("#"+ids[i]).prop("checked", true).change();
@@ -3034,7 +3134,8 @@ function mergeSettingUpdateUse(key)
 	{
 		use=use|2;
 	}
-	if(I(key+"_check_client").checked)
+	if(I(key+"_check_client") &&
+		I(key+"_check_client").checked)
 	{
 		use=use|4;
 	}
@@ -3042,7 +3143,7 @@ function mergeSettingUpdateUse(key)
 }
 function renderMergeSetting(key)
 {
-	if(key=="archive")
+	if(key=="archive" || key=="reset")
 		return;
 
 	var val = g.curr_settings[key];
@@ -3057,10 +3158,13 @@ function renderMergeSetting(key)
 	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-home move_left\'></span> Here" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Here"></input></div>';
 	c+='</div>';
 
-	c+='<div class="input-group">';
-	c+='<input type="text" class="form-control" id="'+key+'_client" value="'+escapeHTMLDoubleQuote(val.value_client)+'" disabled="disabled"/>';
-	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-road move_left\'></span> Client" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Client"></input></div>';
-	c+='</div>';
+	if(typeof val.value_client != "undefined")
+	{
+		c+='<div class="input-group">';
+		c+='<input type="text" class="form-control" id="'+key+'_client" value="'+escapeHTMLDoubleQuote(val.value_client)+'" disabled="disabled"/>';
+		c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-road move_left\'></span> Client" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Client"></input></div>';
+		c+='</div>';
+	}
 	/*
 	c+='<div class="input-group">';
 	c+='<input type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-on="<i class=\'glyphicon glyphicon-home\'></i> Here" data-off="<i class=\'glyphicon glyphicon-remove\'></i> Ignore"></input>';
@@ -3086,11 +3190,17 @@ function renderMergeSetting(key)
 
 	$("#"+key+"_check_group").change(mergeSettingSwitch);
 	$("#"+key+"_check_home").change(mergeSettingSwitch);
-	$("#"+key+"_check_client").change(mergeSettingSwitch);
+	if(typeof val.value_client != "undefined")
+	{
+		$("#"+key+"_check_client").change(mergeSettingSwitch);
+	}
 
 	$("#"+key+"_check_group").bootstrapToggle();
 	$("#"+key+"_check_home").bootstrapToggle();
-	$("#"+key+"_check_client").bootstrapToggle();
+	if(typeof val.value_client != "undefined")
+	{
+		$("#"+key+"_check_client").bootstrapToggle();
+	}
 }
 function renderMergeSettingSwitch(key)
 {
@@ -3116,13 +3226,16 @@ function renderMergeSettingSwitch(key)
 		I(key+"_check_home").checked=false;
 	}
 
-	if(use&4)
+	if(I(key+"_check_client"))
 	{
-		I(key+"_check_client").checked=true;
-	}
-	else
-	{
-		I(key+"_check_client").checked=false;
+		if(use&4)
+		{
+			I(key+"_check_client").checked=true;
+		}
+		else
+		{
+			I(key+"_check_client").checked=false;
+		}
 	}
 }
 function renderSettingSwitchAll()
@@ -3135,6 +3248,11 @@ function renderSettingSwitchAll()
 	if(I("backup_window_sw"))
 	{
 		renderSettingSwitch("backup_window");
+	}
+
+	if(I("reset_sw"))
+	{
+		renderSettingSwitch("reset");
 	}
 }
 function show_settings2(data)
@@ -3443,7 +3561,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(full_image_style_params, "local_full_image_style", data.settings);
 			data.settings=addSelectSelected(full_image_style_params, "internet_full_image_style", data.settings);
 			
-			var image_file_format_params = ["vhdz", "vhd"];
+			var image_file_format_params = ["vhdz", "vhd", "vhdxz", "vhdx"];
 			if(data.cowraw_available)
 			{
 				data.settings.cowraw_available=true;
@@ -3509,6 +3627,7 @@ function show_settings2(data)
 			aparams = build_alert_params(data.settings.alert_script);
 			data.settings.alert_scripts = aparams.options;
 			data.settings.mod_alert_params = aparams.params;
+			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			data.settings.client_settings=false;
 			
@@ -3539,7 +3658,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
-			var image_file_format_params = ["vhdz", "vhd"];
+			var image_file_format_params = ["vhdz", "vhd", "vhdxz", "vhdx"];
 			if(data.cowraw_available)
 			{
 				data.settings.cowraw_available=true;
@@ -3637,6 +3756,7 @@ function show_settings2(data)
 			aparams = build_alert_params(data.settings.alert_script);
 			data.settings.alert_scripts = aparams.options;
 			data.settings.mod_alert_params = aparams.params;
+			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			group_membership_selectpicker=true;
 						
@@ -4300,7 +4420,7 @@ function getSettingSave(key)
 		|| key=="backup_window_full_file"
 		|| key=="backup_window_incr_image"
 		|| key=="backup_window_full_image" )
-		&& I("backup_window"))
+		&& !g.showing_backup_window_details)
 	{
 		key= "backup_window_incr_file";
 	}
@@ -4383,7 +4503,8 @@ function getInternetSettings()
 
 		var server_regex = /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)|(^(ws|wss):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^(urbackup):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)/i;
 
-		if(!server_regex.test(internet_server))
+		if(internet_server.length>0 && internet_server!=="urbackup://" &&
+			!server_regex.test(internet_server))
 		{
 			alert(trans("validate_err_notregexp_internet_server"));
 			return null;
@@ -5719,7 +5840,7 @@ function deleteArchiveItem(id)
 
 	if(rerender)
 	{
-		renderArchiveSettings(g.curr_settings_type==0);
+		renderArchiveSettings(g.curr_settings_type==0 || g.curr_settings_type==1);
 	}
 }
 function changeArchiveForUnit()
@@ -5862,9 +5983,13 @@ function showBackupWindowDetails()
 }
 function hideBackupWindowDetails()
 {
+	g.showing_backup_window_details=true;
 	if(I('backup_window_incr_file').value==I('backup_window_full_file').value
 	    && I('backup_window_full_file').value==I('backup_window_incr_image').value
-	    && I('backup_window_incr_image').value==I('backup_window_full_image').value )
+	    && I('backup_window_incr_image').value==I('backup_window_full_image').value 
+		&& getSettingSave('backup_window_incr_file').use ==  getSettingSave('backup_window_full_file').use
+		&& getSettingSave('backup_window_full_file').use ==  getSettingSave('backup_window_incr_image').use
+		&& getSettingSave('backup_window_incr_image').use ==  getSettingSave('backup_window_full_image').use )
 	{
 		setBackupWindowDisplay("none");
 		I('backup_window').value=I('backup_window_incr_file').value;
@@ -5978,7 +6103,7 @@ function addNewClient3(data)
 		data.mac_url = downloadClientURL(data.new_clientid, data.new_authkey, "mac");
 		if(data.internet_server_proxy)
 		{
-			data.internet_proxy_settings = " -k internet_server_proxy -v \""+data.internet_server_proxy+"\"";
+			data.internet_proxy_settings = " --proxy \""+unescapeHTML(data.internet_server_proxy)+"\"";
 		}
 		var ndata=dustRender("client_added", data);
 	
@@ -6293,6 +6418,8 @@ function renderArchiveSettings(global)
 		var prefix="c";
 		if(typeof setting.use=="undefined" )
 			prefix="d";
+		else if(global)
+			prefix="g";
 
 		var idx=0;
 		while(typeof params["every_"+prefix+idx] != "undefined")

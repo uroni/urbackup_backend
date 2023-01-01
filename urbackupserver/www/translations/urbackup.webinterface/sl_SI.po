@@ -9,10 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Slovenian (Slovenia) (http://www.transifex.com/uroni/urbackup/language/sl_SI/)\n"
 "MIME-Version: 1.0\n"

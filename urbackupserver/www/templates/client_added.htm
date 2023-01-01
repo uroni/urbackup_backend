@@ -2,22 +2,22 @@
 	<div class="panel-heading">{tClient added successfully}</div>
 	<div class="panel-body">
 		<p>
-			{tAdded new client with name:} {new_clientname}
+			{tAdded new client with name:} {new_clientname|s}
 		</p>
 		<p>
-			{tDefault authentication key:} {new_authkey}
+			{tDefault authentication key:} {new_authkey|s}
 		</p>
 		<p>
 			<ul>
-				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
+				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey|s}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
 				<li>
-					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a>
+					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey|s}', 'linux')">{tDownload preconfigured client installer for Linux}</a>
 					<p>
 						{tInstall it directly in the terminal via:}
 						<blockquote>
 							<p>
 								<code>
-									TF=`mktemp` && wget "{linux_url}" -O $TF && sudo sh $TF; rm -f $TF
+									TF=`mktemp` && wget "{linux_url|s}" -O $TF && sudo sh $TF; rm -f $TF
 								</code>
 							</p>
 						</blockquote>
@@ -26,7 +26,7 @@
 							<p>
 								<code>
 									RUN TF=`mktemp` &&\<br>
-										wget "{linux_url}" -O $TF &&\<br>
+										wget "{linux_url|s}" -O $TF &&\<br>
 										sh $TF &&\<br>
 										rm -f $TF &&\<br>
 										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
@@ -43,7 +43,7 @@
 										sh $TF &&\<br>
 										rm -f $TF &&\<br>
 										urbackupclientctl wait-for-backend &&\<br>
-										urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}{internet_proxy_settings} &&\<br>
+										urbackupclientctl set-settings --server-url "{server_url|s}" --name "{new_clientname|s}" --authkey "{new_authkey|s}"{internet_proxy_settings} &&\<br>
 										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
 										( [ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient )
 								</code>
@@ -59,10 +59,9 @@
 						<ul>
 							<li>{tGo to the settings screen on the client}</li>
 							<li>{tEnable the internet mode on the client}</li>
-							<li>{tSet the internet server to:} {internet_server}</li>
-							<li>{tSet the internet server port to:} {internet_server_port}</li>
-							<li>{tSet the computer name to:} {new_clientname}</li>
-							<li>{tSet the authentication key to:} {new_authkey}</li>
+							<li>{tSet the URL to connect to:} {server_url|s}</li>
+							<li>{tSet the name to:} {new_clientname|s}</li>
+							<li>{tSet the authentication key to:} {new_authkey|s}</li>
 							<li>{tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient}</li>
 						</ul>
 					</p>
@@ -72,7 +71,7 @@
 							<p>
 								<code>
 									urbackupclientctl wait-for-backend<br>
-									urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}{internet_proxy_settings}<br>
+									urbackupclientctl set-settings --server-url "{server_url|s}" --name "{new_clientname|s}" --authkey "{new_authkey|s}"{internet_proxy_settings}<br>
 									[ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient<br>
 									[ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient
 								</code>

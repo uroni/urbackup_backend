@@ -5,7 +5,7 @@ copy /Y "..\Release Service\Server.exe" "data_service\urbackup_srv.exe"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 mkdir data
-copy /Y "..\Release Server\urbackupserver.dll" "data\urbackupserver.dll"
+copy /Y "..\release\urbackupserver.dll" "data\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 copy /Y "..\release\fsimageplugin.dll" "data\fsimageplugin.dll"
@@ -66,7 +66,7 @@ copy /Y "..\x64\Release Service\Server.exe" "data_service_x64\urbackup_srv.exe"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 mkdir data_x64
-copy /Y "..\x64\Release Server\urbackupserver.dll" "data_x64\urbackupserver.dll"
+copy /Y "..\x64\release\urbackupserver.dll" "data_x64\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\fsimageplugin.dll" "data_x64\fsimageplugin.dll"

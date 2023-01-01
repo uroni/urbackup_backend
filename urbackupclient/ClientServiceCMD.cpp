@@ -153,8 +153,8 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 		std::auto_ptr<ISettingsReader> settings(
 			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
-		local_encrypted = settings->getValue("local_encrypted", true);
-		local_compressed = settings->getValue("local_compressed", true);
+		local_encrypted = settings->getValue("local_encrypt", true);
+		local_compressed = settings->getValue("local_compress", true);
 	}
 
 	if (with_enc)
@@ -898,6 +898,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 {
 	if(last_capa & DONT_ALLOW_CONFIG_PATHS)
 	{
+		Server->Log("Changing paths to backup is disabled", LL_WARNING);
 		tcpstack.Send(pipe, "FAILED");
 		return;
 	}

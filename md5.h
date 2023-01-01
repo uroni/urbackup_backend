@@ -117,12 +117,12 @@ private:
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #ifdef _WIN32
-#include <md5.h>
+#define CRYPTOPP_INCLUDE_PREFIX cryptopp
 #else
 #include "config.h"
+#endif
 #define CRYPTOPP_INCLUDE_MD5 <CRYPTOPP_INCLUDE_PREFIX/md5.h>
 #include CRYPTOPP_INCLUDE_MD5
-#endif
 
 class MD5 {
 

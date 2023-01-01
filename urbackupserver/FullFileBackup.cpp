@@ -267,6 +267,13 @@ bool FullFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
+				if (folder_files.empty())
+				{
+					ServerLogger::Log(logid, "File list is corrupted (folder_files is empty)", LL_ERROR);
+					has_read_error = true;
+					break;
+				}
+
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
@@ -428,7 +435,7 @@ bool FullFileBackup::doFileBackup()
 							}							
 						}
 					}
-					else
+					else if(!folder_files.empty())
 					{
 						folder_files.pop();
 
@@ -716,6 +723,7 @@ bool FullFileBackup::doFileBackup()
 	script_dir=false;
 	has_read_error = false;
 	size_t download_max_ok_id = server_download->getMaxOkId();
+	depth = 0;
 	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 	{
 		if (has_read_error)
@@ -745,7 +753,7 @@ bool FullFileBackup::doFileBackup()
 							last_modified_offsets.push(std::string::npos);
 						}
 
-						if(cf.name=="urbackup_backup_scripts")
+						if(depth == 0 && cf.name=="urbackup_backup_scripts")
 						{
 							script_dir=true;
 						}
@@ -755,6 +763,7 @@ bool FullFileBackup::doFileBackup()
 						if(!script_dir
 							&& metadata_download_thread.get()!=NULL
 							&& !metadata_download_thread->hasMetadataId(line+1)
+							&& !last_modified_offsets.empty()
 							&& last_modified_offsets.top()!= std::string::npos)
 						{
 							if (line < max_line)
@@ -797,8 +806,11 @@ bool FullFileBackup::doFileBackup()
 							writeFileItem(clientlist, cf, &output_offset);
 						}
 
-						script_dir=false;
-						last_modified_offsets.pop();
+						if(depth==0)
+							script_dir=false;
+
+						if(!last_modified_offsets.empty())
+							last_modified_offsets.pop();
 					}					
 				}
 				else if(!cf.isdir && 
