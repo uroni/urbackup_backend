@@ -37,6 +37,8 @@
 #include "win_all_volumes.h"
 #include "DirectoryWatcherThread.h"
 #include "win_network_cost.h"
+#include <mutex>
+#include <thread>
 #else
 #include "lin_ver.h"
 #include "lin_sysvol.h"
@@ -1175,6 +1177,59 @@ void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 }
 
+#ifdef _WIN32
+
+namespace
+{
+	std::mutex prevent_sleep_mutex;
+	int64 last_prevent_sleep_time = 0;
+	std::thread prevent_sleep_thread;
+
+	void prevent_thread_func()
+	{
+		SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_CONTINUOUS);
+
+		std::unique_lock<std::mutex> lock(prevent_sleep_mutex);
+
+		while (Server->getTimeMS() - last_prevent_sleep_time < 2 * 60 * 1000)
+		{
+			lock.unlock();
+			Server->wait(10000);
+			lock.lock();
+		}
+
+		last_prevent_sleep_time = 0;
+		SetThreadExecutionState(ES_CONTINUOUS);
+	}
+
+	void preventSleep()
+	{
+		OSVERSIONINFO verinfo = {};
+		verinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+		//Check for Win11
+		if (GetVersionExW(&verinfo) &&
+			(verinfo.dwMajorVersion > 10 ||
+				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion > 0) ||
+				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion == 0 &&
+					verinfo.dwBuildNumber >= 22000)))
+		{
+			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
+
+			if (last_prevent_sleep_time == 0)
+			{
+				prevent_sleep_thread = std::thread(prevent_thread_func);
+			}
+
+			last_prevent_sleep_time = Server->getTimeMS();
+			return;
+		}
+
+		SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+	}
+}
+
+#endif //_WIN32
+
 void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 {
 	tcpstack.Send(pipe, "OK");
@@ -1212,7 +1267,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	proc->last_pingtime = Server->getTimeMS();	
 
 #ifdef _WIN32
-	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+	preventSleep();
 #endif
 }
 
