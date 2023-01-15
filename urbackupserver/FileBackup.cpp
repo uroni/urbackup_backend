@@ -561,7 +561,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer, bool request
 		!access_key.empty() &&
 		access_key != client_access_key )
 	{
-		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
+		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, "", c_use_value, 0);
 
 		if(!client_access_key.empty())
 		{
@@ -1018,6 +1018,39 @@ std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& 
 		}
 		fn.resize(name_max);
 		append_hash = true;
+
+		size_t rm_bytes = 0;
+		//Repair UTF-8
+		for (size_t i = fn.size() - 1; i-- > 0;)
+		{
+			const unsigned char first_mask = 0x80;
+			const unsigned char utf8_start = 0xC0;
+
+			const unsigned char ch = static_cast<unsigned char>(fn[i]);
+
+			if (ch & first_mask)
+			{
+				if (ch & utf8_start == utf8_start)
+				{
+					++rm_bytes;
+					break;
+				}
+				else
+				{
+					++rm_bytes;
+				}
+			}
+			else
+			{
+				//ASCII char
+				break;
+			}
+		}
+
+		if (rm_bytes > 0)
+		{
+			fn.resize(name_max - rm_bytes);
+		}
 	}
 #endif
 

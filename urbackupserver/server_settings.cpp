@@ -650,6 +650,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "internet_incr_file_transfer_mode", std::string(), &settings->internet_incr_file_transfer_mode, false);
 	readStringClientSetting(q_get_client_setting, "local_image_transfer_mode", std::string(), &settings->local_image_transfer_mode, false);
 	readStringClientSetting(q_get_client_setting, "internet_image_transfer_mode", std::string(), &settings->internet_image_transfer_mode, false);
+	readStringClientSetting(q_get_client_setting, "client_quota", std::string(), &settings->client_quota, false);
 	
 	readBoolClientSetting(q_get_client_setting, "end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
 	readBoolClientSetting(q_get_client_setting, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);

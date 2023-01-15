@@ -1823,7 +1823,7 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
 			if (!setting.exists)
 			{
-				backup_dao->insertSetting(it->second, val, clientid);
+				backup_dao->insertSetting(it->second, val, "", c_use_value, 0, clientid);
 				update_settings = true;
 			}
 			else if ( (it->second=="virtual_clients_add" || it->second =="image_snapshot_groups_def")
@@ -2490,7 +2490,7 @@ IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 void ClientMain::updateClientAccessKey()
 {
 	std::string access_key = ServerSettings::generateRandomAuthKey(32);
-	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
+	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key, "", c_use_value, 0);
 	ServerSettings::updateClient(clientid);
 
 	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",

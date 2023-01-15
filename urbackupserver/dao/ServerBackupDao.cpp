@@ -562,16 +562,19 @@ int ServerBackupDao::hasFileBackups(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::insertSetting
 * @sql
-*      INSERT INTO settings_db.settings (key, value, clientid) VALUES ( :key(string), :value(string), :clientid(int) )
+*      INSERT INTO settings_db.settings (key, value, value_client, use, use_last_modified, clientid) VALUES ( :key(string), :value(string), :value_client(string), :use(int), :use_lm(int64), :clientid(int))
 */
-void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, int clientid)
+void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, const std::string& value_client, int use, int64 use_lm, int clientid)
 {
 	if(q_insertSetting==NULL)
 	{
-		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ( ?, ?, ? )", false);
+		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, use, use_last_modified, clientid) VALUES ( ?, ?, ?, ?, ?, ?)", false);
 	}
 	q_insertSetting->Bind(key);
 	q_insertSetting->Bind(value);
+	q_insertSetting->Bind(value_client);
+	q_insertSetting->Bind(use);
+	q_insertSetting->Bind(use_lm);
 	q_insertSetting->Bind(clientid);
 	q_insertSetting->Write();
 	q_insertSetting->Reset();
@@ -594,6 +597,28 @@ void ServerBackupDao::updateSetting(const std::string& value, const std::string&
 	q_updateSetting->Bind(clientid);
 	q_updateSetting->Write();
 	q_updateSetting->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateSettingAll
+* @sql
+*      UPDATE settings_db.settings SET value=:value(string), value_client=:value_client(string, use=:use(int), use_last_modified=:use_lm(int64) WHERE key=:key(string) AND clientid=:clientid(int)
+*/
+void ServerBackupDao::updateSettingAll(const std::string& value, const std::string& value_client, int use, int64 use_lm, const std::string& key, int clientid)
+{
+	if(q_updateSettingAll==NULL)
+	{
+		q_updateSettingAll=db->Prepare("UPDATE settings_db.settings SET value=?, value_client=?, use=?, use_last_modified=? WHERE key=? AND clientid=?", false);
+	}
+	q_updateSettingAll->Bind(value);
+	q_updateSettingAll->Bind(value_client);
+	q_updateSettingAll->Bind(use);
+	q_updateSettingAll->Bind(use_lm);
+	q_updateSettingAll->Bind(key);
+	q_updateSettingAll->Bind(clientid);
+	q_updateSettingAll->Write();
+	q_updateSettingAll->Reset();
 }
 
 /**
@@ -2048,6 +2073,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_hasFileBackups=NULL;
 	q_insertSetting=NULL;
 	q_updateSetting=NULL;
+	q_updateSettingAll=NULL;
 	q_getMiscValue=NULL;
 	q_addMiscValue=NULL;
 	q_delMiscValue=NULL;
@@ -2140,6 +2166,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_hasFileBackups);
 	db->destroyQuery(q_insertSetting);
 	db->destroyQuery(q_updateSetting);
+	db->destroyQuery(q_updateSettingAll);
 	db->destroyQuery(q_getMiscValue);
 	db->destroyQuery(q_addMiscValue);
 	db->destroyQuery(q_delMiscValue);
@@ -2206,14 +2233,14 @@ void ServerBackupDao::destroyQueries( void )
 }
 
 
-void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value )
+void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value, const std::string& value_client, int use, int64 use_lm)
 {
 	if(getSetting(clientid, key).exists)
 	{
-		updateSetting(value, key, clientid);
+		updateSettingAll(value, value_client, use, use_lm, key, clientid);
 	}
 	else
 	{
-		insertSetting(key, value, clientid);
+		insertSetting(key, value, value_client, use, use_lm, clientid);
 	}
 }
