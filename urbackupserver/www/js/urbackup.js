@@ -4317,7 +4317,8 @@ g.general_settings_list=[
 "show_server_updates",
 "server_url",
 "internet_expect_endpoint",
-"internet_server_bind_port"
+"internet_server_bind_port",
+"restore_authkey"
 ];
 g.mail_settings_list=[
 "mail_servername",

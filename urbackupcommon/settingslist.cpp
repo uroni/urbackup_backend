@@ -247,6 +247,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("update_dataplan_db");
 	ret.push_back("internet_expect_endpoint");
 	ret.push_back("internet_server_bind_port");
+	ret.push_back("restore_authkey");
 	return ret;
 }
 
