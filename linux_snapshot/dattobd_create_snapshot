@@ -148,7 +148,7 @@ fi
 
 echo "/dev/datto$NUM" > ${SNAP_DEST}-dev
 echo "$NUM" > $SNAP_NUM_PATH
-echo $(get_path $SNAP_MOUNTPOINT .datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") > $SNAP_COWFILE_PATH
+echo $(get_path $SNAP_MOUNTPOINT ".datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") > $SNAP_COWFILE_PATH
 echo "SNAPSHOT=$SNAP_DEST"
 
 exit 0
