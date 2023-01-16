@@ -23,6 +23,11 @@ has_num ()
 	exists /mnt/urbackup_snaps/cbt_info/*-snapdev && grep "$1" /mnt/urbackup_snaps/cbt_info/*-snapdev > /dev/null
 }
 
+get_path()
+{
+	echo $1/$2 | sed 's@//@/@g'
+}
+
 
 CDIR=`dirname $0`
 . $CDIR/filesystem_snapshot_common
@@ -74,10 +79,10 @@ then
 	TRY_TRANS=1
 	TRANS_NUM=$(cat "$SNAP_NUM_PATH")
 	echo "Trying to transition /dev/datto$TRANS_NUM to snapshot..."
-	echo "dbdctl transition-to-snapshot '$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID' $TRANS_NUM"
+	echo "dbdctl transition-to-snapshot $(get_path $SNAP_MOUNTPOINT "datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") $TRANS_NUM"
 fi
 
-if [ $TRY_TRANS = 1 ] && dbdctl transition-to-snapshot "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $TRANS_NUM
+if [ $TRY_TRANS = 1 ] && dbdctl transition-to-snapshot $(get_path $SNAP_MOUNTPOINT ".datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") $TRANS_NUM
 then
 	echo "Transitioned /dev/datto$TRANS_NUM to snapshot."
 	CBT_FILE=$(cat $SNAP_COWFILE_PATH)
@@ -94,26 +99,26 @@ else
 	echo "Using /dev/datto$NUM..."
 	
 	echo "CBT=type=datto&reset=1"
-	dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $NUM
+	dbdctl setup-snapshot "$DEVICE" $(get_path $SNAP_MOUNTPOINT ".datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") $NUM
 fi
 
 echo $NUM > ${SNAP_DEST}-num
 
 DEV_SIZE=`blockdev --getsize /dev/datto$NUM`
 
-truncate -s100M $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
+truncate -s100M $(get_path $SNAP_MOUNTPOINT ".overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID")
 
 LODEV=`losetup -f`
 
 if [ "x$LODEV" = x ]
 then
 	rm "${SNAP_DEST}-num"
-	rm $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
+	rm $(get_path $SNAP_MOUNTPOINT ".overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID")
 	dbdctl destroy $NUM
     exit 1
 fi
 
-losetup $LODEV $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
+losetup $LODEV $(get_path $SNAP_MOUNTPOINT ".overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID")
 
 echo "0 $DEV_SIZE snapshot /dev/datto$NUM $LODEV N 8" | dmsetup create "wsnap-$SNAP_ID"
 
@@ -136,14 +141,14 @@ then
     rm "${SNAP_DEST}-num"
     dmsetup remove "wsnap-$SNAP_ID"
 	losetup -d $LODEV
-    rm $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
+    rm $(get_path $SNAP_MOUNTPOINT ".overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID")
     dbdctl destroy $NUM
     exit 1
 fi
 
 echo "/dev/datto$NUM" > ${SNAP_DEST}-dev
 echo "$NUM" > $SNAP_NUM_PATH
-echo "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" > $SNAP_COWFILE_PATH
+echo $(get_path $SNAP_MOUNTPOINT ".datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID") > $SNAP_COWFILE_PATH
 echo "SNAPSHOT=$SNAP_DEST"
 
 exit 0
