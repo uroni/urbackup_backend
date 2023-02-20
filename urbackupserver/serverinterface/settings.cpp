@@ -124,159 +124,28 @@ JSON::Array getAlertScripts(IDatabase* db)
 	return ret;
 }
 
-template<typename T>
-T ret_identity(const T& str)
+
+JSON::Object getJSONClientSettings(IDatabase* db, int t_clientid)
 {
-	return str;
-}
-
-bool conv_bool_setting(const std::string& str)
-{
-	if (str == "1" || str == "true")
-		return  true;
-	else
-		return false;
-}
-
-JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
-{
-	int group_id = 0;
-	if (t_clientid > 0)
-	{
-		db_results res = db->Read("SELECT value FROM settings_db.settings WHERE clientid=" + convert(t_clientid) + " AND key='group_id'");
-		if (!res.empty())
-		{
-			group_id = watoi(res[0]["value"])*-1;
-		}
-	}
-
-	ServerSettings settings_group(db, group_id);
-	std::auto_ptr<ServerSettings> settings_def;
-
-	if (t_clientid == 0)
-	{
-		settings_def.reset(new ServerSettings(db, t_clientid));
-	}
-
-	IQuery* q_get_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE key=? AND  clientid=" + convert(t_clientid));
+	std::map<std::string, ServerSettings::SClientSetting> settings = ServerSettings::getClientSettings(db, t_clientid);
 
 	JSON::Object ret;
+	for (std::map<std::string, ServerSettings::SClientSetting>::iterator it = settings.begin();
+		it != settings.end(); ++it)
+	{
+		JSON::Object jobj;
+		if (it->second.use != -1)
+			jobj.set("use", it->second.use);
+		if (it->second.value.getType() != JSON::null_type)
+			jobj.set("value", it->second.value);
+		if (it->second.value_client.getType() != JSON::null_type)
+			jobj.set("value_client", it->second.value_client);
+		if (it->second.value_group.getType() != JSON::null_type)
+			jobj.set("value_group", it->second.value_group);
 
-#define SET_SETTING(x, func1, func2) {\
-	q_get_setting->Bind(#x); \
-	db_results res = q_get_setting->Read(); \
-	q_get_setting->Reset(); \
-	JSON::Object j_obj; \
-	if(!res.empty()) \
-	{ \
-		j_obj.set("value", func1(res[0]["value"])); \
-		if(t_clientid>0) {\
-			j_obj.set("value_client", func1(res[0]["value_client"])); \
-		} \
-		if(t_clientid!=0) {\
-			j_obj.set("use", watoi(res[0]["use"])); \
-		} \
-	} else if(t_clientid!=0) { \
-		j_obj.set("use", c_use_group); \
-	} else if(t_clientid==0) { \
-		j_obj.set("value", func2(settings_def->getSettings()->x) ); \
-	} \
-	if(t_clientid!=0) { \
-		j_obj.set("value_group", func2(settings_group.getSettings()->x)); \
-	} \
-	ret.set(#x, j_obj); }
+		ret.set(it->first, jobj);
+	}
 
-#define SET_SETTING_STR(x) SET_SETTING(x, ret_identity, ret_identity)
-#define SET_SETTING_INT(x) SET_SETTING(x, watoi, ret_identity)
-#define SET_SETTING_INT64(x) SET_SETTING(x, watoi64, ret_identity)
-#define SET_SETTING_BOOL(x) SET_SETTING(x, conv_bool_setting, ret_identity)
-
-	SET_SETTING_STR(update_freq_incr);
-	SET_SETTING_STR(update_freq_full);
-	SET_SETTING_STR(update_freq_image_full);
-	SET_SETTING_STR(update_freq_image_incr);
-	SET_SETTING_INT(max_file_incr);
-	SET_SETTING_BOOL(backup_dirs_optional);
-	SET_SETTING_INT(min_file_incr);
-	SET_SETTING_INT(max_file_full);
-	SET_SETTING_INT(min_file_full);
-	SET_SETTING_INT(min_image_incr);
-	SET_SETTING_INT(max_image_incr);
-	SET_SETTING_INT(min_image_full);
-	SET_SETTING_INT(max_image_full);
-	SET_SETTING_BOOL(allow_overwrite);
-	SET_SETTING_INT(startup_backup_delay);
-	SET_SETTING_STR(backup_window_incr_file);
-	SET_SETTING_STR(backup_window_full_file);
-	SET_SETTING_STR(backup_window_incr_image);
-	SET_SETTING_STR(backup_window_full_image);
-	SET_SETTING_STR(computername);
-	SET_SETTING_STR(virtual_clients);
-	SET_SETTING_STR(exclude_files);
-	SET_SETTING_STR(include_files);
-	SET_SETTING_STR(default_dirs);
-	SET_SETTING_BOOL(allow_config_paths);
-	SET_SETTING_BOOL(allow_starting_full_file_backups);
-	SET_SETTING_BOOL(allow_starting_incr_file_backups);
-	SET_SETTING_BOOL(allow_starting_full_image_backups);
-	SET_SETTING_BOOL(allow_starting_incr_image_backups);
-	SET_SETTING_BOOL(allow_pause);
-	SET_SETTING_BOOL(allow_log_view);
-	SET_SETTING_BOOL(allow_tray_exit);
-	SET_SETTING_STR(image_letters);
-	SET_SETTING_STR(internet_authkey);
-	SET_SETTING_BOOL(client_set_settings);
-	SET_SETTING_STR(internet_speed);
-	SET_SETTING_STR(local_speed);
-	SET_SETTING_BOOL(internet_mode_enabled);
-	SET_SETTING_BOOL(internet_compress);
-	SET_SETTING_BOOL(internet_encrypt);
-	SET_SETTING_BOOL(internet_image_backups);
-	SET_SETTING_BOOL(internet_full_file_backups);
-	SET_SETTING_BOOL(silent_update);
-	SET_SETTING_STR(client_quota);
-	SET_SETTING_STR(local_full_file_transfer_mode);
-	SET_SETTING_STR(internet_full_file_transfer_mode);
-	SET_SETTING_STR(local_incr_file_transfer_mode);
-	SET_SETTING_STR(internet_incr_file_transfer_mode);
-	SET_SETTING_STR(local_image_transfer_mode);
-	SET_SETTING_STR(internet_image_transfer_mode);
-	SET_SETTING_BOOL(end_to_end_file_backup_verification);
-	SET_SETTING_BOOL(internet_calculate_filehashes_on_client);
-	SET_SETTING_BOOL(internet_parallel_file_hashing);
-	SET_SETTING(image_file_format, settings_group.getImageFileFormatInt, settings_group.getImageFileFormatInt);
-	SET_SETTING_BOOL(internet_connect_always);
-	SET_SETTING_BOOL(verify_using_client_hashes);
-	SET_SETTING_BOOL(internet_readd_file_entries);
-	SET_SETTING_STR(local_incr_image_style);
-	SET_SETTING_STR(local_full_image_style);
-	SET_SETTING_BOOL(background_backups);
-	SET_SETTING_STR(internet_incr_image_style);
-	SET_SETTING_STR(internet_full_image_style);
-	SET_SETTING_BOOL(create_linked_user_views);
-	SET_SETTING_INT(max_running_jobs_per_client);
-	SET_SETTING_STR(cbt_volumes);
-	SET_SETTING_STR(cbt_crash_persistent_volumes);
-	SET_SETTING_BOOL(ignore_disk_errors);
-	SET_SETTING_STR(vss_select_components);
-	SET_SETTING_BOOL(allow_component_config);
-	SET_SETTING_BOOL(allow_component_restore);
-	SET_SETTING_BOOL(allow_file_restore);
-	SET_SETTING_STR(file_snapshot_groups);
-	SET_SETTING_STR(image_snapshot_groups);
-	SET_SETTING_INT64(internet_file_dataplan_limit);
-	SET_SETTING_INT64(internet_image_dataplan_limit);
-	SET_SETTING_STR(alert_script);
-	SET_SETTING_STR(alert_params);
-	SET_SETTING_STR(archive);
-	SET_SETTING_STR(client_settings_tray_access_pw);
-	SET_SETTING_BOOL(local_encrypt);
-	SET_SETTING_BOOL(local_compress);
-	SET_SETTING_INT(download_threads);
-	SET_SETTING_INT(hash_threads);
-	SET_SETTING_INT(client_hash_threads);
-	SET_SETTING_INT(image_compress_threads);
-#undef SET_SETTING
 	return ret;
 }
 

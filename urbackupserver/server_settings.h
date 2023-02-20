@@ -4,6 +4,7 @@
 #include "../Interface/SettingsReader.h"
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
+#include "../urbackupcommon/json.h"
 #include <memory>
 
 namespace
@@ -257,6 +258,21 @@ public:
 	std::string getImageFileFormatInt(const std::string& image_file_format);
 
 	static void readStringClientSetting(IDatabase* db, int clientid, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value = true);
+
+
+	struct SClientSetting
+	{
+		SClientSetting()
+			: use(-1)
+		{}
+
+		JSON::Value value;
+		JSON::Value value_client;
+		JSON::Value value_group;
+		int use;
+	};
+
+	static std::map<std::string, SClientSetting> getClientSettings(IDatabase* db, int t_clientid);
 
 private:
 	void operator=(const ServerSettings& other){};

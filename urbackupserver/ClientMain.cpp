@@ -1874,6 +1874,8 @@ void ClientMain::sendSettings(void)
 
 	bool allow_overwrite = settings->allow_overwrite;
 
+	std::map<std::string, ServerSettings::SClientSetting> client_default_settings = ServerSettings::getClientSettings(NULL, clientid);
+
 	for (size_t i = 0; i < settings_names.size(); ++i)
 	{
 		std::string& key = settings_names[i];
@@ -1892,20 +1894,11 @@ void ClientMain::sendSettings(void)
 		else
 		{
 			std::string value_default;
-			if (settings_default_id != 0)
+			std::map<std::string, ServerSettings::SClientSetting>::iterator it_client_default_setting = client_default_settings.find(key);
+			if (it_client_default_setting != client_default_settings.end() &&
+				it_client_default_setting->second.value_group.getType()!=JSON::null_type)
 			{
-				ServerBackupDao::SSetting setting_group = backup_dao->getServerSetting(key, 0);
-				if (setting_group.exists)
-				{
-					value_default = setting_group.value;
-				}
-			}
-
-			ServerBackupDao::SSetting setting_group = backup_dao->getServerSetting(key, settings_default_id);
-			if (setting_group.exists
-				&& (settings_default_id == 0 || setting_group.use == c_use_value))
-			{
-				value_default = setting_group.value;
+				value_default = it_client_default_setting->second.value_group.toString();
 			}
 
 			s_settings += key + ".group=" + value_default + "\n";
