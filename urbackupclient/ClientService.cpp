@@ -4098,6 +4098,9 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
+		if (curr_settings.get() == NULL)
+			curr_settings.reset(Server->createMemorySettingsReader(""));
+
 		if (curr_settings.get() != NULL)
 		{
 			str_map settings_repl;
