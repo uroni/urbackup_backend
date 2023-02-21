@@ -286,7 +286,7 @@ private:
 	void sendClientBackupIncrIntervall(void);
 	void sendSettings(void);
 	bool getClientSettings(bool& doesnt_exist);
-	bool updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified);
+	bool updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified, bool allow_use_mod);
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
 	bool isImageGroupQueued(const std::string& letter, bool full);

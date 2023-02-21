@@ -421,7 +421,7 @@ void ClientMain::operator ()(void)
 	ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
 	ServerStatus::setStatusError(clientname, se_settings);
 	bool settings_doesnt_exist=false;
-	if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_doesnt_exist))
+	if(!getClientSettings(settings_doesnt_exist))
 	{
 		if(!settings_doesnt_exist)
 		{
@@ -670,7 +670,7 @@ void ClientMain::operator ()(void)
 					ServerStatus::setStatusError(clientname, se_settings);
 					ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
 					do_update_settings=false;
-					if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_dont_exist))
+					if(!getClientSettings(settings_dont_exist))
 					{
 						ServerLogger::Log(logid, "Getting client settings failed -2", LL_ERROR);
 						received_client_settings=false;
@@ -1872,8 +1872,6 @@ void ClientMain::sendSettings(void)
 
 	SSettings* settings = server_settings->getSettings();
 
-	bool allow_overwrite = settings->allow_overwrite;
-
 	std::map<std::string, ServerSettings::SClientSetting> client_default_settings = ServerSettings::getClientSettings(NULL, clientid);
 
 	for (size_t i = 0; i < settings_names.size(); ++i)
@@ -1999,6 +1997,8 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	bool mod=false;
 	bool has_use = false;
 
+	bool allow_overwrite = server_settings->getSettings()->allow_overwrite;
+
 	for (size_t i = 0; i < setting_names.size(); ++i)
 	{
 		std::string value;
@@ -2023,6 +2023,13 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 		int use = c_use_value;
 
+		bool curr_allow_overwrite = allow_overwrite;
+
+		if (key == "default_dirs")
+			curr_allow_overwrite = server_settings->getSettings()->allow_config_paths;
+		else if (key == "vss_select_components")
+			curr_allow_overwrite = server_settings->getSettings()->allow_component_config;
+
 		if (sr->getValue(key + ".use", &value))
 		{
 			use = watoi(value);
@@ -2031,29 +2038,27 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			if (sr->getValue(key + ".use_lm", &use_lm_str))
 				use_lm = watoi64(use_lm_str);
 
-			if ( (use & c_use_value_client)>0
-				&& sr->getValue(key + ".client", &value))
+			if ( sr->getValue(key + ".client", &value))
 			{
 				if (internet_connection && key == "computername")
 				{
 					continue;
 				}
 
-				bool b = updateClientSetting(key, value, use, use_lm);
+				bool b = updateClientSetting(key, value, use, use_lm, curr_allow_overwrite);
 				if (b)
 					mod = true;
 			}
 		}
 		else if (!has_use
-			&& sr->getValue(key, &value)
-			&& def_use==c_use_value_client)
+			&& sr->getValue(key, &value) )
 		{
 			if (internet_connection && key == "computername")
 			{
 				continue;
 			}
 
-			bool b = updateClientSetting(key, value, def_use, 0);
+			bool b = updateClientSetting(key, value, def_use, 0, curr_allow_overwrite);
 			if (b)
 				mod = true;
 		}
@@ -2067,7 +2072,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	return true;
 }
 
-bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified)
+bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use, int64 use_last_modified, bool allow_use_mod)
 {
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
@@ -2081,7 +2086,8 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		int64 old_use_last_mod = watoi64(res[0]["use_last_modified"]);
 		int old_use = watoi(res[0]["use"]);
 
-		if (old_use_last_mod > use_last_modified)
+		if (old_use_last_mod > use_last_modified ||
+			!allow_use_mod)
 		{
 			use = old_use;
 			use_last_modified = old_use_last_mod;
@@ -2097,7 +2103,11 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 			use = old_use;
 		}
 	}
-
+	else if (!allow_use_mod)
+	{
+		use = c_use_group;
+		use_last_modified = 0;
+	}
 
 	if(res.empty())
 	{
