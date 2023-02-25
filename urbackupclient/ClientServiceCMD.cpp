@@ -1431,15 +1431,52 @@ void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cm
 
 void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 {
+	std::string s_settings = cmd.substr(16);
+	unescapeMessage(s_settings);
+
 	if(last_capa & DONT_SHOW_SETTINGS)
 	{
-		tcpstack.Send(pipe, "FAILED");
-		return;
+		bool change_allowed = false;
+		if (!(last_capa & DONT_ALLOW_CONFIG_PATHS) ||
+			!(last_capa & DONT_ALLOW_COMPONENT_CONFIG) )
+		{
+			std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(s_settings));
+			bool default_dirs_use = false;
+			std::vector<std::string> keys = new_settings->getKeys();
+			unsigned int settings_types = 0;
+			for (size_t i = 0; i < keys.size(); ++i)
+			{
+				const std::string& key = keys[i];
+				if (key == "set_client_settings")
+					continue;
+				if (key == "default_dirs" || key.find("default_dirs.") == 0)
+					settings_types |= 1;
+				else if (key == "vss_select_components" || key.find("vss_select_components.") == 0)
+					settings_types |= 2;
+				else
+				{
+					settings_types |= 4;
+					break;
+				}
+			}
+
+			if (settings_types == 1 && 
+				!(last_capa & DONT_ALLOW_CONFIG_PATHS) )
+				change_allowed = true;
+			else if (settings_types == 2 &&
+				!(last_capa & DONT_ALLOW_COMPONENT_CONFIG))
+				change_allowed = true;
+		}
+
+		if (!change_allowed)
+		{
+			tcpstack.Send(pipe, "FAILED");
+			return;
+		}
 	}
 
-	std::string s_settings=cmd.substr(16);
+	
 	lasttime=Server->getTimeMS();
-	unescapeMessage(s_settings);
 	replaceSettings( s_settings );
 
 	IScopedLock lock(backup_mutex);
