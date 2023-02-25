@@ -1128,7 +1128,7 @@ void ClientMain::prepareSQL(void)
 {
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=?, use_last_modified=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, clientid, use, use_last_modified) VALUES (?,?,?,?,?)", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, clientid, use, use_last_modified) VALUES (?,?,?,?,?,?)", false);
 	q_get_setting = db->Prepare("SELECT value_client, use, use_last_modified FROM settings_db.settings WHERE clientid=? AND key=?", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
