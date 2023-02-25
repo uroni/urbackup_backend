@@ -2108,9 +2108,9 @@ void ClientConnector::replaceSettings(const std::string &pData)
 			}
 		}
 
-		InternetClient::updateSettings();
-
 		writestring(new_data, settings_fn);
+
+		InternetClient::updateSettings();
 
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
