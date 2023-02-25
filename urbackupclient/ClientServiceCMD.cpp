@@ -1470,6 +1470,7 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 
 		if (!change_allowed)
 		{
+			Server->Log("Settings change not allowed: "+ s_settings, LL_INFO);
 			tcpstack.Send(pipe, "FAILED");
 			return;
 		}
