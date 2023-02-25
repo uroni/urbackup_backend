@@ -32,7 +32,8 @@ fi
 if [ -e "/usr/share/initramfs-tools/hooks/urbackup-setup-snapshot" ]
 then
 	echo "Removing device mapper boot volume snapshot..."
-	rm /usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot
+	[ ! -e "/usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot" ] || rm /usr/share/initramfs-tools/scripts/local-top/urbackup-setup-snapshot
+	[ ! -e "/usr/share/initramfs-tools/hooks/urbackup-setup-snapshot" ] || rm /usr/share/initramfs-tools/hooks/urbackup-setup-snapshot
 	update-initramfs -u
 fi
 
@@ -57,6 +58,7 @@ else
 fi
 
 rm "$PREFIX/sbin/urbackupclientbackend"
+[ ! -e "$PREFIX/sbin/urbackupclient_dmsnaptool" ] || rm "$PREFIX/sbin/urbackupclient_dmsnaptool"
 rm "$PREFIX/bin/urbackupclientctl"
 
 rm -R "$PREFIX/share/urbackup/scripts"
@@ -67,6 +69,9 @@ rm -R "$PREFIX/etc/urbackup"
 
 [ ! -e /etc/default/urbackupclient ] || rm /etc/default/urbackupclient
 [ ! -e /etc/sysconfig/urbackupclient ] || rm /etc/sysconfig/urbackupclient
+
+[ ! -e "$PREFIX/etc/urbackup/snapshot.cfg" ] || rm "$PREFIX/etc/urbackup/snapshot.cfg"
+[ ! -e "$PREFIX/etc/urbackup/no_filesystem_snapshot" ] || rm "$PREFIX/etc/urbackup/no_filesystem_snapshot"
 
 if command -v systemctl >/dev/null 2>&1
 then
