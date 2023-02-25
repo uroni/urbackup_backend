@@ -1993,6 +1993,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
 	std::vector<std::string> setting_names=getClientConfigurableSettingsList();
+	std::vector<std::string> merge_settings = getClientMergableSettingsList();
 
 	bool mod=false;
 	bool has_use = false;
@@ -2037,6 +2038,21 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			int64 use_lm = 0;
 			if (sr->getValue(key + ".use_lm", &use_lm_str))
 				use_lm = watoi64(use_lm_str);
+
+			if (use == 0)
+				use = c_use_group;
+
+			use &= c_use_group | c_use_value | c_use_value_client;
+
+			if (std::find(merge_settings.begin(), merge_settings.end(), key) == merge_settings.end())
+			{
+				if (use & c_use_value_client)
+					use = c_use_value_client;
+				else if (use & c_use_value)
+					use = c_use_value;
+				else
+					use = c_use_group;
+			}
 
 			if ( sr->getValue(key + ".client", &value))
 			{
