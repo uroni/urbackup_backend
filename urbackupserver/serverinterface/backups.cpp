@@ -282,17 +282,8 @@ namespace backupaccess
 {
 	std::string getBackupFolder(IDatabase* db)
 	{
-		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder' AND clientid=0");
-		db_results res_bf=q->Read();
-		q->Reset();
-		if(!res_bf.empty() )
-		{
-			return res_bf[0]["value"];
-		}
-		else
-		{
-			return std::string();
-		}
+		ServerSettings settings(db);
+		return settings.getSettings()->backupfolder;
 	}
 
 	std::string decryptTokens(IDatabase* db, const str_map& CURRP)
