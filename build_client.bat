@@ -1,4 +1,5 @@
 call checkout_client.bat
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 cd %~dp0
 
