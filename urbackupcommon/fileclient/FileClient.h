@@ -119,7 +119,16 @@ public:
 			std::string toString() const;
 		};
 
-		_u32 GetServers(bool start, const std::vector<SAddrHint> &addr_hints);
+		struct GetServersErrors
+		{
+			GetServersErrors() :
+				broadcast_error_ipv4(false), broadcast_error_ipv6(false) {}
+
+			bool broadcast_error_ipv4;
+			bool broadcast_error_ipv6;
+		};
+
+		_u32 GetServers(bool start, const std::vector<SAddrHint> &addr_hints, GetServersErrors& errors);
         std::vector<SAddrHint> getServers(void);
         std::vector<SAddrHint> getWrongVersionServers(void);
         std::vector<std::string> getServerNames(void);

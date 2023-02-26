@@ -582,7 +582,7 @@ _u32 FileClient::getLocalIP(void)
         return local_ip;
 }
 
-_u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints)
+_u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints, GetServersErrors& errors)
 {
         if(start)
         {
@@ -610,7 +610,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 					int rc = sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(addr_udp));
 					if (rc == -1)
 					{
-						Server->Log("Sending broadcast failed!", LL_ERROR);
+						if(!errors.broadcast_error_ipv4)
+							Server->Log("Sending broadcast failed!", LL_ERROR);
+
+						errors.broadcast_error_ipv4 = true;
+					}
+					else
+					{
+						errors.broadcast_error_ipv4 = false;
 					}
 				}
 				else
@@ -620,14 +627,24 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 					addr_udp.sin6_port = htons(UDP_PORT);
 					if (inet_pton(AF_INET6, multicast_group, &addr_udp.sin6_addr) != 1)
 					{
-						Server->Log("inet_pton failed", LL_ERROR);
+						if(!errors.broadcast_error_ipv6)
+							Server->Log("inet_pton failed", LL_ERROR);
+
+						errors.broadcast_error_ipv6 = true;
 					}
 
 					char ch = ID_PING;
 					int rc = sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(addr_udp));
 					if (rc == -1)
 					{
-						Server->Log("Sending broadcast failed! (ipv6)", LL_ERROR);
+						if (!errors.broadcast_error_ipv6)
+							Server->Log("Sending broadcast failed! (ipv6)", LL_ERROR);
+
+						errors.broadcast_error_ipv6 = true;
+					}
+					else
+					{
+						errors.broadcast_error_ipv6 = false;
 					}
 				}
 			}

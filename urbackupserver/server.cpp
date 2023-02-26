@@ -183,12 +183,13 @@ void BackupServer::operator()(void)
 	q_update_lastseen = db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
 
 	FileClient fc(true, "");
+	FileClient::GetServersErrors fc_errors;
 
 	Server->wait(1000);
 
 	while(true)
 	{
-		findClients(fc);
+		findClients(fc, fc_errors);
 		startClients(fc);
 
 		if(!ServerStatus::isActive() && settings->getValue("autoshutdown", "false")=="true")
@@ -218,7 +219,7 @@ void BackupServer::operator()(void)
 	}
 }
 
-void BackupServer::findClients(FileClient &fc)
+void BackupServer::findClients(FileClient &fc, FileClient::GetServersErrors& fc_errors)
 {
 	std::vector<FileClient::SAddrHint> addr_hints;
 	if(q_get_extra_hostnames!=NULL)
@@ -246,10 +247,10 @@ void BackupServer::findClients(FileClient &fc)
 		}
 	}
 
-	_u32 rc=fc.GetServers(true, addr_hints);
+	_u32 rc=fc.GetServers(true, addr_hints, fc_errors);
 	while(rc==ERR_CONTINUE)
 	{
-		rc=fc.GetServers(false, addr_hints);
+		rc=fc.GetServers(false, addr_hints, fc_errors);
 
 		if(exitpipe->isReadable())
 		{

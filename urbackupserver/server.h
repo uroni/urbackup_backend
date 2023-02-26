@@ -75,7 +75,7 @@ public:
 	void wakeupNewClient();
 
 private:
-	void findClients(FileClient &fc);
+	void findClients(FileClient &fc, FileClient::GetServersErrors& fc_errors);
 	void startClients(FileClient &fc);
 	void removeAllClients(void);
 	void maybeUpdateDeletePendingClients();
