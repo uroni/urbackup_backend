@@ -731,7 +731,7 @@ ACTION_IMPL(settings)
 
 			JSON::Array clients;
 
-			IQuery *q_has_overwrite = db->Prepare("SELECT 1 FROM settings_db.settings WHERE clientid=? AND key!='internet_authkey' AND key!='client_access_key' AND key!='computername' AND key!='group_id' AND key!='group_name' AND use!=0 LIMIT 1");
+			IQuery *q_has_overwrite = db->Prepare("SELECT 1 FROM settings_db.settings WHERE clientid=? AND key!='internet_authkey' AND key!='client_access_key' AND key!='computername' AND key!='group_id' AND key!='group_name' AND ( (use & 2)>0 OR (use & 4)>0 ) LIMIT 1");
 			
 			const std::string clients_tab = " (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON "
 				"c.groupid = cg.id) ";
