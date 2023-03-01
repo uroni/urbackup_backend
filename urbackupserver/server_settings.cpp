@@ -1368,9 +1368,8 @@ bool conv_bool_setting(const std::string& str)
 		return false;
 }
 
-std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientSettings(IDatabase* db, int t_clientid)
+std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientSettings(IDatabase* db, int t_clientid, int group_id, IDatabase* group_db)
 {
-	int group_id = 0;
 	if (t_clientid > 0 && db!=NULL)
 	{
 		db_results res = db->Read("SELECT value FROM settings_db.settings WHERE clientid=" + convert(t_clientid) + " AND key='group_id'");
@@ -1380,7 +1379,7 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 		}
 	}
 
-	ServerSettings settings_group(db, group_id);
+	ServerSettings settings_group(db == NULL ? group_db : db, group_id);
 	std::auto_ptr<ServerSettings> settings_def;
 
 	if (t_clientid == 0 && db!=NULL)

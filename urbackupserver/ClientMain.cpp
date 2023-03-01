@@ -1872,7 +1872,7 @@ void ClientMain::sendSettings(void)
 
 	SSettings* settings = server_settings->getSettings();
 
-	std::map<std::string, ServerSettings::SClientSetting> client_default_settings = ServerSettings::getClientSettings(NULL, clientid);
+	std::map<std::string, ServerSettings::SClientSetting> client_default_settings = ServerSettings::getClientSettings(NULL, clientid, settings_default_id, db);
 
 	for (size_t i = 0; i < settings_names.size(); ++i)
 	{

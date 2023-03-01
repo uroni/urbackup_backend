@@ -272,7 +272,7 @@ public:
 		int use;
 	};
 
-	static std::map<std::string, SClientSetting> getClientSettings(IDatabase* db, int t_clientid);
+	static std::map<std::string, SClientSetting> getClientSettings(IDatabase* db, int t_clientid, int group_id = 0, IDatabase* group_db = NULL);
 
 private:
 	void operator=(const ServerSettings& other){};
