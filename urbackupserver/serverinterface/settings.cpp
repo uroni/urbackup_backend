@@ -857,7 +857,7 @@ ACTION_IMPL(settings)
 				q->Write();
 				q->Reset();
 
-				q = db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, clientid, use, use_last_modified) SELECT key, value, value, ? AS clientid, " +convert(c_use_group)+ ", 0 FROM settings_db.settings WHERE clientid = 0");
+				q = db->Prepare("INSERT INTO settings_db.settings (key, value, value_client, clientid, use, use_last_modified) SELECT key, value, value_client, ? AS clientid, " +convert(c_use_group)+ ", 0 FROM settings_db.settings WHERE clientid = 0");
 				q->Bind(t_clientid);
 				q->Write();
 				q->Reset();
