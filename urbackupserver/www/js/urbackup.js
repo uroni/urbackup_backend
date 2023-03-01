@@ -2781,6 +2781,9 @@ function settingSwitchReset(key)
 	else if(use==3)
 		use=1;
 
+	if( (g.curr_settings_type==0 || g.curr_settings_type==1) && use!=1 && use!=2)
+		use=1;
+
 	g.curr_settings[key].use=use;
 
 	for(var i=0;i<g.settings_list.length;++i)
@@ -2825,6 +2828,9 @@ function fixupUse(key, use)
 		use=1;
 	if($.inArray(key, g.mergable_settings_list)==-1
 		&& (use==3 || use>4))
+		use=1;
+
+	if( (g.curr_settings_type==0 || g.curr_settings_type==1) && use!=1 && use!=2)
 		use=1;
 
 	return use;
