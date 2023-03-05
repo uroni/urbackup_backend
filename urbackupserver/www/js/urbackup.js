@@ -4499,7 +4499,7 @@ function getInternetSettings()
 
 	if(internet_servers[0].indexOf(";")!=-1)
 	{
-		internet_servers = internet_servers.split(";");
+		internet_servers = internet_servers[0].split(";");
 	}
 	
 	var internet_server_par = "";
