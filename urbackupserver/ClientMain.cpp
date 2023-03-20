@@ -1943,16 +1943,25 @@ void ClientMain::sendSettings(void)
 					{
 						const char sep_ch = key == "virtual_clients" ? '|' :
 								( (key=="vss_select_components" || key=="archive") ? '&' : ';');
+
 						if (setting.use & c_use_group)
 							value = value_default;
-						if (!value.empty())
-							value += sep_ch;
-						if (setting.use & c_use_value)
+
+						if (setting.use & c_use_value &&
+							!setting.value.empty())
+						{
+							if (!value.empty())
+								value += sep_ch;
 							value += setting.value;
-						if (!value.empty())
-							value += sep_ch;
-						if (setting.use & c_use_value_client)
+						}
+
+						if (setting.use & c_use_value_client &&
+							!setting.value_client.empty())
+						{
+							if (!value.empty())
+								value += sep_ch;
 							value += setting.value_client;
+						}
 					}
 					else
 					{
