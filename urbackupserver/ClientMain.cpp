@@ -1861,8 +1861,10 @@ void ClientMain::sendSettings(void)
 		s_settings+="filebackup_group_offset="+convert(filebackup_group_offset)+"\n";
 	}
 
-	std::vector<std::string> settings_names=getSettingsList();
-	std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
+	const std::vector<std::string> settings_names=getSettingsList();
+	const std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
+	std::vector<std::string> merge_settings = getClientMergableSettingsList();
+	std::sort(merge_settings.begin(), merge_settings.end());
 
 	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int settings_default_id;
@@ -1870,13 +1872,13 @@ void ClientMain::sendSettings(void)
 
 	ISettingsReader* settings_global_ptr = settings_global.get() != NULL ? settings_global.get() : settings_default.get();
 
-	SSettings* settings = server_settings->getSettings();
+	const SSettings* settings = server_settings->getSettings();
 
 	std::map<std::string, ServerSettings::SClientSetting> client_default_settings = ServerSettings::getClientSettings(NULL, clientid, settings_default_id, db);
 
 	for (size_t i = 0; i < settings_names.size(); ++i)
 	{
-		std::string& key = settings_names[i];
+		const std::string& key = settings_names[i];
 		std::string value;
 
 		bool globalized = std::find(global_settings_names.begin(), global_settings_names.end(), key) != global_settings_names.end();
@@ -1924,13 +1926,39 @@ void ClientMain::sendSettings(void)
 				}
 				
 				if (setting.use == c_use_group)
+				{
 					value = value_default;
+				}
 				else if (setting.use == c_use_value)
+				{
 					value = setting.value;
+				}
 				else if (setting.use == c_use_value_client)
+				{
 					value = setting.value_client;
+				}
 				else
-					value = setting.value;
+				{
+					if (std::binary_search(merge_settings.begin(), merge_settings.end(), key))
+					{
+						const char sep_ch = key == "virtual_clients" ? '|' :
+								( (key=="vss_select_components" || key=="archive") ? '&' : ';');
+						if (setting.use & c_use_group)
+							value = value_default;
+						if (!value.empty())
+							value += sep_ch;
+						if (setting.use & c_use_value)
+							value += setting.value;
+						if (!value.empty())
+							value += sep_ch;
+						if (setting.use & c_use_value_client)
+							value += setting.value_client;
+					}
+					else
+					{
+						value = setting.value;
+					}
+				}
 				
 				s_settings += key + "=" + value + "\n";
 			}

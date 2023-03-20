@@ -611,7 +611,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 
 	readIntClientSetting(q_get_client_setting, "startup_backup_delay", &settings->startup_backup_delay);
 	readStringClientSetting(q_get_client_setting, "computername", std::string(), &settings->computername);
-	readStringClientSetting(q_get_client_setting, "virtual_clients", ";", &settings->virtual_clients);
+	readStringClientSetting(q_get_client_setting, "virtual_clients", "|", &settings->virtual_clients);
 	readStringClientSetting(q_get_client_setting, "exclude_files", ";", &settings->exclude_files);
 	readStringClientSetting(q_get_client_setting, "include_files", ";", &settings->include_files);
 	readStringClientSetting(q_get_client_setting, "default_dirs", ";", &settings->default_dirs);
