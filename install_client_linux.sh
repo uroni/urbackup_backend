@@ -312,8 +312,8 @@ then
 	
 	if [ "x$SYSTEMD_DIR" = x ]
 	then
-		echo "Cannot find systemd unit dir. Assuming /lib/systemd/system"
-		SYSTEMD_DIR="/lib/systemd/system"
+		echo "Cannot find systemd unit dir. Assuming /usr/lib/systemd/system"
+		SYSTEMD_DIR="/usr/lib/systemd/system"
 	fi
 	
 	install -c urbackupclientbackend.service $SYSTEMD_DIR
