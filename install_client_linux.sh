@@ -320,8 +320,18 @@ then
 	
 	if [ "x$SYSTEMD_DIR" = x ]
 	then
-		echo "Cannot find systemd unit dir. Assuming /usr/lib/systemd/system"
-		SYSTEMD_DIR="/usr/lib/systemd/system"
+		if test -e "/lib/systemd/system/urbackupclientbackend.service"
+		then
+			echo "Updating existing systemd unit at /lib/systemd/system/urbackupclientbackend.service"
+			SYSTEMD_DIR="/lib/systemd/system"
+		elif test -e "/usr/lib/systemd/system"
+		then
+			echo "Cannot find systemd unit dir. Assuming /usr/lib/systemd/system"
+			SYSTEMD_DIR="/usr/lib/systemd/system"
+		else
+			echo "Cannot find systemd unit dir. Assuming /lib/systemd/system"
+			SYSTEMD_DIR="/lib/systemd/system"
+		fi
 	fi
 	
 	install -c urbackupclientbackend.service $SYSTEMD_DIR
