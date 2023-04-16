@@ -1237,7 +1237,8 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 		cs->Write(std::string("GET ")+loc+" HTTP/1.1\r\n"
 			"Host: "+hostname+"\r\n"
 			"Upgrade: websocket\r\n"
-			"Connection: Upgrade\r\n"
+			"Connection: Upgrade\r\n" +
+			authorization +
 			"Sec-WebSocket-Key: "+ websocket_key_str+"\r\n"
 			"Sec-WebSocket-Protocol: urbackup\r\n"
 			"Sec-WebSocket-Version: 13\r\n\r\n");
