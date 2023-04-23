@@ -2544,11 +2544,11 @@ function build_alert_params(alert_script)
 				if(param.type=="str" || param.type=="num" || param.type=="int")
 				{
 					console.log(val);
-					params_html+="<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTMLDoubleQuote(val)+"\" onchange=\"update_alert_params()\"/>";
+					params_html+="<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTMLDoubleQuote(val)+"\" onchange=\"update_alert_params()\" onkeyup=\"update_alert_params()\"/>";
 				}
 				else if(param.type=="choice")
 				{
-					params_html+="<select class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" onchange=\"update_alert_params()\">";
+					params_html+="<select class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" onchange=\"update_alert_params()\" onkeyup=\"update_alert_params()\">";
 					var toks = param.default_value.split("|");
 					for(var k=0;k<toks.length;++k)
 					{
@@ -2574,7 +2574,7 @@ function build_alert_params(alert_script)
 						val_ms = toks[0];
 					}						
 					val = convert_interval_from_ms(val_ms, unit);
-					params_html+="<div class=\"input-group\"><input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+val+"\" onchange=\"update_alert_params()\"/>";
+					params_html+="<div class=\"input-group\"><input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+val+"\" onchange=\"update_alert_params()\" onkeyup=\"update_alert_params()\"/>";
 					params_html+="<input type=\"hidden\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"_val_ms\" value=\""+escapeHTMLDoubleQuote(val_ms)+"\"/>";
 					params_html+="<div class=\"input-group-addon\">";
 					var units=["ms", "s", "m", "h", "d", "M", "y"];
