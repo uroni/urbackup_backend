@@ -639,7 +639,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "virtual_clients_add", std::string(), &settings->virtual_clients_add);
 
 	//Following settings are not configurable by the client
-
+	
+	readStringClientSetting(q_get_client_setting, "image_file_format", std::string(), &settings->image_file_format, false);
 	readStringClientSetting(q_get_client_setting, "backup_window_incr_file", std::string(), &settings->backup_window_incr_file, false);
 	readStringClientSetting(q_get_client_setting, "backup_window_full_file", std::string(), &settings->backup_window_full_file, false);
 	readStringClientSetting(q_get_client_setting, "backup_window_incr_image", std::string(), &settings->backup_window_incr_image, false);
