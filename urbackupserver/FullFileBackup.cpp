@@ -757,9 +757,13 @@ bool FullFileBackup::doFileBackup()
 						{
 							script_dir=true;
 						}
+
+						++depth;
 					}					
 					else
 					{
+						--depth;
+
 						if(!script_dir
 							&& metadata_download_thread.get()!=NULL
 							&& !metadata_download_thread->hasMetadataId(line+1)
