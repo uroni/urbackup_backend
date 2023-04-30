@@ -311,3 +311,6 @@ cryptoplugin/src/missing
 cryptoplugin/src/m4/libtool.m4
 
 /urbackupclient/restorewww/node_modules
+/btrfs/btrfsplugin/x64
+/btrfs/fuse/oslib/x64
+/btrfs/fuse/x64
