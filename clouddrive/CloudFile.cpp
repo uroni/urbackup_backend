@@ -111,7 +111,7 @@ int eventfd_write(int fd, int value) {
 #include <limits.h>
 #include <memory.h>
 #include <assert.h>
-
+#include <stdexcept>
 const int64 min_cachesize = 1LL * 1024* 1024* 1024LL; // 1GB
 const int64 min_free_size = 20LL * 1024* 1024* 1024LL; // 20GB
 const int64 critical_free_size = 1000LL * 1024 * 1024LL; //1GB
