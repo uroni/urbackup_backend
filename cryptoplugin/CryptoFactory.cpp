@@ -432,7 +432,10 @@ bool CryptoFactory::convertOpenSslSig(const std::string& pubkeyFn, const std::st
 	std::string derSignature, p1363Signature;
 	derSignature = getFile(sigFn);
 	if (derSignature.empty())
+	{
+		Server->Log("Error reading sigFn at " + sigFn, LL_ERROR);
 		return false;
+	}
 
 	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey PublicKey;
 
@@ -454,10 +457,18 @@ bool CryptoFactory::convertOpenSslSig(const std::string& pubkeyFn, const std::st
 
 		std::auto_ptr<IFsFile> f(Server->openFile(outFn, MODE_WRITE));
 		if (f.get() == NULL)
+		{
+			Server->Log("Error opening out file for signature at " + outFn, LL_ERROR);
 			return false;
+		}
 
 		if (f->Write(p1363Signature) != p1363Signature.size())
+		{
+			Server->Log("Error writing signature to " + outFn, LL_ERROR);
 			return false;
+		}
+
+		return true;
 	}
 	catch (const CryptoPP::Exception& e)
 	{
