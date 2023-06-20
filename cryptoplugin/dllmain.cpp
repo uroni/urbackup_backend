@@ -69,10 +69,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(b)
 			{
 				Server->Log("Keys generated successfully", LL_INFO);
+				exit(0);
 			}
 			else
 			{
 				Server->Log("Generating keys failed", LL_ERROR);
+				exit(1);
 			}
 		}
 		else if(crypto_action=="sign_file")
@@ -85,10 +87,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(!b)
 			{
 				Server->Log("Signing file failed", LL_INFO);
+				exit(1);
 			}
 			else
 			{
 				Server->Log("Signed file successfully", LL_INFO);
+				exit(0);
 			}
 		}
 		else if(crypto_action=="sign_file_dsa")
@@ -101,10 +105,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(!b)
 			{
 				Server->Log("Signing file failed", LL_INFO);
+				exit(1);
 			}
 			else
 			{
 				Server->Log("Signed file successfully (DSA)", LL_INFO);
+				exit(0);
 			}
 		}
 		else if(crypto_action=="verify_file")
@@ -117,10 +123,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(!b)
 			{
 				Server->Log("Verifying file failed", LL_INFO);
+				exit(1);
 			}
 			else
 			{
-				Server->Log("Verfifed file successfully", LL_INFO);
+				Server->Log("Verified file successfully", LL_INFO);
+				exit(0);
 			}
 		}
 		else if (crypto_action == "convert_sig")
@@ -133,15 +141,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if (!b)
 			{
 				Server->Log("Converting signature failed", LL_INFO);
+				exit(1);
 			}
 			else
 			{
 				Server->Log("Converted signature successfully", LL_INFO);
+				exit(0);
 			}
 		}
 		else
 		{
 			Server->Log("Unknown crypto_action");
+			exit(1);
 		}
 	}
 
