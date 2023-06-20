@@ -19,7 +19,9 @@
 #include "../vld.h"
 #include "CryptoFactory.h"
 #include "../Interface/Server.h"
+#include "../Interface/File.h"
 #include "../Interface/ThreadPool.h"
+#include "../stringtools.h"
 
 #include "AESEncryption.h"
 #include "AESDecryption.h"
@@ -30,6 +32,7 @@
 
 #include "cryptopp_inc.h"
 #include "ECDHKeyExchange.h"
+#include <assert.h>
 
 using namespace CryptoPPCompat;
 
@@ -422,4 +425,44 @@ std::string CryptoFactory::sha256Binary(const std::string& data)
 	byte sha256_digest[CryptoPP::SHA256::DIGESTSIZE];
 	CryptoPP::SHA256().CalculateDigest(sha256_digest, reinterpret_cast<const byte*>(data.data()), data.size());
 	return std::string(reinterpret_cast<char*>(sha256_digest), sizeof(sha256_digest));
+}
+
+bool CryptoFactory::convertOpenSslSig(const std::string& pubkeyFn, const std::string& sigFn, const std::string& outFn)
+{
+	std::string derSignature, p1363Signature;
+	derSignature = getFile(sigFn);
+	if (derSignature.empty())
+		return false;
+
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey PublicKey;
+
+	try
+	{
+		PublicKey.Load(CryptoPP::FileSource(pubkeyFn.c_str(), true).Ref());
+
+		CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::Verifier verifier(PublicKey);
+
+		// Make room for the P1363 encoding
+		p1363Signature.resize(verifier.SignatureLength());
+
+		size_t encodedSize = CryptoPP::DSAConvertSignatureFormat(
+			(byte*)(&p1363Signature[0]), p1363Signature.size(), CryptoPP::DSA_P1363,
+			(const byte*)(derSignature.data()), derSignature.size(), CryptoPP::DSA_DER);
+
+		assert(encodedSize <= p1363Signature.size());
+		p1363Signature.resize(encodedSize);
+
+		std::auto_ptr<IFsFile> f(Server->openFile(outFn, MODE_WRITE));
+		if (f.get() == NULL)
+			return false;
+
+		if (f->Write(p1363Signature) != p1363Signature.size())
+			return false;
+	}
+	catch (const CryptoPP::Exception& e)
+	{
+		Server->Log("Exception occured in CryptoFactory::convertOpenSslSig: " + e.GetWhat(), LL_ERROR);
+	}
+
+	return false;
 }

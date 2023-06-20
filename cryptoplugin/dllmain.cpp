@@ -123,6 +123,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				Server->Log("Verfifed file successfully", LL_INFO);
 			}
 		}
+		else if (crypto_action == "convert_sig")
+		{
+			std::string pubkey_fn = Server->getServerParameter("pubkey_fn");
+			std::string sig_fn = Server->getServerParameter("sig_fn");
+			std::string sig_out_fn = Server->getServerParameter("sig_out_fn");
+			CryptoFactory fak;
+			const bool b = fak.convertOpenSslSig(pubkey_fn, sig_fn, sig_out_fn);
+			if (!b)
+			{
+				Server->Log("Converting signature failed", LL_INFO);
+			}
+			else
+			{
+				Server->Log("Converted signature successfully", LL_INFO);
+			}
+		}
 		else
 		{
 			Server->Log("Unknown crypto_action");
