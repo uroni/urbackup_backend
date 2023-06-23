@@ -80,7 +80,7 @@ namespace Aws
         typedef Utils::Outcome<AmazonWebServiceResult<Utils::Stream::ResponseStream>, AWSError<CoreErrors>> StreamOutcome;
 
         /**
-         * Abstract AWS Client. Contains most of the functionality necessary to build an http request, get it signed, and send it accross the wire.
+         * Abstract AWS Client. Contains most of the functionality necessary to build an http request, get it signed, and send it across the wire.
          */
         class AWS_CORE_API AWSClient
         {
@@ -196,7 +196,7 @@ namespace Aws
                     const char* signerServiceNameOverride = nullptr) const;
 
             /**
-             * Build an Http Request from the AmazonWebServiceRequest object. Signs the request, sends it accross the wire
+             * Build an Http Request from the AmazonWebServiceRequest object. Signs the request, sends it across the wire
              * then reports the http response.
              */
             HttpResponseOutcome AttemptOneRequest(const std::shared_ptr<Http::HttpRequest>& httpRequest,
@@ -206,7 +206,7 @@ namespace Aws
                     const char* signerServiceNameOverride = nullptr) const;
 
             /**
-             * Signs an Http Request, sends it accross the wire
+             * Signs an Http Request, sends it across the wire
              * then reports the http response. This method is for payloadless requests e.g. GET, DELETE, HEAD
              *
              * requestName is used for metrics and defaults to empty string, to avoid empty names in metrics provide a valid

@@ -1853,7 +1853,7 @@ translations.en = {
 "tFor security reasons check/add following line in the file server_idents.txt on your client:": "For security reasons check/add following line in the file server_idents.txt on your client:",
 "tAdd new Internet/active client": "Add new Internet/active client",
 "tName of new Internet/active client": "Name of new Internet/active client",
-"tDiscover new local/passive client accross networks": "Discover new local/passive client accross networks",
+"tDiscover new local/passive client across networks": "Discover new local/passive client across networks",
 "tChoice (separated by ": "Choice (separated by ",
 "tTime interval (h, min, s)": "Time interval (h, min, s)",
 "tRestore Linux image": "Restore Linux image",

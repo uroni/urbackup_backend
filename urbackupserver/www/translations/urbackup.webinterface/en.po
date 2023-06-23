@@ -1853,8 +1853,8 @@ msgstr "Add new Internet/active client"
 msgid "tName of new Internet/active client"
 msgstr "Name of new Internet/active client"
 
-msgid "tDiscover new local/passive client accross networks"
-msgstr "Discover new local/passive client accross networks"
+msgid "tDiscover new local/passive client across networks"
+msgstr "Discover new local/passive client across networks"
 
 msgid "tChoice (separated by "
 msgstr "Choice (separated by "
