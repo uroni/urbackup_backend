@@ -2175,6 +2175,10 @@ bool upgrade59_60()
 
 std::string archiveSettingsParamStr(IDatabase* db, int clientid, std::string prefix)
 {
+	db_results res_c = db->Read("SELECT COUNT(*) AS c FROM settings_db.automatic_archival WHERE clientid=" + convert(clientid));
+	if (!res_c.empty() && res_c[0]["c"] == "0")
+		return std::string();
+
 	db_results res = db->Read("SELECT id, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=" + convert(clientid));
 
 	IQuery* q_set_uuid = db->Prepare("UPDATE settings_db.automatic_archival SET uuid=? WHERE id=?");
