@@ -354,11 +354,11 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	
 	if(getImageFileFormatInt(settings->image_file_format)==image_file_format_cowraw)
 	{
-		settings->update_freq_image_full=convert( 60*24*60*60);
+		settings->update_freq_image_full=convert( -60*24*60*60);
 	}
 	else
 	{
-		settings->update_freq_image_full=convert( -60*24*60*60);
+		settings->update_freq_image_full=convert( 60*24*60*60);
 	}	
 	readStringClientSetting(q_get_client_setting, "update_freq_image_full", std::string(), &settings->update_freq_image_full, false);
 
