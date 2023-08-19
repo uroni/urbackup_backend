@@ -556,7 +556,9 @@ then
             echo "4) Linux device mapper based snapshots (supports image backups and changed block tracking)"
         fi
 
-        echo "5) Use no snapshot mechanism"
+        echo "5) Use no snapshot mechanism. Files will be backed up without creating snapshots of them. Images backups will be not supported."
+
+		echo -n "Enter choice (number 1-5, then enter): "
 
         read snapn
 
