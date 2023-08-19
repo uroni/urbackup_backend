@@ -135,6 +135,9 @@
     <ClCompile Include="..\Condition_std.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="..\SChannelPipe.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Database.h">
