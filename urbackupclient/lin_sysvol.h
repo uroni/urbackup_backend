@@ -34,21 +34,26 @@ namespace
 #endif //HAVE_MNTENT_H
 	}
 
+	std::string getRootVol()
+    {
+        return getMountDevice("/");
+    }
+
     std::string getSysVolumeCached(std::string& mpath)
     {
         mpath = getMountDevice("/boot");
+		if(mpath == getRootVol())
+			return std::string();
         return mpath;
     }
 
     std::string getEspVolumeCached(std::string& mpath)
     {
-        return "";
-    }
-
-    std::string getRootVol()
-    {
-        return getMountDevice("/");
-    }
+        mpath = getMountDevice("/boot/efi");
+		if(mpath == getRootVol())
+			return std::string();
+        return mpath;
+    }    
 
 	bool isDevice(const std::string& path)
 	{
