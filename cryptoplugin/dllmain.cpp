@@ -23,6 +23,7 @@
 #define DLLEXPORT extern "C"
 #include <unistd.h>
 #endif
+#include <stdlib.h>
 
 
 #ifndef STATIC_PLUGIN
