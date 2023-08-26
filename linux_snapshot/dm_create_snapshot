@@ -75,10 +75,10 @@ then
 elif modprobe dm_era && ! dmsetup table "$DEVICE" | grep " era " > /dev/null 2>&1 && ! dmsetup table "$DEVICE" | grep " snapshot-origin " > /dev/null 2>&1
 then
 	echo "Layering in dm-era device..."
-	META_SIZE=$(( (((DEV_SIZE*4)/1024)/512)*512 + 1*1024*1024 ))
-	if [ $META_SIZE -lt $((2*1024*1024)) ]
+	META_SIZE=$(( (((DEV_SIZE*4)/1024)/512)*512 + 3*1024*1024 ))
+	if [ $META_SIZE -lt $((4*1024*1024)) ]
 	then
-		META_SIZE=$((2*1024*1024))
+		META_SIZE=$((4*1024*1024))
 	fi
 
 	if [ -e "$SNAP_MOUNTPOINT/$ERA_META_FN" ]
@@ -95,7 +95,7 @@ then
 	dmsetup table "$DEVICE" | dmsetup create "$DEVNAME-$RUUID-clone-era"
 	urbackupclientbackend --internal --print-dm-file-extents "$SNAP_MOUNTPOINT/$ERA_META_FN" --file-dm-block-dev "$ORIG_DEVICE" | dmsetup create "$DEVNAME-$RUUID-era-metadata"
 	dmsetup table "$DEVNAME-$RUUID-era-metadata" | dmsetup create "$DEVNAME-$RUUID-era-metadata-access"
-	dd if=/dev/zero of=/dev/mapper/$DEVNAME-$RUUID-era-metadata bs=512 count=$((META_SIZE/512)) > /dev/null 2>&1
+	dd if=/dev/zero of=/dev/mapper/$DEVNAME-$RUUID-era-metadata bs=512 count=$(blockdev --getsz /dev/mapper/$DEVNAME-$RUUID-era-metadata) > /dev/null 2>&1
 	echo "0 $DEV_SIZE era /dev/mapper/$DEVNAME-$RUUID-era-metadata $ORIG_DEVICE 1024" | dmsetup create "$DEVNAME-$RUUID-clone"
 	echo "CBT=type=era&reset=1"
 	ERA_RESET=1
