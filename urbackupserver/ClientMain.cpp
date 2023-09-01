@@ -973,8 +973,8 @@ void ClientMain::operator ()(void)
 		else if(msg=="START BACKUP INCR") do_incr_backup_now=true;
 		else if(msg=="START BACKUP FULL") do_full_backup_now=true;
 		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
-		else if(msg=="START IMAGE INCR") do_incr_image_now=true;
-		else if(msg=="START IMAGE FULL") do_full_image_now=true;
+		else if(msg=="START IMAGE INCR" && can_backup_images ) do_incr_image_now=true;
+		else if(msg=="START IMAGE FULL" && can_backup_images) do_full_image_now=true;
 		else if (msg == "UPDATE ACCESS KEY") do_update_access_key = true;
 		else if(next(msg, 0, "address"))
 		{
@@ -1597,6 +1597,10 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
 			new_capa |= CAPA_NO_IMAGE_BACKUPS;
 			can_backup_images=false;
+		}
+		else
+		{
+			can_backup_images = true;
 		}
 		str_map::iterator it=params.find("FILESRV");
 		if(it!=params.end())
