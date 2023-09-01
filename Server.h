@@ -146,6 +146,7 @@ public:
 	virtual void DisconnectStream(IPipe *pipe);
 	virtual std::string LookupHostname(const std::string& pIp);
 
+	virtual std::vector<std::string> getStreamPipeList();
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName);
 	virtual bool RegisterPluginThreadsafeModel(IPluginMgr *pPluginMgr, std::string pName);
 
@@ -227,7 +228,7 @@ private:
 
 	void rotateLogfile();
 
-	IPipe* ConnectStream(const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms);
+	IPipe* ConnectStream(const std::string& connect_str, const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms);
 
 
 	int loglevel;

@@ -554,4 +554,14 @@ void OpenSSLPipe::resetTransferedBytes(void)
 	bpipe->resetTransferedBytes();
 }
 
+void OpenSSLPipe::setUsageString(const std::string& str)
+{
+	bpipe->setUsageString(str);
+}
+
+bool OpenSSLPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}
+
 #endif //WITH_OPENSSL

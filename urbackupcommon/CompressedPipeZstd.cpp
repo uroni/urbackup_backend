@@ -37,6 +37,7 @@
 const size_t max_send_size=20000;
 const size_t output_incr_size=8192;
 const size_t output_max_size=32*1024;
+const size_t init_comp_buffer_size = 8192;
 
 CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int threads)
 	: cs(cs), has_error(false),
@@ -44,9 +45,11 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 	input_buffer_size(0), read_mutex(Server->createMutex()), write_mutex(Server->createMutex()),
 	last_send_time(Server->getTimeMS()),
 	inf_stream(ZSTD_createDStream()),
-	def_stream(ZSTD_createCCtx())
+	def_stream(ZSTD_createCCtx()),
+	usage_mutex(Server->createMutex())
 {
-	comp_buffer.resize(8192);
+	comp_buffer_size = init_comp_buffer_size;
+	comp_buffer = new char[comp_buffer_size];
 	input_buffer.resize(16384);
 	destroy_cs=false;
 
@@ -66,6 +69,15 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 		throw std::runtime_error(std::string("Error setting zstd compression level. ") + ZSTD_getErrorName(err));
 	}
 
+	err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MIN);
+
+	if (ZSTD_isError(err))
+	{
+		throw std::runtime_error(std::string("Error setting zstd window size. ") + ZSTD_getErrorName(err));
+	}
+
+	usage_add = "level=" + convert(compression_level) + " lowMem";
+
 	/*if (threads == -1)
 	{
 		threads = static_cast<int>(os_get_num_cpus());
@@ -84,6 +96,7 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 
 CompressedPipeZstd::~CompressedPipeZstd(void)
 {
+	delete[] comp_buffer;
 	ZSTD_freeDStream(inf_stream);
 	ZSTD_freeCCtx(def_stream);
 	
@@ -265,10 +278,15 @@ void CompressedPipeZstd::ProcessToString(std::string* ret, bool fromLast )
 
 		fromLast = true;
 
-	} while (input_buffer_size!=0);
+	} while (input_buffer_size!=0 && !has_error);
 }
 
 bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
+{
+	return WriteInt(buffer, bsize, timeoutms, flush ? ZSTD_e_flush : ZSTD_e_continue);
+}
+
+bool CompressedPipeZstd::WriteInt(const char *buffer, size_t bsize, int timeoutms, ZSTD_EndDirective flush)
 {
 	IScopedLock lock(write_mutex.get());
 
@@ -284,12 +302,14 @@ bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, 
 		uncompressed_sent_bytes+=cbsize;
 
 		bool has_next = bsize>0;
-		bool curr_flush = has_next ? false : flush;
+		ZSTD_EndDirective curr_flush = has_next ? ZSTD_e_continue : flush;
 
-		if (!curr_flush
-			&& Server->getTimeMS() - last_send_time > 1000)
+		int64 flush_timeout = adaptive.get()==NULL ? 1000 : adaptive->flush_timeout;
+
+		if (curr_flush== ZSTD_e_continue
+			&& Server->getTimeMS() - last_send_time > flush_timeout)
 		{
-			curr_flush = true;
+			curr_flush = ZSTD_e_flush;
 		}
 
 		if(curr_flush)
@@ -308,12 +328,15 @@ bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, 
 
 		do 
 		{		
-			outbuf.dst = comp_buffer.data();
+			outbuf.dst = comp_buffer;
 			outbuf.pos = 0;
-			outbuf.size = comp_buffer.size();
+			outbuf.size = comp_buffer_size;
 
-			VLOG(Server->Log("ZSTD_compressStream2 avail_in=" + convert(inbuf.size-inbuf.pos) + " avail_out=" + convert(outbuf.size)+" flush="+convert(curr_flush), LL_DEBUG));
-			rc = ZSTD_compressStream2(def_stream, &outbuf, &inbuf, curr_flush ? ZSTD_e_flush : ZSTD_e_continue);
+			size_t prev_inbuf_pos = inbuf.pos;
+
+			size_t to_flush_now = ZSTD_toFlushNow(def_stream);
+			VLOG(Server->Log("ZSTD_compressStream2 avail_in=" + convert(inbuf.size-inbuf.pos) + " avail_out=" + convert(outbuf.size)+" flush="+convert((int)curr_flush), LL_DEBUG));
+			rc = ZSTD_compressStream2(def_stream, &outbuf, &inbuf, curr_flush);
 
 			if(ZSTD_isError(rc))
 			{
@@ -323,7 +346,14 @@ bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, 
 				return false;
 			}
 
-			assert(comp_buffer.size() >= outbuf.size - outbuf.pos);
+			if (adaptive.get()!=NULL)
+				++adaptive->zstd_input_presented;
+
+			if (adaptive.get() != NULL
+				&& prev_inbuf_pos == inbuf.pos)
+				++adaptive->zstd_input_blocked;
+
+			assert(comp_buffer_size >= outbuf.size - outbuf.pos);
 
 			size_t used = outbuf.pos;
 
@@ -345,20 +375,101 @@ bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, 
 				}
 			}
 
+			bool ret;
 			if(used>0)
 			{
 				last_send_time = Server->getTimeMS();
 
-				bool b=cs->Write(comp_buffer.data(), used, curr_timeout, curr_flush);
+				bool b=cs->Write(comp_buffer, used, curr_timeout, curr_flush!= ZSTD_e_continue);
 				if(!b)
 					return false;
 			}
 			else if(!has_next && flush)
 			{
-				return cs->Flush(curr_timeout);
+				ret = cs->Flush(curr_timeout);
 			}
 
-		} while(outbuf.pos==outbuf.size || (curr_flush && rc!=0) );
+			if (adaptive.get() != NULL)
+			{
+				ZSTD_frameProgression zfp = ZSTD_getFrameProgression(def_stream);
+				int comp_mod = 0;
+
+				if (zfp.currentJobID > 1
+					&& zfp.currentJobID>adaptive->last_job_id)
+				{
+					uint64 new_flushed = zfp.flushed - adaptive->zfp_prev.flushed;
+					uint64 new_produced = zfp.produced - adaptive->zfp_prev.produced;
+
+					if (zfp.consumed == adaptive->zfp_prev.consumed
+						&& zfp.currentJobID == 0)
+					{
+						Server->Log("Buffers full. Increasing compression ratio", LL_DEBUG);
+						comp_mod = 1;
+					}
+
+					adaptive->zfp_prev = zfp;
+
+					if (new_produced > (new_flushed * 9 / 8)
+						&& to_flush_now > 0)
+					{
+						Server->Log("Compression faster than flush ("+ PrettyPrintBytes(new_produced)+" > "+ PrettyPrintBytes(new_flushed)+"). Increasing compression level", LL_DEBUG);
+						comp_mod = 1;
+					}
+
+					if (zfp.currentJobID > adaptive->n_zstd_workers + 1)
+					{
+						if (adaptive->zstd_input_blocked == 0)
+						{
+							Server->Log("Input not blocked. Increasing compression level", LL_DEBUG);
+							comp_mod = 1;
+						}
+						else
+						{
+							uint64 new_ingested = zfp.ingested - adaptive->zfp_prev_corr.ingested;
+							uint64 new_consumed = zfp.consumed - adaptive->zfp_prev_corr.consumed;
+							uint64 new_produced = zfp.produced - adaptive->zfp_prev_corr.produced;
+							uint64 new_flushed = zfp.flushed - adaptive->zfp_prev_corr.flushed;
+
+							if (adaptive->zstd_input_blocked > adaptive->zstd_input_presented / 8
+								&& new_flushed * 33 / 32 > new_produced
+								&& new_ingested * 33 / 32 > new_consumed)
+							{
+								Server->Log("in " + PrettyPrintBytes(new_ingested) + " >= " + PrettyPrintBytes(new_consumed) + " comp " + PrettyPrintBytes(new_produced) + " <= " + PrettyPrintBytes(new_flushed) + ". Decreasing compression level", LL_DEBUG);
+								comp_mod = -1;
+							}
+
+							adaptive->zfp_prev_corr = zfp;
+						}
+
+						adaptive->zstd_input_blocked = 0;
+						adaptive->zstd_input_presented = 0;
+					}
+
+					if (comp_mod == -1
+						&& adaptive->comp_level > 1)
+					{
+						--adaptive->comp_level;
+						Server->Log("Lowering compression level to " + convert(adaptive->comp_level), LL_DEBUG);
+						ZSTD_CCtx_setParameter(def_stream, ZSTD_c_compressionLevel, adaptive->comp_level);
+					}
+					else if (comp_mod == 1
+						&& adaptive->comp_level < ZSTD_maxCLevel())
+					{
+						++adaptive->comp_level;
+						Server->Log("Increasing compression level to "+convert(adaptive->comp_level), LL_DEBUG);
+						ZSTD_CCtx_setParameter(def_stream, ZSTD_c_compressionLevel, adaptive->comp_level);
+					}
+				}
+
+				adaptive->last_job_id = zfp.currentJobID;
+			}
+
+			if (used==0
+				&& !has_next
+				&& flush)
+				return ret;
+
+		} while(inbuf.pos<inbuf.size || outbuf.pos==outbuf.size || (curr_flush!= ZSTD_e_continue && rc!=0) );
 
 		ptr+=cbsize;
 		
@@ -551,4 +662,122 @@ _i64 CompressedPipeZstd::getRealTransferredBytes()
 	return getUncompressedSentBytes()+getUncompressedReceivedBytes()-encryption_overhead;
 }
 
+void CompressedPipeZstd::setUsageString(const std::string& str)
+{
+	IScopedLock lock(usage_mutex.get());
+	usage_curr = str;
+	cs->setUsageString(str+ (usage_add.empty()?std::string(): (" "+usage_add) ) );
+}
+
+bool CompressedPipeZstd::setCompressionSettings(const SCompressionSettings& params)
+{
+	IScopedLock lock_wr(write_mutex.get());
+	IScopedLock lock_usage(usage_mutex.get());
+	usage_add.clear();
+
+	if (!WriteInt(NULL, 0, params.send_timeout, ZSTD_e_end))
+	{
+		return false;
+	}
+	int compression_level;
+	size_t err = ZSTD_CCtx_getParameter(def_stream, ZSTD_c_compressionLevel, &compression_level);
+	if (ZSTD_isError(err))
+	{
+		Server->Log(std::string("Error getting compression level to set compression settings. ") + ZSTD_getErrorName(err), LL_ERROR);
+		return false;
+	}
+
+	err = ZSTD_CCtx_reset(def_stream, ZSTD_reset_parameters);
+
+	if (ZSTD_isError(err))
+	{
+		Server->Log(std::string("Error resetting stream to set compression settings. ") + ZSTD_getErrorName(err), LL_ERROR);
+		return false;
+	}
+
+	err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_compressionLevel, compression_level);
+
+	usage_add += "level=" + convert(compression_level);
+
+	if (ZSTD_isError(err))
+	{
+		Server->Log(std::string("Error setting zstd compression level after resetting to set compression settings. ") + ZSTD_getErrorName(err), LL_ERROR);
+		return false;
+	}
+
+	if (params.mem == Compression_LowMem)
+	{
+		err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MIN);
+
+		if (ZSTD_isError(err))
+		{
+			Server->Log(std::string("Error setting zstd window after resetting to set compression settings. ") + ZSTD_getErrorName(err), LL_ERROR);
+			setUsageString(usage_curr);
+			return false;
+		}
+
+		usage_add += " lowMem";
+	}
+	else
+	{
+		usage_add += " highMem";
+	}
+
+	if (params.buffer_size > 0
+		&& params.buffer_size != std::string::npos)
+	{
+		comp_buffer_size = params.buffer_size;
+	}
+	else
+	{
+		comp_buffer_size = init_comp_buffer_size;
+	}
+
+	delete[] comp_buffer;
+	comp_buffer = new char[comp_buffer_size];
+	usage_add += " compBuffer=" + PrettyPrintBytes(comp_buffer_size);
+
+	size_t n_threads = params.n_threads;
+	if (n_threads == std::string::npos)
+	{
+		size_t zstd_max_threads = 4;
+		n_threads = (std::min)(zstd_max_threads , os_get_num_cpus());
+	}
+
+	if (n_threads > 1 )
+	{
+		usage_add += " threads=" + convert(n_threads);
+		size_t err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_nbWorkers, static_cast<int>(n_threads));
+
+		if (ZSTD_isError(err))
+		{
+			Server->Log(std::string("Error setting zstd workers. ") + ZSTD_getErrorName(err), LL_ERROR);
+			setUsageString(usage_curr);
+			return false;
+		}
+	}
+
+	if (params.adaptive_compression)
+	{
+		adaptive.reset(new ZstdAdaptive);
+
+		usage_add += "adaptive flush_timeout="+convert(params.adaptive_comp_flush_timeout)+" n_threads="+convert(n_threads);
+		adaptive->flush_timeout = params.adaptive_comp_flush_timeout;
+		adaptive->zfp_prev = {};
+		adaptive->zfp_prev_corr = {};
+		adaptive->n_zstd_workers = n_threads;
+		adaptive->zstd_input_blocked = 0;
+		adaptive->zstd_input_presented = 0;
+		adaptive->comp_level = compression_level;
+	}
+	else
+	{
+		adaptive.reset();
+	}
+
+	setUsageString(usage_curr);
+	return true;
+}
+
 #endif //NO_ZSTD_COMPRESSION
+

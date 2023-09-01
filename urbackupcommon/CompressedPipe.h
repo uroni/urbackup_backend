@@ -53,6 +53,10 @@ public:
 
 	virtual bool Flush( int timeoutms=-1 );
 
+	virtual void setUsageString(const std::string& str);
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
+
 private:
 	void Process(const char *buffer, size_t bsize);
 	size_t ReadToBuffer(char *buffer, size_t bsize);

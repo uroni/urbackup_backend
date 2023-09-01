@@ -222,6 +222,7 @@ void CServer::setup(void)
 #endif
 
 	CQuery::init_mutex();
+	CStreamPipe::init_mutex();
 
 #ifdef MODE_WIN
 	File::init_mutex();
@@ -428,24 +429,24 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 
 		if(log_console_time)
 		{
-			std::cout << buffer;
+				std::cout << buffer;
 		}
 
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << "ERROR: " << pStr << std::endl;
+				std::cout << "ERROR: " << pStr << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << pStr << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << "WARNING: " << pStr << std::endl;
+				std::cout << "WARNING: " << pStr << std::endl;
 			if(logfile_a)
 				logfile<< buffer << "WARNING: " << pStr << std::endl;
 		}
 		else
 		{
-			std::cout << pStr << std::endl;		
+				std::cout << pStr << std::endl;		
 			if(logfile_a)
 				logfile << buffer << pStr << std::endl;
 		}
@@ -1059,7 +1060,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 
 	for (size_t i = 0; i < lookup_result.size(); ++i)
 	{
-		IPipe* ret = ConnectStream(lookup_result[i], pPort, pTimeoutms);
+		IPipe* ret = ConnectStream(pServer, lookup_result[i], pPort, pTimeoutms);
 		if (ret != NULL)
 			return ret;
 	}
@@ -1068,7 +1069,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 }
 
 
-IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms)
+IPipe* CServer::ConnectStream(const std::string& connect_str, const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms)
 {
 	union
 	{
@@ -1161,12 +1162,12 @@ IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsign
 	}
 	else
 	{
-		return new CStreamPipe(s);
+		return new CStreamPipe(s, "tcp " + connect_str);
 	}
 #else
 	if(rc!=SOCKET_ERROR)
 	{
-		return new CStreamPipe(s);
+		return new CStreamPipe(s, "tcp "+connect_str);
 	}
 #endif
 
@@ -1215,7 +1216,7 @@ IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsign
 			if(recv_window_size>0)
 				setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *) &recv_window_size, sizeof(recv_window_size));
 #endif
-		    return new CStreamPipe(s);
+		    return new CStreamPipe(s, "tcp "+connect_str);
 		}
 	}
 	else
@@ -1250,6 +1251,8 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 		return NULL;
 	}
 
+	bpipe->setUsageString("ssl " + pServer);
+
 	return ssl_pipe;
 #else
 	return NULL;
@@ -1258,7 +1261,7 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 
 IPipe *CServer::PipeFromSocket(SOCKET pSocket)
 {
-	return new CStreamPipe(pSocket);
+	return new CStreamPipe(pSocket, "from socket");
 }
 
 void CServer::DisconnectStream(IPipe *pipe)
@@ -1277,6 +1280,11 @@ std::string CServer::LookupHostname(const std::string & pIp)
 	}
 
 	return hostname;
+}
+
+std::vector<std::string> CServer::getStreamPipeList()
+{
+	return CStreamPipe::getPipeList();
 }
 
 bool CServer::RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName)
@@ -1552,7 +1560,7 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 
 #ifndef _LP64
 	//Only on 32bit architectures
-	pthread_attr_setstacksize(&attr, 1*1024*1024);
+	pthread_attr_setstacksize(&attr, 1 * 1024 * 1024);
 #endif
 
 #else
@@ -1681,7 +1689,7 @@ void CServer::wait(unsigned int ms)
 #ifdef _WIN32
 	Sleep(ms);
 #else
-	usleep(ms*1000);
+		usleep(ms * 1000);
 #endif
 }
 
@@ -2090,13 +2098,13 @@ std::vector<unsigned int> CServer::getSecureRandomNumbers(size_t n)
 	std::vector<unsigned int> ret;
 	ret.resize(n);
 #ifdef _WIN32
-	for (size_t i = 0; i < n; ++i)
+	for (size_t i = 0; i<n; ++i)
 	{
 		ret[i] = getSecureRandomNumber();
-	}
+	}	
 #else
 	char* buf = reinterpret_cast<char*>(&ret[0]);
-	size_t bsize = sizeof(unsigned int) * n;
+	size_t bsize = sizeof(unsigned int)*n;
 	secureRandomFill(buf, bsize);
 #endif
 	return ret;
@@ -2134,7 +2142,7 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 	std::fstream rnd_in("/dev/urandom", std::ios::in | std::ios::binary);
 	if (!rnd_in.is_open())
 	{
-		Log("Error opening /dev/urandom for secure random number fill. Errno " + convert((int64)errno), LL_ERROR);
+		Log("Error opening /dev/urandom for secure random number fill. Errno "+convert((int64)errno), LL_ERROR);
 		randomFill(buf, blen);
 		return;
 	}
@@ -2143,8 +2151,8 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 
 	assert(rnd_in.gcount() == blen);
 
-	if (rnd_in.gcount() != blen
-		|| rnd_in.fail() || rnd_in.eof())
+	if(rnd_in.gcount() != blen 
+		|| rnd_in.fail() || rnd_in.eof() )
 	{
 		Log("Error reading secure random numbers fill. Errno " + convert((int64)errno), LL_ERROR);
 		abort();

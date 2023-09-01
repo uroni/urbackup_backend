@@ -456,3 +456,13 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 
 	return out_off;
 }
+
+void WebSocketPipe::setUsageString(const std::string& str)
+{
+	return pipe->setUsageString(str);
+}
+
+bool WebSocketPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return pipe->setCompressionSettings(params);
+}

@@ -263,7 +263,7 @@ void CServiceWorker::addNewClients(void)
 {
     for(size_t i=0;i<new_clients.size();++i)
     {
-		CStreamPipe *pipe=new CStreamPipe(new_clients[i].first);
+		CStreamPipe *pipe=new CStreamPipe(new_clients[i].first, "ServiceWorker " + name);
 		ICustomClient *nc=service->createClient();
 		nc->Init(tid, pipe, new_clients[i].second);
 		clients.push_back( std::pair<ICustomClient*, CStreamPipe*>(nc, pipe) );

@@ -50,6 +50,10 @@ public:
 
 	virtual void resetTransferedBytes(void);
 
+	virtual void setUsageString(const std::string& str);
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
+
 private:
 	bool ssl_connect_negotiate(int timeoutms, bool do_read);
 

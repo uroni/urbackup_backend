@@ -262,3 +262,12 @@ bool CMemoryPipe::Flush( int timeoutms/*=-1 */ )
 {
 	return true;
 }
+
+void CMemoryPipe::setUsageString(const std::string& str)
+{
+}
+
+bool CMemoryPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}

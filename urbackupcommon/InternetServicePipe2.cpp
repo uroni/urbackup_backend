@@ -329,3 +329,13 @@ int64 InternetServicePipe2::getEncryptionOverheadBytes()
 	return enc->getOverheadBytes() + dec->getOverheadBytes();
 }
 
+void InternetServicePipe2::setUsageString(const std::string& str)
+{
+	cs->setUsageString(str);
+}
+
+bool InternetServicePipe2::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}
+

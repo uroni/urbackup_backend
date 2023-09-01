@@ -28,16 +28,26 @@
 #include "Interface/PipeThrottler.h"
 #include "stringtools.h"
 
-CStreamPipe::CStreamPipe( SOCKET pSocket)
+std::map<CStreamPipe*, std::string> CStreamPipe::active_pipes;
+IMutex* CStreamPipe::active_pipes_mutex = NULL;
+
+CStreamPipe::CStreamPipe( SOCKET pSocket, const std::string& usage_str)
 	: transfered_bytes(0)
 {
 	s=pSocket;
 	has_error=false;
+	IScopedLock lock(active_pipes_mutex);
+	active_pipes[this] = usage_str;
 }
 
 CStreamPipe::~CStreamPipe()
 {
 	closesocket(s);
+
+	IScopedLock lock(active_pipes_mutex);
+	std::map<CStreamPipe*, std::string>::iterator it = active_pipes.find(this);
+	if (it != active_pipes.end())
+		active_pipes.erase(it);
 }
 
 namespace
@@ -347,6 +357,32 @@ bool CStreamPipe::doThrottle(size_t new_bytes, bool outgoing, bool wait)
 		}
 		return b;
 	}
+}
+
+void CStreamPipe::init_mutex()
+{
+	active_pipes_mutex = Server->createMutex();
+}
+
+void CStreamPipe::setUsageString(const std::string& str)
+{
+	IScopedLock lock(active_pipes_mutex);
+	active_pipes[this] = str;
+}
+
+std::vector<std::string> CStreamPipe::getPipeList()
+{
+	std::vector<std::string> ret;
+	IScopedLock lock(active_pipes_mutex);
+	for (auto it : active_pipes)
+		ret.push_back(it.second);
+
+	return ret;
+}
+
+bool CStreamPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
 }
 
 _i64 CStreamPipe::getTransferedBytes(void)

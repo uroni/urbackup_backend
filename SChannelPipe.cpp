@@ -246,6 +246,16 @@ bool SChannelPipe::ssl_connect_negotiate(int timeoutms, bool do_read)
 	return connected;
 }
 
+void SChannelPipe::setUsageString(const std::string& str)
+{
+	bpipe->setUsageString(str);
+}
+
+bool SChannelPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}
+
 
 void SChannelPipe::init()
 {

@@ -61,6 +61,10 @@ public:
 
 	virtual _i64 getRealTransferredBytes();
 
+	virtual void setUsageString(const std::string& str);
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
+
 private:
 	size_t ProcessToBuffer(char *buffer, size_t bsize, bool fromLast);
 	void ProcessToString(std::string* ret, bool fromLast);

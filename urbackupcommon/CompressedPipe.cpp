@@ -83,6 +83,16 @@ size_t CompressedPipe::ReadToString(std::string *ret)
 	return 0;
 }
 
+void CompressedPipe::setUsageString(const std::string& str)
+{
+	cs->setUsageString(str);
+}
+
+bool CompressedPipe::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}
+
 size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	size_t rc=ReadToBuffer(buffer, bsize);

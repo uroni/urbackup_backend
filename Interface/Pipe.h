@@ -45,6 +45,36 @@ public:
 	virtual void resetTransferedBytes(void)=0;
 
 	virtual _i64 getRealTransferredBytes() { return 0; }
+
+	virtual void setUsageString(const std::string& str) = 0;
+
+
+	enum CompressionMem
+	{
+		Compression_LowMem,
+		Compression_HighMem
+	};
+
+	struct SCompressionSettings
+	{
+		SCompressionSettings()
+			: mem(Compression_LowMem),
+			n_threads(0),
+			buffer_size(0),
+			send_timeout(10000),
+			adaptive_compression(false),
+			adaptive_comp_flush_timeout(60000)
+		{}
+
+		CompressionMem mem;
+		size_t n_threads;
+		size_t buffer_size;
+		int64 send_timeout;
+		bool adaptive_compression;
+		int64 adaptive_comp_flush_timeout;
+	};
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params) = 0;
 };
 
 #endif //IPIPE_H

@@ -524,3 +524,13 @@ _i64 CompressedPipe2::getRealTransferredBytes()
 
 	return getUncompressedSentBytes()+getUncompressedReceivedBytes()-encryption_overhead;
 }
+
+void CompressedPipe2::setUsageString(const std::string& str)
+{
+	cs->setUsageString(str);
+}
+
+bool CompressedPipe2::setCompressionSettings(const SCompressionSettings& params)
+{
+	return false;
+}

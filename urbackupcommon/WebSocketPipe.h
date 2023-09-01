@@ -75,6 +75,9 @@ public:
 		pipe->resetTransferedBytes();
 	}
 
+	virtual void setUsageString(const std::string& str) override;
+	virtual bool setCompressionSettings(const SCompressionSettings& params) override;
+
 private:
 
 	bool has_read_mask()

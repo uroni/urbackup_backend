@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Interface/Pipe.h"
+#include "Interface/Mutex.h"
 #include "socket_header.h"
 #include <vector>
 
 class CStreamPipe : public IPipe
 {
 public:
-	CStreamPipe( SOCKET pSocket);
+	CStreamPipe( SOCKET pSocket, const std::string& usage_str);
 	~CStreamPipe();
 
 	virtual size_t Read(char *buffer, size_t bsize, int timeoutms);
@@ -41,6 +42,14 @@ public:
 
 	bool doThrottle(size_t new_bytes, bool outgoing, bool wait);
 
+	static void init_mutex();
+
+	virtual void setUsageString(const std::string& str);
+
+	static std::vector<std::string> getPipeList();
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
+
 private:
 	SOCKET s;
 
@@ -51,5 +60,6 @@ private:
 	std::vector<IPipeThrottler*> incoming_throttlers;
 	std::vector<IPipeThrottler*> outgoing_throttlers;
 
-	
+	static std::map<CStreamPipe*, std::string> active_pipes;
+	static IMutex* active_pipes_mutex;
 };

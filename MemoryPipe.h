@@ -37,6 +37,9 @@ public:
 
 	virtual bool Flush( int timeoutms=-1 );
 
+	virtual void setUsageString(const std::string& str);
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
 private:
 	std::deque<std::string> queue;

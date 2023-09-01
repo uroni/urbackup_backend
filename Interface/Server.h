@@ -152,6 +152,7 @@ public:
 	virtual void DisconnectStream(IPipe *pipe)=0;
 	virtual std::string LookupHostname(const std::string& pIp)=0;
 
+	virtual std::vector<std::string> getStreamPipeList() = 0;
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName)=0;
 	virtual bool RegisterPluginThreadsafeModel(IPluginMgr *pPluginMgr, std::string pName)=0;
 

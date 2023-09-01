@@ -74,6 +74,10 @@ public:
 
 	int64 getEncryptionOverheadBytes();
 
+	virtual void setUsageString(const std::string& str);
+
+	virtual bool setCompressionSettings(const SCompressionSettings& params);
+
 private:
 	std::auto_ptr<IAESGCMDecryption> dec;
 	std::auto_ptr<IAESGCMEncryption> enc;
