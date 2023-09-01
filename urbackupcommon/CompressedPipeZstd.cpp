@@ -36,21 +36,24 @@
 
 const size_t max_send_size=20000;
 const size_t output_incr_size=8192;
+const size_t output_incr_size_init = 32*1024 - 1000;
 const size_t output_max_size=32*1024;
-const size_t init_comp_buffer_size = 8192;
+const size_t init_comp_buffer_size = 1000;
+const size_t init_comp_buffer_size_highmem = 512*1024;
 
-CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int threads)
+CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level)
 	: cs(cs), has_error(false),
 	uncompressed_sent_bytes(0), uncompressed_received_bytes(0), sent_flushes(0),
 	input_buffer_size(0), read_mutex(Server->createMutex()), write_mutex(Server->createMutex()),
 	last_send_time(Server->getTimeMS()),
 	inf_stream(ZSTD_createDStream()),
 	def_stream(ZSTD_createCCtx()),
-	usage_mutex(Server->createMutex())
+	usage_mutex(Server->createMutex()),
+	compression_level(compression_level)
 {
 	comp_buffer_size = init_comp_buffer_size;
 	comp_buffer = new char[comp_buffer_size];
-	input_buffer.resize(16384);
+	input_buffer.resize(init_comp_buffer_size);
 	destroy_cs=false;
 
 	if(inf_stream==NULL)
@@ -62,36 +65,14 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 		throw std::runtime_error("Error initializing decompression stream");
 	}
 
-	size_t err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_compressionLevel, compression_level);
+	size_t err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_compressionLevel, -3);
 
 	if (ZSTD_isError(err))
 	{
 		throw std::runtime_error(std::string("Error setting zstd compression level. ") + ZSTD_getErrorName(err));
 	}
 
-	err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MIN);
-
-	if (ZSTD_isError(err))
-	{
-		throw std::runtime_error(std::string("Error setting zstd window size. ") + ZSTD_getErrorName(err));
-	}
-
-	usage_add = "level=" + convert(compression_level) + " lowMem";
-
-	/*if (threads == -1)
-	{
-		threads = static_cast<int>(os_get_num_cpus());
-	}
-
-	if (threads > 1)
-	{
-		size_t err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_nbWorkers, threads);
-
-		if (ZSTD_isError(err))
-		{
-			throw std::runtime_error(std::string("Error setting zstd workers. ") + ZSTD_getErrorName(err));
-		}
-	}*/	
+	usage_add = "level=-3 veryLowMem";
 }
 
 CompressedPipeZstd::~CompressedPipeZstd(void)
@@ -120,7 +101,10 @@ size_t CompressedPipeZstd::Read(char *buffer, size_t bsize, int timeoutms)
 		}
 		else if(input_buffer_size==input_buffer.size())
 		{
-			input_buffer.resize(input_buffer.size()+output_incr_size);
+			if(input_buffer_size == init_comp_buffer_size)
+				input_buffer.resize(input_buffer.size() + output_incr_size_init);
+			else
+				input_buffer.resize(input_buffer.size()+output_incr_size);
 		}
 	}
 
@@ -491,7 +475,10 @@ size_t CompressedPipeZstd::Read(std::string *ret, int timeoutms)
 		}
 		else if(input_buffer_size==input_buffer.size())
 		{
-			input_buffer.resize(input_buffer.size()+output_incr_size);
+			if (input_buffer_size == init_comp_buffer_size)
+				input_buffer.resize(input_buffer.size() + output_incr_size_init);
+			else
+				input_buffer.resize(input_buffer.size()+output_incr_size);
 		}
 	}
 
@@ -707,19 +694,11 @@ bool CompressedPipeZstd::setCompressionSettings(const SCompressionSettings& para
 
 	if (params.mem == Compression_LowMem)
 	{
-		err = ZSTD_CCtx_setParameter(def_stream, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MIN);
-
-		if (ZSTD_isError(err))
-		{
-			Server->Log(std::string("Error setting zstd window after resetting to set compression settings. ") + ZSTD_getErrorName(err), LL_ERROR);
-			setUsageString(usage_curr);
-			return false;
-		}
-
 		usage_add += " lowMem";
 	}
 	else
 	{
+		// TBD
 		usage_add += " highMem";
 	}
 
@@ -730,7 +709,8 @@ bool CompressedPipeZstd::setCompressionSettings(const SCompressionSettings& para
 	}
 	else
 	{
-		comp_buffer_size = init_comp_buffer_size;
+		comp_buffer_size = params.mem == Compression_LowMem ? 
+			init_comp_buffer_size : init_comp_buffer_size_highmem;
 	}
 
 	delete[] comp_buffer;

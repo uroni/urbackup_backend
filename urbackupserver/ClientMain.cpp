@@ -2834,7 +2834,7 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 #ifndef NO_ZSTD_COMPRESSION
 			else if (compression == "zstd")
 			{
-				CompressedPipeZstd* comp = new CompressedPipeZstd(ret, compression_level, -1);
+				CompressedPipeZstd* comp = new CompressedPipeZstd(ret, compression_level);
 				comp->destroyBackendPipeOnDelete(true);
 				ret = comp;
 			}

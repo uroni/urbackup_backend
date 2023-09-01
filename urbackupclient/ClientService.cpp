@@ -1097,7 +1097,7 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 #ifndef NO_ZSTD_COMPRESSION
 				else if (compress == "zstd")
 				{
-					CompressedPipeZstd* comp_pipe = new CompressedPipeZstd(pipe, compression_level, -1);
+					CompressedPipeZstd* comp_pipe = new CompressedPipeZstd(pipe, compression_level);
 					comp_pipe->destroyBackendPipeOnDelete(true);
 					pipe = comp_pipe;
 

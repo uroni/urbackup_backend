@@ -813,7 +813,7 @@ void InternetClientThread::operator()(void)
 #ifndef NO_ZSTD_COMPRESSION
 	if (capa & IPC_COMPRESSED_ZSTD)
 	{
-		comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
+		comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level);
 		comm_pipe = comp_pipe;
 	}
 	else

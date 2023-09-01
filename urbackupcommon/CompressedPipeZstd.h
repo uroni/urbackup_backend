@@ -15,7 +15,7 @@ class IMutex;
 class CompressedPipeZstd : public ICompressedPipe
 {
 public:
-	CompressedPipeZstd(IPipe *cs, int compression_level, int threads);
+	CompressedPipeZstd(IPipe *cs, int compression_level);
 	~CompressedPipeZstd(void);
 
 	virtual size_t Read(char *buffer, size_t bsize, int timeoutms=-1);
@@ -72,6 +72,7 @@ private:
 	std::vector<char> input_buffer;
 	size_t input_buffer_size;
 
+	int compression_level;
 	int64 uncompressed_sent_bytes;
 	int64 uncompressed_received_bytes;
 	int64 sent_flushes;

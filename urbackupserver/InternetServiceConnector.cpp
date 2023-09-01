@@ -536,7 +536,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 #ifndef NO_ZSTD_COMPRESSION
 								if (conn_version == 2)
 								{
-									comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
+									comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level);
 								}
 								else
 								{
