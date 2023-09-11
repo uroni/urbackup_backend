@@ -257,7 +257,7 @@ std::string File::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(tr);
-	_u32 gc=Read((char*)ret.c_str(), tr, has_error);
+	_u32 gc=Read(&ret[0], tr, has_error);
 	if( gc<tr )
 		ret.resize( gc );
 	
@@ -268,7 +268,7 @@ std::string File::Read(int64 spos, _u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(tr);
-	_u32 gc=Read(spos, (char*)ret.c_str(), tr, has_error);
+	_u32 gc=Read(spos, &ret[0], tr, has_error);
 	if( gc<tr )
 		ret.resize( gc );
 
@@ -301,12 +301,12 @@ _u32 File::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 
 _u32 File::Write(const std::string &tw, bool *has_error)
 {
-	return Write( tw.c_str(), (_u32)tw.size(), has_error);
+	return Write( tw.data(), (_u32)tw.size(), has_error);
 }
 
 _u32 File::Write(int64 spos, const std::string &tw, bool *has_error)
 {
-	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
+	return Write(spos, tw.data(), (_u32)tw.size(), has_error);
 }
 
 _u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
