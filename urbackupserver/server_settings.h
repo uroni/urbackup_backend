@@ -302,6 +302,7 @@ private:
 	void readIntClientSetting(IQuery* q_get_client_setting, const std::string &name, int *output, bool allow_client_value = true);
 	void readInt64ClientSetting(IQuery* q_get_client_setting, const std::string &name, int64 *output, bool allow_client_value = true);
 	void readSizeClientSetting(IQuery* q_get_client_setting, const std::string &name, size_t *output, bool allow_client_value = true);
+	void readFloatClientSetting(IQuery* q_get_client_setting, const std::string& name, float* output, bool allow_client_value = true);
 
 	void updateInternal(bool* was_updated);
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
