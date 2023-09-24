@@ -159,6 +159,9 @@ CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vec
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 
 	stack.setAddChecksum(true);
+	IPipe::SCompressionSettings comp_params;
+	comp_params.mem = IPipe::Compression_HighMem;
+	pClientpipe->setCompressionSettings(comp_params);
 }
 
 CClientThread::~CClientThread()

@@ -126,6 +126,10 @@ const unsigned int c_hashsize=32;
 
 bool ImageThread::sendFullImageThread(void)
 {
+	IPipe::SCompressionSettings comp_params;
+	comp_params.mem = IPipe::Compression_HighMem;
+	pipe->setCompressionSettings(comp_params);
+
 	bool has_error=true;
 
 	int save_id=-1;
@@ -510,6 +514,10 @@ void ImageThread::removeShadowCopyThread(int save_id)
 
 bool ImageThread::sendIncrImageThread(void)
 {
+	IPipe::SCompressionSettings comp_params;
+	comp_params.mem = IPipe::Compression_HighMem;
+	pipe->setCompressionSettings(comp_params);
+
 	char *zeroblockbuf=NULL;
 	std::vector<IFilesystem::IFsBuffer*> blockbufs;
 

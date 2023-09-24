@@ -1150,6 +1150,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				return;
 			}
 		}
+		else
+		{
+			IPipe::SCompressionSettings comp_params;
+			comp_params.mem = IPipe::Compression_HighMem;
+			input->setCompressionSettings(comp_params);
+		}
 
 		uint64 offset=0;
 		str_map::iterator it1=params.find("offset");
