@@ -188,6 +188,9 @@ msgstr "User does not exist"
 msgid "password_wrong"
 msgstr "Wrong password"
 
+msgid "too_many_login_attempts"
+msgstr "Too many failed login attempts in a short amount of time. Please retry after a few minutes."
+
 msgid "user_exists"
 msgstr "User with this name already exists"
 
