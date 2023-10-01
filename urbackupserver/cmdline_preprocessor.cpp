@@ -397,6 +397,19 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
+		if (settings->getValue("DISABLE_FAILED_LOGIN_RATELIMIT", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				(val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--rate_limit_disabled");
+				real_args.push_back("1");
+			}
+		}		
 	}	
 
 	if(destroy_server)
