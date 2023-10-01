@@ -95,6 +95,7 @@
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgTriplet>x64-windows-static-md</VcpkgTriplet>
+    <VcpkgConfiguration>Debug</VcpkgConfiguration>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <VcpkgTriplet>x64-windows-static-md</VcpkgTriplet>

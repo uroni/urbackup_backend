@@ -1520,6 +1520,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 #endif
 						}
 
+
+
 #ifdef _WIN32
 						if (orig_file.get() == NULL
 							&& orig_ftype & EFileType_Symlink )
@@ -1715,6 +1717,30 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							else
 							{
 								open_files.erase(it);
+							}
+						}
+						else if (single_item)
+						{
+							bool win_root = false;
+
+							const std::string parent_fn = ExtractFilePath(local_fn, os_file_sep());
+#ifdef _WIN32
+							if (parent_fn.size() <= 3)
+							{
+								win_root = true;
+							}
+#endif
+
+							if (!win_root
+								&& os_get_file_type(os_file_prefix(parent_fn)) == 0
+								&& ((restore_flags & restore_flag_ignore_permissions)
+									|| !canCreateDirRecursive(parent_fn, tids, &client_dao, token_cache)))
+							{
+								log("Recursively creating folder at \"" + parent_fn + "\"", LL_WARNING);
+								if (!os_create_dir_recursive(os_file_prefix(parent_fn)))
+								{
+									log("Error creating \"" + parent_fn + "\" recursively: " + os_last_error_str(), LL_ERROR);
+								}
 							}
 						}
 
