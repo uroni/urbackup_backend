@@ -247,10 +247,11 @@ void Helper::init_mutex()
 	Server->createThread(new RateLimitTimeout, "rate limit timeout");
 }
 
-bool Helper::rate_limit_disabled()
 {
-	static bool disabled = Server->getServerParameter("rate_limit_disabled") == "1";
-	return disabled;
+bool Helper::failedLoginRateLimit()
+{
+	static bool limit = Server->getServerParameter("failed_login_ratelimit") != "0";
+	return limit;
 }
 
 std::string Helper::getIdentData()
@@ -487,7 +488,7 @@ std::string Helper::remoteAddr()
 
 void Helper::startLogin(const std::string& remote_addr)
 {
-	if (rate_limit_disabled())
+	if (!failedLoginRateLimit())
 		return;
 
 	IScopedLock lock(login_wait_mutex);
@@ -500,7 +501,7 @@ void Helper::startLogin(const std::string& remote_addr)
 
 void Helper::stopLogin(const std::string& remote_addr)
 {
-	if (rate_limit_disabled())
+	if (!failedLoginRateLimit())
 		return;
 
 	IScopedLock lock(login_wait_mutex);
@@ -510,7 +511,7 @@ void Helper::stopLogin(const std::string& remote_addr)
 
 bool Helper::rateLimited(const std::string& remote_addr)
 {
-	if (rate_limit_disabled())
+	if (!failedLoginRateLimit())
 		return false;
 
 	IScopedReadLock read_lock(rate_limit_mutex);
@@ -523,7 +524,7 @@ bool Helper::rateLimited(const std::string& remote_addr)
 
 void Helper::addToRateLimit(const std::string& remote_addr)
 {
-	if (rate_limit_disabled())
+	if (!failedLoginRateLimit())
 		return;
 
 	IScopedWriteLock wr_lock(rate_limit_mutex);

@@ -82,7 +82,7 @@ public:
 	static void init_mutex();
 private:
 
-	static bool rate_limit_disabled();
+	static bool failedLoginRateLimit();
 
 	std::string getIdentData();
 
