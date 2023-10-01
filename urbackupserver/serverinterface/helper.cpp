@@ -244,7 +244,8 @@ void Helper::init_mutex()
 	login_wait_cond = Server->createCondition();
 	login_wait_mutex = Server->createMutex();
 
-	Server->createThread(new RateLimitTimeout, "rate limit timeout");
+	if (failedLoginRateLimit())
+		Server->createThread(new RateLimitTimeout, "rate limit timeout");
 }
 
 bool Helper::allowUserEnumeration()
