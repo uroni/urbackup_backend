@@ -4817,6 +4817,13 @@ function login2(data)
 		I('username').focus();
 		return;
 	}
+	else if(data.error==3)
+	{
+		alert(trans("too_many_login_attempts"));
+		stopLoading();
+		I('username').focus();
+		return;
+	}
 	
 	if(data.ses)
 		g.session=data.ses;
@@ -4841,6 +4848,12 @@ function login3(data)
 	if(data.error==2)
 	{
 		alert(trans("password_wrong"));
+		I('password').focus();
+		return;
+	}
+	else if(data.error==3)
+	{
+		alert(trans("too_many_login_attempts"));
 		I('password').focus();
 		return;
 	}

@@ -660,6 +660,14 @@ void ServerChannelThread::LOGIN(str_map& params)
 
 	if(needs_login())
 	{
+		Helper::IpLogin ip_login(client_addr);
+
+		if (helper.rateLimited(client_addr))
+		{
+			tcpstack.Send(input, "err");
+			return;
+		}
+
 		if(session.empty())
 		{
 			session=helper.generateSession("anonymous");
@@ -689,6 +697,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 			helper.getSession()->id=-1;
 			tcpstack.Send(input, "err");
 			logFailedLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
+			helper.addToRateLimit(client_addr);
 		}
 	}
 	else

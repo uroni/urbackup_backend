@@ -5,7 +5,11 @@
 #include "../../Interface/SessionMgr.h"
 #include "../../Interface/Template.h"
 #include "../../Interface/Mutex.h"
+#include "../../Interface/SharedMutex.h"
+#include "../../Interface/Condition.h"
 #include "../../urbackupcommon/os_functions.h"
+#include <map>
+#include <set>
 
 const int SESSION_ID_ADMIN = 0;
 const int SESSION_ID_INVALID = -1;
@@ -47,7 +51,38 @@ public:
 	void sleep(unsigned int ms);
 
 	bool ldapEnabled();
+
+	std::string remoteAddr();
+
+	class IpLogin
+	{
+		const std::string remote_addr;
+	public:
+		IpLogin(const std::string& remote_addr)
+			: remote_addr(remote_addr)
+		{
+			Helper::startLogin(remote_addr);
+		}
+		~IpLogin()
+		{
+			Helper::stopLogin(remote_addr);
+		}
+	};
+
+	static void startLogin(const std::string& remote_addr);
+
+	static void stopLogin(const std::string& remote_addr);
+
+	static bool rateLimited(const std::string& remote_addr);
+
+	static void addToRateLimit(const std::string& remote_addr);
+
+	static void rateLimitTimeout();
+
+	static void init_mutex();
 private:
+
+	static bool rate_limit_disabled();
 
 	std::string getIdentData();
 
@@ -70,6 +105,14 @@ private:
 
 	bool prioritized;
 	SPrioInfo prio_info;
+
+	static ISharedMutex* rate_limit_mutex;
+	static IMutex* login_wait_mutex;
+	static ICondition* login_wait_cond;
+	typedef std::map<int64, std::map<std::string, int64> > rate_limit_map;
+	static rate_limit_map rates_per_bucket;
+	static std::set<std::string> logging_in;
+	static std::map<std::string, int64> banned_ips;
 };
 
 struct SStartupStatus

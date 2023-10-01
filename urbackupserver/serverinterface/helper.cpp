@@ -26,10 +26,18 @@
 #include "../../urlplugin/IUrlFactory.h"
 #include "../../urbackupcommon/glob.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
+#include "../../Interface/Thread.h"
 
 extern std::string server_identity;
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
+
+ISharedMutex* Helper::rate_limit_mutex;
+Helper::rate_limit_map Helper::rates_per_bucket;
+std::map<std::string, int64> Helper::banned_ips;
+ICondition* Helper::login_wait_cond;
+IMutex* Helper::login_wait_mutex;
+std::set<std::string> Helper::logging_in;
 
 Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
@@ -218,22 +226,37 @@ std::string Helper::getRights(const std::string &domain)
 	return getRightsInt(domain);
 }
 
+namespace
+{
+	class RateLimitTimeout : public IThread
+	{
+	public:
+		void operator()() {
+			Helper::rateLimitTimeout();
+			delete this;
+		}
+	};
+}
+
+void Helper::init_mutex()
+{
+	rate_limit_mutex = Server->createSharedMutex();
+	login_wait_cond = Server->createCondition();
+	login_wait_mutex = Server->createMutex();
+
+	Server->createThread(new RateLimitTimeout, "rate limit timeout");
+}
+
+bool Helper::rate_limit_disabled()
+{
+	static bool disabled = Server->getServerParameter("rate_limit_disabled") == "1";
+	return disabled;
+}
+
 std::string Helper::getIdentData()
 {
 	std::string user_agent = (*PARAMS)["HTTP_USER_AGENT"];
-
-	str_map::iterator it_remote = PARAMS->find("HTTP_X_FORWARDED_FOR");
-	if (it_remote != PARAMS->end())
-	{
-		if (it_remote->second.find(",") != std::string::npos)
-		{
-			return trim(getuntil(",", it_remote->second)) + user_agent;
-		}
-
-		return it_remote->second + user_agent;
-	}
-
-	return (*PARAMS)["REMOTE_ADDR"] + user_agent;
+	return remoteAddr() + user_agent;
 }
 
 std::string Helper::getRightsInt(const std::string &domain)
@@ -444,6 +467,132 @@ bool Helper::ldapEnabled()
 		}
 	}
 	return false;
+}
+
+std::string Helper::remoteAddr()
+{
+	str_map::iterator it_remote = PARAMS->find("HTTP_X_FORWARDED_FOR");
+	if (it_remote != PARAMS->end())
+	{
+		if (it_remote->second.find(",") != std::string::npos)
+		{
+			return trim(getuntil(",", it_remote->second));
+		}
+
+		return it_remote->second;
+	}
+
+	return (*PARAMS)["REMOTE_ADDR"];
+}
+
+void Helper::startLogin(const std::string& remote_addr)
+{
+	if (rate_limit_disabled())
+		return;
+
+	IScopedLock lock(login_wait_mutex);
+
+	while (logging_in.find(remote_addr) != logging_in.end())
+	{
+		login_wait_cond->wait(&lock);
+	}
+}
+
+void Helper::stopLogin(const std::string& remote_addr)
+{
+	if (rate_limit_disabled())
+		return;
+
+	IScopedLock lock(login_wait_mutex);
+	logging_in.erase(remote_addr);
+	login_wait_cond->notify_all();
+}
+
+bool Helper::rateLimited(const std::string& remote_addr)
+{
+	if (rate_limit_disabled())
+		return false;
+
+	IScopedReadLock read_lock(rate_limit_mutex);
+
+	if (banned_ips.find(remote_addr) != banned_ips.end())
+		return true;
+
+	return false;
+}
+
+void Helper::addToRateLimit(const std::string& remote_addr)
+{
+	if (rate_limit_disabled())
+		return;
+
+	IScopedWriteLock wr_lock(rate_limit_mutex);
+
+	const int64 bucket = Server->getTimeMS() / 10000;
+	++rates_per_bucket[bucket][remote_addr];
+
+	int64 failed_logins = 0;
+	for (rate_limit_map::iterator it_bucket = rates_per_bucket.begin();
+		it_bucket != rates_per_bucket.end(); ++it_bucket)
+	{
+		std::map<std::string, int64>::iterator it_ip = it_bucket->second.find(remote_addr);
+		if (it_ip != it_bucket->second.end())
+		{
+			failed_logins += it_ip->second;
+			if (failed_logins > 10)
+			{
+				banned_ips[remote_addr] = Server->getTimeMS();
+				return;
+			}
+		}
+	}
+}
+
+void Helper::rateLimitTimeout()
+{
+	const int64 keep_buckets = 4;
+	const int64 bucket_size = 10;
+	const int64 ban_timeout = 10 * 60 * 1000;
+
+	while (true)
+	{
+		Server->wait(bucket_size * 1000);
+
+		const int64 curr_bucket = Server->getTimeMS() / (bucket_size * 1000);
+		const int64 min_bucket = curr_bucket - keep_buckets;
+
+		IScopedWriteLock wr_lock(rate_limit_mutex);
+		for (rate_limit_map::iterator it_bucket = rates_per_bucket.begin();
+			it_bucket != rates_per_bucket.end();)
+		{
+			if (it_bucket->first < min_bucket)
+			{
+				rate_limit_map::iterator it_curr = it_bucket;
+				++it_bucket;
+				rates_per_bucket.erase(it_curr);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		const int64 ctime = Server->getTimeMS();
+		for (std::map<std::string, int64>::iterator it = banned_ips.begin();
+			it != banned_ips.end(); )
+		{
+			if (ctime - it->second > ban_timeout)
+			{
+				std::map<std::string, int64>::iterator it_curr = it;
+				++it;
+				banned_ips.erase(it_curr);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
 }
 
 bool Helper::ldapLogin( const std::string &username, const std::string &password,

@@ -1298,6 +1298,7 @@ translations.en = {
 "password_differ": "The two passwords differ",
 "user_n_exist": "User does not exist",
 "password_wrong": "Wrong password",
+"too_many_login_attempts": "Too many failed login attempts in a short amount of time. Please retry after a few minutes.",
 "user_exists": "User with this name already exists",
 "session_timeout": "Inactivity caused this session to become invalid. Please login again to proceed.",
 "really_del_user": "Really remove this user?",

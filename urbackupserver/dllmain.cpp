@@ -657,6 +657,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	DataplanDb::init();
 	init_log_report();
 	ServerChannelThread::init_mutex();
+	Helper::init_mutex();
 
 	open_settings_database();
 	

@@ -37,6 +37,17 @@ ACTION_IMPL(salt)
 		helper.update(tid, &POST, &PARAMS);
 	}
 
+	const std::string remote_addr = helper.remoteAddr();
+
+	Helper::IpLogin ip_login(remote_addr);
+
+	if (helper.rateLimited(remote_addr))
+	{
+		ret.set("error", JSON::Value(3));
+		helper.Write(ret.stringify(false));
+		return;
+	}
+
 	SUser *session=helper.getSession();
 	if(session!=NULL)
 	{
@@ -55,6 +66,7 @@ ACTION_IMPL(salt)
 		if(res.empty())
 		{
 			logFailedLogin(helper, PARAMS, username, LoginMethod_Webinterface);
+			helper.addToRateLimit(remote_addr);
 			ret.set("error", JSON::Value(0));
 		}
 		else
