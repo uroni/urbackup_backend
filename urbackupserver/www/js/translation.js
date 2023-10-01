@@ -598,7 +598,49 @@ translations.cs_CZ = {
 "tReport script": "Hlásící skript",
 "tAlerts": "Výstrahy",
 "tEdit scripts": "Upravit skripty",
-"tInternet restore authentication key": "Ověřovací klíč pro obnovení z Internetu"
+"tInternet restore authentication key": "Ověřovací klíč pro obnovení z Internetu",
+"validate_text_notregexp": "Nesprávný formát pro {name}. Prosím opravte.",
+"uid_changed_err": "Identifikátor klienta se změnil",
+"authenticating": "Server pro ověřování",
+"exchanging_settings": "Nastavení výměny",
+"client_starting_up": "Spouštím klienta",
+"confirm_allow_new_client": "Jste si jisti, že chcete uložit nového klienta se stejným názvem?",
+"interval_milliseconds": "milisekund",
+"interval_seconds": "sekund",
+"interval_minutes": "minuty",
+"interval_hours": "hodiny",
+"interval_days": "dny",
+"interval_months": "měsíce",
+"interval_years": "roky",
+"tFor security reasons check/add following line in the file server_idents.txt on your client:": "Z bezpečnostních důvodů zkontrolujte/doplňte následující řádek v souboru server_idents.txt na straně klienta:",
+"tAdd new Internet/active client": "Přidat nového internetového/aktivního klienta",
+"tName of new Internet/active client": "Název nového internetového/aktivního klienta",
+"tDiscover new local/passive client accross networks": "Objevit nové místní/pasivní klienty skrze sítě",
+"tChoice (separated by ": "Volba (oddělená",
+"tTime interval (h, min, s)": "Časový interval (h, min, s)",
+"tRestore Linux image": "Obnovit linuxový obraz",
+"tSet the URL to connect to:": "Nastavte URL pro připojení:",
+"tSet the name to:": "Nastavte název:",
+"tTo restore your Linux disk please enter following in a terminal:": "Pro obnovení linuxováho obrazu prosím zadejte v terminálu následující:",
+"tLocal/passive clients": "Místní/pasivní klienti",
+"tInternet/Active clients": "Internetoví/aktivní klienti",
+"tServer URL for client file/backup access/browsing": "URL serveru pro procházení/přístup k souborům/zálohám z klienta",
+"tDirectories to backup are optional by default:": "Zálohované adresáře jsou ve výchozím nastavení volitelné",
+"tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)": "Komprimovaný VHDX (komprimovaný nestandartní Virtual HardDisk v2) (beta)",
+"tVHDX (Virtual HardDisk v2) (beta)": "VHDX (Virtual HardDisk v2) (beta)",
+"tMax backup speed for local/passive transfers": "Maximální rychlost zálohy pro místní/pasivní přenosy",
+"tEncrypt local/passive transfers": "Zašifrovat místní/pasivní přenosy",
+"tCompress local/passive transfers": "Komprimovat místní/pasivní přenosy",
+"tEncrypted Internet/active transfer": "Šifrovaný Internetový/aktivní přenos",
+"tCompressed Internet/active transfer": "Komprimovaný Internetový/aktivní přenos",
+"tRequire tray icon users to enter following text before being able to change settings": "Požadovat, aby uživatelé po kliknutí na tray ikonu zadali následující text před prováděním změn",
+"tNumber of parallel file download threads per file backup": "Počet paralelních vláken stahování souboru pro souborové zálohy",
+"tNumber of parallel server file hash threads per file backup": "Počet paralelních otisků souborů (hash) serveru pro souborové zálohy",
+"tNumber of parallel client file hash threads per file backup": "Počet paralelních otisků souborů (hash) klienta pro souborové zálohy",
+"tNumber of threads to use for VHDZ compression (0: auto)": "Počet vláken k použití pro VDHZ kompresi (0: auto)",
+"tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Použít SSL šifrované SMTP (SMTPS) namísto SMTP s STARTTLS",
+"tLocal/passive client": "Lokální/pasivní klient",
+"tInternet/Active client": "Internetový/aktivní klient"
 }
 translations.da_DK = {
 "nav_item_3": "Logfiler",
@@ -623,7 +665,10 @@ translations.da_DK = {
 "nav_item_6": "Status",
 "yes": "Ja",
 "no": "Nej",
-"tStatus": "Status"
+"tStatus": "Status",
+"interval_minutes": "minutter",
+"interval_hours": "timer",
+"interval_days": "dage"
 }
 translations.de = {
 "nav_item_3": "Protokolle",
@@ -1224,7 +1269,45 @@ translations.de = {
 "tReport script": "Berichtsskript",
 "tAlerts": "Alarme",
 "tEdit scripts": "Skripte bearbeiten",
-"tInternet restore authentication key": "Wiederherstellungsberechtigungschlüssel Internet"
+"tInternet restore authentication key": "Wiederherstellungsberechtigungschlüssel Internet",
+"authenticating": "Authentifizierender Server",
+"interval_milliseconds": "Millisekunden",
+"interval_seconds": "Sekunden",
+"interval_minutes": "Minuten",
+"interval_hours": "Stunden",
+"interval_days": "Tage",
+"interval_months": "Monate",
+"interval_years": "Jahre",
+"tAdd new Internet/active client": "Neuen Internet/aktiven Client hinzufügen",
+"tName of new Internet/active client": "Name des neuen Internet/aktiven Clients",
+"tDiscover new local/passive client accross networks": "Neue lokale/passive Clients in verschiedenen Netzen erkennen",
+"tTime interval (h, min, s)": "Zeitintervall (h, min, s)",
+"tRestore Linux image": "Linux-Abbild wiederherstellen",
+"tSet the name to:": "Name festlegen auf:",
+"tTo restore your Linux disk please enter following in a terminal:": "Geben Sie zum Wiederherstellen Ihrer Linux-Festplatte bitte Folgendes in ein Terminal ein:",
+"tArchival setting from group": "Archivierungseinstellung von der Gruppe",
+"tArchival setting from here": "Archivierungseinstellung von hier",
+"tLocal/passive clients": "Lokale/passive Clients",
+"tInternet/Active clients": "Internet/aktive Clients",
+"tDirectories to backup are optional by default:": "Die zu sichernden Verzeichnisse sind standardmäßig optional:",
+"tMax backup speed for local/passive transfers": "Maximale Sicherungsgeschwindigkeit für lokale/passive Übertragungen",
+"tEncrypt local/passive transfers": "Lokale/passive Übertragungen verschlüsseln",
+"tCompress local/passive transfers": "Lokale/passive Übertragungen komprimieren",
+"tAuth key": "Authentifizierungsschlüssel",
+"tEncrypted Internet/active transfer": "Verschlüsselte Internet/aktive Übertragung",
+"tCompressed Internet/active transfer": "Komprimierte Internet/aktive Übertragung",
+"tLocal/passive incremental file backup transfer mode": "Übertragungsmodus für lokale/passive inkrementelle Dateisicherung",
+"tInternet/active incremental file backup transfer mode": "Übertragungsmodus für Internet/aktive inkrementelle Dateisicherung",
+"tLocal/passive image backup transfer mode": "Übertragungsmodus für lokale/passive Abbildsicherung",
+"tInternet/active image backup transfer mode": "Übertragungsmodus für Internet/aktive Abbildsicherung",
+"tNumber of parallel file download threads per file backup": "Anzahl der parallelen Threads zum Herunterladen von Dateien pro Dateisicherung",
+"tNumber of parallel server file hash threads per file backup": "Anzahl der parallelen Datei-Hash-Threads des Servers pro Dateisicherung",
+"tNumber of parallel client file hash threads per file backup": "Anzahl der parallelen Datei-Hash-Threads des Clients pro Dateisicherung",
+"tNumber of threads to use for VHDZ compression (0: auto)": "Anzahl der für die VHDZ-Komprimierung zu verwendenden Threads (0: automatisch)",
+"tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Mit SSL verschlüsseltes SMTP (SMTPS) anstelle von SMTP mit STARTTLS verwenden",
+"tLocal/passive client": "Lokaler/passiver Client",
+"tInternet/Active client": "Internet/aktiver Client",
+"tAllow new client": "Neuen Client erlauben"
 }
 translations.el = {
 "nav_item_3": "Αρχεία καταγραφής",
@@ -1235,7 +1318,9 @@ translations.el = {
 "hours": "ώρες",
 "days": "ημέρες",
 "nav_item_6": "Κατάσταση",
-"tStatus": "Κατάσταση"
+"tStatus": "Κατάσταση",
+"interval_hours": "ώρες",
+"interval_days": "ημέρες"
 }
 translations.en = {
 "nav_item_3": "Logs",
@@ -2478,7 +2563,12 @@ translations.es = {
 "tPaused": "Pausado",
 "tAlerts": "Alertas",
 "tEdit scripts": "Editar tareas",
-"tInternet restore authentication key": "Clave de autenticación de restauración por internet"
+"tInternet restore authentication key": "Clave de autenticación de restauración por internet",
+"interval_minutes": "minutos",
+"interval_hours": "horas",
+"interval_days": "días",
+"interval_months": "meses",
+"interval_years": "Años"
 }
 translations.et = {
 "nav_item_3": "Logid",
@@ -2641,7 +2731,10 @@ translations.et = {
 "Save": "Salvesta",
 "tAllow clients to quit the tray icon": "Luba kliendil sulgeda tegumiriba ikoon",
 "Show/hide columns": "Näita/Peida veerge",
-"tAbout UrBackup": "UrBackup tarkvarast"
+"tAbout UrBackup": "UrBackup tarkvarast",
+"interval_minutes": "Minutit",
+"interval_hours": "tundi",
+"interval_days": "päeva"
 }
 translations.fa = {
 "nav_item_3": "لاگ ها",
@@ -2938,7 +3031,12 @@ translations.fa = {
 "nospc_fatal_text": "فضای لازم برای پشتیبان گیری وجود ندارد.برنامه فایل ها و تصاویر پشتیبان قدیمی را حذف میکند. ولی همچنان فضا کم است. لطفا در بخش تنظیمات فضای بیشتری به پشتیبان گیری اختصاص دهید.",
 "tNondefault temporary file directory": "دایرکتوری پیش فرضی برای فایل های موقت وجود ندارد",
 "loading": "بارگیری",
-"tAbout UrBackup": "درباره برنامه"
+"tAbout UrBackup": "درباره برنامه",
+"interval_minutes": "دقایق",
+"interval_hours": "ساعات",
+"interval_days": "روزها",
+"interval_months": "ماه ها",
+"interval_years": "سال ها"
 }
 translations.fi = {
 "nav_item_3": "Lokit",
@@ -3440,7 +3538,12 @@ translations.fi = {
 "tPreparing restore. Please be patient...": "Valmistellaan palautusta...",
 "tDo not fail backups in case of hash mismatches or read errors": "Älä hylkää varmuuskopioita, joissa esiintyy hajautusarvo- tai lukuvirheitä",
 "action_14": "Järjestelytoiminto",
-"action_15": "Hätäjärjestelytoiminto"
+"action_15": "Hätäjärjestelytoiminto",
+"interval_minutes": "minuuttia",
+"interval_hours": "tuntia",
+"interval_days": "päivää",
+"interval_months": "kuukautta",
+"interval_years": "vuotta"
 }
 translations.fr = {
 "nav_item_3": "Journaux",
@@ -4041,7 +4144,78 @@ translations.fr = {
 "tReport script": "Script de rapport",
 "tAlerts": "Alertes",
 "tEdit scripts": "Editer les scripts",
-"tInternet restore authentication key": "Restaurer la clé d'authentification internet"
+"tInternet restore authentication key": "Restaurer la clé d'authentification internet",
+"validate_text_notregexp": "Le format de [name] n'est pas bon. Merci de corriger",
+"uid_changed_err": "Identifiant client changé",
+"authenticating": "Authentification du serveur",
+"exchanging_settings": "Échange des paramètres",
+"client_starting_up": "Démarrage du logiciel client",
+"confirm_allow_new_client": "Êtes-vous sur de vouloir utiliser un client avec le même nom ?",
+"interval_milliseconds": "millisecondes",
+"interval_seconds": "secondes",
+"interval_minutes": "minutes",
+"interval_hours": "heures",
+"interval_days": "jours",
+"interval_months": "mois",
+"interval_years": "Années",
+"tFor security reasons check/add following line in the file server_idents.txt on your client:": "Pour valider le contrôle de sécurité, ajoutez cette ligne dans le fichier server_idents.txt de l'application cliente :",
+"tAdd new Internet/active client": "Ajouter un nouveau client internet",
+"tName of new Internet/active client": "Nom du nouveau client internet",
+"tDiscover new local/passive client accross networks": "Découvrir les nouveaux clients passifs sur le réseau local",
+"tChoice (separated by ": "Choix (séparé par",
+"tTime interval (h, min, s)": "Intervalle de temps (h, min, s)",
+"tRestore Linux image": "Restaurer une image système Linux",
+"tSet the URL to connect to:": "Configurer l'URL pour se connecter :",
+"tSet the name to:": "Mettre le nom à :",
+"templates_js": "emplate_js",
+"tTo restore your Linux disk please enter following in a terminal:": "Pour restaurer votre disque Linux, merci de taper dans le terminal ceci :",
+"tArchival setting from group": "Paramètres d'archivage du groupe",
+"tArchival setting from here": "Paramètre d'archivage depuis celui-ci",
+"tLocal/passive clients": "Local/passive clients",
+"tInternet/Active clients": "Internet/active clients",
+"tServer URL for client file/backup access/browsing": "URL du serveur pour l'accès aux différentes sauvegardes",
+"tDirectories to backup are optional by default:": "Dossier à sauvegarder optionnellement par défaut :",
+"tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)": "VHDX (Virtual Hard Disk V2) compressé (béta)",
+"tVHDX (Virtual HardDisk v2) (beta)": "VHDX (Virtual Hard Disk V2) non-compressé (béta)",
+"tAdditional virtual sub client names": "Noms des sous-clients virtuels additionnels",
+"tMax backup speed for local/passive transfers": "Débit maximum des sauvegarde pour les transferts locaux/passif",
+"tEncrypt local/passive transfers": "Chiffrer les transferts locaux/passifs",
+"tCompress local/passive transfers": "Compresser les transferts locaux/passifs",
+"tClients try to connect via Internet/active client": "Les clients tenteront de se connecter via Internet/active",
+"tServer URL clients connect to": "URL du serveur auquel se connecter",
+"tConnect via HTTP(S) proxy (leave empty to connect without)": "Se connecter via un proxy HTTP(S) (laisser vide pour ne pas utiliser de proxy)",
+"tTry to to connect via Internet/active client": "Essayer de se connecter au serveur via Internet",
+"tAuth key": "Clé d'authentification",
+"tDo image backups as Internet/active client": "Faire une sauvegarde système par Internet",
+"tDo full file backups as Internet/active client": "Faire une sauvegarde complète par Internet",
+"tMax backup speed as Internet/active client": "Débit maximum pour les sauvegardes par Internet/active",
+"tTotal max backup speed for Internet/active connection": "Débit maximum pour les sauvegardes par Internet/active",
+"tEncrypted Internet/active transfer": "Chiffrer les transferts via Internet/active",
+"tCompressed Internet/active transfer": "Compresser les transferts locaux/passifs",
+"tCalculate file-hashes on the client as Internet/active client": "Faire calculer l'empreinte des fichiers par le client pour les connexion Internet/active",
+"tConnect as Internet/active client if connected to as local/passive client": "Connecter le client via Internet en cas de connexion local/passive",
+"tInternet/active restore authentication key": "Restauration de la clé d'authentification pour la connexion Internet/active ",
+"tNon-default UrBackup Internet protocol TCP port": "Port TCP personnalisé pour la connexion Internet à UrBackup",
+"tLocal/passive full file backup transfer mode": "Mode de transfert des sauvegardes complètes via le réseau local",
+"tInternet/active full file backup transfer mode": "Mode de transfert des sauvegardes complètes via Internet",
+"tLocal/passive incremental file backup transfer mode": "Mode de transfert des sauvegardes incrémentielles via le réseau local",
+"tInternet/active incremental file backup transfer mode": "Mode de transfert des sauvegardes incrémentielles via Internet",
+"tLocal/passive image backup transfer mode": "Mode de transfert des sauvegardes systèmes via le réseau local",
+"tInternet/active image backup transfer mode": "Mode de transfert des sauvegardes systèmes via Internet",
+"tLocal/passive incremental image style": "Style d'image pour les sauvegardes incrémentielles via le réseau local",
+"tInternet/active incremental image style": "Style d'image pour les sauvegardes incrémentielles via Internet",
+"tLocal/passive full image style": "Style d'image pour les sauvegardes systèmes via le réseau local",
+"tInternet/active full image style": "Style d'image pour les sauvegardes systèmes via Internet",
+"tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)": "Liste de IP de proxy qui requiert de récupérer les informations de l'équipement transférés lors d'une connexion Internet (nécessite un redémarrage du serveur)",
+"tRequire tray icon users to enter following text before being able to change settings": "Requiert de taper le texte suivant avant de pouvoir modifier les paramètres via l’icône de la barre système.",
+"tNumber of parallel file download threads per file backup": "Nombre de connexions parallèles pour la sauvegarde d'un même fichier",
+"tNumber of parallel server file hash threads per file backup": "Nombre de taches parallèles pour le calcul d'empreinte par le serveur pour chaque fichier sauvegardé",
+"tNumber of parallel client file hash threads per file backup": "Nombre de taches parallèles pour le calcul d'empreinte sur le serveur pour la sauvegarde d'un même fichier",
+"tNumber of threads to use for VHDZ compression (0: auto)": "Nombre de tâches à utiliser pour la compression VHDZ (0 = auto)",
+"tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Utiliser le SMTPS (SMTP avec chiffrement SSL) au lieu du SMTP (avec STARTTLS)",
+"tLocal/passive client": "Réseau local / client passif",
+"tInternet/Active client": "Internet / client actif",
+"tAllow new client": "Autoriser le nouveau client"
 }
 translations.fr_FR = {
 "nav_item_3": "Journaux",
@@ -4642,7 +4816,12 @@ translations.fr_FR = {
 "tReport script": "Script de rapport",
 "tAlerts": "Alertes",
 "tEdit scripts": "Editer les scripts",
-"tInternet restore authentication key": "Restaurer la clé d'authentification internet"
+"tInternet restore authentication key": "Restaurer la clé d'authentification internet",
+"interval_minutes": "minutes",
+"interval_hours": "Heures",
+"interval_days": "Jours",
+"interval_months": "mois",
+"interval_years": "Années"
 }
 translations.he = {
 "nav_item_3": "לוגים",
@@ -4663,7 +4842,9 @@ translations.he = {
 "tClient": "לקוח",
 "tInternet": "אינטרנט",
 "hours": "שעות",
-"days": "ימים"
+"days": "ימים",
+"interval_hours": "שעות",
+"interval_days": "ימים"
 }
 translations.hr = {
 "nav_item_3": "Logovi",
@@ -4687,7 +4868,9 @@ translations.hr = {
 "nav_item_6": "Status",
 "tStatus": "Status",
 "tCancel": "Poništavanje",
-"tName:": "Naziv:"
+"tName:": "Naziv:",
+"interval_hours": "sati",
+"interval_days": "dani"
 }
 translations.hu_HU = {
 "nav_item_3": "Naplófájlok",
@@ -4970,7 +5153,12 @@ translations.hu_HU = {
 "Mbit/s": "Mbit/s",
 "Gbit/s": "Gbit/s",
 "Tbit/s": "Tbit/s",
-"tName:": "Név:"
+"tName:": "Név:",
+"interval_minutes": "perc",
+"interval_hours": "óra",
+"interval_days": "nap",
+"interval_months": "hónap",
+"interval_years": "év"
 }
 translations.it_IT = {
 "nav_item_3": "Logs",
@@ -5571,7 +5759,12 @@ translations.it_IT = {
 "tReport script": "Script di report",
 "tAlerts": "Avvisi",
 "tEdit scripts": "Modifica script",
-"tInternet restore authentication key": "Chiave di autenticazione ripristino Internet"
+"tInternet restore authentication key": "Chiave di autenticazione ripristino Internet",
+"interval_minutes": "minuti",
+"interval_hours": "ore",
+"interval_days": "giorni",
+"interval_months": "mesi",
+"interval_years": "Anno"
 }
 translations.ja = {
 "nav_item_3": "ログ",
@@ -5864,7 +6057,12 @@ translations.ja = {
 "tAbout UrBackup": "UrBackup について",
 "tCancel": "キャンセル",
 "admin_create": "管理者",
-"tName:": "名前:"
+"tName:": "名前:",
+"interval_minutes": "分",
+"interval_hours": "時間",
+"interval_days": "日",
+"interval_months": "ヶ月",
+"interval_years": "年"
 }
 translations.lt = {
 "nav_item_3": "Įvykių žurnalas",
@@ -5887,7 +6085,9 @@ translations.lt = {
 "hours": "val.",
 "days": "dienų",
 "nav_item_6": "Statusas",
-"tStatus": "Statusas"
+"tStatus": "Statusas",
+"interval_hours": "val.",
+"interval_days": "dienų"
 }
 translations.lv = {
 "nav_item_3": "Žurnālfaili",
@@ -6136,7 +6336,12 @@ translations.lv = {
 "tName:": "Nosaukums:",
 "tLabel:": "Etiķete:",
 "tDefault value:": "Noklusētā vērtība:",
-"tType:": "Veids:"
+"tType:": "Veids:",
+"interval_minutes": "minūtes",
+"interval_hours": "stundas",
+"interval_days": "dienas",
+"interval_months": "mēneši",
+"interval_years": "gadi"
 }
 translations.nl = {
 "nav_item_3": "Logboeken",
@@ -6737,7 +6942,15 @@ translations.nl = {
 "tReport script": "Rapportagescript",
 "tAlerts": "Alarmen",
 "tEdit scripts": "Scripts bewerken",
-"tInternet restore authentication key": "Authenticatiesleutel van herstel via internet"
+"tInternet restore authentication key": "Authenticatiesleutel van herstel via internet",
+"interval_milliseconds": "milliseconden",
+"interval_seconds": "seconden",
+"interval_minutes": "minuten",
+"interval_hours": "uren",
+"interval_days": "dagen",
+"interval_months": "maanden",
+"interval_years": "jaar",
+"tAllow new client": "Nieuwe client toestaan"
 }
 translations.no_NO = {
 "nav_item_3": "Logger",
@@ -7309,7 +7522,12 @@ translations.no_NO = {
 "tVolumes to snapshot in groups during file backups": "Volumer som skal taes øyeblikksbilde av i grupper under sikkerhetskopiering av filer",
 "tWindows components backup configuration": "Konfigurasjon for sikkerhetskopiering av Windows-komponenter",
 "tGroup name": "Gruppenavn",
-"tWith Selected": "Med Valgte"
+"tWith Selected": "Med Valgte",
+"interval_minutes": "minutter",
+"interval_hours": "timer",
+"interval_days": "dager",
+"interval_months": "måneder",
+"interval_years": "år"
 }
 translations.pl = {
 "nav_item_3": "Dziennik",
@@ -7910,7 +8128,78 @@ translations.pl = {
 "tReport script": "Skrypt raportu",
 "tAlerts": "Alerty",
 "tEdit scripts": "Edytuj sktypty",
-"tInternet restore authentication key": "Klucz uwierzytelniania przywracania przez Internet"
+"tInternet restore authentication key": "Klucz uwierzytelniania przywracania przez Internet",
+"validate_text_notregexp": "Błędny format dla {name}. Proszę poprawić.",
+"uid_changed_err": "Zmiana identyfikatora klienta",
+"authenticating": "Serwer uwierzytelniający",
+"exchanging_settings": "Wymiana ustawień",
+"client_starting_up": "Uruchamienie klienta",
+"confirm_allow_new_client": "Czy jesteś pewien, że chcesz użyć ponownie tej samej nazwy dla nowego klienta?",
+"interval_milliseconds": "milisekund",
+"interval_seconds": "sekund",
+"interval_minutes": "min",
+"interval_hours": "godzin",
+"interval_days": "dni",
+"interval_months": "miesiące",
+"interval_years": "lata",
+"tFor security reasons check/add following line in the file server_idents.txt on your client:": "Dla bezpieczeństwa sprawdź/dodaj następującą linię w pliku server_idents.txt na twoim kliencie:",
+"tAdd new Internet/active client": "Dodaj nowego klienta internetowego/aktywnego",
+"tName of new Internet/active client": "Nazwa nowego klienta internetowego/aktywnego",
+"tDiscover new local/passive client accross networks": "Odkryj nowego lokalnego/pasywnego klienta w sieci",
+"tChoice (separated by ": "Wybór (oddzielony przez",
+"tTime interval (h, min, s)": "Przedział czasu (godz, min, sek)",
+"tRestore Linux image": "Przywrócenie obrazu systemu Linux",
+"tSet the URL to connect to:": "Ustaw adres URL, z którym chcesz się połączyć:",
+"tSet the name to:": "Ustawić nazwę na:",
+"templates_js": "emplates_js",
+"tTo restore your Linux disk please enter following in a terminal:": "Aby przywrócić twój dysk z Linuksem wpisz następujące polecenie w terminalu:",
+"tArchival setting from group": "Ustawienia archiwizacji z grupy",
+"tArchival setting from here": "Ustawienia archiwizacji stąd",
+"tLocal/passive clients": "Klienci lokalni/pasywni",
+"tInternet/Active clients": "Klienci internetowi/aktywni",
+"tServer URL for client file/backup access/browsing": "Adres URL serwera dla dostępu do plików/przeglądania kopii zapasowych klienta",
+"tDirectories to backup are optional by default:": "Katalogi do backupu są domyślnie opcjonalne:",
+"tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)": "Skompresowany VHDX (Skompresowany niestandardowy Virtual HardDisk v2) (beta)",
+"tVHDX (Virtual HardDisk v2) (beta)": "VHDX (Virtual HardDisk v2) (beta)",
+"tAdditional virtual sub client names": "Wirtualne nazwy klienta podrzędnego",
+"tMax backup speed for local/passive transfers": "Maks. prędkość kopii zapasowej dla transferów lokalnych/pasywnych",
+"tEncrypt local/passive transfers": "Szyfruj lokalne/pasywne transfery",
+"tCompress local/passive transfers": "Kompresja transferów lokalnych/pasywnych",
+"tClients try to connect via Internet/active client": "Klienci próbujący połączyć się internetowo/aktywnie",
+"tServer URL clients connect to": "Adres URL serwera, z którym łączą się klienci",
+"tConnect via HTTP(S) proxy (leave empty to connect without)": "Połącz przez proxy HTTP(S) (pozostaw puste, aby połączyć się bez)",
+"tTry to to connect via Internet/active client": "Spróbuj połączyć się przez Internet/aktywnego klienta",
+"tAuth key": "Klucz autoryzacji",
+"tDo image backups as Internet/active client": "Wykonuj kopie zapasowe obrazów jako klient internetowy/aktywny",
+"tDo full file backups as Internet/active client": "Wykonuj pełne kopie zapasowe plików jako klient internetowy/aktywny",
+"tMax backup speed as Internet/active client": "Maksymalna prędkość tworzenia kopii zapasowych jako klient internetowy/aktywny",
+"tTotal max backup speed for Internet/active connection": "Całkowita maksymalna prędkość tworzenia kopii zapasowych dla połączenia internetowego/aktywnego",
+"tEncrypted Internet/active transfer": "Szyfrowany transfer internetowy/aktywny",
+"tCompressed Internet/active transfer": "Skompresowany transfer internetowy/aktywny",
+"tCalculate file-hashes on the client as Internet/active client": "Oblicz skróty plików na kliencie internetowym/aktywnym",
+"tConnect as Internet/active client if connected to as local/passive client": "Połącz jako klient internetowy/aktywny, jeśli jest połączony jako klient lokalny/pasywny",
+"tInternet/active restore authentication key": "Klucz uwierzytelniający dla przywracania internetowego/aktywnego",
+"tNon-default UrBackup Internet protocol TCP port": "Niestandardowy port TCP UrBackup dla protokołu internetowego",
+"tLocal/passive full file backup transfer mode": "Tryb lokalnego/pasywnego przesyłania pełnych kopii zapasowych plików",
+"tInternet/active full file backup transfer mode": "Tryb internetowego/aktywnego przesyłania pełnych kopii zapasowych plików",
+"tLocal/passive incremental file backup transfer mode": "Tryb lokalnego/pasywnego przesyłania przyrostowych kopii zapasowych plików",
+"tInternet/active incremental file backup transfer mode": "Tryb internetowego/aktywnego przesyłania przyrostowych kopii zapasowych plików",
+"tLocal/passive image backup transfer mode": "Tryb lokalnego/pasywnego przesyłania kopii obrazów",
+"tInternet/active image backup transfer mode": "Tryb internetowego/aktywnego przesyłania kopii obrazów",
+"tLocal/passive incremental image style": "Tryb lokalnego/pasywnego przesyłania przyrostowych kopii obrazów",
+"tInternet/active incremental image style": "Tryb internetowego/aktywnego przesyłania przyrostowych kopii obrazów",
+"tLocal/passive full image style": "Tryb lokalnego/pasywnego przesyłania pełnych kopii obrazów",
+"tInternet/active full image style": "Tryb internetowego/aktywnego przesyłania pełnych kopii obrazów",
+"tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)": "Lista IP serwerów (proxy), od których należy oczekiwać informacji o punkcie końcowym (forwarded for) przy połączeniu z usługą internetową/aktywną (wymaga restartu serwera)",
+"tRequire tray icon users to enter following text before being able to change settings": "Wymagaj wprowadzenia następującego tekstu przed możliwością zmiany ustawień poprzez ikonę w zasobniku.",
+"tNumber of parallel file download threads per file backup": "Liczba równoległych wątków pobierania plików na kopię zapasową plików",
+"tNumber of parallel server file hash threads per file backup": "Liczba równoległych wątków serwera do haszowania plików na kopię zapasową plików",
+"tNumber of parallel client file hash threads per file backup": "Liczba równoległych wątków klienta do haszowania plików na kopię zapasową plików",
+"tNumber of threads to use for VHDZ compression (0: auto)": "Liczba wątków do wykorzystania przy kompresji VHDZ (0: auto)",
+"tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Użyj SMTP szyfrowanego SSL (SMTPS) zamiast SMTP z STARTTLS",
+"tLocal/passive client": "Klient lokalny/pasywny",
+"tInternet/Active client": "Klient internetowy/aktywny",
+"tAllow new client": "Zezwól na nowego klienta"
 }
 translations.pt = {
 "nav_item_3": "Logs",
@@ -8324,7 +8613,12 @@ translations.pt = {
 "tMin": "Min",
 "tRemove client": "Remover cliente",
 "tAdd new client": "Adicionar novo cliente",
-"tBackup Statistics": "Estatistica de backups"
+"tBackup Statistics": "Estatistica de backups",
+"interval_minutes": "minutos",
+"interval_hours": "horas",
+"interval_days": "dias",
+"interval_months": "meses",
+"interval_years": "anos"
 }
 translations.pt_BR = {
 "nav_item_3": "Logs",
@@ -8925,7 +9219,12 @@ translations.pt_BR = {
 "tReport script": "Reportar script",
 "tAlerts": "Alertas",
 "tEdit scripts": "Editar scripts",
-"tInternet restore authentication key": "Chave de autenticação de restauração pela Internet"
+"tInternet restore authentication key": "Chave de autenticação de restauração pela Internet",
+"interval_minutes": "minutos",
+"interval_hours": "horas",
+"interval_days": "dias",
+"interval_months": "meses",
+"interval_years": "Anos"
 }
 translations.ro = {
 "nav_item_3": "Jurnal",
@@ -9526,7 +9825,12 @@ translations.ro = {
 "tReport script": "Scriptul de rapoarte",
 "tAlerts": "Alerte",
 "tEdit scripts": "Editare scripturi",
-"tInternet restore authentication key": "Restabilește cheia de autentificare prin Internet"
+"tInternet restore authentication key": "Restabilește cheia de autentificare prin Internet",
+"interval_minutes": "minute",
+"interval_hours": "ore",
+"interval_days": "zile",
+"interval_months": "luni",
+"interval_years": "ani"
 }
 translations.ru = {
 "nav_item_3": "Логи",
@@ -10127,7 +10431,12 @@ translations.ru = {
 "tReport script": "Отчётный скрипт",
 "tAlerts": "Алерты",
 "tEdit scripts": "Редактировать скрипты",
-"tInternet restore authentication key": "Восстановление ключа аутентификации через Интернет"
+"tInternet restore authentication key": "Восстановление ключа аутентификации через Интернет",
+"interval_minutes": "минут",
+"interval_hours": "часов",
+"interval_days": "дней",
+"interval_months": "Месяцев",
+"interval_years": "Годов"
 }
 translations.sk = {
 "nav_item_3": "Záznamy",
@@ -10420,7 +10729,12 @@ translations.sk = {
 "(filtered from _MAX_ total entries)": "(filtrované z celkom _MAX_ záznamov)",
 "tAbout UrBackup": "O UrBackup",
 "tCancel": "Zrušiť",
-"tDetails": "Detaily"
+"tDetails": "Detaily",
+"interval_minutes": "minút",
+"interval_hours": "hodín",
+"interval_days": "dní",
+"interval_months": "mesiacov",
+"interval_years": "rokov"
 }
 translations.sl_SI = {
 "nav_item_3": "tLogi",
@@ -10466,7 +10780,9 @@ translations.sl_SI = {
 "filter": "filter",
 "computername": "TIme Računalnika",
 "storage_usage_pie_graph_colname1": "TIme Računalnika",
-"tFilter": "filter"
+"tFilter": "filter",
+"interval_hours": "ur",
+"interval_days": "dni"
 }
 translations.sr_RS = {
 "nav_item_3": "Дневници",
@@ -10478,7 +10794,9 @@ translations.sr_RS = {
 "hours": "сати",
 "days": "дани",
 "nav_item_6": "Статус",
-"tStatus": "Статус"
+"tStatus": "Статус",
+"interval_hours": "сати",
+"interval_days": "дани"
 }
 translations.sv = {
 "nav_item_3": "Loggar",
@@ -11073,7 +11391,12 @@ translations.sv = {
 "tPaused": "Pausad",
 "tReport script": "Rapportskript",
 "tAlerts": "Varningar",
-"tEdit scripts": "Redigera skript"
+"tEdit scripts": "Redigera skript",
+"interval_minutes": "minuter",
+"interval_hours": "timmar",
+"interval_days": "dagar",
+"interval_months": "månader",
+"interval_years": "år"
 }
 translations.tr = {
 "nav_item_3": "Günlükler",
@@ -11297,7 +11620,7 @@ translations.tr = {
 "tAllow client-side pausing of backups": "İstemci tarafında yedeklemeler duraklatılabilsin",
 "tAllow client-side changing of settings": "İstemci tarafında ayarlar değiştirilebilsin",
 "tMail server name": "Posta sunucusunun adı",
-"tMail server port": "Posta sunucusunun kapı numarası",
+"tMail server port": "E-posta sunucusunun bağlantı noktası",
 "tMail server username (empty for none)": "Posta sunucusu kullanıcı adı (yoksa boş bırakın)",
 "tMail server password": "Posta sunucusu parolası",
 "tSender E-Mail Address": "Gönderen E-Posta Adresi",
@@ -11332,7 +11655,7 @@ translations.tr = {
 "tBackup type": "Yedekleme türü",
 "tEnable internet mode (requires server restart)": "İnternet kipi kullanılsın (sunucunun yeniden başlatılması gerekir)",
 "tInternet server name/IP": "Internet sunucusunun adı/IP",
-"tInternet server port": "İnternet sunucusunun kapı numarası",
+"tInternet server port": "İnternet sunucusunun bağlantı noktası",
 "tDo image backups over internet": "İnternet üzerinden kalıp yedekleme yapılabilsin",
 "tDo full file backups over internet": "Internet üzerinden tam dosya yedeklemesi yapılabilsin",
 "tMax backup speed for internet connection": "İnternet bağlantısı için en yüksek yedekleme hızı",
@@ -11507,7 +11830,7 @@ translations.tr = {
 "tGo to the settings screen on the client": "İstemcinin ayarlar bölümüne gidin",
 "tEnable the internet mode on the client": "İstemci üzerinde İnternet kipini etkinleştir",
 "tSet the internet server to:": "İnternet sunucusunu şu şekilde ayarla:",
-"tSet the internet server port to:": "İnternet sunucu kapısını şu şekilde ayarla:",
+"tSet the internet server port to:": "İnternet sunucu bağlantı noktasını şuna ayarla:",
 "tSet the computer name to:": "Bilgisayar adını şu şekilde ayarla:",
 "tSet the authentication key to:": "Kimlik doğrulama anahtarını şu şekilde ayarla:",
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient": "Güvenlik duvarı ya da NAT yokken: İstemciyi İnternet üzerinden kullanmayı düşünüyorsanız yalnız İnternet kipini etkinleştirin. Linux üzerinde /etc/default/urbackupclient ya da  /etc/sysconfig/urbackupclient içindeki INTERNET_ONLY seçeneğinin değerini True olarak değiştirin.",
@@ -11532,13 +11855,13 @@ translations.tr = {
 "tRaw copy-on-write file": "Ham dosya kopyalama",
 "tMin": "En az",
 "tVirtual sub client names": "Sanal alt istemci adları",
-"tLocal incremental image style": "Yerel artımlı kalıp stili",
+"tLocal incremental image style": "Yerel artımlı kalıp biçemi",
 "tBased on last full image backup": "Son tam kalıp yedeklemesine göre",
 "tBased on last image backup": "Son kalıp yedeklemesine göre",
-"tInternet incremental image style": "İnternet artımlı görsel stili",
-"tLocal full image style": "Yerel tam kalıp stili",
+"tInternet incremental image style": "İnternet artımlı kalıp biçemi",
+"tLocal full image style": "Yerel tam kalıp biçemi",
 "tSynthetic full image backup": "Yapay tam kalıp yedekleme",
-"tInternet full image style": "İnternet tam kalıp stili",
+"tInternet full image style": "İnternet tam kalıp biçemi",
 "tDatabase cache size during batch processing": "Toplu işlem sırasında kullanılacak veritabanı ön bellek boyutu",
 "tDebugging: End-to-end verification of all file backups": "Hata ayıklama: Tüm dosya yedeklerini uçtan uca doğrulama",
 "tDebugging: Verify file backups using client side hashes": "Hata ayıklama: Dosya yedeklerini istemci taradı karmaları ile doğrulama",
@@ -11550,7 +11873,7 @@ translations.tr = {
 "tList of volumes for which the change block tracking should be crash persistent": "Blok izleme kullanılacak birimlerin listesi çökmelere dayanıklı olmalıdır",
 "tEnable logins via LDAP/AD": "LDAP/AD oturumu açılabilsin",
 "tLDAP/AD server name": "LDAP/AD sunucusunun adı",
-"tLDAP/AD server port": "LDAP/AD sunucusunun kapı numarası",
+"tLDAP/AD server port": "LDAP/AD sunucusunun bağlantı noktası",
 "tLDAP/AD user name prefix": "LDAP/AD kullanıcı adı öneki",
 "tLDAP/AD user name suffix": "LDAP/AD kullanıcı adı soneki",
 "tLDAP/AD group and class query": "LDAP/AD grup ve sınıf sorgusu",
@@ -11610,7 +11933,7 @@ translations.tr = {
 "tImage backup information": "Kalıp yedeği bilgileri",
 "tId": "Kod",
 "tVolume size": "Birim boyutu",
-"tPartition style": "Bölüm stili",
+"tPartition style": "Bölüm biçemi",
 "tDisk number": "Disk numarası",
 "tPartition number": "Bölüm numarası",
 "tFile system type": "Dosya sistemi türü",
@@ -11674,7 +11997,78 @@ translations.tr = {
 "tReport script": "Rapor betiği",
 "tAlerts": "Uyarılar",
 "tEdit scripts": "Betikleri düzenle",
-"tInternet restore authentication key": "Internet geri yükleme kimlik doğrulama anahtarı"
+"tInternet restore authentication key": "Internet geri yükleme kimlik doğrulama anahtarı",
+"validate_text_notregexp": "{name} biçimi hatalı. Lütfen düzeltin.",
+"uid_changed_err": "İstemci kimliği değişti",
+"authenticating": "Sunucuda kimlik doğrulanıyor",
+"exchanging_settings": "Ayarlar aktarılıyor",
+"client_starting_up": "İstemci başlatılıyor",
+"confirm_allow_new_client": "Yeni istemcinin aynı adı kullanmasını istediğinize emin misiniz?",
+"interval_milliseconds": "milisaniye",
+"interval_seconds": "saniye",
+"interval_minutes": "dakika",
+"interval_hours": "saat",
+"interval_days": "gün",
+"interval_months": "ay",
+"interval_years": "yıl",
+"tFor security reasons check/add following line in the file server_idents.txt on your client:": "Güvenlik nedeniyle, istemcinizdeki server_idents.txt dosyasında şu satırı kontrol edin ya da ekleyin:",
+"tAdd new Internet/active client": "Yeni bir internet/aktif istemci ekle",
+"tName of new Internet/active client": "Yeni internet/aktif istemci adı",
+"tDiscover new local/passive client accross networks": "Ağlar arasında yeni yerel/pasif istemci bul",
+"tChoice (separated by ": "Seçim (şununla ayrılmış",
+"tTime interval (h, min, s)": "Zaman sıklığı (sa, dk, sn)",
+"tRestore Linux image": "Linux kalıbını geri yükle",
+"tSet the URL to connect to:": "Bağlantı kurulacak adresi şuna ayarla:",
+"tSet the name to:": "Adı şuna ayarla:",
+"templates_js": "emplates_js",
+"tTo restore your Linux disk please enter following in a terminal:": "Linux diskinizi geri yüklemek için uç birimden şu komutları yazın:",
+"tArchival setting from group": "Grubun arşivleme ayarı kullanılsın",
+"tArchival setting from here": "Buradaki arşivleme ayarı kullanılsın",
+"tLocal/passive clients": "Yerel/pasif istemciler",
+"tInternet/Active clients": "İnternet/aktif istemciler",
+"tServer URL for client file/backup access/browsing": "İstemci dosya/yedek erişimi/göz atması için kullanılacak sunucu adresi",
+"tDirectories to backup are optional by default:": "Yedeklenecek klasörler varsayılan olarak isteğe bağlıdır:",
+"tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)": "Sıkıştırılmış VHDX (sıkıştırılmış standart olmayan sanal sabit disk v2) (beta)",
+"tVHDX (Virtual HardDisk v2) (beta)": "VHDX (sanal hard disk v2) (beta)",
+"tAdditional virtual sub client names": "Ek sanal alt istemci adları",
+"tMax backup speed for local/passive transfers": "Yerel/pasif aktarımlar için en yüksek yedekleme hızı",
+"tEncrypt local/passive transfers": "Yerel/pasif aktarımlar şifrelensin",
+"tCompress local/passive transfers": "Yerel/pasif aktarımlar sıkıştırılsın",
+"tClients try to connect via Internet/active client": "İstemciler İnternet/aktif istemci üzerinden bağlanmaya çalışsın",
+"tServer URL clients connect to": "İstemcilerin bağlanacağı sunucu adresi",
+"tConnect via HTTP(S) proxy (leave empty to connect without)": "HTTP(S) vekil sunucusu üzerinden bağlantı kurulsun (boş bırakılırsa kullanılmaz)",
+"tTry to to connect via Internet/active client": "İnternet/aktif istemci üzerinden bağlanmaya çalışılsın",
+"tAuth key": "Kimlik doğrulama anahtarı",
+"tDo image backups as Internet/active client": "İnternet/aktif istemcilere kalıp yedekleme yapılsın",
+"tDo full file backups as Internet/active client": "İnternet/aktif istemcilere tam dosya yedekleme yapılsın",
+"tMax backup speed as Internet/active client": "İnternet/aktif istemcilerin en fazla yedekleme hızı",
+"tTotal max backup speed for Internet/active connection": "İnternet/aktif bağlantılar için toplam en fazla yedekleme hızı",
+"tEncrypted Internet/active transfer": "İnternet/aktif aktarımlar şifrelensin",
+"tCompressed Internet/active transfer": "İnternet/aktif aktarımlar sıkıştırılsın",
+"tCalculate file-hashes on the client as Internet/active client": "İnternet/aktif istemcilerin dosya karmaları istemci tarafında hesaplansın",
+"tConnect as Internet/active client if connected to as local/passive client": "Yerel/pasif istemci olarak bağlanılmışsa İnternet/aktif istemci olarak bağlanılsın ",
+"tInternet/active restore authentication key": "İnternet/aktif geri yükleme kimlik doğrulama anahtarı",
+"tNon-default UrBackup Internet protocol TCP port": "Varsayılan olmayan UrBackup İnternet iletişim kuralı TCP bağlantı noktası",
+"tLocal/passive full file backup transfer mode": "Yerel/pasif tam dosya yedekleme aktarım kipi",
+"tInternet/active full file backup transfer mode": "İnternet/aktif tam dosya yedekleme aktarım kipi",
+"tLocal/passive incremental file backup transfer mode": "Yerel/pasif artımlı dosya yedekleme aktarım kipi",
+"tInternet/active incremental file backup transfer mode": "İnternet/aktif artımlı dosya yedekleme aktarım kipi",
+"tLocal/passive image backup transfer mode": "Yerel/pasif kalıp yedekleme aktarım kipi",
+"tInternet/active image backup transfer mode": "İnternet/aktif kalıp yedekleme aktarım kipi",
+"tLocal/passive incremental image style": "Yerel/pasif artımlı kalıp biçemi",
+"tInternet/active incremental image style": "İnternet/aktif artımlı kalıp biçemi",
+"tLocal/passive full image style": "Yerel/pasif tam kalıp biçemi",
+"tInternet/active full image style": "İnternet/aktif tam kalıp biçemi",
+"tList of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)": "İnternete/aktif hizmete bağlanırken uç nokta bilgilerinin bekleneceği (iletilen) sunucu IP adreslerinin (vekil sunucuların) listesi (sunucunun yeniden başlatılması gerekir)",
+"tRequire tray icon users to enter following text before being able to change settings": "Ayarları değiştirebilmek için tepsi simgesine kullanıcılarının aşağıdaki metni yazması zorunlu olur",
+"tNumber of parallel file download threads per file backup": "Bir dosya yedeklemesinde paralel dosya indirme işlemi sayısı",
+"tNumber of parallel server file hash threads per file backup": "Bir dosya yedeklemesinde paralel sunucu dosya karması işlemi sayısı",
+"tNumber of parallel client file hash threads per file backup": "Bir dosya yedeklemesinde paralel istemci dosya karması işlemi sayısı",
+"tNumber of threads to use for VHDZ compression (0: auto)": "VHDZ sıkıştırması için kullanılacak işlem sayısı (0: Otomatik)",
+"tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "STARTTLS ile SMTP yerine SSL ile şifrelenmiş SMTP (SMTPS) kullanılsın ",
+"tLocal/passive client": "Yerel/pasif istemci",
+"tInternet/Active client": "İnternet/aktif istemci",
+"tAllow new client": "Yeni istemciler eklenebilsin"
 }
 translations.uk = {
 "nav_item_3": "Логи",
@@ -12275,7 +12669,12 @@ translations.uk = {
 "tReport script": "Скрипт звіту",
 "tAlerts": "Сповіщення",
 "tEdit scripts": "Змінити скрипти",
-"tInternet restore authentication key": "Ключ аутентифікації відновлення через інтернет"
+"tInternet restore authentication key": "Ключ аутентифікації відновлення через інтернет",
+"interval_minutes": "хвилини",
+"interval_hours": "години",
+"interval_days": "дні",
+"interval_months": "Місяці",
+"interval_years": "Роки"
 }
 translations.vi = {
 "nav_item_3": "Nhật ký",
@@ -12300,7 +12699,9 @@ translations.vi = {
 "nav_item_6": "Trạng thái",
 "tStatus": "Trạng thái",
 "tCancel": "Ngưng",
-"tName:": "Tên:"
+"tName:": "Tên:",
+"interval_hours": "giờ",
+"interval_days": "ngày"
 }
 translations.zh_CN = {
 "nav_item_3": "日志",
@@ -12901,7 +13302,12 @@ translations.zh_CN = {
 "tReport script": "报告脚本",
 "tAlerts": "警告",
 "tEdit scripts": "修改脚本",
-"tInternet restore authentication key": "广域网恢复认证密匙"
+"tInternet restore authentication key": "广域网恢复认证密匙",
+"interval_minutes": "分钟",
+"interval_hours": "小时",
+"interval_days": "天",
+"interval_months": "月",
+"interval_years": "年"
 }
 translations.zh_TW = {
 "nav_item_3": "日志",
@@ -13054,5 +13460,10 @@ translations.zh_TW = {
 "tforever": "長期",
 "tFile backup": "檔案備份",
 "nospc_fatal_text": "備份資料夾空間不足，UrBackup已根據設定值移除了舊的磁碟鏡像和檔案備份數據，但當前設定值已不允許繼續移除。通過更改“設定”保存更少的備份數或增加備份儲存空間後UrBackup方可繼續執行備份任務。",
-"tCancel": "取消"
+"tCancel": "取消",
+"interval_minutes": "分",
+"interval_hours": "小時",
+"interval_days": "天",
+"interval_months": "月",
+"interval_years": "年"
 }

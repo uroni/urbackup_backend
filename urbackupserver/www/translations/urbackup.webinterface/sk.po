@@ -1,17 +1,6 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
 # Translators:
 # janda, 2014-2017
 # Michal Zila <holden42@gmail.com>, 2018
@@ -20,7 +9,7 @@ msgstr ""
 "Project-Id-Version: UrBackup\n"
 "PO-Revision-Date: 2014-04-23 20:33+0000\n"
 "Last-Translator: Michal Zila <holden42@gmail.com>, 2018\n"
-"Language-Team: Slovak (http://www.transifex.com/uroni/urbackup/language/sk/)\n"
+"Language-Team: Slovak (http://app.transifex.com/uroni/urbackup/language/sk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1857,4 +1846,225 @@ msgid "tEdit scripts"
 msgstr ""
 
 msgid "tInternet restore authentication key"
+msgstr ""
+
+msgid "validate_text_notregexp"
+msgstr ""
+
+msgid "uid_changed_err"
+msgstr ""
+
+msgid "authenticating"
+msgstr ""
+
+msgid "exchanging_settings"
+msgstr ""
+
+msgid "client_starting_up"
+msgstr ""
+
+msgid "confirm_allow_new_client"
+msgstr ""
+
+msgid "interval_milliseconds"
+msgstr ""
+
+msgid "interval_seconds"
+msgstr ""
+
+msgid "interval_minutes"
+msgstr "minút"
+
+msgid "interval_hours"
+msgstr "hodín"
+
+msgid "interval_days"
+msgstr "dní"
+
+msgid "interval_months"
+msgstr "mesiacov"
+
+msgid "interval_years"
+msgstr "rokov"
+
+msgid ""
+"tFor security reasons check/add following line in the file server_idents.txt"
+" on your client:"
+msgstr ""
+
+msgid "tAdd new Internet/active client"
+msgstr ""
+
+msgid "tName of new Internet/active client"
+msgstr ""
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr ""
+
+msgid "tChoice (separated by "
+msgstr ""
+
+msgid "tTime interval (h, min, s)"
+msgstr ""
+
+msgid "tRestore Linux image"
+msgstr ""
+
+msgid "tSet the URL to connect to:"
+msgstr ""
+
+msgid "tSet the name to:"
+msgstr ""
+
+msgid "templates_js"
+msgstr ""
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr ""
+
+msgid "tArchival setting from group"
+msgstr ""
+
+msgid "tArchival setting from here"
+msgstr ""
+
+msgid "tLocal/passive clients"
+msgstr ""
+
+msgid "tInternet/Active clients"
+msgstr ""
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr ""
+
+msgid "tDirectories to backup are optional by default:"
+msgstr ""
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr ""
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr ""
+
+msgid "tAdditional virtual sub client names"
+msgstr ""
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr ""
+
+msgid "tEncrypt local/passive transfers"
+msgstr ""
+
+msgid "tCompress local/passive transfers"
+msgstr ""
+
+msgid "tClients try to connect via Internet/active client"
+msgstr ""
+
+msgid "tServer URL clients connect to"
+msgstr ""
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr ""
+
+msgid "tTry to to connect via Internet/active client"
+msgstr ""
+
+msgid "tAuth key"
+msgstr ""
+
+msgid "tDo image backups as Internet/active client"
+msgstr ""
+
+msgid "tDo full file backups as Internet/active client"
+msgstr ""
+
+msgid "tMax backup speed as Internet/active client"
+msgstr ""
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr ""
+
+msgid "tEncrypted Internet/active transfer"
+msgstr ""
+
+msgid "tCompressed Internet/active transfer"
+msgstr ""
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr ""
+
+msgid ""
+"tConnect as Internet/active client if connected to as local/passive client"
+msgstr ""
+
+msgid "tInternet/active restore authentication key"
+msgstr ""
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr ""
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active image backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive incremental image style"
+msgstr ""
+
+msgid "tInternet/active incremental image style"
+msgstr ""
+
+msgid "tLocal/passive full image style"
+msgstr ""
+
+msgid "tInternet/active full image style"
+msgstr ""
+
+msgid ""
+"tList of server IPs (proxys) from which to expect endpoint information "
+"(forwarded for) when connecting to Internet/active service (needs server "
+"restart)"
+msgstr ""
+
+msgid ""
+"tRequire tray icon users to enter following text before being able to change"
+" settings"
+msgstr ""
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr ""
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr ""
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr ""
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr ""
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr ""
+
+msgid "tLocal/passive client"
+msgstr ""
+
+msgid "tInternet/Active client"
+msgstr ""
+
+msgid "tAllow new client"
 msgstr ""

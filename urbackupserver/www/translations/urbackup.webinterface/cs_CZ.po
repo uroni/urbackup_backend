@@ -1,27 +1,17 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
 # Ales Hermann, 2014-2016
-# David Kejzlar <kejly@kejly.cz>, 2017
+# David Kejzlar <kejly@kejly.cz>, 2017,2023
 # Pavel Borecki <pavel.borecki@gmail.com>, 2017
+# Petr Daniel Ambrož, 2023
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
 "PO-Revision-Date: 2014-04-23 20:33+0000\n"
-"Last-Translator: Pavel Borecki <pavel.borecki@gmail.com>, 2017\n"
-"Language-Team: Czech (Czech Republic) (http://www.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
+"Last-Translator: David Kejzlar <kejly@kejly.cz>, 2017,2023\n"
+"Language-Team: Czech (Czech Republic) (http://app.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1859,3 +1849,224 @@ msgstr "Upravit skripty"
 
 msgid "tInternet restore authentication key"
 msgstr "Ověřovací klíč pro obnovení z Internetu"
+
+msgid "validate_text_notregexp"
+msgstr "Nesprávný formát pro {name}. Prosím opravte."
+
+msgid "uid_changed_err"
+msgstr "Identifikátor klienta se změnil"
+
+msgid "authenticating"
+msgstr "Server pro ověřování"
+
+msgid "exchanging_settings"
+msgstr "Nastavení výměny"
+
+msgid "client_starting_up"
+msgstr "Spouštím klienta"
+
+msgid "confirm_allow_new_client"
+msgstr "Jste si jisti, že chcete uložit nového klienta se stejným názvem?"
+
+msgid "interval_milliseconds"
+msgstr "milisekund"
+
+msgid "interval_seconds"
+msgstr "sekund"
+
+msgid "interval_minutes"
+msgstr "minuty"
+
+msgid "interval_hours"
+msgstr "hodiny"
+
+msgid "interval_days"
+msgstr "dny"
+
+msgid "interval_months"
+msgstr "měsíce"
+
+msgid "interval_years"
+msgstr "roky"
+
+msgid ""
+"tFor security reasons check/add following line in the file server_idents.txt"
+" on your client:"
+msgstr "Z bezpečnostních důvodů zkontrolujte/doplňte následující řádek v souboru server_idents.txt na straně klienta:"
+
+msgid "tAdd new Internet/active client"
+msgstr "Přidat nového internetového/aktivního klienta"
+
+msgid "tName of new Internet/active client"
+msgstr "Název nového internetového/aktivního klienta"
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr "Objevit nové místní/pasivní klienty skrze sítě"
+
+msgid "tChoice (separated by "
+msgstr "Volba (oddělená"
+
+msgid "tTime interval (h, min, s)"
+msgstr "Časový interval (h, min, s)"
+
+msgid "tRestore Linux image"
+msgstr "Obnovit linuxový obraz"
+
+msgid "tSet the URL to connect to:"
+msgstr "Nastavte URL pro připojení:"
+
+msgid "tSet the name to:"
+msgstr "Nastavte název:"
+
+msgid "templates_js"
+msgstr ""
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr "Pro obnovení linuxováho obrazu prosím zadejte v terminálu následující:"
+
+msgid "tArchival setting from group"
+msgstr ""
+
+msgid "tArchival setting from here"
+msgstr ""
+
+msgid "tLocal/passive clients"
+msgstr "Místní/pasivní klienti"
+
+msgid "tInternet/Active clients"
+msgstr "Internetoví/aktivní klienti"
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr "URL serveru pro procházení/přístup k souborům/zálohám z klienta"
+
+msgid "tDirectories to backup are optional by default:"
+msgstr "Zálohované adresáře jsou ve výchozím nastavení volitelné"
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr "Komprimovaný VHDX (komprimovaný nestandartní Virtual HardDisk v2) (beta)"
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr "VHDX (Virtual HardDisk v2) (beta)"
+
+msgid "tAdditional virtual sub client names"
+msgstr ""
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr "Maximální rychlost zálohy pro místní/pasivní přenosy"
+
+msgid "tEncrypt local/passive transfers"
+msgstr "Zašifrovat místní/pasivní přenosy"
+
+msgid "tCompress local/passive transfers"
+msgstr "Komprimovat místní/pasivní přenosy"
+
+msgid "tClients try to connect via Internet/active client"
+msgstr ""
+
+msgid "tServer URL clients connect to"
+msgstr ""
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr ""
+
+msgid "tTry to to connect via Internet/active client"
+msgstr ""
+
+msgid "tAuth key"
+msgstr ""
+
+msgid "tDo image backups as Internet/active client"
+msgstr ""
+
+msgid "tDo full file backups as Internet/active client"
+msgstr ""
+
+msgid "tMax backup speed as Internet/active client"
+msgstr ""
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr ""
+
+msgid "tEncrypted Internet/active transfer"
+msgstr "Šifrovaný Internetový/aktivní přenos"
+
+msgid "tCompressed Internet/active transfer"
+msgstr "Komprimovaný Internetový/aktivní přenos"
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr ""
+
+msgid ""
+"tConnect as Internet/active client if connected to as local/passive client"
+msgstr ""
+
+msgid "tInternet/active restore authentication key"
+msgstr ""
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr ""
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr ""
+
+msgid "tInternet/active image backup transfer mode"
+msgstr ""
+
+msgid "tLocal/passive incremental image style"
+msgstr ""
+
+msgid "tInternet/active incremental image style"
+msgstr ""
+
+msgid "tLocal/passive full image style"
+msgstr ""
+
+msgid "tInternet/active full image style"
+msgstr ""
+
+msgid ""
+"tList of server IPs (proxys) from which to expect endpoint information "
+"(forwarded for) when connecting to Internet/active service (needs server "
+"restart)"
+msgstr ""
+
+msgid ""
+"tRequire tray icon users to enter following text before being able to change"
+" settings"
+msgstr "Požadovat, aby uživatelé po kliknutí na tray ikonu zadali následující text před prováděním změn"
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr "Počet paralelních vláken stahování souboru pro souborové zálohy"
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr "Počet paralelních otisků souborů (hash) serveru pro souborové zálohy"
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr "Počet paralelních otisků souborů (hash) klienta pro souborové zálohy"
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr "Počet vláken k použití pro VDHZ kompresi (0: auto)"
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr "Použít SSL šifrované SMTP (SMTPS) namísto SMTP s STARTTLS"
+
+msgid "tLocal/passive client"
+msgstr "Lokální/pasivní klient"
+
+msgid "tInternet/Active client"
+msgstr "Internetový/aktivní klient"
+
+msgid "tAllow new client"
+msgstr ""

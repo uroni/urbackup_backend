@@ -1,25 +1,14 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Kaya Zeren <kayazeren@gmail.com>, 2016-2017
+# Kaya Zeren <kayazeren@gmail.com>, 2016-2017,2022
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
 "PO-Revision-Date: 2014-04-23 20:33+0000\n"
-"Last-Translator: Kaya Zeren <kayazeren@gmail.com>, 2016-2017\n"
-"Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
+"Last-Translator: Kaya Zeren <kayazeren@gmail.com>, 2016-2017,2022\n"
+"Language-Team: Turkish (http://app.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -690,7 +679,7 @@ msgid "tMail server name"
 msgstr "Posta sunucusunun adı"
 
 msgid "tMail server port"
-msgstr "Posta sunucusunun kapı numarası"
+msgstr "E-posta sunucusunun bağlantı noktası"
 
 msgid "tMail server username (empty for none)"
 msgstr "Posta sunucusu kullanıcı adı (yoksa boş bırakın)"
@@ -797,7 +786,7 @@ msgid "tInternet server name/IP"
 msgstr "Internet sunucusunun adı/IP"
 
 msgid "tInternet server port"
-msgstr "İnternet sunucusunun kapı numarası"
+msgstr "İnternet sunucusunun bağlantı noktası"
 
 msgid "tDo image backups over internet"
 msgstr "İnternet üzerinden kalıp yedekleme yapılabilsin"
@@ -1336,7 +1325,7 @@ msgid "tSet the internet server to:"
 msgstr "İnternet sunucusunu şu şekilde ayarla:"
 
 msgid "tSet the internet server port to:"
-msgstr "İnternet sunucu kapısını şu şekilde ayarla:"
+msgstr "İnternet sunucu bağlantı noktasını şuna ayarla:"
 
 msgid "tSet the computer name to:"
 msgstr "Bilgisayar adını şu şekilde ayarla:"
@@ -1414,7 +1403,7 @@ msgid "tVirtual sub client names"
 msgstr "Sanal alt istemci adları"
 
 msgid "tLocal incremental image style"
-msgstr "Yerel artımlı kalıp stili"
+msgstr "Yerel artımlı kalıp biçemi"
 
 msgid "tBased on last full image backup"
 msgstr "Son tam kalıp yedeklemesine göre"
@@ -1423,16 +1412,16 @@ msgid "tBased on last image backup"
 msgstr "Son kalıp yedeklemesine göre"
 
 msgid "tInternet incremental image style"
-msgstr "İnternet artımlı görsel stili"
+msgstr "İnternet artımlı kalıp biçemi"
 
 msgid "tLocal full image style"
-msgstr "Yerel tam kalıp stili"
+msgstr "Yerel tam kalıp biçemi"
 
 msgid "tSynthetic full image backup"
 msgstr "Yapay tam kalıp yedekleme"
 
 msgid "tInternet full image style"
-msgstr "İnternet tam kalıp stili"
+msgstr "İnternet tam kalıp biçemi"
 
 msgid "tDatabase cache size during batch processing"
 msgstr "Toplu işlem sırasında kullanılacak veritabanı ön bellek boyutu"
@@ -1476,7 +1465,7 @@ msgid "tLDAP/AD server name"
 msgstr "LDAP/AD sunucusunun adı"
 
 msgid "tLDAP/AD server port"
-msgstr "LDAP/AD sunucusunun kapı numarası"
+msgstr "LDAP/AD sunucusunun bağlantı noktası"
 
 msgid "tLDAP/AD user name prefix"
 msgstr "LDAP/AD kullanıcı adı öneki"
@@ -1656,7 +1645,7 @@ msgid "tVolume size"
 msgstr "Birim boyutu"
 
 msgid "tPartition style"
-msgstr "Bölüm stili"
+msgstr "Bölüm biçemi"
 
 msgid "tDisk number"
 msgstr "Disk numarası"
@@ -1857,3 +1846,224 @@ msgstr "Betikleri düzenle"
 
 msgid "tInternet restore authentication key"
 msgstr "Internet geri yükleme kimlik doğrulama anahtarı"
+
+msgid "validate_text_notregexp"
+msgstr "{name} biçimi hatalı. Lütfen düzeltin."
+
+msgid "uid_changed_err"
+msgstr "İstemci kimliği değişti"
+
+msgid "authenticating"
+msgstr "Sunucuda kimlik doğrulanıyor"
+
+msgid "exchanging_settings"
+msgstr "Ayarlar aktarılıyor"
+
+msgid "client_starting_up"
+msgstr "İstemci başlatılıyor"
+
+msgid "confirm_allow_new_client"
+msgstr "Yeni istemcinin aynı adı kullanmasını istediğinize emin misiniz?"
+
+msgid "interval_milliseconds"
+msgstr "milisaniye"
+
+msgid "interval_seconds"
+msgstr "saniye"
+
+msgid "interval_minutes"
+msgstr "dakika"
+
+msgid "interval_hours"
+msgstr "saat"
+
+msgid "interval_days"
+msgstr "gün"
+
+msgid "interval_months"
+msgstr "ay"
+
+msgid "interval_years"
+msgstr "yıl"
+
+msgid ""
+"tFor security reasons check/add following line in the file server_idents.txt"
+" on your client:"
+msgstr "Güvenlik nedeniyle, istemcinizdeki server_idents.txt dosyasında şu satırı kontrol edin ya da ekleyin:"
+
+msgid "tAdd new Internet/active client"
+msgstr "Yeni bir internet/aktif istemci ekle"
+
+msgid "tName of new Internet/active client"
+msgstr "Yeni internet/aktif istemci adı"
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr "Ağlar arasında yeni yerel/pasif istemci bul"
+
+msgid "tChoice (separated by "
+msgstr "Seçim (şununla ayrılmış"
+
+msgid "tTime interval (h, min, s)"
+msgstr "Zaman sıklığı (sa, dk, sn)"
+
+msgid "tRestore Linux image"
+msgstr "Linux kalıbını geri yükle"
+
+msgid "tSet the URL to connect to:"
+msgstr "Bağlantı kurulacak adresi şuna ayarla:"
+
+msgid "tSet the name to:"
+msgstr "Adı şuna ayarla:"
+
+msgid "templates_js"
+msgstr "emplates_js"
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr "Linux diskinizi geri yüklemek için uç birimden şu komutları yazın:"
+
+msgid "tArchival setting from group"
+msgstr "Grubun arşivleme ayarı kullanılsın"
+
+msgid "tArchival setting from here"
+msgstr "Buradaki arşivleme ayarı kullanılsın"
+
+msgid "tLocal/passive clients"
+msgstr "Yerel/pasif istemciler"
+
+msgid "tInternet/Active clients"
+msgstr "İnternet/aktif istemciler"
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr "İstemci dosya/yedek erişimi/göz atması için kullanılacak sunucu adresi"
+
+msgid "tDirectories to backup are optional by default:"
+msgstr "Yedeklenecek klasörler varsayılan olarak isteğe bağlıdır:"
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr "Sıkıştırılmış VHDX (sıkıştırılmış standart olmayan sanal sabit disk v2) (beta)"
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr "VHDX (sanal hard disk v2) (beta)"
+
+msgid "tAdditional virtual sub client names"
+msgstr "Ek sanal alt istemci adları"
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr "Yerel/pasif aktarımlar için en yüksek yedekleme hızı"
+
+msgid "tEncrypt local/passive transfers"
+msgstr "Yerel/pasif aktarımlar şifrelensin"
+
+msgid "tCompress local/passive transfers"
+msgstr "Yerel/pasif aktarımlar sıkıştırılsın"
+
+msgid "tClients try to connect via Internet/active client"
+msgstr "İstemciler İnternet/aktif istemci üzerinden bağlanmaya çalışsın"
+
+msgid "tServer URL clients connect to"
+msgstr "İstemcilerin bağlanacağı sunucu adresi"
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr "HTTP(S) vekil sunucusu üzerinden bağlantı kurulsun (boş bırakılırsa kullanılmaz)"
+
+msgid "tTry to to connect via Internet/active client"
+msgstr "İnternet/aktif istemci üzerinden bağlanmaya çalışılsın"
+
+msgid "tAuth key"
+msgstr "Kimlik doğrulama anahtarı"
+
+msgid "tDo image backups as Internet/active client"
+msgstr "İnternet/aktif istemcilere kalıp yedekleme yapılsın"
+
+msgid "tDo full file backups as Internet/active client"
+msgstr "İnternet/aktif istemcilere tam dosya yedekleme yapılsın"
+
+msgid "tMax backup speed as Internet/active client"
+msgstr "İnternet/aktif istemcilerin en fazla yedekleme hızı"
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr "İnternet/aktif bağlantılar için toplam en fazla yedekleme hızı"
+
+msgid "tEncrypted Internet/active transfer"
+msgstr "İnternet/aktif aktarımlar şifrelensin"
+
+msgid "tCompressed Internet/active transfer"
+msgstr "İnternet/aktif aktarımlar sıkıştırılsın"
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr "İnternet/aktif istemcilerin dosya karmaları istemci tarafında hesaplansın"
+
+msgid ""
+"tConnect as Internet/active client if connected to as local/passive client"
+msgstr "Yerel/pasif istemci olarak bağlanılmışsa İnternet/aktif istemci olarak bağlanılsın "
+
+msgid "tInternet/active restore authentication key"
+msgstr "İnternet/aktif geri yükleme kimlik doğrulama anahtarı"
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr "Varsayılan olmayan UrBackup İnternet iletişim kuralı TCP bağlantı noktası"
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr "Yerel/pasif tam dosya yedekleme aktarım kipi"
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr "İnternet/aktif tam dosya yedekleme aktarım kipi"
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr "Yerel/pasif artımlı dosya yedekleme aktarım kipi"
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr "İnternet/aktif artımlı dosya yedekleme aktarım kipi"
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr "Yerel/pasif kalıp yedekleme aktarım kipi"
+
+msgid "tInternet/active image backup transfer mode"
+msgstr "İnternet/aktif kalıp yedekleme aktarım kipi"
+
+msgid "tLocal/passive incremental image style"
+msgstr "Yerel/pasif artımlı kalıp biçemi"
+
+msgid "tInternet/active incremental image style"
+msgstr "İnternet/aktif artımlı kalıp biçemi"
+
+msgid "tLocal/passive full image style"
+msgstr "Yerel/pasif tam kalıp biçemi"
+
+msgid "tInternet/active full image style"
+msgstr "İnternet/aktif tam kalıp biçemi"
+
+msgid ""
+"tList of server IPs (proxys) from which to expect endpoint information "
+"(forwarded for) when connecting to Internet/active service (needs server "
+"restart)"
+msgstr "İnternete/aktif hizmete bağlanırken uç nokta bilgilerinin bekleneceği (iletilen) sunucu IP adreslerinin (vekil sunucuların) listesi (sunucunun yeniden başlatılması gerekir)"
+
+msgid ""
+"tRequire tray icon users to enter following text before being able to change"
+" settings"
+msgstr "Ayarları değiştirebilmek için tepsi simgesine kullanıcılarının aşağıdaki metni yazması zorunlu olur"
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr "Bir dosya yedeklemesinde paralel dosya indirme işlemi sayısı"
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr "Bir dosya yedeklemesinde paralel sunucu dosya karması işlemi sayısı"
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr "Bir dosya yedeklemesinde paralel istemci dosya karması işlemi sayısı"
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr "VHDZ sıkıştırması için kullanılacak işlem sayısı (0: Otomatik)"
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr "STARTTLS ile SMTP yerine SSL ile şifrelenmiş SMTP (SMTPS) kullanılsın "
+
+msgid "tLocal/passive client"
+msgstr "Yerel/pasif istemci"
+
+msgid "tInternet/Active client"
+msgstr "İnternet/aktif istemci"
+
+msgid "tAllow new client"
+msgstr "Yeni istemciler eklenebilsin"

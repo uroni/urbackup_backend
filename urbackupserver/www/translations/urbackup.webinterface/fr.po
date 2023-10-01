@@ -1,25 +1,14 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Charles Peltier <charles@cl-info.fr>, 2014-2020
+# Charles Peltier <charles@cl-info.fr>, 2014-2020,2022
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
 "PO-Revision-Date: 2014-04-23 20:33+0000\n"
-"Last-Translator: Charles Peltier <charles@cl-info.fr>, 2014-2020\n"
-"Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
+"Last-Translator: Charles Peltier <charles@cl-info.fr>, 2014-2020,2022\n"
+"Language-Team: French (http://app.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1857,3 +1846,224 @@ msgstr "Editer les scripts"
 
 msgid "tInternet restore authentication key"
 msgstr "Restaurer la clé d'authentification internet"
+
+msgid "validate_text_notregexp"
+msgstr "Le format de [name] n'est pas bon. Merci de corriger"
+
+msgid "uid_changed_err"
+msgstr "Identifiant client changé"
+
+msgid "authenticating"
+msgstr "Authentification du serveur"
+
+msgid "exchanging_settings"
+msgstr "Échange des paramètres"
+
+msgid "client_starting_up"
+msgstr "Démarrage du logiciel client"
+
+msgid "confirm_allow_new_client"
+msgstr "Êtes-vous sur de vouloir utiliser un client avec le même nom ?"
+
+msgid "interval_milliseconds"
+msgstr "millisecondes"
+
+msgid "interval_seconds"
+msgstr "secondes"
+
+msgid "interval_minutes"
+msgstr "minutes"
+
+msgid "interval_hours"
+msgstr "heures"
+
+msgid "interval_days"
+msgstr "jours"
+
+msgid "interval_months"
+msgstr "mois"
+
+msgid "interval_years"
+msgstr "Années"
+
+msgid ""
+"tFor security reasons check/add following line in the file server_idents.txt"
+" on your client:"
+msgstr "Pour valider le contrôle de sécurité, ajoutez cette ligne dans le fichier server_idents.txt de l'application cliente :"
+
+msgid "tAdd new Internet/active client"
+msgstr "Ajouter un nouveau client internet"
+
+msgid "tName of new Internet/active client"
+msgstr "Nom du nouveau client internet"
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr "Découvrir les nouveaux clients passifs sur le réseau local"
+
+msgid "tChoice (separated by "
+msgstr "Choix (séparé par"
+
+msgid "tTime interval (h, min, s)"
+msgstr "Intervalle de temps (h, min, s)"
+
+msgid "tRestore Linux image"
+msgstr "Restaurer une image système Linux"
+
+msgid "tSet the URL to connect to:"
+msgstr "Configurer l'URL pour se connecter :"
+
+msgid "tSet the name to:"
+msgstr "Mettre le nom à :"
+
+msgid "templates_js"
+msgstr "emplate_js"
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr "Pour restaurer votre disque Linux, merci de taper dans le terminal ceci :"
+
+msgid "tArchival setting from group"
+msgstr "Paramètres d'archivage du groupe"
+
+msgid "tArchival setting from here"
+msgstr "Paramètre d'archivage depuis celui-ci"
+
+msgid "tLocal/passive clients"
+msgstr "Local/passive clients"
+
+msgid "tInternet/Active clients"
+msgstr "Internet/active clients"
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr "URL du serveur pour l'accès aux différentes sauvegardes"
+
+msgid "tDirectories to backup are optional by default:"
+msgstr "Dossier à sauvegarder optionnellement par défaut :"
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr "VHDX (Virtual Hard Disk V2) compressé (béta)"
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr "VHDX (Virtual Hard Disk V2) non-compressé (béta)"
+
+msgid "tAdditional virtual sub client names"
+msgstr "Noms des sous-clients virtuels additionnels"
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr "Débit maximum des sauvegarde pour les transferts locaux/passif"
+
+msgid "tEncrypt local/passive transfers"
+msgstr "Chiffrer les transferts locaux/passifs"
+
+msgid "tCompress local/passive transfers"
+msgstr "Compresser les transferts locaux/passifs"
+
+msgid "tClients try to connect via Internet/active client"
+msgstr "Les clients tenteront de se connecter via Internet/active"
+
+msgid "tServer URL clients connect to"
+msgstr "URL du serveur auquel se connecter"
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr "Se connecter via un proxy HTTP(S) (laisser vide pour ne pas utiliser de proxy)"
+
+msgid "tTry to to connect via Internet/active client"
+msgstr "Essayer de se connecter au serveur via Internet"
+
+msgid "tAuth key"
+msgstr "Clé d'authentification"
+
+msgid "tDo image backups as Internet/active client"
+msgstr "Faire une sauvegarde système par Internet"
+
+msgid "tDo full file backups as Internet/active client"
+msgstr "Faire une sauvegarde complète par Internet"
+
+msgid "tMax backup speed as Internet/active client"
+msgstr "Débit maximum pour les sauvegardes par Internet/active"
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr "Débit maximum pour les sauvegardes par Internet/active"
+
+msgid "tEncrypted Internet/active transfer"
+msgstr "Chiffrer les transferts via Internet/active"
+
+msgid "tCompressed Internet/active transfer"
+msgstr "Compresser les transferts locaux/passifs"
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr "Faire calculer l'empreinte des fichiers par le client pour les connexion Internet/active"
+
+msgid ""
+"tConnect as Internet/active client if connected to as local/passive client"
+msgstr "Connecter le client via Internet en cas de connexion local/passive"
+
+msgid "tInternet/active restore authentication key"
+msgstr "Restauration de la clé d'authentification pour la connexion Internet/active "
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr "Port TCP personnalisé pour la connexion Internet à UrBackup"
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr "Mode de transfert des sauvegardes complètes via le réseau local"
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr "Mode de transfert des sauvegardes complètes via Internet"
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr "Mode de transfert des sauvegardes incrémentielles via le réseau local"
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr "Mode de transfert des sauvegardes incrémentielles via Internet"
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr "Mode de transfert des sauvegardes systèmes via le réseau local"
+
+msgid "tInternet/active image backup transfer mode"
+msgstr "Mode de transfert des sauvegardes systèmes via Internet"
+
+msgid "tLocal/passive incremental image style"
+msgstr "Style d'image pour les sauvegardes incrémentielles via le réseau local"
+
+msgid "tInternet/active incremental image style"
+msgstr "Style d'image pour les sauvegardes incrémentielles via Internet"
+
+msgid "tLocal/passive full image style"
+msgstr "Style d'image pour les sauvegardes systèmes via le réseau local"
+
+msgid "tInternet/active full image style"
+msgstr "Style d'image pour les sauvegardes systèmes via Internet"
+
+msgid ""
+"tList of server IPs (proxys) from which to expect endpoint information "
+"(forwarded for) when connecting to Internet/active service (needs server "
+"restart)"
+msgstr "Liste de IP de proxy qui requiert de récupérer les informations de l'équipement transférés lors d'une connexion Internet (nécessite un redémarrage du serveur)"
+
+msgid ""
+"tRequire tray icon users to enter following text before being able to change"
+" settings"
+msgstr "Requiert de taper le texte suivant avant de pouvoir modifier les paramètres via l’icône de la barre système."
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr "Nombre de connexions parallèles pour la sauvegarde d'un même fichier"
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr "Nombre de taches parallèles pour le calcul d'empreinte par le serveur pour chaque fichier sauvegardé"
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr "Nombre de taches parallèles pour le calcul d'empreinte sur le serveur pour la sauvegarde d'un même fichier"
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr "Nombre de tâches à utiliser pour la compression VHDZ (0 = auto)"
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr "Utiliser le SMTPS (SMTP avec chiffrement SSL) au lieu du SMTP (avec STARTTLS)"
+
+msgid "tLocal/passive client"
+msgstr "Réseau local / client passif"
+
+msgid "tInternet/Active client"
+msgstr "Internet / client actif"
+
+msgid "tAllow new client"
+msgstr "Autoriser le nouveau client"

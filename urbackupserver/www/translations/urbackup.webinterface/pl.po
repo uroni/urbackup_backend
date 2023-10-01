@@ -1,23 +1,12 @@
 # UrBackup translation
-# Copyright (C) 2011-2016 See translators
+# Copyright (C) 2011-2022 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
 # Translators:
 # BestiaPL <bestiapl@gmail.com>, 2017,2020,2022
 # Czeslaw Mruk <czmruk@gmail.com>, 2017
 # Jarosław Gorzelnik <jarek12@interia.pl>, 2015
 # Krzysztof Pałka <k.palka.pl@gmail.com>, 2015
-# Łukasz Milata <drupter@gmail.com>, 2015,2017-2018,2020
+# Łukasz Milata <drupter@gmail.com>, 2015,2017-2018,2020,2023
 # Maciej Dyczko <edyczkowski@gmail.com>, 2015
 # Thomas Pancherz <pancherz_news@arcor.de>, 2015
 # Wojciech Staszewski, 2017
@@ -25,8 +14,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
 "PO-Revision-Date: 2014-04-23 20:33+0000\n"
-"Last-Translator: BestiaPL <bestiapl@gmail.com>, 2017,2020,2022\n"
-"Language-Team: Polish (http://www.transifex.com/uroni/urbackup/language/pl/)\n"
+"Last-Translator: Łukasz Milata <drupter@gmail.com>, 2015,2017-2018,2020,2023\n"
+"Language-Team: Polish (http://app.transifex.com/uroni/urbackup/language/pl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1864,3 +1853,224 @@ msgstr "Edytuj sktypty"
 
 msgid "tInternet restore authentication key"
 msgstr "Klucz uwierzytelniania przywracania przez Internet"
+
+msgid "validate_text_notregexp"
+msgstr "Błędny format dla {name}. Proszę poprawić."
+
+msgid "uid_changed_err"
+msgstr "Zmiana identyfikatora klienta"
+
+msgid "authenticating"
+msgstr "Serwer uwierzytelniający"
+
+msgid "exchanging_settings"
+msgstr "Wymiana ustawień"
+
+msgid "client_starting_up"
+msgstr "Uruchamienie klienta"
+
+msgid "confirm_allow_new_client"
+msgstr "Czy jesteś pewien, że chcesz użyć ponownie tej samej nazwy dla nowego klienta?"
+
+msgid "interval_milliseconds"
+msgstr "milisekund"
+
+msgid "interval_seconds"
+msgstr "sekund"
+
+msgid "interval_minutes"
+msgstr "min"
+
+msgid "interval_hours"
+msgstr "godzin"
+
+msgid "interval_days"
+msgstr "dni"
+
+msgid "interval_months"
+msgstr "miesiące"
+
+msgid "interval_years"
+msgstr "lata"
+
+msgid ""
+"tFor security reasons check/add following line in the file server_idents.txt"
+" on your client:"
+msgstr "Dla bezpieczeństwa sprawdź/dodaj następującą linię w pliku server_idents.txt na twoim kliencie:"
+
+msgid "tAdd new Internet/active client"
+msgstr "Dodaj nowego klienta internetowego/aktywnego"
+
+msgid "tName of new Internet/active client"
+msgstr "Nazwa nowego klienta internetowego/aktywnego"
+
+msgid "tDiscover new local/passive client accross networks"
+msgstr "Odkryj nowego lokalnego/pasywnego klienta w sieci"
+
+msgid "tChoice (separated by "
+msgstr "Wybór (oddzielony przez"
+
+msgid "tTime interval (h, min, s)"
+msgstr "Przedział czasu (godz, min, sek)"
+
+msgid "tRestore Linux image"
+msgstr "Przywrócenie obrazu systemu Linux"
+
+msgid "tSet the URL to connect to:"
+msgstr "Ustaw adres URL, z którym chcesz się połączyć:"
+
+msgid "tSet the name to:"
+msgstr "Ustawić nazwę na:"
+
+msgid "templates_js"
+msgstr "emplates_js"
+
+msgid "tTo restore your Linux disk please enter following in a terminal:"
+msgstr "Aby przywrócić twój dysk z Linuksem wpisz następujące polecenie w terminalu:"
+
+msgid "tArchival setting from group"
+msgstr "Ustawienia archiwizacji z grupy"
+
+msgid "tArchival setting from here"
+msgstr "Ustawienia archiwizacji stąd"
+
+msgid "tLocal/passive clients"
+msgstr "Klienci lokalni/pasywni"
+
+msgid "tInternet/Active clients"
+msgstr "Klienci internetowi/aktywni"
+
+msgid "tServer URL for client file/backup access/browsing"
+msgstr "Adres URL serwera dla dostępu do plików/przeglądania kopii zapasowych klienta"
+
+msgid "tDirectories to backup are optional by default:"
+msgstr "Katalogi do backupu są domyślnie opcjonalne:"
+
+msgid "tCompressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)"
+msgstr "Skompresowany VHDX (Skompresowany niestandardowy Virtual HardDisk v2) (beta)"
+
+msgid "tVHDX (Virtual HardDisk v2) (beta)"
+msgstr "VHDX (Virtual HardDisk v2) (beta)"
+
+msgid "tAdditional virtual sub client names"
+msgstr "Wirtualne nazwy klienta podrzędnego"
+
+msgid "tMax backup speed for local/passive transfers"
+msgstr "Maks. prędkość kopii zapasowej dla transferów lokalnych/pasywnych"
+
+msgid "tEncrypt local/passive transfers"
+msgstr "Szyfruj lokalne/pasywne transfery"
+
+msgid "tCompress local/passive transfers"
+msgstr "Kompresja transferów lokalnych/pasywnych"
+
+msgid "tClients try to connect via Internet/active client"
+msgstr "Klienci próbujący połączyć się internetowo/aktywnie"
+
+msgid "tServer URL clients connect to"
+msgstr "Adres URL serwera, z którym łączą się klienci"
+
+msgid "tConnect via HTTP(S) proxy (leave empty to connect without)"
+msgstr "Połącz przez proxy HTTP(S) (pozostaw puste, aby połączyć się bez)"
+
+msgid "tTry to to connect via Internet/active client"
+msgstr "Spróbuj połączyć się przez Internet/aktywnego klienta"
+
+msgid "tAuth key"
+msgstr "Klucz autoryzacji"
+
+msgid "tDo image backups as Internet/active client"
+msgstr "Wykonuj kopie zapasowe obrazów jako klient internetowy/aktywny"
+
+msgid "tDo full file backups as Internet/active client"
+msgstr "Wykonuj pełne kopie zapasowe plików jako klient internetowy/aktywny"
+
+msgid "tMax backup speed as Internet/active client"
+msgstr "Maksymalna prędkość tworzenia kopii zapasowych jako klient internetowy/aktywny"
+
+msgid "tTotal max backup speed for Internet/active connection"
+msgstr "Całkowita maksymalna prędkość tworzenia kopii zapasowych dla połączenia internetowego/aktywnego"
+
+msgid "tEncrypted Internet/active transfer"
+msgstr "Szyfrowany transfer internetowy/aktywny"
+
+msgid "tCompressed Internet/active transfer"
+msgstr "Skompresowany transfer internetowy/aktywny"
+
+msgid "tCalculate file-hashes on the client as Internet/active client"
+msgstr "Oblicz skróty plików na kliencie internetowym/aktywnym"
+
+msgid ""
+"tConnect as Internet/active client if connected to as local/passive client"
+msgstr "Połącz jako klient internetowy/aktywny, jeśli jest połączony jako klient lokalny/pasywny"
+
+msgid "tInternet/active restore authentication key"
+msgstr "Klucz uwierzytelniający dla przywracania internetowego/aktywnego"
+
+msgid "tNon-default UrBackup Internet protocol TCP port"
+msgstr "Niestandardowy port TCP UrBackup dla protokołu internetowego"
+
+msgid "tLocal/passive full file backup transfer mode"
+msgstr "Tryb lokalnego/pasywnego przesyłania pełnych kopii zapasowych plików"
+
+msgid "tInternet/active full file backup transfer mode"
+msgstr "Tryb internetowego/aktywnego przesyłania pełnych kopii zapasowych plików"
+
+msgid "tLocal/passive incremental file backup transfer mode"
+msgstr "Tryb lokalnego/pasywnego przesyłania przyrostowych kopii zapasowych plików"
+
+msgid "tInternet/active incremental file backup transfer mode"
+msgstr "Tryb internetowego/aktywnego przesyłania przyrostowych kopii zapasowych plików"
+
+msgid "tLocal/passive image backup transfer mode"
+msgstr "Tryb lokalnego/pasywnego przesyłania kopii obrazów"
+
+msgid "tInternet/active image backup transfer mode"
+msgstr "Tryb internetowego/aktywnego przesyłania kopii obrazów"
+
+msgid "tLocal/passive incremental image style"
+msgstr "Tryb lokalnego/pasywnego przesyłania przyrostowych kopii obrazów"
+
+msgid "tInternet/active incremental image style"
+msgstr "Tryb internetowego/aktywnego przesyłania przyrostowych kopii obrazów"
+
+msgid "tLocal/passive full image style"
+msgstr "Tryb lokalnego/pasywnego przesyłania pełnych kopii obrazów"
+
+msgid "tInternet/active full image style"
+msgstr "Tryb internetowego/aktywnego przesyłania pełnych kopii obrazów"
+
+msgid ""
+"tList of server IPs (proxys) from which to expect endpoint information "
+"(forwarded for) when connecting to Internet/active service (needs server "
+"restart)"
+msgstr "Lista IP serwerów (proxy), od których należy oczekiwać informacji o punkcie końcowym (forwarded for) przy połączeniu z usługą internetową/aktywną (wymaga restartu serwera)"
+
+msgid ""
+"tRequire tray icon users to enter following text before being able to change"
+" settings"
+msgstr "Wymagaj wprowadzenia następującego tekstu przed możliwością zmiany ustawień poprzez ikonę w zasobniku."
+
+msgid "tNumber of parallel file download threads per file backup"
+msgstr "Liczba równoległych wątków pobierania plików na kopię zapasową plików"
+
+msgid "tNumber of parallel server file hash threads per file backup"
+msgstr "Liczba równoległych wątków serwera do haszowania plików na kopię zapasową plików"
+
+msgid "tNumber of parallel client file hash threads per file backup"
+msgstr "Liczba równoległych wątków klienta do haszowania plików na kopię zapasową plików"
+
+msgid "tNumber of threads to use for VHDZ compression (0: auto)"
+msgstr "Liczba wątków do wykorzystania przy kompresji VHDZ (0: auto)"
+
+msgid "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS"
+msgstr "Użyj SMTP szyfrowanego SSL (SMTPS) zamiast SMTP z STARTTLS"
+
+msgid "tLocal/passive client"
+msgstr "Klient lokalny/pasywny"
+
+msgid "tInternet/Active client"
+msgstr "Klient internetowy/aktywny"
+
+msgid "tAllow new client"
+msgstr "Zezwól na nowego klienta"
