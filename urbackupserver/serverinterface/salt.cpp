@@ -63,7 +63,7 @@ ACTION_IMPL(salt)
 		q->Bind(username);
 		db_results res=q->Read();
 	
-		if(res.empty())
+		if(res.empty() && helper.allowUserEnumeration())
 		{
 			logFailedLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 			helper.addToRateLimit(remote_addr);
@@ -71,8 +71,16 @@ ACTION_IMPL(salt)
 		}
 		else
 		{
-			ret.set("salt", res[0]["salt"]);
-			ret.set("pbkdf2_rounds", watoi(res[0]["pbkdf2_rounds"]));
+			if (!res.empty())
+			{
+				ret.set("salt", res[0]["salt"]);
+				ret.set("pbkdf2_rounds", watoi(res[0]["pbkdf2_rounds"]));
+			}
+			else
+			{
+				ret.set("salt", ServerSettings::generateRandomAuthKey(50));
+				ret.set("pbkdf2_rounds", default_pbkdf2_rounds);
+			}
 			std::string rnd=ServerSettings::generateRandomAuthKey();
 			ret.set("rnd", JSON::Value(rnd));
 			session->mStr["rnd"]=rnd;

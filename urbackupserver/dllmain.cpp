@@ -87,6 +87,7 @@ SStartupStatus startup_status;
 #include "Alerts.h"
 #include "Mailer.h"
 #include "../urbackupcommon/settingslist.h"
+#include "../urbackupcommon/settings.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -752,7 +753,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		std::string new_salt=ServerSettings::generateRandomAuthKey(20);
 
-		const size_t pbkdf2_rounds = 10000;
+		const size_t pbkdf2_rounds = default_pbkdf2_rounds;
 
 		std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->GenerateHexMD5(new_salt+set_admin_pw)),
 				new_salt, pbkdf2_rounds));

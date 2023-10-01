@@ -80,6 +80,8 @@ public:
 	static void rateLimitTimeout();
 
 	static void init_mutex();
+
+	static bool allowUserEnumeration();
 private:
 
 	static bool failedLoginRateLimit();

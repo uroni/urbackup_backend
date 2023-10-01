@@ -212,7 +212,7 @@ ACTION_IMPL(login)
 			{
 				ret.set("ldap_enabled", true);
 			}
-			if(res.size()==1)
+			if(res.size()==1 && helper.allowUserEnumeration())
 			{
 				ret.set("admin_only", res[0]["name"]);
 			}

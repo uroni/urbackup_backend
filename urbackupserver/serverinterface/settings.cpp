@@ -1035,7 +1035,7 @@ ACTION_IMPL(settings)
 				size_t pbkdf2_rounds=0;
 				if(crypto_fak!=NULL)
 				{
-					pbkdf2_rounds=10000;
+					pbkdf2_rounds = default_pbkdf2_rounds;
 
 					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), (salt), pbkdf2_rounds));
 				}

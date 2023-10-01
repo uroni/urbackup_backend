@@ -43,5 +43,8 @@ SQLITE_TMPDIR=""
 #Comma separated -- e.g. "eth0,eth1"
 BROADCAST_INTERFACES=""
 
+# Enable better error messages if a user cannot be found during login
+ALLOW_USER_ENUMERATION="true"
+
 #User the urbackupsrv process runs as
 USER="urbackup"

@@ -247,7 +247,12 @@ void Helper::init_mutex()
 	Server->createThread(new RateLimitTimeout, "rate limit timeout");
 }
 
+bool Helper::allowUserEnumeration()
 {
+	static bool allow_user_enumeration = Server->getServerParameter("allow_user_enumeration") != "0";
+	return allow_user_enumeration;
+}
+
 bool Helper::failedLoginRateLimit()
 {
 	static bool limit = Server->getServerParameter("failed_login_ratelimit") != "0";

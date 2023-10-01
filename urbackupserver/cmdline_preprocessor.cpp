@@ -410,6 +410,17 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("0");
 			}
 		}
+		if (settings->getValue("ALLOW_USER_ENUMERATION", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				(val == "0" ||
+					strlower(val) == "false" ||
+					strlower(val) == "no"))
+			{
+				real_args.push_back("--allow_user_enumeration");
+				real_args.push_back("0");
 			}
 		}
 	}	
