@@ -374,8 +374,9 @@ std::vector<std::string> CStreamPipe::getPipeList()
 {
 	std::vector<std::string> ret;
 	IScopedLock lock(active_pipes_mutex);
-	for (auto it : active_pipes)
-		ret.push_back(it.second);
+	for (std::map<CStreamPipe*, std::string>::iterator it =active_pipes.begin();
+		it!=active_pipes.end();++it)
+		ret.push_back(it->second);
 
 	return ret;
 }
