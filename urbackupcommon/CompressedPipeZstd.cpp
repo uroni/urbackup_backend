@@ -743,8 +743,8 @@ bool CompressedPipeZstd::setCompressionSettings(const SCompressionSettings& para
 
 		usage_add += "adaptive flush_timeout="+convert(params.adaptive_comp_flush_timeout)+" n_threads="+convert(n_threads);
 		adaptive->flush_timeout = params.adaptive_comp_flush_timeout;
-		adaptive->zfp_prev = {};
-		adaptive->zfp_prev_corr = {};
+		memset(&adaptive->zfp_prev, 0, sizeof(ZSTD_frameProgression));
+		memset(&adaptive->zfp_prev_corr, 0, sizeof(ZSTD_frameProgression));
 		adaptive->n_zstd_workers = n_threads;
 		adaptive->zstd_input_blocked = 0;
 		adaptive->zstd_input_presented = 0;
