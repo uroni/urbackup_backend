@@ -27849,7 +27849,7 @@ static void sayAbnormalExit(void){
 #endif
 
 #if SQLITE_SHELL_IS_UTF8
-int SQLITE_CDECL main(int argc, char **argv){
+int SQLITE_CDECL shell_main(int argc, char **argv){
 #else
 int SQLITE_CDECL shell_wmain(int argc, wchar_t **wargv){
   char **argv;
