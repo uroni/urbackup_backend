@@ -51,7 +51,7 @@ else
     then
         echo "@/home/urbackup/setxkbmap.sh" >> /etc/xdg/lxsession/LXDE/autostart
     fi
-    sed -i 's/allowed_users=console/allowed_users=console/g' /etc/X11/Xwrapper.config
+    sed -i 's/allowed_users=console/allowed_users=anybody/g' /etc/X11/Xwrapper.config
     echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config
     sudo -u urbackup startx
 fi
