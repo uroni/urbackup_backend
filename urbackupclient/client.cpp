@@ -3865,7 +3865,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			VSSLog("Deleting shadowcopy for path \""+dir->target+"\" -2", LL_DEBUG);
 			ok = deleteShadowcopy(dir);
 
-			if(dir->ref->save_id!=-1)
+			if(ok && dir->ref->save_id!=-1)
 			{
 				cd->deleteShadowcopy(dir->ref->save_id);
 			}
