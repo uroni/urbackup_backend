@@ -1,4 +1,4 @@
-import { PBKDF2, MD5 } from 'crypto-js';
+import { PBKDF2, MD5, algo } from 'crypto-js';
 
 interface SaltResult
 {
@@ -6,6 +6,7 @@ interface SaltResult
     rnd: string;
     pbkdf2_rounds : number;
     error: number | undefined;
+    ses: string | undefined;
 };
 
 interface LoginResult
@@ -22,6 +23,7 @@ interface LoginResult
     admin_only: string | undefined;
     api_version: number;
     lang: string | undefined;
+    error: number | undefined;
 
     // Permissions to bits of UI
     status: string | undefined;
@@ -127,7 +129,7 @@ function calcPwHash(salt: string, rnd: string, password: string, rounds: number)
     let pwmd5 = pwmd5Bin.toString();
     if(rounds>0)
     {
-        pwmd5 = PBKDF2(pwmd5Bin, salt, {iterations: rounds}).toString();
+        pwmd5 = PBKDF2(pwmd5Bin, salt, {iterations: rounds, hasher: algo.SHA256, keySize: 256 / 32}).toString();
     }
 
     return MD5(rnd+pwmd5).toString();
@@ -187,7 +189,7 @@ class UrBackupServer
 
         if(typeof ret.error != "undefined" && ret.error === 1)
         {
-            throw SessionNotFoundError;
+            throw new SessionNotFoundError;
         }
 
         return ret;
@@ -217,7 +219,12 @@ class UrBackupServer
             resp = await this.fetchData({username: username, password: password, plainpw: "1"}, "login");
             if(typeof resp.error != "undefined" && resp.error == 2)
             {
-                throw UsernameOrPasswordWrongError;
+                throw new UsernameOrPasswordWrongError;
+            }
+
+            if(!this.session && resp.session)
+            {
+                this.session = resp.session;
             }
         }
         else
@@ -228,17 +235,32 @@ class UrBackupServer
             {
                 if(saltResp.error == 0)
                 {
-                    throw UsernameNotFoundError;
+                    throw new UsernameNotFoundError;
                 }
                 else if(saltResp.error==2)
                 {
-                    throw PasswordWrongError;
+                    throw new PasswordWrongError;
                 }
+            }
+
+            if(!this.session && saltResp.ses)
+            {
+                this.session = saltResp.ses;
             }
 
             const pwmd5 = calcPwHash(saltResp.salt, saltResp.rnd, password, saltResp.pbkdf2_rounds);
 
-            resp = await this.fetchData({username: username, password: pwmd5}, "login");
+            resp = await this.fetchData({username: username, password: pwmd5}, "login") as LoginResult;
+
+            const loginResult = resp as LoginResult;
+
+            if(!loginResult.success && typeof loginResult.error != "undefined")
+            {
+                if(loginResult.error == 2)
+                {
+                    throw new UsernameOrPasswordWrongError;
+                }
+            }
         }
 
         return resp as LoginResult;
