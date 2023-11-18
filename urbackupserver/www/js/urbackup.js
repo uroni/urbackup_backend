@@ -2789,6 +2789,9 @@ function settingSwitchReset(key)
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		var lkey = g.settings_list[i];
+		if(lkey=="internet_authkey")
+			continue;
+
 		var lval = g.curr_settings[lkey];
 	
 		if(typeof lval=="undefined")

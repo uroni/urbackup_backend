@@ -508,6 +508,9 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 	std::sort(sset_client_merge.begin(), sset_client_merge.end());
 	std::vector<std::string> sset_client_use = getClientConfigurableSettingsList();
 	std::sort(sset_client_use.begin(), sset_client_use.end());
+	std::vector<std::string> sset_localized = getLocalizedSettingsList();
+	std::sort(sset_localized.begin(), sset_localized.end());
+
 	std::vector<std::string> sset=getSettingsList();
 	for(size_t i=0;i<sset.size();++i)
 	{
@@ -530,6 +533,9 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 			{
 				use = c_use_value;
 			}
+
+			if (use != c_use_value && std::binary_search(sset_localized.begin(), sset_localized.end(), sset[i]))
+				use = c_use_value;
 
 			int64 use_last_modified = ctime;
 			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert, &use, &use_last_modified);

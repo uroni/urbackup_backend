@@ -2409,9 +2409,12 @@ bool upgrade66_67()
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	db_results res = db->Read("SELECT rowid, value FROM settings_db.settings WHERE key='archive'");
+	return db->Write(std::string("UPDATE settings_db.settings SET use=") + c_use_value_str + " WHERE key='internet_authkey'");
+}
 
-	IQuery* q_update = db->Prepare("UPDATE settings_db.settings SET value=? WHERE rowid=?");
+bool upgrade67_68()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
 	if (!db->Write("UPDATE settings_db.automatic_archival SET uuid=unhex(hex(uuid))"))
 		return false;
@@ -2468,7 +2471,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=67;
+	int max_v=68;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2869,6 +2872,13 @@ void upgrade(void)
 				break;
 			case 65:
 				if (!upgrade65_66())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 66:
+				if (!upgrade66_67())
 				{
 					has_error = true;
 				}
