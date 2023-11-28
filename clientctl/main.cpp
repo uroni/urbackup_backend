@@ -1258,7 +1258,7 @@ int action_add_backupdir(std::vector<std::string> args)
 		new_dir.path = os_get_final_path(new_dir.path);
 	}
 
-	if (!new_dir.path.empty() && new_dir.path[new_dir.path.size() - 1] == os_file_sep()[0])
+	if (new_dir.path.size()>1 && new_dir.path[new_dir.path.size() - 1] == os_file_sep()[0])
 	{
 		new_dir.path.erase(new_dir.path.size() - 1, 1);
 	}
@@ -1518,7 +1518,7 @@ int action_remove_backupdir(std::vector<std::string> args)
 	}
 
 	bool del_ok = false;
-	bool del_server_default = true;
+	bool del_server_default = false;
 
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
@@ -1528,6 +1528,7 @@ int action_remove_backupdir(std::vector<std::string> args)
 			if (backup_dirs[i].server_default)
 			{
 				del_server_default = true;
+				++i;
 			}
 			else
 			{
@@ -1541,6 +1542,7 @@ int action_remove_backupdir(std::vector<std::string> args)
 			if (backup_dirs[i].server_default)
 			{
 				del_server_default = true;
+				++i;
 			}
 			else
 			{
