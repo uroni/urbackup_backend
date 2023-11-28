@@ -423,6 +423,19 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("0");
 			}
 		}
+		if (settings->getValue("LOCK_SESSION_TO_IP_AND_USER_AGENT", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty() &&
+				(val == "1" ||
+					strlower(val) == "true" ||
+					strlower(val) == "yes"))
+			{
+				real_args.push_back("--lock_session_to_ip_and_user_agent");
+				real_args.push_back("1");
+			}
+		}
 	}	
 
 	if(destroy_server)

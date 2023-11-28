@@ -262,6 +262,11 @@ bool Helper::failedLoginRateLimit()
 
 std::string Helper::getIdentData()
 {
+	static bool lock_session = Server->getServerParameter("lock_session_to_ip_and_user_agent") == "1";
+
+	if (!lock_session)
+		return std::string();
+
 	std::string user_agent = (*PARAMS)["HTTP_USER_AGENT"];
 	return remoteAddr() + user_agent;
 }
