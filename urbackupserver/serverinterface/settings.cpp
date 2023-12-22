@@ -124,15 +124,53 @@ JSON::Array getAlertScripts(IDatabase* db)
 	return ret;
 }
 
+std::string addNextArchival(IDatabase* db, int clientid, IQuery* get_next, std::string archive_str)
+{
+	str_map params;
+	ParseParamStrHttp(archive_str, &params);
+
+	for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+	{
+		if (next(it->first, 0, "uuid_"))
+		{
+			std::string idx = getafter("uuid_", it->first);
+			std::string buuid = hexToBytes(it->second);
+
+			get_next->Bind(clientid);
+			get_next->Bind(buuid.data(), buuid.size());
+			db_results res = get_next->Read();
+			get_next->Reset();
+
+			if (!res.empty())
+			{
+				int64 next_archival = watoi64(res[0]["next_archival"]);
+				archive_str += "&next_archival_" + idx + "=" + res[0]["next_archival"];
+				archive_str += "&timeleft_" + idx + "=" + convert(next_archival - (_i64)Server->getTimeSeconds());
+			}
+		}
+	}
+
+	return archive_str;
+}
+
 
 JSON::Object getJSONClientSettings(IDatabase* db, int t_clientid)
 {
 	std::map<std::string, ServerSettings::SClientSetting> settings = ServerSettings::getClientSettings(db, t_clientid);
 
+	IQuery* get_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
+
 	JSON::Object ret;
 	for (std::map<std::string, ServerSettings::SClientSetting>::iterator it = settings.begin();
 		it != settings.end(); ++it)
 	{
+		if (it->first == "archive")
+		{
+			it->second.value = addNextArchival(db, t_clientid, get_next, it->second.value.getString());
+			it->second.value_client = addNextArchival(db, t_clientid, get_next, it->second.value_client.getString());
+			it->second.value_group = addNextArchival(db, t_clientid, get_next, it->second.value_group.getString());
+		}
+
 		JSON::Object jobj;
 		if (it->second.use != -1)
 			jobj.set("use", it->second.use);
@@ -147,42 +185,6 @@ JSON::Object getJSONClientSettings(IDatabase* db, int t_clientid)
 	}
 
 	return ret;
-}
-
-void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
-{
-	JSON::Value j_archive = obj.get("archive");
-
-	IQuery* get_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
-
-	if (j_archive.getType() == JSON::str_type)
-	{
-		str_map params;
-		std::string archive_str = j_archive.getString();
-		ParseParamStrHttp(archive_str, &params);
-
-		for (str_map::iterator it = params.begin(); it != params.end(); ++it)
-		{
-			if (next(it->first, 0, "uuid_"))
-			{
-				std::string idx = getafter("uuid_", it->first);
-
-				get_next->Bind(clientid);
-				get_next->Bind(it->second);
-				db_results res = get_next->Read();
-				get_next->Reset();
-
-				if (!res.empty())
-				{
-					int64 next_archival = watoi64(res[0]["next_archival"]);
-					archive_str += "&next_archival_" + idx + "=" + res[0]["next_archival"];
-					archive_str += "&timeleft_" + idx + "=" + convert(next_archival - (_i64)Server->getTimeSeconds());
-				}
-			}
-		}
-
-		obj.set("archive", archive_str);
-	}
 }
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
@@ -453,7 +455,7 @@ void archiveParamsSetUuid(str_map& POST)
 				std::string uuid;
 				uuid.resize(16);
 				Server->secureRandomFill(&uuid[0], uuid.size());
-				it->second = uuid;
+				it->second = bytesToHex(uuid);
 				mod = true;
 			}
 		}
@@ -542,7 +544,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 void updateArchiveSettings(int clientid, IDatabase *db)
 {
 	IQuery* q = db->Prepare("INSERT INTO settings_db.settings(key, value, clientid) VALUES ('archive_update', '1', ?)");
-	if (clientid == 0)
+	if (clientid <= 0)
 	{
 		db_results res_ids = db->Read("SELECT id FROM clients");
 

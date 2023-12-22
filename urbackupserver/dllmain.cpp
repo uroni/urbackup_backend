@@ -2194,19 +2194,76 @@ std::string archiveSettingsParamStr(IDatabase* db, int clientid, std::string pre
 
 		std::string idx = "_" + prefix + convert(i);
 		if (!ret.empty()) ret += "&";
-		ret += "every"+ idx +"=" + res[i]["interval"];
-		ret += "&every_unit" + idx + "=" + res[i]["interval_unit"];
-		ret += "&for" + idx + "=" + res[i]["interval_unit"];
-		ret += "&for_unit" + idx + "=" + res[i]["interval_unit"];
-		ret += "&backup_types" + idx + "=" + ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"]));
-		ret += "&archive_window" + idx + "=" + res[i]["archive_window"];
-		ret += "&letters" + idx + "=" + res[i]["letters"];
+		ret += "every"+ idx +"=" + EscapeParamString(res[i]["interval"]);
+		ret += "&every_unit" + idx + "=" + EscapeParamString(res[i]["interval_unit"]);
+		ret += "&for" + idx + "=" + EscapeParamString(res[i]["length"]);
+		ret += "&for_unit" + idx + "=" + EscapeParamString(res[i]["length_unit"]);
+		ret += "&backup_type" + idx + "=" + EscapeParamString(ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
+		ret += "&archive_window" + idx + "=" + EscapeParamString(res[i]["archive_window"]);
+		ret += "&letters" + idx + "=" + EscapeParamString(res[i]["letters"]);
 		ret += "&uuid"+idx+"=" + bytesToHex(uuid);
 
-		q_set_uuid->Bind(uuid);
+		q_set_uuid->Bind(uuid.data(), uuid.size());
 		q_set_uuid->Bind(res[i]["id"]);
 		q_set_uuid->Write();
 		q_set_uuid->Reset();
+	}
+
+	return ret;
+}
+
+std::string fixArchiveMigration(IDatabase* db, const std::string& archive_str)
+{
+	str_map archive_settings;
+	ParseParamStrHttp(archive_str, &archive_settings);
+
+	IQuery* q_find = db->Prepare("SELECT length, length_unit FROM settings_db.automatic_archival WHERE uuid=?");
+
+	for (str_map::iterator it = archive_settings.begin();
+		it != archive_settings.end(); ++it)
+	{
+		if (next(it->first, 0, "backup_types_"))
+		{
+			std::string idx = getafter("backup_types_", it->first);
+
+			auto it_for = archive_settings.find("for_" + idx);
+			auto it_for_unit = archive_settings.find("for_unit_" + idx);
+			auto it_uuid = archive_settings.find("uuid_" + idx);
+			if (it_uuid != archive_settings.end() &&
+				it_for != archive_settings.end() &&
+				it_for_unit != archive_settings.end() &&
+				it_for->second == it_for_unit->second)
+			{
+				q_find->Bind(it_uuid->second.data(), it_uuid->second.size());
+				db_results res = q_find->Read();
+				q_find->Reset();
+
+				if (!res.empty())
+				{
+					archive_settings["for_" + idx] = res[0]["length"];
+					archive_settings["for_unit_" + idx] = res[0]["length_unit"];
+				}
+			}
+		}
+	}
+
+	std::string ret;
+	for (str_map::iterator it = archive_settings.begin();
+		it != archive_settings.end(); ++it)
+	{
+		if (!ret.empty())
+			ret += "&";
+
+		if (next(it->first, 0, "backup_types_"))
+		{
+			std::string idx = getafter("backup_types_", it->first);
+
+			ret += "backup_type_" + idx + "=" + EscapeParamString(it->second);
+		}
+		else
+		{
+			ret += it->first + "=" + EscapeParamString(it->second);
+		}
 	}
 
 	return ret;
@@ -2348,6 +2405,48 @@ bool upgrade65_66()
 	return db->Write(std::string("UPDATE settings_db.settings SET use=") + c_use_value_str + " WHERE key='virtual_clients_add'");
 }
 
+bool upgrade66_67()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	db_results res = db->Read("SELECT rowid, value FROM settings_db.settings WHERE key='archive'");
+
+	IQuery* q_update = db->Prepare("UPDATE settings_db.settings SET value=? WHERE rowid=?");
+
+	if (!db->Write("UPDATE settings_db.automatic_archival SET uuid=unhex(hex(uuid))"))
+		return false;
+
+	bool ret = true;
+
+	for (size_t i = 0; i < res.size(); ++i)
+	{
+		std::string new_res = fixArchiveMigration(db, res[i]["value"]);
+		if (new_res != res[i]["value"])
+		{
+			q_update->Bind(new_res);
+			q_update->Bind(res[i]["rowid"]);
+			ret &= q_update->Write();
+			q_update->Reset();
+		}
+	}	
+
+	IQuery* q_insert_setting = db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?, ?, ?, ?)");
+	db_results res_clients = db->Read("SELECT id FROM clients");
+	for (size_t i = 0; i < res_clients.size(); ++i)
+	{
+		const int clientid = watoi(res_clients[i]["id"]);
+
+		q_insert_setting->Bind("archive_update");
+		q_insert_setting->Bind("1");
+		q_insert_setting->Bind(clientid);
+		q_insert_setting->Bind(0);
+		ret &= q_insert_setting->Write();
+		q_insert_setting->Reset();
+	}
+
+	return true;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2369,7 +2468,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=66;
+	int max_v=67;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2770,6 +2869,13 @@ void upgrade(void)
 				break;
 			case 65:
 				if (!upgrade65_66())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 66:
+				if (!upgrade66_67())
 				{
 					has_error = true;
 				}
