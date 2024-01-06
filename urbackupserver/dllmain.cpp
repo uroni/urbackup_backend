@@ -2416,6 +2416,10 @@ bool upgrade67_68()
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	db_results res = db->Read("SELECT rowid, value FROM settings_db.settings WHERE key='archive'");
+
+	IQuery* q_update = db->Prepare("UPDATE settings_db.settings SET value=? WHERE rowid=?");
+
 	if (!db->Write("UPDATE settings_db.automatic_archival SET uuid=unhex(hex(uuid))"))
 		return false;
 
@@ -2884,8 +2888,8 @@ void upgrade(void)
 				}
 				++ver;
 				break;
-			case 66:
-				if (!upgrade66_67())
+			case 67:
+				if (!upgrade67_68())
 				{
 					has_error = true;
 				}
