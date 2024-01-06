@@ -943,7 +943,6 @@ ACTION_IMPL(settings)
 				ServerSettings settings(db, t_clientid);
 				
 				JSON::Object obj=getJSONClientSettings(db, t_clientid);
-				addNextArchival(db, t_clientid, obj);
 				obj.set("clientid", t_clientid);
 				obj.set("alert_scripts", getAlertScripts(db));
 				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
