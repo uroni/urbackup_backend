@@ -2258,14 +2258,16 @@ std::string fixArchiveMigration(IDatabase* db, const std::string& archive_str)
 		{
 			std::string idx = getafter("backup_types_", it->first);
 
-			ret += "backup_type_" + idx + "=" + EscapeParamString(it->second);
+			if(archive_settings.find("backup_type_" + idx)== archive_settings.end())
+				ret += "backup_type_" + idx + "=" + EscapeParamString(it->second);
 		}
 		}
 		else if (next(it->first, 0, "archive_window_"))
 		{
 			std::string idx = getafter("archive_window_", it->first);
 
-			ret += "window_" + idx + "=" + EscapeParamString(it->second);
+			if (archive_settings.find("window_" + idx) == archive_settings.end())
+				ret += "window_" + idx + "=" + EscapeParamString(it->second);
 		else
 		{
 			ret += it->first + "=" + EscapeParamString(it->second);
