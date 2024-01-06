@@ -124,8 +124,13 @@ JSON::Array getAlertScripts(IDatabase* db)
 	return ret;
 }
 
-std::string addNextArchival(IDatabase* db, int clientid, IQuery* get_next, std::string archive_str)
+JSON::Value addNextArchival(IDatabase* db, int clientid, IQuery* get_next, const JSON::Value& archive_val)
 {
+	if (archive_val.getType() != JSON::Value_type::str_type)
+		return archive_val;
+
+	std::string archive_str = archive_val.getString();
+
 	str_map params;
 	ParseParamStrHttp(archive_str, &params);
 
@@ -150,7 +155,7 @@ std::string addNextArchival(IDatabase* db, int clientid, IQuery* get_next, std::
 		}
 	}
 
-	return archive_str;
+	return JSON::Value(archive_str);
 }
 
 
@@ -166,9 +171,9 @@ JSON::Object getJSONClientSettings(IDatabase* db, int t_clientid)
 	{
 		if (it->first == "archive")
 		{
-			it->second.value = addNextArchival(db, t_clientid, get_next, it->second.value.getString());
-			it->second.value_client = addNextArchival(db, t_clientid, get_next, it->second.value_client.getString());
-			it->second.value_group = addNextArchival(db, t_clientid, get_next, it->second.value_group.getString());
+			it->second.value = addNextArchival(db, t_clientid, get_next, it->second.value);
+			it->second.value_client = addNextArchival(db, t_clientid, get_next, it->second.value_client);
+			it->second.value_group = addNextArchival(db, t_clientid, get_next, it->second.value_group);
 		}
 
 		JSON::Object jobj;
