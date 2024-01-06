@@ -2234,7 +2234,8 @@ std::string fixArchiveMigration(IDatabase* db, const std::string& archive_str)
 				it_for_unit != archive_settings.end() &&
 				it_for->second == it_for_unit->second)
 			{
-				q_find->Bind(it_uuid->second.data(), it_uuid->second.size());
+				std::string uuid = hexToBytes(it_uuid->second);
+				q_find->Bind(uuid.data(), uuid.size());
 				db_results res = q_find->Read();
 				q_find->Reset();
 
