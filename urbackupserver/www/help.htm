@@ -80,9 +80,11 @@
 
 <blockquote class="blockquotetest"><p><code>1-7/0-24</code>: Allow backups on every day of the week on every hour. <br/>
 <code>Mon-Sun/0-24</code>: An equivalent notation of the above<br/>
+<code>Mo-So/0-24</code>: An equivalent notation of the above, using German week abbreviations<br/>
+<code>Mon,Tue,Fri/0-24;</code>: All-day Monday, Tuesday and Friday.<br/>
 <code>Mon-Fri/8:00-9:00, 19:30-20:30;Sat,Sun/0-24</code>: On weekdays backup between 8 and 9 and between 19:30 and 20:30. On Saturday and Sunday the whole time.</p></blockquote>
 
-<p>As one can see a number can denote a day of the week (1-Monday, 2-Thuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Thues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per <code>","</code>. You can also set multiple window definitions. Separate them with <code>";"</code>.</p>
+<p>As one can see a number can denote a day of the week (1-Monday, 2-Tuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Tue, Wed, Thu, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per <code>","</code>. You can also set multiple window definitions. Separate them with <code>";"</code>.</p>
 
 
 <h3 id="exclude_files">How to exclude files?</h3>
