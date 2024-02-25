@@ -456,7 +456,7 @@ bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 		{
 			std::cout << "Checking " << subvolume_folder << " for dependencies..." << std::endl;
 			std::string clone_data;
-			rc=exec_wait(find_zfs_cmd(), clone_data, "get", "clones", "-H", "-o", "value", (subvolume_folder+"@ro").c_str(), NULL);
+			rc=exec_wait(find_zfs_cmd(), clone_data, "get", "-H", "-o", "value", "clones", (subvolume_folder+"@ro").c_str(), NULL);
 			std::string rename_name = ExtractFileName(subvolume_folder);
 			if(rc==0)
 			{
