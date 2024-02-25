@@ -1,6 +1,6 @@
 for /f "delims=" %%i in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%i
 
-if not exist client git clone -b %BRANCH% http://buildserver.urbackup.org/git/urbackup_frontend_wx client
+if not exist client git clone -b %BRANCH% https://github.com/uroni/urbackup_frontend_wx client
 
 cd client
 
