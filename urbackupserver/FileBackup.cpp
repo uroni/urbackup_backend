@@ -1296,7 +1296,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 	std::ostringstream log;
 
-	log << "Verification of file backup with id " << backupid << ". Path=" << (backuppath) << " Tree-hashing=" << convert(BackupServer::useTreeHashing()) << std::endl;
+	log << "Verification of file backup with id " << backupid << ". Path=" << (backuppath) << " Tree-hashing=" << convert(BackupServer::useTreeHashing()) << "\r\n";
 
 	unsigned int read;
 	char buffer[4096];
@@ -1377,7 +1377,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 								std::string msg = "No hash for file \"" + (curr_path + os_file_sep() + cf.name) + "\" found. Verification failed.";
 								verify_ok = false;
 								ServerLogger::Log(logid, msg, LL_ERROR);
-								log << msg << std::endl;
+								log << msg << "\r\n";
 							}
 						}
 						else
@@ -1389,7 +1389,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 								std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
 								verify_ok=false;
 								ServerLogger::Log(logid, msg, LL_ERROR);
-								log << msg << std::endl;
+								log << msg << "\r\n";
 								save_debug_data(remote_path+"/"+cf.name,
 									base64_encode_dash(getSHADef(curr_path+os_file_sep()+cfn)),
 									shabase64);
@@ -1407,7 +1407,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 							std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
-							log << msg << std::endl;
+							log << msg << "\r\n";
 						}
 
 						++verified_files;

@@ -2015,16 +2015,16 @@ void ServerCleanupThread::enforce_quotas(void)
 	{
 		ServerLogger::Log(logid, "Enforcing quota for client \"" + (clients[i].name)+ "\" (id="+convert(clients[i].id)+")", LL_INFO);
 		std::ostringstream log;
-		log << "Quota enforcement report for client \"" << (clients[i].name) << "\" (id=" << clients[i].id  << ")" << std::endl;
+		log << "Quota enforcement report for client \"" << (clients[i].name) << "\" (id=" << clients[i].id  << ")\r\n";
 
 		if(!enforce_quota(clients[i].id, log))
 		{
 			ClientMain::sendMailToAdmins("Quota enforcement failed", log.str());
-			ServerLogger::Log(logid, log.str(), LL_ERROR);
+			ServerLogger::Log(logid, trim(log.str()), LL_ERROR);
 		}
 		else
 		{
-			ServerLogger::Log(logid, log.str(), LL_DEBUG);
+			ServerLogger::Log(logid, trim(log.str()), LL_DEBUG);
 		}
 	}
 
@@ -2042,7 +2042,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 	std::string client_quota = trim(client_settings.getSettings()->client_quota);
 	if(client_quota.empty() || client_quota=="100%" || client_quota=="-")
 	{
-		log << "Client does not have a quota or quota is 100%" << std::endl;
+		log << "Client does not have a quota or quota is 100%\r\n";
 		return true;
 	}
 
@@ -2052,22 +2052,22 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 		ServerCleanupDao::CondInt64 used_storage=cleanupdao->getUsedStorage(clientid);
 		if(!used_storage.exists || used_storage.value<0)
 		{
-			log << "Error getting used storage of client" << std::endl;
+			log << "Error getting used storage of client\r\n";
 			return false;
 		}
 
 		int64 client_quota=cleanup_amount(client_settings.getSettings()->client_quota, db);
 
-		log << "Client uses " << PrettyPrintBytes(used_storage.value) << " and has a quota of " << PrettyPrintBytes(client_quota) << std::endl;
+		log << "Client uses " << PrettyPrintBytes(used_storage.value) << " and has a quota of " << PrettyPrintBytes(client_quota) << "\r\n";
 
 		if(used_storage.value<=client_quota)
 		{		
-			log << "Client within assigned quota." << std::endl;
+			log << "Client within assigned quota.\r\n";
 			return true;
 		}
 		else
 		{
-			log << "This requires enforcement of the quota." << std::endl;
+			log << "This requires enforcement of the quota.\r\n";
 		}
 
 		did_remove_something=false;
@@ -2080,7 +2080,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 			if(available_space==-1)
 			{
-				log << "Error getting free space -5" << std::endl;
+				log << "Error getting free space -5\r\n";
 				return false;
 			}
 
@@ -2090,7 +2090,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 			if(target_minspace<0)
 			{
-				log << "Error. Target space is negative" << std::endl;
+				log << "Error. Target space is negative\r\n";
 				return false;
 			}
 
@@ -2102,7 +2102,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 				{
 					if (cleanup_one_imagebackup_client(clientid, target_minspace, imagebid))
 					{
-						log << "Removed image backupd with id " << imagebid << std::endl;
+						log << "Removed image backupd with id " << imagebid << "\r\n";
 						did_remove_something = true;
 						//TODO: wait here for btrfs subvol remove to finish
 						if (hasEnoughFreeSpace(target_minspace, &client_settings))
@@ -2129,7 +2129,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 				int filebid;
 				if(cleanup_one_filebackup_client(clientid, target_minspace, filebid))
 				{
-					log << "Removed file backup with id " << filebid << std::endl;
+					log << "Removed file backup with id " << filebid << "\r\n";
 
 					did_remove_something=true;
 					nopc=0;

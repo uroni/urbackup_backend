@@ -292,9 +292,9 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 						msg+="file ";
 						subj+="file ";
 					}
-					subj+="backup of \""+clientname+"\"\n";
-					msg+="backup of \""+clientname+"\".\n";
-					msg+="\nReport:\n";
+					subj+="backup of \""+clientname+"\"\r\n";
+					msg+="backup of \""+clientname+"\".\r\n";
+					msg+="\r\nReport:\r\n";
 					msg+="( "+convert(infos);
 					if(infos!=1) msg+=" infos, ";
 					else msg+=" info, ";
@@ -304,7 +304,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					msg+=convert(errors);
 					if(errors!=1) msg+=" errors";
 					else msg+=" error";
-					msg+=" )\n\n";
+					msg+=" )\r\n\r\n";
 					std::vector<std::string> msgs;
 					Tokenize(data, msgs, "\n");
 
@@ -320,7 +320,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 						std::string lls="info";
 						if(li==1) lls="warning";
 						else if(li==2) lls="error";
-						msg+=(tt)+"("+lls+"): "+(m)+"\n";
+						msg+=(tt)+"("+lls+"): "+(m)+"\r\n";
 					}
 					if(!r_success)
 						subj+=" - failed";

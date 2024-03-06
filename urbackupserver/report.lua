@@ -31,9 +31,9 @@ else
 	subj = subj .. "file "
 end
 
-subj = subj .. "backup of \"" .. params.clientname .. "\"\n"
-msg = msg .. "backup of \"" .. params.clientname .. "\".\n"
-msg = msg .. "\nReport:\n"
+subj = subj .. "backup of \"" .. params.clientname .. "\"\r\n"
+msg = msg .. "backup of \"" .. params.clientname .. "\".\r\n"
+msg = msg .. "\r\nReport:\r\n"
 msg = msg .. "( " .. params.infos
 if params.infos~=1 then msg = msg .. " infos, "
 else msg = msg .. " info, " end
@@ -41,15 +41,15 @@ msg = msg .. params.warnings
 if params.warnings~=1 then msg = msg .. " warnings, "
 else msg = msg .. " warning, " end
 msg = msg .. params.errors
-if params.errors~=1 then msg = msg .. " errors)\n\n"
-else msg = msg .. " error)\n\n" end
+if params.errors~=1 then msg = msg .. " errors)\r\n\r\n"
+else msg = msg .. " error)\r\n\r\n" end
 
 for i, v in ipairs(params.data)
 do
 	local ll = "(info)"
 	if v.ll==1 then ll="(warning)"
 	elseif v.ll==2 then ll="(error)" end
-	msg = msg .. os.date("%Y-%m-%d %H:%M:%S", v.time) .. ll .. ": " .. v.msg .. "\n"
+	msg = msg .. os.date("%Y-%m-%d %H:%M:%S", v.time) .. ll .. ": " .. v.msg .. "\r\n"
 end
 
 if params.success
