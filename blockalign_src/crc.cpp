@@ -6,6 +6,8 @@
 #include <setjmp.h>
 #endif
 
+#include <cstdint> // for uintptr_t data type
+
 // Visual Studio needs VS2008 (1500)
 //  http://msdn.microsoft.com/en-us/library/bb531394%28v=vs.90%29.aspx
 #if defined(_MSC_VER) && (_MSC_VER < 1500)
