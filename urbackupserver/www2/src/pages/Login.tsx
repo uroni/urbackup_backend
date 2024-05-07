@@ -1,6 +1,6 @@
 import { FormEvent, Suspense, useState } from "react";
 import { router, state, urbackupServer } from "../App";
-import { Field } from "@fluentui/react-components/unstable";
+import { Field } from "@fluentui/react-components";
 import { Button, Input, Label, Spinner } from "@fluentui/react-components";
 import { useQuery } from "react-query";
 import {

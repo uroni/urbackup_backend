@@ -10,7 +10,7 @@
     "messages:extract": "lingui extract"
   },
   "dependencies": {
-    "@fluentui/react-components": "^9.49.1",
+    "@fluentui/react-components": "^9.49.2",
     "@fluentui/react-icons": "^2.0.239",
     "@lingui/core": "^4.10.1",
     "@lingui/react": "^4.10.1",
@@ -29,13 +29,13 @@
     "@lingui/vite-plugin": "^4.10.1",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^3.1.0",
+    "@vitejs/plugin-react": "^4.2.1",
     "babel-plugin-macros": "^3.1.0",
     "eslint": "^9.2.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-lingui": "^0.3.0",
     "prettier": "3.2.5",
-    "typescript": "^4.9.5",
-    "vite": "^4.5.3"
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
   }
 }
