@@ -1,12 +1,23 @@
-import { createTableColumn, DataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Spinner, TableCellLayout, TableColumnDefinition } from '@fluentui/react-components';
-import { Suspense } from 'react';
-import { useQuery } from 'react-query';
-import { StatusClientItem } from '../api/urbackupserver';
-import { urbackupServer } from '../App';
+import {
+  createTableColumn,
+  DataGrid,
+  DataGridBody,
+  DataGridCell,
+  DataGridHeader,
+  DataGridHeaderCell,
+  DataGridRow,
+  Spinner,
+  TableCellLayout,
+  TableColumnDefinition,
+} from "@fluentui/react-components";
+import { Suspense } from "react";
+import { useQuery } from "react-query";
+import { StatusClientItem } from "../api/urbackupserver";
+import { urbackupServer } from "../App";
 
 const compareNum = (a: number, b: number) => {
-  return a==b ? 0 : ((a<b) ? 1 : -1); 
-}
+  return a == b ? 0 : a < b ? 1 : -1;
+};
 
 const columns: TableColumnDefinition<StatusClientItem>[] = [
   createTableColumn<StatusClientItem>({
@@ -18,11 +29,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
       return compareNum(a.id, b.id);
     },
     renderCell: (item) => {
-      return (
-        <TableCellLayout>
-          {item.id}
-        </TableCellLayout>
-      );
+      return <TableCellLayout>{item.id}</TableCellLayout>;
     },
   }),
   createTableColumn<StatusClientItem>({
@@ -30,15 +37,11 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     renderHeaderCell: () => {
       return "Client name";
     },
-    compare: (a,b) => {
+    compare: (a, b) => {
       return a.name.localeCompare(b.name);
     },
     renderCell: (item) => {
-      return (
-        <TableCellLayout>
-          {item.name}
-        </TableCellLayout>
-      );
+      return <TableCellLayout>{item.name}</TableCellLayout>;
     },
   }),
   createTableColumn<StatusClientItem>({
@@ -52,7 +55,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          {(new Date(item.lastbackup_image*1000)).toLocaleString()}
+          {new Date(item.lastbackup_image * 1000).toLocaleString()}
         </TableCellLayout>
       );
     },
@@ -68,7 +71,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          {(new Date(item.lastbackup*1000)).toLocaleString()}
+          {new Date(item.lastbackup * 1000).toLocaleString()}
         </TableCellLayout>
       );
     },
@@ -76,38 +79,42 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
 ];
 
 const Status = () => {
-
-  const statusResult = useQuery("status", urbackupServer.status, 
-    {suspense: true});
+  const statusResult = useQuery("status", urbackupServer.status, {
+    suspense: true,
+  });
 
   return (
     <>
-    <Suspense fallback={<Spinner />}>
-      <h3>Status page</h3>
-      <DataGrid sortable selectionMode='multiselect'
-        items={statusResult.data!.status} getRowId={(item) => item.id}
-        columns={columns}>
-        <DataGridHeader>
-          <DataGridRow selectionCell={{ "aria-label": "Select all rows" }}>
-            {({ renderHeaderCell }) => (
-              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-            )}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<StatusClientItem>>
-          {({ item, rowId }) => (
-            <DataGridRow<StatusClientItem>
-              key={rowId}
-              selectionCell={{ "aria-label": "Select row" }}
-            >
-              {({ renderCell }) => (
-                <DataGridCell>{renderCell(item)}</DataGridCell>
+      <Suspense fallback={<Spinner />}>
+        <h3>Status page</h3>
+        <DataGrid
+          sortable
+          selectionMode="multiselect"
+          items={statusResult.data!.status}
+          getRowId={(item) => item.id}
+          columns={columns}
+        >
+          <DataGridHeader>
+            <DataGridRow selectionCell={{ "aria-label": "Select all rows" }}>
+              {({ renderHeaderCell }) => (
+                <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
               )}
             </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
-    </Suspense>
+          </DataGridHeader>
+          <DataGridBody<StatusClientItem>>
+            {({ item, rowId }) => (
+              <DataGridRow<StatusClientItem>
+                key={rowId}
+                selectionCell={{ "aria-label": "Select row" }}
+              >
+                {({ renderCell }) => (
+                  <DataGridCell>{renderCell(item)}</DataGridCell>
+                )}
+              </DataGridRow>
+            )}
+          </DataGridBody>
+        </DataGrid>
+      </Suspense>
     </>
   );
 };

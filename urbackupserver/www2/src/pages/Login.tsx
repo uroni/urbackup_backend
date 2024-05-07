@@ -1,109 +1,133 @@
-import { FormEvent, Suspense, useState } from 'react';
-import { router, state, urbackupServer } from '../App';
+import { FormEvent, Suspense, useState } from "react";
+import { router, state, urbackupServer } from "../App";
 import { Field } from "@fluentui/react-components/unstable";
-import { Button, Input, Label, Spinner } from '@fluentui/react-components';
-import { useQuery } from 'react-query';
-import { PasswordWrongError, UsernameNotFoundError, UsernameOrPasswordWrongError } from '../api/urbackupserver';
+import { Button, Input, Label, Spinner } from "@fluentui/react-components";
+import { useQuery } from "react-query";
+import {
+  PasswordWrongError,
+  UsernameNotFoundError,
+  UsernameOrPasswordWrongError,
+} from "../api/urbackupserver";
+import { Trans, t } from "@lingui/macro";
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setLoading] = useState(false);
-  const [usernameValidationMessage, setUsernameValidationMessage] = useState("");
-  const [passwordValidationMessage, setPasswordValidationMessage] = useState("");
+  const [usernameValidationMessage, setUsernameValidationMessage] =
+    useState("");
+  const [passwordValidationMessage, setPasswordValidationMessage] =
+    useState("");
 
-  const anonymousLoginResult = useQuery("anonymousLogin", urbackupServer.anonymousLogin,
-    {suspense: true, onSuccess(data) {
-    if(data.success)
+  const anonymousLoginResult = useQuery(
+    "anonymousLogin",
+    urbackupServer.anonymousLogin,
     {
-      state.loggedIn = true;
-      router.navigate("/status");
-      return;
-    }
-  },});
+      suspense: true,
+      onSuccess(data) {
+        if (data.success) {
+          state.loggedIn = true;
+          router.navigate("/status");
+          return;
+        }
+      },
+    },
+  );
 
-  const handleSubmitInt = async (e : FormEvent<HTMLFormElement>) => {
-    
+  const handleSubmitInt = async (e: FormEvent<HTMLFormElement>) => {
     const initres = anonymousLoginResult.data;
-    if(typeof initres == "undefined")
-      throw TypeError;
+    if (typeof initres == "undefined") throw TypeError;
 
-    if(!username)
-    {
+    if (!username) {
       setUsernameValidationMessage("Username is empty");
       return;
     }
-    
-    try
-    {
-      const loginRes = await urbackupServer.login(username, password, initres.ldap_enabled ?? false);
-      if(loginRes.success)
-      {
+
+    try {
+      const loginRes = await urbackupServer.login(
+        username,
+        password,
+        initres.ldap_enabled ?? false,
+      );
+      if (loginRes.success) {
         state.loggedIn = true;
         router.navigate("/status");
         return;
       }
-    }
-    catch(e)
-    {
-      if(e instanceof UsernameNotFoundError)
-      {
+    } catch (e) {
+      if (e instanceof UsernameNotFoundError) {
         setUsernameValidationMessage("User not found on server");
-      }
-      else if(e instanceof UsernameOrPasswordWrongError)
-      {
-        setUsernameValidationMessage("Login with username and password combination failed");
-        setPasswordValidationMessage("Login with username and password combination failed");
-      }
-      else if(e instanceof PasswordWrongError)
-      {
+      } else if (e instanceof UsernameOrPasswordWrongError) {
+        setUsernameValidationMessage(
+          "Login with username and password combination failed",
+        );
+        setPasswordValidationMessage(
+          "Login with username and password combination failed",
+        );
+      } else if (e instanceof PasswordWrongError) {
         setPasswordValidationMessage("Password wrong");
-      }
-      else
-      {
+      } else {
         throw e;
       }
     }
   };
 
-  const handleSubmit = async (e : FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    try
-    {
+    try {
       await handleSubmitInt(e);
-    }
-    finally
-    {
+    } finally {
       setLoading(false);
     }
-  }
-
+  };
   return (
-    <div style={{ display: "flex",
+    <div
+      style={{
+        display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        height: "100%"
-      }}>
-    <Suspense fallback={<Spinner/>}>
+        height: "100%",
+      }}
+    >
       <div>
-        <h3>Login:</h3>
+        <h3>
+          <Trans>Login:</Trans>
+        </h3>
         <div>
           <form onSubmit={handleSubmit}>
             <Field
-              label="Username" required validationMessage={usernameValidationMessage}>
-                <Input  id='username' value={username}  onChange={(e) => { setUsername(e.target.value)}}/>
-              </Field>
-              <Field
-              label="Password" required validationMessage={passwordValidationMessage}>
-                <Input id='password' type='password' value={password} onChange={(e) => { setPassword(e.target.value)}}/>
-              </Field>
-              {isLoading && <Spinner label="Logging in..." />}
-              {!isLoading && <Button type="submit">Log in</Button>}
+              label={t`Username`}
+              required
+              validationMessage={usernameValidationMessage}
+            >
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                }}
+              />
+            </Field>
+            <Field
+              label={t`Password`}
+              required
+              validationMessage={passwordValidationMessage}
+            >
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                }}
+              />
+            </Field>
+            {isLoading && <Spinner label={t`Logging in...`} />}
+            {!isLoading && <Button type="submit">Log in</Button>}
           </form>
         </div>
       </div>
-    </Suspense>
     </div>
   );
 };

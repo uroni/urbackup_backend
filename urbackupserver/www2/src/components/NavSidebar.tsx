@@ -1,6 +1,11 @@
-import { Pages, router, state } from '../App';
-import { useSnapshot } from 'valtio';
-import { SelectTabData, SelectTabEvent, Tab, TabList } from '@fluentui/react-components';
+import { Pages, router, state } from "../App";
+import { useSnapshot } from "valtio";
+import {
+  SelectTabData,
+  SelectTabEvent,
+  Tab,
+  TabList,
+} from "@fluentui/react-components";
 
 export const NavSidebar = () => {
   const snap = useSnapshot(state);

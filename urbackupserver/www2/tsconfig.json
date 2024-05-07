@@ -14,7 +14,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["./node_modules/@lingui/macro/global"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
