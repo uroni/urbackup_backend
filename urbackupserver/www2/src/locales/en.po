@@ -1,0 +1,28 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language: \n"
+"Language-Team: \n"
+"Content-Type: \n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#: src/pages/Login.tsx:100
+msgid "Logging in..."
+msgstr ""
+
+#: src/pages/Login.tsx:89
+msgid "Login:"
+msgstr "Login:"
+
+#: src/pages/Login.tsx:97
+msgid "Password"
+msgstr ""
+
+#: src/pages/Login.tsx:93
+msgid "Username"
+msgstr ""
