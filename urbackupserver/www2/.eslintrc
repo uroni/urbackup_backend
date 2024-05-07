@@ -1,0 +1,7 @@
+{
+    "extends": [
+        "eslint:recommended",
+        "prettier"
+    ],
+    "plugins": ["lingui"]
+}
