@@ -65,6 +65,24 @@ enum ClientSpecificStatus {
   STARTING_UP = 17,
 }
 
+export enum BackupType {
+  INCR_FILE,
+  FULL_FILE,
+  INCR_IMAGE,
+  FULL_IMAGE
+}
+
+function backupTypeToStr(backupType: BackupType): string {
+  switch(backupType)
+  {
+    case BackupType.INCR_FILE: return "incr_file";
+    case BackupType.FULL_FILE: return "full_file";
+    case BackupType.INCR_IMAGE: return "incr_image";
+    case BackupType.FULL_IMAGE: return "full_image";
+    default: return "undefined backup type";
+  }
+}
+
 interface ClientProcessItem {
   action: ClientProcessActionTypes;
   pcdone: number;
@@ -114,6 +132,18 @@ interface StatusResult {
   server_pubkey: string;
 
   status: [StatusClientItem];
+}
+
+type StartType = "incr_file" | "full_file" | "incr_image" | "full_image";
+
+interface StartBackupResultItem {
+  start_type: StartType;
+  clientid: ClientIdType;
+  start_ok: boolean;
+}
+
+interface StartBackupResult {
+  result: [StartBackupResultItem];
 }
 
 function calcPwHash(
@@ -252,6 +282,12 @@ class UrBackupServer {
     const resp = await this.fetchData({}, "status");
     return resp as StatusResult;
   };
+
+  startBackup = async(clientId: [ClientIdType], backupType: BackupType) => {
+    const resp = await this.fetchData({"start_client": clientId.join(","), 
+      "start_type": backupTypeToStr(backupType)}, "start_backup")
+    return resp as StartBackupResult;
+  }
 }
 
 export default UrBackupServer;
