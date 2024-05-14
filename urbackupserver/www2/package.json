@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "messages:extract": "lingui extract"
+    "messages:extract": "lingui extract",
+    "format": "pnpm exec prettier . --write"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.49.2",

@@ -69,17 +69,21 @@ export enum BackupType {
   INCR_FILE,
   FULL_FILE,
   INCR_IMAGE,
-  FULL_IMAGE
+  FULL_IMAGE,
 }
 
 function backupTypeToStr(backupType: BackupType): string {
-  switch(backupType)
-  {
-    case BackupType.INCR_FILE: return "incr_file";
-    case BackupType.FULL_FILE: return "full_file";
-    case BackupType.INCR_IMAGE: return "incr_image";
-    case BackupType.FULL_IMAGE: return "full_image";
-    default: return "undefined backup type";
+  switch (backupType) {
+    case BackupType.INCR_FILE:
+      return "incr_file";
+    case BackupType.FULL_FILE:
+      return "full_file";
+    case BackupType.INCR_IMAGE:
+      return "incr_image";
+    case BackupType.FULL_IMAGE:
+      return "full_image";
+    default:
+      return "undefined backup type";
   }
 }
 
@@ -283,11 +287,16 @@ class UrBackupServer {
     return resp as StatusResult;
   };
 
-  startBackup = async(clientId: [ClientIdType], backupType: BackupType) => {
-    const resp = await this.fetchData({"start_client": clientId.join(","), 
-      "start_type": backupTypeToStr(backupType)}, "start_backup")
+  startBackup = async (clientId: [ClientIdType], backupType: BackupType) => {
+    const resp = await this.fetchData(
+      {
+        start_client: clientId.join(","),
+        start_type: backupTypeToStr(backupType),
+      },
+      "start_backup",
+    );
     return resp as StartBackupResult;
-  }
+  };
 }
 
 export default UrBackupServer;
