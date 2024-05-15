@@ -79,8 +79,16 @@ export const router = createHashRouter([
     path: "/",
     element: <LoginPage />,
     loader: async () => {
+      if(await isLoggedIn())
+      {
+        state.loggedIn = true;
+        state.startupComplete = true;
+        await router.navigate(`/${Pages.Status}`);
+        return;
+      }
       state.activePage = Pages.Login;
       state.startupComplete = true;
+      state.loggedIn = false;
       return null;
     },
   },
