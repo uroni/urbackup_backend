@@ -283,6 +283,10 @@ class UrBackupServer {
       }
     }
 
+    if(!resp.session && this.session) {
+      resp.session = this.session;
+    }
+
     return resp as LoginResult;
   };
 

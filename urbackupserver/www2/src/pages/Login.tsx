@@ -81,7 +81,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await handleSubmitInt(e);
+      await handleSubmitInt();
     } finally {
       setLoading(false);
     }
