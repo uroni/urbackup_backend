@@ -10,9 +10,9 @@ import {
 export const NavSidebar = () => {
   const snap = useSnapshot(state);
 
-  const onTabSelect = (event: SelectTabEvent, data: SelectTabData) => {
+  const onTabSelect = async (event: SelectTabEvent, data: SelectTabData) => {
     const nt = `/${data.value}`;
-    router.navigate(nt);
+    await router.navigate(nt);
   };
 
   return (

@@ -1,11 +1,8 @@
 import logoImage from "../assets/urbackup.png";
-import { useSnapshot } from "valtio";
-import { state } from "../App";
 import { useStackStyles } from "./StackStyles";
 import { Avatar, Image } from "@fluentui/react-components";
 
 export const HeaderBar = () => {
-  const snap = useSnapshot(state);
   const styles = useStackStyles();
 
   return (

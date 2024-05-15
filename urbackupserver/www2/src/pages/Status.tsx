@@ -10,9 +10,9 @@ import {
   TableCellLayout,
   TableColumnDefinition,
 } from "@fluentui/react-components";
-import { Suspense, useEffect } from "react";
+import { Suspense} from "react";
 import { useQuery } from "react-query";
-import { BackupType, StatusClientItem } from "../api/urbackupserver";
+import { StatusClientItem } from "../api/urbackupserver";
 import { urbackupServer } from "../App";
 
 const compareNum = (a: number, b: number) => {
