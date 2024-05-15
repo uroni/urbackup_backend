@@ -1,4 +1,4 @@
-import { PBKDF2, MD5, algo } from "crypto-js";
+import { PBKDF2, MD5, algo } from"crypto-js";
 
 interface SaltResult {
   salt: string;
@@ -43,7 +43,7 @@ enum ClientProcessActionTypes {
   RESUME_INCR_FILE = 5,
   RESUME_FULL_FILE = 6,
   CDP_SYNC = 7,
-  RESTORE_FILE = 7,
+  RESTORE_FILE = 8,
   RESTORE_IMAGE = 9,
   UPDATE = 10,
   CHECK_INTEGRITY = 11,
@@ -181,10 +181,12 @@ class UrBackupServer {
   private serverUrl: string;
   private session = "";
 
-  constructor(serverUrl: string) {
+  constructor(serverUrl: string, session: string) {
     this.serverUrl = serverUrl;
+    this.session = session;
   }
 
+  // Generic function to fetch data from server
   fetchData = async (params: Record<string, string>, action: string) => {
     const searchParams = new URLSearchParams();
 
@@ -225,11 +227,13 @@ class UrBackupServer {
     return resp;
   };
 
+  // Login to server with username and password
   login = async (
     username: string,
     password: string,
     ldapLogin: boolean = false,
   ) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let resp: any;
     if (ldapLogin) {
       resp = await this.fetchData(
@@ -282,21 +286,45 @@ class UrBackupServer {
     return resp as LoginResult;
   };
 
+  // Return data for displaying status page
   status = async () => {
     const resp = await this.fetchData({}, "status");
     return resp as StatusResult;
   };
 
+  // Start a backup of type `backupType` for client with id `clientId`
   startBackup = async (clientId: [ClientIdType], backupType: BackupType) => {
     const resp = await this.fetchData(
       {
-        start_client: clientId.join(","),
+        start_client: clientId.join(),
         start_type: backupTypeToStr(backupType),
       },
       "start_backup",
     );
     return resp as StartBackupResult;
   };
+
+  // Mark clients with ids `clientId` as to be removed
+  removeClients = async (clientid: [ClientIdType]): Promise<StatusResult> => {
+    const resp = await this.fetchData({"remove_client": clientid.join()}, "status")
+    return resp as StatusResult;
+  }
+
+  // Mark client with id `clientId` as to be removed
+  removeClient = async (clientId: ClientIdType): Promise<StatusResult> =>  {
+    return await this.removeClients([clientId]);
+  }
+
+  // Unmark clients with ids `clientId` to not be removed anymore
+  stopRemoveClients = async (clientid: [ClientIdType]): Promise<StatusResult> => {
+    const resp = await this.fetchData({"remove_client": clientid.join(), "stop_remove_client": "true"}, "status")
+    return resp as StatusResult;
+  }
+
+  // Unmark client with id `clientId` to not be removed anymore
+  stopRemoveClient = async (clientId: ClientIdType): Promise<StatusResult> =>  {
+    return await this.stopRemoveClients([clientId]);
+  }
 }
 
 export default UrBackupServer;
