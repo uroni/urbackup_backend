@@ -1,7 +1,7 @@
-import { FormEvent, Suspense, useState } from "react";
-import { router, state, urbackupServer } from "../App";
+import { FormEvent, useState } from "react";
+import { router, saveSessionToLocalStorage, state, urbackupServer } from "../App";
 import { Field } from "@fluentui/react-components";
-import { Button, Input, Label, Spinner } from "@fluentui/react-components";
+import { Button, Input, Spinner } from "@fluentui/react-components";
 import { useQuery } from "react-query";
 import {
   PasswordWrongError,
@@ -24,17 +24,20 @@ const Login = () => {
     urbackupServer.anonymousLogin,
     {
       suspense: true,
-      onSuccess(data) {
+      onSuccess: async (data) => {
+        if(data.session)
+          saveSessionToLocalStorage(data.session);
         if (data.success) {
           state.loggedIn = true;
-          router.navigate("/status");
+          state.startupComplete = true;
+          await router.navigate(`/${state.pageAfterLogin}`);
           return;
         }
       },
     },
   );
 
-  const handleSubmitInt = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitInt = async () => {
     const initres = anonymousLoginResult.data;
     if (typeof initres == "undefined") throw TypeError;
 
@@ -49,9 +52,11 @@ const Login = () => {
         password,
         initres.ldap_enabled ?? false,
       );
+      if(loginRes.session)
+        saveSessionToLocalStorage(loginRes.session);
       if (loginRes.success) {
-        state.loggedIn = true;
-        router.navigate("/status");
+        state.startupComplete = true;
+        await router.navigate(`/${state.pageAfterLogin}`);
         return;
       }
     } catch (e) {

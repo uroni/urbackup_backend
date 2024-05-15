@@ -10,11 +10,10 @@ import {
   FluentProvider,
   teamsLightTheme,
   teamsDarkTheme,
-  makeStyles,
   Spinner,
 } from "@fluentui/react-components";
 import { useStackStyles } from "./components/StackStyles";
-import UrBackupServer from "./api/urbackupserver";
+import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
@@ -34,7 +33,46 @@ export enum Pages {
 export const state = proxy({
   loggedIn: false,
   activePage: Pages.Status,
+  pageAfterLogin: Pages.Status,
+  startupComplete: false
 });
+
+export const urbackupServer = new UrBackupServer("x", getSessionFromLocalStorage());
+
+async function isLoggedIn() : Promise<boolean>
+{
+  try
+  {
+    await urbackupServer.status()
+  }
+  catch(error)
+  {
+    if(error instanceof SessionNotFoundError)
+      return false;
+  }
+  return true;
+}
+
+async function jumpToLoginPageIfNeccessary()
+{
+  if(state.startupComplete && state.loggedIn)
+  {
+    state.activePage = state.pageAfterLogin;
+    return;
+  }
+
+  if(await isLoggedIn())
+  {
+    state.loggedIn = true;
+    state.startupComplete = true;
+    state.activePage = state.pageAfterLogin;
+  }
+  else
+  {
+    state.loggedIn = false;
+    await router.navigate(`/`);
+  }
+}
 
 export const router = createHashRouter([
   {
@@ -42,6 +80,7 @@ export const router = createHashRouter([
     element: <LoginPage />,
     loader: async () => {
       state.activePage = Pages.Login;
+      state.startupComplete = true;
       return null;
     },
   },
@@ -49,7 +88,8 @@ export const router = createHashRouter([
     path: `/${Pages.Status}`,
     element: <StatusPage />,
     loader: async () => {
-      state.activePage = Pages.Status;
+      state.pageAfterLogin = Pages.Status;
+      await jumpToLoginPageIfNeccessary();
       return null;
     },
   },
@@ -61,13 +101,28 @@ export const router = createHashRouter([
     path: `/${Pages.Activities}`,
     element: <div>Activities page</div>,
     loader: async () => {
-      state.activePage = Pages.Activities;
+      state.pageAfterLogin = Pages.Activities;
+      await jumpToLoginPageIfNeccessary();
       return null;
     },
   },
 ]);
 
-export const urbackupServer = new UrBackupServer("x");
+function getSessionFromLocalStorage() : string
+{
+  if(!window.localStorage)
+    return "";
+  return localStorage.getItem("ses") ?? "";
+}
+
+export function saveSessionToLocalStorage(session: string)
+{
+  if(!window.localStorage)
+    return;
+  localStorage.setItem("ses", session);
+}
+
+
 const queryClient = new QueryClient();
 
 export async function dynamicActivateTranslation(locale: string) {
@@ -88,7 +143,9 @@ const App: React.FunctionComponent = () => {
       .addEventListener("change", (event) => {
         setTheme(event.matches ? teamsDarkTheme : teamsLightTheme);
       });
-    dynamicActivateTranslation("en");
+    void (async () => {
+    await dynamicActivateTranslation("en");
+    })();
   }, []);
 
   const styles = useStackStyles();
