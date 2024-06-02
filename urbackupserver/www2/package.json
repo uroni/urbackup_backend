@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fluentui/react-components": "^9.49.2",
+    "@fluentui/react-experiments": "^8.14.152",
     "@fluentui/react-icons": "^2.0.239",
     "@lingui/core": "^4.10.1",
     "@lingui/react": "^4.10.1",
