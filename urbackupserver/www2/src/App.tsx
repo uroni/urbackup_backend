@@ -159,7 +159,7 @@ const App: React.FunctionComponent = () => {
   const styles = useStackStyles();
 
   return (
-    <FluentProvider theme={selectedTheme} style={{ height: "100%" }}>
+    <FluentProvider theme={selectedTheme}>
       <React.StrictMode>
         <I18nProvider i18n={i18n}>
           <QueryClientProvider client={queryClient}>
@@ -167,12 +167,26 @@ const App: React.FunctionComponent = () => {
               <div className={styles.item}>
                 <HeaderBar />
               </div>
-              <div className={styles.itemGrow}>
-                <div className={styles.stackHorizontal}>
+              <div
+                className={styles.itemGrow}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  className={styles.stackHorizontal}
+                  style={{
+                    flex: 1,
+                  }}
+                >
                   {snap.loggedIn && (
                     <div
                       className={styles.item}
-                      style={{ borderRight: "1px solid", padding: "10pt" }}
+                      style={{
+                        borderRight: "1px solid",
+                        padding: "10pt",
+                      }}
                     >
                       <NavSidebar />
                     </div>

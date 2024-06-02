@@ -6,7 +6,7 @@ export const useStackStyles = makeStyles({
     flexDirection: "column",
     flexWrap: "nowrap",
     width: "auto",
-    height: "100%",
+    minHeight: "100vh",
     boxSizing: "border-box",
     "> *": {
       textOverflow: "ellipsis",
@@ -43,7 +43,6 @@ export const useStackStyles = makeStyles({
   itemGrow: {
     height: "auto",
     width: "auto",
-    flexShrink: 1,
-    flexGrow: 1,
+    flex: 1,
   },
 });
