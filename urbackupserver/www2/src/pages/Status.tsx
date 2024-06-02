@@ -139,10 +139,12 @@ const Status = () => {
 
   const classes = useStyles();
 
-  // Hide items with delete_pending === 1
-  const dataItems = statusResult.data!.status.filter((d) => !d.delete_pending);
+  const dataItems = statusResult.data!.status;
 
-  const pageData = chunk(dataItems, pageSize);
+  // Hide items with delete_pending === 1
+  const filteredItems = dataItems.filter((d) => d.delete_pending !== "1");
+
+  const pageData = chunk(filteredItems, pageSize);
 
   return (
     <>
