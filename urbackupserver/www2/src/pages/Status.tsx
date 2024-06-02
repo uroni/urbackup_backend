@@ -114,6 +114,7 @@ const useStyles = makeStyles({
 const paginationStyles = {
   pageNumber: {
     verticalAlign: "top",
+    color: "currentColor",
   },
 };
 
