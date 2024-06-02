@@ -139,7 +139,9 @@ const Status = () => {
 
   const classes = useStyles();
 
+  // Hide items with delete_pending === 1
   const dataItems = statusResult.data!.status.filter((d) => !d.delete_pending);
+
   const pageData = chunk(dataItems, pageSize);
 
   return (
@@ -153,8 +155,8 @@ const Status = () => {
             defaultValue={pageSize}
             onChange={(_, data) => setPageSize(+data.value)}
           >
-            {PAGE_SIZES.map((size) => (
-              <option>{size}</option>
+            {PAGE_SIZES.map((size, id) => (
+              <option key={id}>{size}</option>
             ))}
           </Select>
           entries
@@ -175,9 +177,9 @@ const Status = () => {
             </DataGridRow>
           </DataGridHeader>
           <DataGridBody<StatusClientItem>>
-            {({ item, rowId }) => (
+            {({ item }) => (
               <DataGridRow<StatusClientItem>
-                key={rowId}
+                key={item.id}
                 selectionCell={{ "aria-label": "Select row" }}
               >
                 {({ renderCell }) => (
