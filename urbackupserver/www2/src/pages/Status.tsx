@@ -21,19 +21,20 @@ import { urbackupServer } from "../App";
 import { chunk } from "../utils/chunk";
 import { registerIcons } from "@fluentui/react-experiments/lib/Styling";
 import {
-  ArrowNext20Regular,
-  ArrowPrevious20Regular,
-  ChevronLeft20Regular,
-  ChevronRight20Regular,
+  ArrowNext20Filled,
+  ArrowPrevious20Filled,
+  ChevronLeft20Filled,
+  ChevronRight20Filled,
 } from "@fluentui/react-icons";
+import { StatusRowMenu } from "../components/StatusRowMenu";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
   icons: {
-    CaretSolidLeft: <ChevronLeft20Regular />,
-    CaretSolidRight: <ChevronRight20Regular />,
-    Next: <ArrowNext20Regular />,
-    Previous: <ArrowPrevious20Regular />,
+    CaretSolidLeft: <ChevronLeft20Filled />,
+    CaretSolidRight: <ChevronRight20Filled />,
+    Next: <ArrowNext20Filled />,
+    Previous: <ArrowPrevious20Filled />,
   },
 });
 
@@ -98,6 +99,13 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
       );
     },
   }),
+  createTableColumn<StatusClientItem>({
+    columnId: "action",
+    renderHeaderCell: () => {
+      return "Actions";
+    },
+    renderCell: ({ id }) => <StatusRowMenu id={id} />,
+  }),
 ];
 
 const useStyles = makeStyles({
@@ -131,7 +139,7 @@ const Status = () => {
 
   const classes = useStyles();
 
-  const dataItems = statusResult.data!.status;
+  const dataItems = statusResult.data!.status.filter((d) => !d.delete_pending);
   const pageData = chunk(dataItems, pageSize);
 
   return (
