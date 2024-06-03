@@ -297,7 +297,7 @@ class UrBackupServer {
   };
 
   // Start a backup of type `backupType` for client with id `clientId`
-  startBackup = async (clientId: [ClientIdType], backupType: BackupType) => {
+  startBackup = async (clientId: ClientIdType[], backupType: BackupType) => {
     const resp = await this.fetchData(
       {
         start_client: clientId.join(),
@@ -309,7 +309,7 @@ class UrBackupServer {
   };
 
   // Mark clients with ids `clientId` as to be removed
-  removeClients = async (clientid: [ClientIdType]): Promise<StatusResult> => {
+  removeClients = async (clientid: ClientIdType[]): Promise<StatusResult> => {
     const resp = await this.fetchData({"remove_client": clientid.join()}, "status")
     return resp as StatusResult;
   }
@@ -320,7 +320,7 @@ class UrBackupServer {
   }
 
   // Unmark clients with ids `clientId` to not be removed anymore
-  stopRemoveClients = async (clientid: [ClientIdType]): Promise<StatusResult> => {
+  stopRemoveClients = async (clientid: ClientIdType[]): Promise<StatusResult> => {
     const resp = await this.fetchData({"remove_client": clientid.join(), "stop_remove_client": "true"}, "status")
     return resp as StatusResult;
   }
