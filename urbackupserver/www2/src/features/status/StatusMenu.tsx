@@ -13,9 +13,11 @@ import { BackupType } from "../../api/urbackupserver";
 export function StatusMenu({
   onBackup,
   children,
+  trigger,
 }: {
   onBackup: (type: BackupType) => void;
   children: React.ReactNode;
+  trigger?: React.ReactElement;
 }) {
   const handleBackup = (e: React.MouseEvent<HTMLDivElement>) => {
     const type = e.currentTarget.dataset.type;
@@ -26,12 +28,16 @@ export function StatusMenu({
   return (
     <Menu>
       <MenuTrigger disableButtonEnhancement>
-        <MenuButton
-          appearance="transparent"
-          aria-label="More"
-          icon={<MoreHorizontal24Filled />}
-          onClick={(e) => e.stopPropagation()}
-        />
+        {trigger ? (
+          trigger
+        ) : (
+          <MenuButton
+            appearance="transparent"
+            aria-label="More"
+            icon={<MoreHorizontal24Filled />}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
       </MenuTrigger>
 
       <MenuPopover onClick={(e) => e.stopPropagation()}>

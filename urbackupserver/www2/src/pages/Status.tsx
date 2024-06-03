@@ -8,6 +8,8 @@ import {
   DataGridHeaderCell,
   DataGridRow,
   makeStyles,
+  MenuButton,
+  MenuItem,
   Select,
   Spinner,
   TableCellLayout,
@@ -28,7 +30,7 @@ import {
   ChevronLeft20Filled,
   ChevronRight20Filled,
 } from "@fluentui/react-icons";
-import { StatusMenuGrid, StatusMenuRow } from "../features/status";
+import { StatusMenuAction } from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
@@ -105,9 +107,25 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
   createTableColumn<StatusClientItem>({
     columnId: "action",
     renderHeaderCell: (data) => (
-      <StatusMenuGrid idList={data as StatusClientItem["id"][]} />
+      <StatusMenuAction idList={data as StatusClientItem["id"][]}>
+        {({ removeClients }) => (
+          <MenuItem
+            onClick={() => removeClients(data as StatusClientItem["id"][])}
+          >
+            Remove clients
+          </MenuItem>
+        )}
+      </StatusMenuAction>
     ),
-    renderCell: ({ id }) => <StatusMenuRow id={id} />,
+    renderCell: ({ id }) => (
+      <StatusMenuAction idList={[id]}>
+        {({ removeClients }) => (
+          <MenuItem onClick={() => removeClients([id])}>
+            Remove clients
+          </MenuItem>
+        )}
+      </StatusMenuAction>
+    ),
   }),
 ];
 
@@ -249,6 +267,10 @@ const Status = () => {
                 >
                   Remove Selected
                 </Button>
+                <StatusMenuAction
+                  idList={selectedRowsArray}
+                  trigger={<MenuButton>With Selected</MenuButton>}
+                />
               </div>
             </div>
           </>

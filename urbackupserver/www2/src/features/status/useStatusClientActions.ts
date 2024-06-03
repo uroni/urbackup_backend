@@ -7,11 +7,15 @@ export function useStatusClientActions() {
   const backupMutation = useBackupMutation();
 
   const removeClients = (idList: StatusClientItem["id"][]) => {
-    removeClientsMutation.mutate(idList);
+    if (idList.length) {
+      removeClientsMutation.mutate(idList);
+    }
   };
 
   const startBackup = (type: BackupType, idList: StatusClientItem["id"][]) => {
-    backupMutation.mutate({ id: idList, type });
+    if (idList.length) {
+      backupMutation.mutate({ id: idList, type });
+    }
   };
 
   return {
