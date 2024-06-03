@@ -26,7 +26,7 @@ import {
   ChevronLeft20Filled,
   ChevronRight20Filled,
 } from "@fluentui/react-icons";
-import { StatusRowMenu } from "../components/StatusRowMenu";
+import { StatusMenuGrid, StatusMenuRow } from "../features/status";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
@@ -101,10 +101,10 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
   }),
   createTableColumn<StatusClientItem>({
     columnId: "action",
-    renderHeaderCell: () => {
-      return "Actions";
-    },
-    renderCell: ({ id }) => <StatusRowMenu id={id} />,
+    renderHeaderCell: (data) => (
+      <StatusMenuGrid idList={data as StatusClientItem["id"][]} />
+    ),
+    renderCell: ({ id }) => <StatusMenuRow id={id} />,
   }),
 ];
 
@@ -126,7 +126,7 @@ const paginationStyles = {
   },
 };
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZES = [10, 25, 50, 100];
 
 const Status = () => {
@@ -136,6 +136,7 @@ const Status = () => {
 
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<StatusClientItem["id"][]>([]);
 
   const classes = useStyles();
 
@@ -163,51 +164,66 @@ const Status = () => {
           </Select>
           entries
         </label>
-        <DataGrid
-          sortable
-          selectionMode="multiselect"
-          items={pageData[page]}
-          getRowId={(item) => item.id}
-          columns={columns}
-          className={classes.dataGrid}
-        >
-          <DataGridHeader>
-            <DataGridRow selectionCell={{ "aria-label": "Select all rows" }}>
-              {({ renderHeaderCell }) => (
-                <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-              )}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<StatusClientItem>>
-            {({ item }) => (
-              <DataGridRow<StatusClientItem>
-                key={item.id}
-                selectionCell={{ "aria-label": "Select row" }}
-              >
-                {({ renderCell }) => (
-                  <DataGridCell>{renderCell(item)}</DataGridCell>
+        {pageData.length === 0 ? null : (
+          <>
+            <DataGrid
+              sortable
+              selectionMode="multiselect"
+              items={pageData[page]}
+              getRowId={(item) => item.id}
+              columns={columns}
+              className={classes.dataGrid}
+              onSelectionChange={(_e, data) => {
+                const clientIds = Array.from(data.selectedItems, Number);
+
+                if (clientIds.length) {
+                  setSelectedIds(clientIds);
+                }
+              }}
+            >
+              <DataGridHeader>
+                <DataGridRow
+                  selectionCell={{ "aria-label": "Select all rows" }}
+                >
+                  {({ renderHeaderCell }) => (
+                    <DataGridHeaderCell>
+                      {renderHeaderCell(selectedIds)}
+                    </DataGridHeaderCell>
+                  )}
+                </DataGridRow>
+              </DataGridHeader>
+              <DataGridBody<StatusClientItem>>
+                {({ item }) => (
+                  <DataGridRow<StatusClientItem>
+                    key={item.id}
+                    selectionCell={{ "aria-label": "Select row" }}
+                  >
+                    {({ renderCell }) => (
+                      <DataGridCell>{renderCell(item)}</DataGridCell>
+                    )}
+                  </DataGridRow>
                 )}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-        <div>
-          <Pagination
-            selectedPageIndex={page}
-            pageCount={pageData.length}
-            itemsPerPage={pageSize}
-            totalItemCount={dataItems.length}
-            format={"buttons"}
-            previousPageAriaLabel={"previous page"}
-            nextPageAriaLabel={"next page"}
-            firstPageAriaLabel={"first page"}
-            lastPageAriaLabel={"last page"}
-            pageAriaLabel={"page"}
-            selectedAriaLabel={"selected"}
-            onPageChange={(index) => setPage(index)}
-            styles={paginationStyles}
-          />
-        </div>
+              </DataGridBody>
+            </DataGrid>
+            <div>
+              <Pagination
+                selectedPageIndex={page}
+                pageCount={pageData.length}
+                itemsPerPage={pageSize}
+                totalItemCount={filteredItems.length}
+                format={"buttons"}
+                previousPageAriaLabel={"previous page"}
+                nextPageAriaLabel={"next page"}
+                firstPageAriaLabel={"first page"}
+                lastPageAriaLabel={"last page"}
+                pageAriaLabel={"page"}
+                selectedAriaLabel={"selected"}
+                onPageChange={(index) => setPage(index)}
+                styles={paginationStyles}
+              />
+            </div>
+          </>
+        )}
       </Suspense>
     </>
   );
