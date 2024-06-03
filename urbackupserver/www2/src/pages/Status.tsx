@@ -12,6 +12,7 @@ import {
   Spinner,
   TableCellLayout,
   TableColumnDefinition,
+  TableRowId,
   tokens,
 } from "@fluentui/react-components";
 import { StatusClientItem } from "../api/urbackupserver";
@@ -127,8 +128,8 @@ const paginationStyles = {
   },
 };
 
-const DEFAULT_PAGE_SIZE = 5;
 const PAGE_SIZES = [10, 25, 50, 100];
+const DEFAULT_PAGE_SIZE = PAGE_SIZES[0];
 
 const Status = () => {
   const statusResult = useQuery("status", urbackupServer.status, {
@@ -137,7 +138,9 @@ const Status = () => {
 
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<StatusClientItem["id"][]>([]);
+  const [selectedRows, setSelectedRows] = useState<Set<TableRowId>>(new Set());
+
+  const selectedRowsArray = transformSelectedRows(selectedRows);
 
   const classes = useStyles();
 
@@ -174,12 +177,9 @@ const Status = () => {
               getRowId={(item) => item.id}
               columns={columns}
               className={classes.dataGrid}
+              selectedItems={selectedRows}
               onSelectionChange={(_e, data) => {
-                const clientIds = Array.from(data.selectedItems, Number);
-
-                if (clientIds.length) {
-                  setSelectedIds(clientIds);
-                }
+                setSelectedRows(data.selectedItems);
               }}
             >
               <DataGridHeader>
@@ -188,7 +188,7 @@ const Status = () => {
                 >
                   {({ renderHeaderCell }) => (
                     <DataGridHeaderCell>
-                      {renderHeaderCell(selectedIds)}
+                      {renderHeaderCell(selectedRowsArray)}
                     </DataGridHeaderCell>
                   )}
                 </DataGridRow>
@@ -226,6 +226,18 @@ const Status = () => {
                 <Button onClick={() => setPageSize(filteredItems.length)}>
                   Show All Clients
                 </Button>
+                <Button
+                  onClick={() => {
+                    const allRows = new Set(filteredItems.map(({ id }) => id));
+
+                    setSelectedRows(allRows);
+                  }}
+                >
+                  Select All
+                </Button>
+                <Button onClick={() => setSelectedRows(new Set())}>
+                  Select None
+                </Button>
               </div>
             </div>
           </>
@@ -236,3 +248,13 @@ const Status = () => {
 };
 
 export default Status;
+
+function transformSelectedRows(selectedRows: Set<TableRowId>) {
+  if (selectedRows.size) {
+    const clientIds = Array.from(selectedRows, Number);
+
+    return clientIds;
+  }
+
+  return [];
+}
