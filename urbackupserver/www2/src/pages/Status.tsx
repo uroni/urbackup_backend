@@ -29,6 +29,7 @@ import {
   ChevronRight20Filled,
 } from "@fluentui/react-icons";
 import { StatusMenuGrid, StatusMenuRow } from "../features/status";
+import { useStatusClientActions } from "../features/status/useStatusClientActions";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
@@ -135,6 +136,7 @@ const Status = () => {
   const statusResult = useQuery("status", urbackupServer.status, {
     suspense: true,
   });
+  const { removeClients } = useStatusClientActions();
 
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(0);
@@ -237,6 +239,15 @@ const Status = () => {
                 </Button>
                 <Button onClick={() => setSelectedRows(new Set())}>
                   Select None
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedRowsArray.length) {
+                      removeClients(selectedRowsArray);
+                    }
+                  }}
+                >
+                  Remove Selected
                 </Button>
               </div>
             </div>

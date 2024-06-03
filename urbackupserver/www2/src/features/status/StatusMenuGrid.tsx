@@ -1,41 +1,19 @@
 import { MenuItem } from "@fluentui/react-components";
-import { useMutation, useQueryClient } from "react-query";
 
-import { urbackupServer } from "../../App";
 import { StatusClientItem } from "../../api/urbackupserver";
 import { StatusMenu } from "./StatusMenu";
-import { useBackupMutation } from "./useBackupMutation";
+import { useStatusClientActions } from "./useStatusClientActions";
 
 export function StatusMenuGrid({
   idList,
 }: {
   idList: StatusClientItem["id"][];
 }) {
-  const queryClient = useQueryClient();
-
-  const removeClientMutation = useMutation(urbackupServer.removeClients, {
-    onSuccess: () => {
-      queryClient.invalidateQueries("status");
-    },
-  });
-
-  const backupMutation = useBackupMutation();
-
-  const removeClients = () => {
-    removeClientMutation.mutate(idList);
-  };
-
-  const startBackup = (e: React.MouseEvent<HTMLDivElement>) => {
-    const type = e.currentTarget.dataset.type;
-
-    if (type) {
-      backupMutation.mutate({ id: idList, type: +type });
-    }
-  };
+  const { removeClients, startBackup } = useStatusClientActions();
 
   return (
-    <StatusMenu onBackup={startBackup}>
-      <MenuItem onClick={removeClients}>Remove clients</MenuItem>
+    <StatusMenu onBackup={(type) => startBackup(type, idList)}>
+      <MenuItem onClick={() => removeClients(idList)}>Remove clients</MenuItem>
     </StatusMenu>
   );
 }
