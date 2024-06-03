@@ -1,4 +1,5 @@
 import {
+  Button,
   createTableColumn,
   DataGrid,
   DataGridBody,
@@ -126,7 +127,7 @@ const paginationStyles = {
   },
 };
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 5;
 const PAGE_SIZES = [10, 25, 50, 100];
 
 const Status = () => {
@@ -221,6 +222,11 @@ const Status = () => {
                 onPageChange={(index) => setPage(index)}
                 styles={paginationStyles}
               />
+              <div>
+                <Button onClick={() => setPageSize(filteredItems.length)}>
+                  Show All Clients
+                </Button>
+              </div>
             </div>
           </>
         )}
