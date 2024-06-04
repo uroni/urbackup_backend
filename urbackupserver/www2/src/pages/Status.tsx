@@ -130,17 +130,29 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
 ];
 
 const useStyles = makeStyles({
+  root: {
+    display: "grid",
+    gap: tokens.spacingHorizontalL,
+  },
   pageSize: {
     display: "flex",
     alignItems: "center",
     gap: tokens.spacingHorizontalS,
   },
-  dataGrid: {
-    marginBlockStart: tokens.spacingHorizontalM,
+  pagination: {
+    marginInlineStart: "auto",
+  },
+  gridActions: {
+    display: "flex",
+    gap: tokens.spacingHorizontalS,
   },
 });
 
 const paginationStyles = {
+  root: {
+    alignItems: "end",
+    marginBlockStart: tokens.spacingHorizontalM,
+  },
   pageNumber: {
     verticalAlign: "top",
     color: "currentColor",
@@ -174,59 +186,58 @@ const Status = () => {
   return (
     <>
       <Suspense fallback={<Spinner />}>
-        <h3>Status page</h3>
-        <label className={classes.pageSize}>
-          Show
-          <Select
-            id="page-size"
-            defaultValue={pageSize}
-            onChange={(_, data) => setPageSize(+data.value)}
-          >
-            {PAGE_SIZES.map((size, id) => (
-              <option key={id}>{size}</option>
-            ))}
-          </Select>
-          entries
-        </label>
-        {pageData.length === 0 ? null : (
-          <>
-            <DataGrid
-              sortable
-              selectionMode="multiselect"
-              items={pageData[page]}
-              getRowId={(item) => item.id}
-              columns={columns}
-              className={classes.dataGrid}
-              selectedItems={selectedRows}
-              onSelectionChange={(_e, data) => {
-                setSelectedRows(data.selectedItems);
-              }}
+        <div className={classes.root}>
+          <h3>Status page</h3>
+          <label className={classes.pageSize}>
+            Show
+            <Select
+              id="page-size"
+              defaultValue={pageSize}
+              onChange={(_, data) => setPageSize(+data.value)}
             >
-              <DataGridHeader>
-                <DataGridRow
-                  selectionCell={{ "aria-label": "Select all rows" }}
-                >
-                  {({ renderHeaderCell }) => (
-                    <DataGridHeaderCell>
-                      {renderHeaderCell(selectedRowsArray)}
-                    </DataGridHeaderCell>
-                  )}
-                </DataGridRow>
-              </DataGridHeader>
-              <DataGridBody<StatusClientItem>>
-                {({ item }) => (
-                  <DataGridRow<StatusClientItem>
-                    key={item.id}
-                    selectionCell={{ "aria-label": "Select row" }}
+              {PAGE_SIZES.map((size, id) => (
+                <option key={id}>{size}</option>
+              ))}
+            </Select>
+            entries
+          </label>
+          {pageData.length === 0 ? null : (
+            <>
+              <DataGrid
+                sortable
+                selectionMode="multiselect"
+                items={pageData[page]}
+                getRowId={(item) => item.id}
+                columns={columns}
+                selectedItems={selectedRows}
+                onSelectionChange={(_e, data) => {
+                  setSelectedRows(data.selectedItems);
+                }}
+              >
+                <DataGridHeader>
+                  <DataGridRow
+                    selectionCell={{ "aria-label": "Select all rows" }}
                   >
-                    {({ renderCell }) => (
-                      <DataGridCell>{renderCell(item)}</DataGridCell>
+                    {({ renderHeaderCell }) => (
+                      <DataGridHeaderCell>
+                        {renderHeaderCell(selectedRowsArray)}
+                      </DataGridHeaderCell>
                     )}
                   </DataGridRow>
-                )}
-              </DataGridBody>
-            </DataGrid>
-            <div>
+                </DataGridHeader>
+                <DataGridBody<StatusClientItem>>
+                  {({ item }) => (
+                    <DataGridRow<StatusClientItem>
+                      key={item.id}
+                      selectionCell={{ "aria-label": "Select row" }}
+                    >
+                      {({ renderCell }) => (
+                        <DataGridCell>{renderCell(item)}</DataGridCell>
+                      )}
+                    </DataGridRow>
+                  )}
+                </DataGridBody>
+              </DataGrid>
               <Pagination
                 selectedPageIndex={page}
                 pageCount={pageData.length}
@@ -242,39 +253,43 @@ const Status = () => {
                 onPageChange={(index) => setPage(index)}
                 styles={paginationStyles}
               />
-              <div>
+              <div className={classes.gridActions}>
                 <Button onClick={() => setPageSize(filteredItems.length)}>
                   Show All Clients
                 </Button>
-                <Button
-                  onClick={() => {
-                    const allRows = new Set(filteredItems.map(({ id }) => id));
+                <div>
+                  <Button
+                    onClick={() => {
+                      const allRows = new Set(
+                        filteredItems.map(({ id }) => id),
+                      );
 
-                    setSelectedRows(allRows);
-                  }}
-                >
-                  Select All
-                </Button>
-                <Button onClick={() => setSelectedRows(new Set())}>
-                  Select None
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (selectedRowsArray.length) {
-                      removeClients(selectedRowsArray);
-                    }
-                  }}
-                >
-                  Remove Selected
-                </Button>
-                <StatusMenuAction
-                  idList={selectedRowsArray}
-                  trigger={<MenuButton>With Selected</MenuButton>}
-                />
+                      setSelectedRows(allRows);
+                    }}
+                  >
+                    Select All
+                  </Button>
+                  <Button onClick={() => setSelectedRows(new Set())}>
+                    Select None
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (selectedRowsArray.length) {
+                        removeClients(selectedRowsArray);
+                      }
+                    }}
+                  >
+                    Remove Selected
+                  </Button>
+                  <StatusMenuAction
+                    idList={selectedRowsArray}
+                    trigger={<MenuButton>With Selected</MenuButton>}
+                  />
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </Suspense>
     </>
   );
