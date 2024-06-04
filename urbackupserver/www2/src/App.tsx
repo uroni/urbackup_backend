@@ -11,6 +11,7 @@ import {
   teamsLightTheme,
   teamsDarkTheme,
   Spinner,
+  Toaster,
 } from "@fluentui/react-components";
 import { useStackStyles } from "./components/StackStyles";
 import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
@@ -91,6 +92,7 @@ export const router = createHashRouter([
       state.loggedIn = false;
       return null;
     },
+    errorElement: <div>Failed to log in.</div>
   },
   {
     path: `/${Pages.Status}`,
@@ -100,6 +102,7 @@ export const router = createHashRouter([
       await jumpToLoginPageIfNeccessary();
       return null;
     },
+    errorElement: <div>Failed to fetch clients.</div>
   },
   {
     path: "/about",
@@ -199,6 +202,7 @@ const App: React.FunctionComponent = () => {
                 </div>
               </div>
             </div>
+            <Toaster toasterId="toaster" />
           </QueryClientProvider>
         </I18nProvider>
       </React.StrictMode>
