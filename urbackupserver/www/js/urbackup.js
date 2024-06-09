@@ -1763,15 +1763,29 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 	}
 }
 
-function downloadClientURL(clientid, authkey, os)
+function getSiteURL()
 {
 	var site_url = location.protocol+'//'+location.host+location.pathname;
+
+	if(site_url.endsWith("index.htm"))
+	{
+		site_url = site_url.slice(0, -9);
+	}
+	else if(site_url.endsWith("index.html"))
+	{
+		site_url = site_url.slice(0, -10);	
+	}
 	
 	if(site_url.substr(site_url.length-1)!="/")
 	{
 		site_url+="/";
 	}
 
+	return site_url;
+}
+
+function downloadClientURL(clientid, authkey, os)
+{
 	if(authkey)
 	{
 		authkey = "&authkey="+encodeURIComponent(authkey);
@@ -1782,7 +1796,7 @@ function downloadClientURL(clientid, authkey, os)
 	}
 	var ses = g.session;
 	g.session=null;
-	var ret = site_url + getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
+	var ret = getSiteURL() + getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
 	g.session = ses;
 	return ret;
 }
@@ -6553,14 +6567,7 @@ function linux_image_restore1(data)
 		alert("Error getting linux image restore information");
 	}
 
-	var site_url = location.protocol+'//'+location.host+location.pathname;
-	
-	if(site_url.substr(site_url.length-1)!="/")
-	{
-		site_url+="/";
-	}
-
-	data.linux_restore_url = site_url+"x?a=download_client&restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token);
+	data.linux_restore_url = getSiteURL()+"x?a=download_client&restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token);
 	
 	var ndata=dustRender("restore_linux_img", data);
 	if(g.data_f!=ndata)
