@@ -298,11 +298,6 @@ const Status = () => {
 export default Status;
 
 function transformSelectedRows(selectedRows: Set<TableRowId>) {
-  if (selectedRows.size) {
-    const clientIds = Array.from(selectedRows, Number);
-
-    return clientIds;
-  }
-
-  return [];
+  const clientIds = Array.from(selectedRows, Number);
+  return clientIds;
 }
