@@ -1226,95 +1226,7 @@ void do_restore(void)
 			Server->Log("Output device not specified (out_device paramter)", LL_ERROR);
 			exit(1);
 		}
-/*
-		IFile *f=Server->openFile(mbr_filename, MODE_READ);
-		if(f==NULL)
-		{
-			Server->Log("Could not open MBR file", LL_ERROR);
-			exit(1);
-		}
-		size_t fsize=(size_t)f->Size();
-		char *buf=new char[fsize];
-		f->Read(buf, (_u32)fsize);
-		Server->destroy(f);
 
-		CRData mbr(buf, fsize);
-		SMBRData mbrdata(mbr);
-		if(mbrdata.hasError())
-		{
-			Server->Log("Error while parsing MBR data", LL_ERROR);
-			delete []buf; exit(1);
-		}
-
-		IFile *dev=Server->openFile(out_device, MODE_RW);
-		if(dev==NULL)
-		{
-			Server->Log("Could not open device file for writing", LL_ERROR);
-			delete []buf; exit(1);
-		}
-		dev->Seek(0);
-		Server->Log("Writing MBR data...", LL_INFO);
-		if (dev->Write(mbrdata.mbr_data) != mbrdata.mbr_data.size())
-		{
-			Server->Log("Writing MBR data failed. " + os_last_error_str(), LL_ERROR);
-		}
-		else
-		{
-			Server->Log("done.", LL_INFO);
-		}
-
-		if (mbrdata.gpt_style)
-		{
-			Server->Log("Writing GPT header...");
-			if (dev->Write(mbrdata.gpt_header_pos, mbrdata.gpt_header) != mbrdata.gpt_header.size() )
-			{
-				Server->Log("Writing GPT header failed. " + os_last_error_str(), LL_ERROR);
-			}
-
-			Server->Log("Writing GPT table...");
-			if (dev->Write(mbrdata.gpt_table_pos, mbrdata.gpt_table) != mbrdata.gpt_table.size())
-			{
-				Server->Log("Writing GPT table failed. " + os_last_error_str(), LL_ERROR);
-			}
-
-			if (mbrdata.backup_gpt_header_pos != -1)
-			{
-				Server->Log("Writing GPT backup header...");
-				if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
-				{
-					Server->Log("Writing GPT backup header failed. " + os_last_error_str(), LL_ERROR);
-				}
-			}
-
-			if (mbrdata.backup_gpt_table_pos != -1)
-			{
-				Server->Log("Writing GPT backup table...");
-				if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
-				{
-					Server->Log("Writing backup GPT table failed. " + os_last_error_str(), LL_ERROR);
-				}
-			}
-		}
-
-		if (mbrdata.extra_data_pos != -1)
-		{
-			Server->Log("Writing extra data at position "+convert(mbrdata.extra_data_pos)+" size "+convert(mbrdata.extra_data.size())+" ...");
-			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
-			{
-				Server->Log("Writing extra data failed. " + os_last_error_str(), LL_ERROR);
-			}
-		}
-
-		Server->destroy(dev);
-
-		if (out_device.find("/dev/") == 0)
-		{
-			rereadPartitionLayout(out_device);
-		}
-
-		delete []buf;
-		exit(0);
-*/
 		std::string errmsg;
 		IFile *f=Server->openFile(mbr_filename, MODE_READ);
 		if(f==nullptr)
@@ -1484,6 +1396,7 @@ void do_restore(void)
 		}
 
 		delete []buf;
+		exit(0);
 	}
 	else if(cmd=="mbrinfo")
 	{
