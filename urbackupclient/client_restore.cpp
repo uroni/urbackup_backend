@@ -1082,6 +1082,131 @@ namespace
 	}
 }
 
+struct SgdiskPart
+{
+	size_t number;
+	int64 start;
+	int64 end;
+	std::string size;
+	std::string code;
+	std::string type_name;
+	std::string part_guid;
+	std::string unique_guid;
+	std::string name;
+	std::string flags;
+};
+
+std::vector<SgdiskPart> getSgdiskParts(const std::string& dev)
+{
+	std::vector<SgdiskPart> ret;
+	std::string out;
+	int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+	if(rc!=0)
+		return ret;
+
+	if(out.find("Number")==std::string::npos)
+		return ret;
+
+	std::string table = getafter("\n", getafter("Number", out));
+
+	std::vector<std::string> lines;
+	Tokenize(table, lines, "\n");
+
+	for(auto& line: lines)
+	{
+		std::vector<std::string> cols;
+		Tokenize(line, cols, " ");
+
+		SgdiskPart new_part;
+		new_part.number = 0;
+		new_part.start = -1;
+		new_part.end = -1;
+		size_t idx=0;
+		for(auto& col: cols)
+		{
+			std::string cd = trim(col);
+			if(!cd.empty())
+			{
+				if(idx==0)					
+					new_part.number = watoi(cd);
+				else if(idx==1)
+					new_part.start = watoi64(cd);
+				else if(idx==2)
+					new_part.end = watoi64(cd);
+				else if(idx==3)
+					new_part.size = cd;
+				else if(idx==4)
+					new_part.size += " "+ cd;
+				else if(idx==5)
+					new_part.code = cd;
+				else 
+					new_part.type_name += cd;
+				++idx;
+			}
+		}
+
+		if(new_part.start!=-1 && 
+			new_part.number!=0 &&
+			new_part.end!=-1)
+		{
+			std::string iout;
+			rc = os_popen("sgdisk -i "+std::to_string(new_part.number)+" \""+dev+"\" 2>&1", iout);
+			if(rc==0)
+			{
+				new_part.part_guid=trim(getbetween("Partition GUID code: ", " ", iout));
+				if(new_part.part_guid.empty())
+					new_part.part_guid=trim(getbetween("Partition GUID code: ", "\n", iout));
+
+				new_part.unique_guid = trim(getbetween("Partition unique GUID: ", "\n", iout));
+				new_part.flags = trim(getbetween("Attribute flags: ", "\n", iout));
+				new_part.name = trim(getbetween("Partition name: '", "\n", iout));
+				if(!new_part.name.empty() && new_part.name[new_part.name.size()-1]=='\'')
+					new_part.name = new_part.name.substr(0, new_part.name.size()-1);
+			}
+			else
+			{
+				Server->Log("Getting detailed info for partition "+std::to_string(new_part.number)+" failed: "+iout, LL_ERROR);
+			}
+
+			ret.push_back(new_part);
+		}
+	}
+
+	return ret;
+}
+
+std::string createSgdiskPart(const SgdiskPart& lp, const std::string& out_device)
+{
+	std::string out;
+	int rc = os_popen("sgdisk -n "+std::to_string(lp.number)+":"+std::to_string(lp.start)+":0 "
+						"-A "+std::to_string(lp.number)+":=:"+lp.flags+" "
+						"-c "+std::to_string(lp.number)+":\""+lp.name+"\" "
+						"-t "+std::to_string(lp.number)+":"+lp.part_guid+" "
+						"-u "+std::to_string(lp.number)+":"+lp.unique_guid+" "
+						+out_device, out);
+
+	if(rc!=0)
+	{
+		return "Error creating partition "+std::to_string(lp.number)+": "+trim(out);
+	}
+
+	return std::string();
+}
+
+int64 getSgdiskDiskSize(const std::string& dev)
+{
+	std::string out;
+	int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+	if(rc!=0)
+		return -1;
+
+	std::string s = trim(getbetween("Disk "+dev+": ", " sectors", out));
+	if(s.empty())
+		return -1;
+
+	return watoi64(s);
+}
+
 void do_restore(void)
 {
 	std::string cmd=Server->getServerParameter("restore_cmd");
@@ -1101,7 +1226,7 @@ void do_restore(void)
 			Server->Log("Output device not specified (out_device paramter)", LL_ERROR);
 			exit(1);
 		}
-			
+/*
 		IFile *f=Server->openFile(mbr_filename, MODE_READ);
 		if(f==NULL)
 		{
@@ -1189,6 +1314,176 @@ void do_restore(void)
 
 		delete []buf;
 		exit(0);
+*/
+		std::string errmsg;
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==nullptr)
+		{
+			errmsg = "Could not open MBR file";
+			Server->Log(errmsg, LL_ERROR);
+			return;
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			errmsg = "Error while parsing MBR data";
+			Server->Log(errmsg, LL_ERROR);
+			delete []buf;
+			return;
+		}
+
+		IFile *dev=Server->openFile(out_device, MODE_RW);
+		if(dev==nullptr)
+		{
+			errmsg = "Could not open device file for writing";
+			Server->Log(errmsg, LL_ERROR);
+			delete []buf;
+			return;
+		}
+		dev->Seek(0);
+		Server->Log("Writing MBR data...", LL_INFO);
+		if (dev->Write(mbrdata.mbr_data) != mbrdata.mbr_data.size())
+		{
+			errmsg = "Writing MBR data failed. " + os_last_error_str();
+
+			Server->Log(errmsg, LL_ERROR);
+		}
+		else
+		{
+			Server->Log("done.", LL_INFO);
+		}
+
+		bool curr_fix_gpt=false;
+		if (mbrdata.gpt_style)
+		{
+			Server->Log("Writing GPT header...");
+			if (dev->Write(mbrdata.gpt_header_pos, mbrdata.gpt_header) != mbrdata.gpt_header.size() )
+			{
+				errmsg = "Writing GPT header failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+
+			Server->Log("Writing GPT table...");
+			if (dev->Write(mbrdata.gpt_table_pos, mbrdata.gpt_table) != mbrdata.gpt_table.size())
+			{
+				errmsg = "Writing GPT table failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+
+			if (mbrdata.backup_gpt_header_pos != -1)
+			{
+				Server->Log("Writing GPT backup header...");
+				if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
+				{
+					errmsg = "Writing GPT backup header failed. " + os_last_error_str();
+					Server->Log(errmsg, LL_ERROR);
+					curr_fix_gpt = true;
+				}
+			}
+
+			if (mbrdata.backup_gpt_table_pos != -1)
+			{
+				Server->Log("Writing GPT backup table...");
+				if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
+				{
+					errmsg = "Writing backup GPT table failed. " + os_last_error_str();
+					Server->Log(errmsg, LL_ERROR);
+					curr_fix_gpt = true;
+				}
+			}
+		}
+
+		if (mbrdata.extra_data_pos != -1)
+		{
+			Server->Log("Writing extra data at position "+convert(mbrdata.extra_data_pos)+" size "+convert(mbrdata.extra_data.size())+" ...");
+			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
+			{
+				errmsg = "Writing extra data failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+		}
+
+		if(curr_fix_gpt)
+		{
+			std::string fix_output;
+			int rc = os_popen("sgdisk -e " + out_device + " 2>&1", fix_output);
+			errmsg="Fixed GPT backup table: "+trim(fix_output);
+			if(fix_output.find("too big for the disk")!=std::string::npos)
+			{
+				std::vector<SgdiskPart> partitions = getSgdiskParts(out_device);
+
+				int64 sgdisk_size = getSgdiskDiskSize(out_device);
+				while(!partitions.empty())
+				{
+					if(sgdisk_size<0)
+						break;
+
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					if(lp.start>=sgdisk_size)
+					{
+						Server->Log("Partition "+std::to_string(lp.number)+" not on disk. Removing...");
+						std::string out;
+						rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+						if(rc!=0)
+						{
+							errmsg="Error deleting last partition (1): "+trim(out);
+							Server->Log(errmsg, LL_ERROR);
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				if(!partitions.empty())
+				{
+					Server->Log("Partition too big. Resizing last partition", LL_WARNING);
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					Server->Log("Last partition num="+std::to_string(lp.number)+" start="+std::to_string(lp.start)+" end="+std::to_string(lp.end)
+						+" size="+lp.size, LL_INFO);
+
+					std::string out;
+					rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+					if(rc!=0)
+					{
+						errmsg="Error deleting last partition: "+trim(out);
+						Server->Log(errmsg, LL_ERROR);
+					}
+
+					std::string err = createSgdiskPart(lp, out_device);
+
+					if(!err.empty())
+					{
+						errmsg="Error re-creating last partition: "+trim(err);
+						Server->Log(errmsg, LL_ERROR);
+					}
+				}
+				else
+				{
+					Server->Log("No partitions found", LL_ERROR);
+				}
+			}
+		}
+
+		Server->destroy(dev);
+
+		if (out_device.find("/dev/") == 0)
+		{
+			rereadPartitionLayout(out_device);
+		}
+
+		delete []buf;
 	}
 	else if(cmd=="mbrinfo")
 	{
