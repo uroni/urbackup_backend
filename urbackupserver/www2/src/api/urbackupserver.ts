@@ -343,19 +343,19 @@ class UrBackupServer {
 
   // Get base URL of current site (in browser)
   getSiteURL = (): string => {
-    let site_url = location.protocol + "//" + location.host + location.pathname;
+    let siteUrl = location.protocol + "//" + location.host + location.pathname;
 
-    if (site_url.endsWith("index.htm")) {
-      site_url = site_url.slice(0, -9);
-    } else if (site_url.endsWith("index.html")) {
-      site_url = site_url.slice(0, -10);
+    if (siteUrl.endsWith("index.htm")) {
+      siteUrl = siteUrl.slice(0, -9);
+    } else if (siteUrl.endsWith("index.html")) {
+      siteUrl = siteUrl.slice(0, -10);
     }
 
-    if (site_url.substring(site_url.length - 1) != "/") {
-      site_url += "/";
+    if (siteUrl.substring(siteUrl.length - 1) != "/") {
+      siteUrl += "/";
     }
 
-    return site_url;
+    return siteUrl;
   };
 
   // Get a download link for a client
