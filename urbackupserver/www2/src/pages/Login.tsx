@@ -1,5 +1,10 @@
 import { FormEvent, useState } from "react";
-import { router, saveSessionToLocalStorage, state, urbackupServer } from "../App";
+import {
+  router,
+  saveSessionToLocalStorage,
+  state,
+  urbackupServer,
+} from "../App";
 import { Field } from "@fluentui/react-components";
 import { Button, Input, Spinner } from "@fluentui/react-components";
 import { useQuery } from "react-query";
@@ -25,8 +30,7 @@ const Login = () => {
     {
       suspense: true,
       onSuccess: async (data) => {
-        if(data.session)
-          saveSessionToLocalStorage(data.session);
+        if (data.session) saveSessionToLocalStorage(data.session);
         if (data.success) {
           state.loggedIn = true;
           state.startupComplete = true;
@@ -52,8 +56,7 @@ const Login = () => {
         password,
         initres.ldap_enabled ?? false,
       );
-      if(loginRes.session)
-        saveSessionToLocalStorage(loginRes.session);
+      if (loginRes.session) saveSessionToLocalStorage(loginRes.session);
       if (loginRes.success) {
         state.startupComplete = true;
         await router.navigate(`/${state.pageAfterLogin}`);

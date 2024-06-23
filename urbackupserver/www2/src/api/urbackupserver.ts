@@ -1,4 +1,4 @@
-import { PBKDF2, MD5, algo } from"crypto-js";
+import { PBKDF2, MD5, algo } from "crypto-js";
 
 interface SaltResult {
   salt: string;
@@ -286,7 +286,7 @@ class UrBackupServer {
       }
     }
 
-    if(!resp.session && this.session) {
+    if (!resp.session && this.session) {
       resp.session = this.session;
     }
 
@@ -313,60 +313,68 @@ class UrBackupServer {
 
   // Mark clients with ids `clientId` as to be removed
   removeClients = async (clientid: ClientIdType[]): Promise<StatusResult> => {
-    const resp = await this.fetchData({"remove_client": clientid.join()}, "status")
+    const resp = await this.fetchData(
+      { remove_client: clientid.join() },
+      "status",
+    );
     return resp as StatusResult;
-  }
+  };
 
   // Mark client with id `clientId` as to be removed
-  removeClient = async (clientId: ClientIdType): Promise<StatusResult> =>  {
+  removeClient = async (clientId: ClientIdType): Promise<StatusResult> => {
     return await this.removeClients([clientId]);
-  }
+  };
 
   // Unmark clients with ids `clientId` to not be removed anymore
-  stopRemoveClients = async (clientid: ClientIdType[]): Promise<StatusResult> => {
-    const resp = await this.fetchData({"remove_client": clientid.join(), "stop_remove_client": "true"}, "status")
+  stopRemoveClients = async (
+    clientid: ClientIdType[],
+  ): Promise<StatusResult> => {
+    const resp = await this.fetchData(
+      { remove_client: clientid.join(), stop_remove_client: "true" },
+      "status",
+    );
     return resp as StatusResult;
-  }
+  };
 
   // Unmark client with id `clientId` to not be removed anymore
-  stopRemoveClient = async (clientId: ClientIdType): Promise<StatusResult> =>  {
+  stopRemoveClient = async (clientId: ClientIdType): Promise<StatusResult> => {
     return await this.stopRemoveClients([clientId]);
-  }
+  };
 
   // Get base URL of current site (in browser)
-  getSiteURL = () : string => {
-    let site_url = location.protocol+'//'+location.host+location.pathname;
+  getSiteURL = (): string => {
+    let site_url = location.protocol + "//" + location.host + location.pathname;
 
-    if(site_url.endsWith("index.htm"))
-    {
+    if (site_url.endsWith("index.htm")) {
       site_url = site_url.slice(0, -9);
+    } else if (site_url.endsWith("index.html")) {
+      site_url = site_url.slice(0, -10);
     }
-    else if(site_url.endsWith("index.html"))
-    {
-      site_url = site_url.slice(0, -10);	
-    }
-    
-    if(site_url.substring(site_url.length-1)!="/")
-    {
-      site_url+="/";
+
+    if (site_url.substring(site_url.length - 1) != "/") {
+      site_url += "/";
     }
 
     return site_url;
-  }
+  };
 
   // Get a download link for a client
-  downloadClientURL = (clientid: ClientIdType, authkey: string | undefined, os: OsType) => {
+  downloadClientURL = (
+    clientid: ClientIdType,
+    authkey: string | undefined,
+    os: OsType,
+  ) => {
     const params = new URLSearchParams();
     params.append("a", "download_client");
     params.append("ses", this.session);
-    params.append("clientid", ""+ clientid);
+    params.append("clientid", "" + clientid);
     params.append("os", os);
 
-    if(authkey !== undefined) {
+    if (authkey !== undefined) {
       params.append("authkey", authkey);
     }
     return this.getSiteURL() + this.serverUrl + "?" + params.toString();
-  }
+  };
 }
 
 export default UrBackupServer;

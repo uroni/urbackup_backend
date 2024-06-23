@@ -35,41 +35,34 @@ export const state = proxy({
   loggedIn: false,
   activePage: Pages.Status,
   pageAfterLogin: Pages.Status,
-  startupComplete: false
+  startupComplete: false,
 });
 
-export const urbackupServer = new UrBackupServer("x", getSessionFromLocalStorage());
+export const urbackupServer = new UrBackupServer(
+  "x",
+  getSessionFromLocalStorage(),
+);
 
-async function isLoggedIn() : Promise<boolean>
-{
-  try
-  {
-    await urbackupServer.status()
-  }
-  catch(error)
-  {
-    if(error instanceof SessionNotFoundError)
-      return false;
+async function isLoggedIn(): Promise<boolean> {
+  try {
+    await urbackupServer.status();
+  } catch (error) {
+    if (error instanceof SessionNotFoundError) return false;
   }
   return true;
 }
 
-async function jumpToLoginPageIfNeccessary()
-{
-  if(state.startupComplete && state.loggedIn)
-  {
+async function jumpToLoginPageIfNeccessary() {
+  if (state.startupComplete && state.loggedIn) {
     state.activePage = state.pageAfterLogin;
     return;
   }
 
-  if(await isLoggedIn())
-  {
+  if (await isLoggedIn()) {
     state.loggedIn = true;
     state.startupComplete = true;
     state.activePage = state.pageAfterLogin;
-  }
-  else
-  {
+  } else {
     state.loggedIn = false;
     await router.navigate(`/`);
   }
@@ -80,8 +73,7 @@ export const router = createHashRouter([
     path: "/",
     element: <LoginPage />,
     loader: async () => {
-      if(await isLoggedIn())
-      {
+      if (await isLoggedIn()) {
         state.loggedIn = true;
         state.startupComplete = true;
         await router.navigate(`/${Pages.Status}`);
@@ -92,7 +84,7 @@ export const router = createHashRouter([
       state.loggedIn = false;
       return null;
     },
-    errorElement: <div>Failed to log in.</div>
+    errorElement: <div>Failed to log in.</div>,
   },
   {
     path: `/${Pages.Status}`,
@@ -102,7 +94,7 @@ export const router = createHashRouter([
       await jumpToLoginPageIfNeccessary();
       return null;
     },
-    errorElement: <div>Failed to fetch clients.</div>
+    errorElement: <div>Failed to fetch clients.</div>,
   },
   {
     path: "/about",
@@ -119,20 +111,15 @@ export const router = createHashRouter([
   },
 ]);
 
-function getSessionFromLocalStorage() : string
-{
-  if(!window.localStorage)
-    return "";
+function getSessionFromLocalStorage(): string {
+  if (!window.localStorage) return "";
   return localStorage.getItem("ses") ?? "";
 }
 
-export function saveSessionToLocalStorage(session: string)
-{
-  if(!window.localStorage)
-    return;
+export function saveSessionToLocalStorage(session: string) {
+  if (!window.localStorage) return;
   localStorage.setItem("ses", session);
 }
-
 
 const queryClient = new QueryClient();
 
@@ -155,7 +142,7 @@ const App: React.FunctionComponent = () => {
         setTheme(event.matches ? teamsDarkTheme : teamsLightTheme);
       });
     void (async () => {
-    await dynamicActivateTranslation("en");
+      await dynamicActivateTranslation("en");
     })();
   }, []);
 
