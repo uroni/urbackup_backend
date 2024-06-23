@@ -285,6 +285,12 @@ const Status = () => {
                     idList={selectedRowsArray}
                     trigger={<MenuButton>With Selected</MenuButton>}
                   />
+                  <Button
+                  onClick={() => {
+                    location.href = urbackupServer.downloadClientURL(2, undefined, "windows");
+                  }}>
+                  Download client test
+                  </Button>
                 </div>
               </div>
             </>

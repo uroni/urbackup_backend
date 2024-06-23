@@ -169,6 +169,8 @@ function calcPwHash(
   return MD5(rnd + pwmd5).toString();
 }
 
+type OsType = "windows" | "linux" | "mac";
+
 export class SessionNotFoundError extends Error {}
 
 export class UsernameNotFoundError extends Error {}
@@ -329,6 +331,41 @@ class UrBackupServer {
   // Unmark client with id `clientId` to not be removed anymore
   stopRemoveClient = async (clientId: ClientIdType): Promise<StatusResult> =>  {
     return await this.stopRemoveClients([clientId]);
+  }
+
+  // Get base URL of current site (in browser)
+  getSiteURL = () : string => {
+    let site_url = location.protocol+'//'+location.host+location.pathname;
+
+    if(site_url.endsWith("index.htm"))
+    {
+      site_url = site_url.slice(0, -9);
+    }
+    else if(site_url.endsWith("index.html"))
+    {
+      site_url = site_url.slice(0, -10);	
+    }
+    
+    if(site_url.substring(site_url.length-1)!="/")
+    {
+      site_url+="/";
+    }
+
+    return site_url;
+  }
+
+  // Get a download link for a client
+  downloadClientURL = (clientid: ClientIdType, authkey: string | undefined, os: OsType) => {
+    const params = new URLSearchParams();
+    params.append("a", "download_client");
+    params.append("ses", this.session);
+    params.append("clientid", ""+ clientid);
+    params.append("os", os);
+
+    if(authkey !== undefined) {
+      params.append("authkey", authkey);
+    }
+    return this.getSiteURL() + this.serverUrl + "?" + params.toString();
   }
 }
 
