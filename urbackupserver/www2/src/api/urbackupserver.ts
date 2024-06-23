@@ -218,6 +218,7 @@ class UrBackupServer {
   };
 
   anonymousLogin = async () => {
+    this.session = "";
     const resp = (await this.fetchData({}, "login")) as LoginResult;
 
     if (typeof resp.session != "undefined") {
@@ -244,7 +245,7 @@ class UrBackupServer {
         throw new UsernameOrPasswordWrongError();
       }
 
-      if (!this.session && resp.session) {
+      if (resp.session) {
         this.session = resp.session;
       }
     } else {
@@ -258,7 +259,7 @@ class UrBackupServer {
         }
       }
 
-      if (!this.session && saltResp.ses) {
+      if (saltResp.ses) {
         this.session = saltResp.ses;
       }
 
