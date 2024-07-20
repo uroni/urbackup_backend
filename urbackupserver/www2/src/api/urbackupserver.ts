@@ -169,7 +169,7 @@ function calcPwHash(
   return MD5(rnd + pwmd5).toString();
 }
 
-type OsType = "windows" | "linux" | "mac";
+export type OsType = "windows" | "linux" | "mac";
 
 export class SessionNotFoundError extends Error {}
 

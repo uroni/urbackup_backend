@@ -30,7 +30,7 @@ import {
   ChevronLeft20Filled,
   ChevronRight20Filled,
 } from "@fluentui/react-icons";
-import { StatusMenuAction } from "../features/status";
+import { DownloadClient, StatusMenuAction } from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
@@ -145,6 +145,7 @@ const useStyles = makeStyles({
   gridActions: {
     display: "flex",
     gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap'
   },
 });
 
@@ -285,17 +286,14 @@ const Status = () => {
                     idList={selectedRowsArray}
                     trigger={<MenuButton>With Selected</MenuButton>}
                   />
-                  <Button
-                    onClick={() => {
-                      location.href = urbackupServer.downloadClientURL(
-                        2,
-                        undefined,
-                        "windows",
-                      );
-                    }}
-                  >
-                    Download client test
-                  </Button>
+                </div>
+                <div>
+                  <DownloadClient clients={filteredItems} os="windows">
+                    Download client for Windows
+                  </DownloadClient>
+                  <DownloadClient clients={filteredItems} os="linux">
+                    Download client for Linux
+                  </DownloadClient>
                 </div>
               </div>
             </>
