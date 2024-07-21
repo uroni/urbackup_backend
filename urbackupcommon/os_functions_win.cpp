@@ -1393,6 +1393,53 @@ std::string os_get_final_path(std::string path)
 #endif
 }
 
+std::string os_get_final_path_str(const std::string& path)
+{
+	if (path.empty())
+		return path;
+
+	std::vector<std::string> toks;
+	Tokenize(path, toks, os_file_sep());
+
+	std::vector<std::string*> finalToks;
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		std::string& pathComponent = toks[i];
+
+		if (pathComponent.empty() || pathComponent == ".")
+		{
+			continue;
+		}
+		else if (pathComponent == "..")
+		{
+			if (finalToks.empty())
+				return path;
+
+			finalToks.pop_back();
+			continue;
+		}
+
+		finalToks.push_back(&pathComponent);
+	}
+
+	if (toks.size() == finalToks.size())
+		return path;
+
+	std::string ret;
+
+	if (!finalToks.empty())
+	{
+		ret += *finalToks[0];
+	}
+
+	for (size_t i = 1; i < finalToks.size(); ++i)
+	{
+		ret += os_file_sep() + *finalToks[i];
+	}
+
+	return ret;
+}
+
 bool os_rename_file(std::string src, std::string dst, void* transaction)
 {
 	BOOL rc;

@@ -108,6 +108,8 @@ bool os_create_dir_recursive(std::string fn);
 
 std::string os_get_final_path(std::string path);
 
+std::string os_get_final_path_str(const std::string& path);
+
 bool os_rename_file(std::string src, std::string dst, void* transaction=NULL);
 
 void* os_start_transaction();

@@ -1072,6 +1072,50 @@ std::string os_get_final_path(std::string path)
 	return ret;
 }
 
+std::string os_get_final_path_str(const std::string& path)
+{
+	if (path.empty())
+		return path;
+
+	if (path[0] != '/')
+		return path;
+
+	std::vector<std::string> toks;
+	Tokenize(path.substr(1), toks, os_file_sep());
+
+	std::vector<std::string*> finalToks;
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		std::string& pathComponent = toks[i];
+
+		if (pathComponent.empty() || pathComponent == ".")
+		{
+			continue;
+		}
+		else if (pathComponent == "..")
+		{
+			if (finalToks.empty())
+				return path;
+
+			finalToks.pop_back();
+			continue;
+		}
+
+		finalToks.push_back(&pathComponent);
+	}
+
+	if (toks.size() == finalToks.size())
+		return path;
+
+	std::string ret;
+	for (size_t i = 0; i < finalToks.size(); ++i)
+	{
+		ret += os_file_sep() + *finalToks[i];
+	}
+
+	return ret;
+}
+
 bool os_path_absolute(const std::string& path)
 {
     if(!path.empty() && path[0]=='/')

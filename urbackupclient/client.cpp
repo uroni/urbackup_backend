@@ -8480,7 +8480,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 			target = orig_path + os_file_sep() + target;
 		}
 
-		target = os_get_final_path(target);
+		target = os_get_final_path_str(target);
 	}
 
 	std::string lower_target;
