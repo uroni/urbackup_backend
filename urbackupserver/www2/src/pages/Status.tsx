@@ -7,9 +7,11 @@ import {
   DataGridHeader,
   DataGridHeaderCell,
   DataGridRow,
+  Field,
   makeStyles,
   MenuButton,
   MenuItem,
+  SearchBox,
   Select,
   Spinner,
   TableCellLayout,
@@ -83,7 +85,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          {new Date(item.lastbackup_image * 1000).toLocaleString()}
+          {formatDatetime(item.lastbackup_image)}
         </TableCellLayout>
       );
     },
@@ -99,7 +101,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          {new Date(item.lastbackup * 1000).toLocaleString()}
+          {formatDatetime(item.lastbackup)}
         </TableCellLayout>
       );
     },
@@ -133,6 +135,21 @@ const useStyles = makeStyles({
   root: {
     display: "grid",
     gap: tokens.spacingHorizontalL,
+  },
+  heading: {
+    marginBlockStart: 0,
+  },
+  topFilters: {
+    display: "flex",
+    gap: tokens.spacingHorizontalM,
+  },
+  search: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalS,
+  },
+  searchBox: {
+    width: '28ch'
   },
   pageSize: {
     display: "flex",
@@ -177,10 +194,11 @@ const Status = () => {
 
   const classes = useStyles();
 
+  const [search, setSearch] = useState("")
+
   const dataItems = statusResult.data!.status;
 
-  // Hide items with delete_pending === 1
-  const filteredItems = dataItems.filter((d) => d.delete_pending !== "1");
+  const filteredItems = filterClientData(dataItems, search)
 
   const pageData = chunk(filteredItems, pageSize);
 
@@ -188,20 +206,32 @@ const Status = () => {
     <>
       <Suspense fallback={<Spinner />}>
         <div className={classes.root}>
-          <h3>Status page</h3>
-          <label className={classes.pageSize}>
-            Show
-            <Select
-              id="page-size"
-              defaultValue={pageSize}
-              onChange={(_, data) => setPageSize(+data.value)}
-            >
-              {PAGE_SIZES.map((size, id) => (
-                <option key={id}>{size}</option>
-              ))}
-            </Select>
-            entries
-          </label>
+          <div>
+            <h3 className={classes.heading}>Status page</h3>
+            <div className={classes.topFilters}>
+              <Field label="Search" className={classes.search}>
+                <SearchBox autoComplete="off" className={classes.searchBox} onChange={(_, data) => {
+                  const search = data.value.toLowerCase()
+
+                  setSearch(search)
+
+                }} />
+              </Field>
+              <label className={classes.pageSize}>
+                Show
+                <Select
+                  id="page-size"
+                  defaultValue={pageSize}
+                  onChange={(_, data) => setPageSize(+data.value)}
+                >
+                  {PAGE_SIZES.map((size, id) => (
+                    <option key={id}>{size}</option>
+                  ))}
+                </Select>
+                entries
+              </label>
+            </div>
+          </div>
           {pageData.length === 0 ? null : (
             <>
               <DataGrid
@@ -309,4 +339,36 @@ export default Status;
 function transformSelectedRows(selectedRows: Set<TableRowId>) {
   const clientIds = Array.from(selectedRows, Number);
   return clientIds;
+}
+
+function formatDatetime(datetime: number) {
+  return new Date(datetime * 1000).toLocaleString()
+}
+
+function filterClientData(dataItems: StatusClientItem[], search: string) {
+  return dataItems.filter((d) => {
+    // Hide items scheduled for delete
+    if (d.delete_pending === "1") {
+      return false
+    }
+
+    if (search.length) {
+      const { id, name, lastbackup, lastbackup_image } = d
+
+      // Search in fields as displayed in the table
+      const searchableFields = ({
+        id,
+        name,
+        lastbackup: formatDatetime(lastbackup),
+        lastbackup_image: formatDatetime(lastbackup_image)
+      })
+
+      const stringified = JSON.stringify(Object.values(searchableFields)).toLowerCase()
+
+      return stringified.includes(search)
+    }
+
+    return true
+  });
+
 }
