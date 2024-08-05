@@ -352,6 +352,7 @@ function filterClientData(dataItems: StatusClientItem[], search: string) {
       return false
     }
 
+    // If there's a search term, filter by search term within object values
     if (search.length) {
       const { id, name, lastbackup, lastbackup_image } = d
 
@@ -363,9 +364,10 @@ function filterClientData(dataItems: StatusClientItem[], search: string) {
         lastbackup_image: formatDatetime(lastbackup_image)
       })
 
-      const stringified = JSON.stringify(Object.values(searchableFields)).toLowerCase()
+      // Find matching search term in data values
+      const match = Object.values(searchableFields).some(v => String(v).toLowerCase().includes(search))
 
-      return stringified.includes(search)
+      return match
     }
 
     return true
