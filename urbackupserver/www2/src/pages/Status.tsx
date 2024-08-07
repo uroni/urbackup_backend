@@ -100,9 +100,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     },
     renderCell: (item) => {
       return (
-        <TableCellLayout>
-          {formatDatetime(item.lastbackup)}
-        </TableCellLayout>
+        <TableCellLayout>{formatDatetime(item.lastbackup)}</TableCellLayout>
       );
     },
   }),
@@ -149,7 +147,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalS,
   },
   searchBox: {
-    width: '28ch'
+    width: "28ch",
   },
   pageSize: {
     display: "flex",
@@ -162,7 +160,7 @@ const useStyles = makeStyles({
   gridActions: {
     display: "flex",
     gap: tokens.spacingHorizontalS,
-    flexWrap: 'wrap'
+    flexWrap: "wrap",
   },
 });
 
@@ -194,11 +192,11 @@ const Status = () => {
 
   const classes = useStyles();
 
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState("");
 
   const dataItems = statusResult.data!.status;
 
-  const filteredItems = filterClientData(dataItems, search)
+  const filteredItems = filterClientData(dataItems, search);
 
   const pageData = chunk(filteredItems, pageSize);
 
@@ -210,12 +208,15 @@ const Status = () => {
             <h3 className={classes.heading}>Status page</h3>
             <div className={classes.topFilters}>
               <Field label="Search" className={classes.search}>
-                <SearchBox autoComplete="off" className={classes.searchBox} onChange={(_, data) => {
-                  const search = data.value.toLowerCase()
+                <SearchBox
+                  autoComplete="off"
+                  className={classes.searchBox}
+                  onChange={(_, data) => {
+                    const search = data.value.toLowerCase();
 
-                  setSearch(search)
-
-                }} />
+                    setSearch(search);
+                  }}
+                />
               </Field>
               <label className={classes.pageSize}>
                 Show
@@ -342,35 +343,36 @@ function transformSelectedRows(selectedRows: Set<TableRowId>) {
 }
 
 function formatDatetime(datetime: number) {
-  return new Date(datetime * 1000).toLocaleString()
+  return new Date(datetime * 1000).toLocaleString();
 }
 
 function filterClientData(dataItems: StatusClientItem[], search: string) {
   return dataItems.filter((d) => {
     // Hide items scheduled for delete
     if (d.delete_pending === "1") {
-      return false
+      return false;
     }
 
     // If there's a search term, filter by search term within object values
     if (search.length) {
-      const { id, name, lastbackup, lastbackup_image } = d
+      const { id, name, lastbackup, lastbackup_image } = d;
 
       // Search in fields as displayed in the table
-      const searchableFields = ({
+      const searchableFields = {
         id,
         name,
         lastbackup: formatDatetime(lastbackup),
-        lastbackup_image: formatDatetime(lastbackup_image)
-      })
+        lastbackup_image: formatDatetime(lastbackup_image),
+      };
 
       // Find matching search term in data values
-      const match = Object.values(searchableFields).some(v => String(v).toLowerCase().includes(search))
+      const match = Object.values(searchableFields).some((v) =>
+        String(v).toLowerCase().includes(search),
+      );
 
-      return match
+      return match;
     }
 
-    return true
+    return true;
   });
-
 }
