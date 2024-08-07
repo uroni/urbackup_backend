@@ -75,22 +75,6 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     },
   }),
   createTableColumn<StatusClientItem>({
-    columnId: "lastImagebackup",
-    renderHeaderCell: () => {
-      return "Last image backup";
-    },
-    compare: (a, b) => {
-      return compareNum(a.lastbackup_image, b.lastbackup_image);
-    },
-    renderCell: (item) => {
-      return (
-        <TableCellLayout>
-          {formatDatetime(item.lastbackup_image)}
-        </TableCellLayout>
-      );
-    },
-  }),
-  createTableColumn<StatusClientItem>({
     columnId: "lastFilebackup",
     renderHeaderCell: () => {
       return "Last file backup";
@@ -99,8 +83,34 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
       return compareNum(a.lastbackup, b.lastbackup);
     },
     renderCell: (item) => {
+      const formattedLastBackup =
+        item.lastbackup === 0 ? "Never" : formatDatetime(item.lastbackup);
+
       return (
-        <TableCellLayout>{formatDatetime(item.lastbackup)}</TableCellLayout>
+        <TableCellLayout>
+          <div>{formattedLastBackup}</div>
+        </TableCellLayout>
+      );
+    },
+  }),
+  createTableColumn<StatusClientItem>({
+    columnId: "lastImagebackup",
+    renderHeaderCell: () => {
+      return "Last image backup";
+    },
+    compare: (a, b) => {
+      return compareNum(a.lastbackup_image, b.lastbackup_image);
+    },
+    renderCell: (item) => {
+      const formattedLastBackup =
+        item.lastbackup_image === 0
+          ? "Never"
+          : formatDatetime(item.lastbackup_image);
+
+      return (
+        <TableCellLayout>
+          <div>{formattedLastBackup}</div>
+        </TableCellLayout>
       );
     },
   }),
@@ -343,7 +353,18 @@ function transformSelectedRows(selectedRows: Set<TableRowId>) {
 }
 
 function formatDatetime(datetime: number) {
-  return new Date(datetime * 1000).toLocaleString();
+  const date = new Date(datetime * 1000);
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(date);
 }
 
 function filterClientData(dataItems: StatusClientItem[], search: string) {
