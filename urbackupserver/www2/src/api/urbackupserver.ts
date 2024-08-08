@@ -34,7 +34,7 @@ interface LoginResult {
 
 type ClientIdType = number;
 
-enum ClientProcessActionTypes {
+export enum ClientProcessActionTypes {
   NONE = 0,
   INCR_FILE = 1,
   FULL_FILE = 2,
@@ -87,7 +87,7 @@ function backupTypeToStr(backupType: BackupType): string {
   }
 }
 
-interface ClientProcessItem {
+export interface ClientProcessItem {
   action: ClientProcessActionTypes;
   pcdone: number;
 }
@@ -138,9 +138,9 @@ interface StatusResult {
   status: [StatusClientItem];
 }
 
-type StartType = "incr_file" | "full_file" | "incr_image" | "full_image";
+export type StartType = "incr_file" | "full_file" | "incr_image" | "full_image";
 
-interface StartBackupResultItem {
+export interface StartBackupResultItem {
   start_type: StartType;
   clientid: ClientIdType;
   start_ok: boolean;

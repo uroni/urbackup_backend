@@ -32,8 +32,15 @@ import {
   ChevronLeft20Filled,
   ChevronRight20Filled,
 } from "@fluentui/react-icons";
-import { DownloadClient, StatusMenuAction } from "../features/status";
+import {
+  BackupResultProvider,
+  DownloadClient,
+  LastFileBackup,
+  LastImageBackup,
+  StatusMenuAction,
+} from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
+import { formatDatetime } from "../features/status/formatDatetime";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
@@ -82,16 +89,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     compare: (a, b) => {
       return compareNum(a.lastbackup, b.lastbackup);
     },
-    renderCell: (item) => {
-      const formattedLastBackup =
-        item.lastbackup === 0 ? "Never" : formatDatetime(item.lastbackup);
-
-      return (
-        <TableCellLayout>
-          <div>{formattedLastBackup}</div>
-        </TableCellLayout>
-      );
-    },
+    renderCell: LastFileBackup,
   }),
   createTableColumn<StatusClientItem>({
     columnId: "lastImagebackup",
@@ -101,18 +99,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
     compare: (a, b) => {
       return compareNum(a.lastbackup_image, b.lastbackup_image);
     },
-    renderCell: (item) => {
-      const formattedLastBackup =
-        item.lastbackup_image === 0
-          ? "Never"
-          : formatDatetime(item.lastbackup_image);
-
-      return (
-        <TableCellLayout>
-          <div>{formattedLastBackup}</div>
-        </TableCellLayout>
-      );
-    },
+    renderCell: LastImageBackup,
   }),
   createTableColumn<StatusClientItem>({
     columnId: "action",
@@ -345,26 +332,17 @@ const Status = () => {
   );
 };
 
-export default Status;
+const StatusPage = () => (
+  <BackupResultProvider>
+    <Status />
+  </BackupResultProvider>
+);
+
+export default StatusPage;
 
 function transformSelectedRows(selectedRows: Set<TableRowId>) {
   const clientIds = Array.from(selectedRows, Number);
   return clientIds;
-}
-
-function formatDatetime(datetime: number) {
-  const date = new Date(datetime * 1000);
-
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  return formatter.format(date);
 }
 
 function filterClientData(dataItems: StatusClientItem[], search: string) {
