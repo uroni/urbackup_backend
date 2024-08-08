@@ -174,10 +174,12 @@ const paginationStyles = {
 
 const PAGE_SIZES = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = PAGE_SIZES[0];
+const REFETCH_INTERVAL = 5000;
 
 const Status = () => {
   const statusResult = useQuery("status", urbackupServer.status, {
     suspense: true,
+    refetchInterval: REFETCH_INTERVAL,
   });
   const { removeClients } = useStatusClientActions();
 
