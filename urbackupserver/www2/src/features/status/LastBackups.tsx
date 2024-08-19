@@ -1,8 +1,14 @@
 import {
   Field,
+  makeStyles,
   ProgressBar,
   TableCellLayout,
+  tokens,
 } from "@fluentui/react-components";
+import {
+  CheckmarkCircleFilled,
+  DismissCircleFilled,
+} from "@fluentui/react-icons";
 
 import {
   ClientProcessActionTypes,
@@ -67,6 +73,20 @@ export function LastImageBackup(item: StatusClientItem) {
   );
 }
 
+const useBackupResultsStyles = makeStyles({
+  root: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalXS,
+  },
+  success: {
+    color: tokens.colorStatusSuccessForeground1,
+  },
+  error: {
+    color: tokens.colorStatusDangerForeground1,
+  },
+});
+
 function ProcessResult({
   id,
   processes,
@@ -76,6 +96,8 @@ function ProcessResult({
   processes: ClientProcessItem[];
   validBackups: StartType[];
 }) {
+  const classes = useBackupResultsStyles();
+
   const { getResultById } = useBackupResult();
 
   const result = getResultById(id);
@@ -86,10 +108,20 @@ function ProcessResult({
     validBackups.includes(result.start_type)
   ) {
     if (!result.start_ok) {
-      return <div>Starting backup failed</div>;
+      return (
+        <div className={classes.root}>
+          <DismissCircleFilled className={classes.error} />
+          Starting backup failed
+        </div>
+      );
     }
 
-    return <div>Queued backup</div>;
+    return (
+      <div className={classes.root}>
+        <CheckmarkCircleFilled className={classes.success} />
+        Queued backup
+      </div>
+    );
   }
 
   return processes.map((p) => {
