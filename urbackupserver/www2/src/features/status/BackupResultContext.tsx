@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -9,14 +10,8 @@ import React, {
 import { StartBackupResultItem } from "../../api/urbackupserver";
 
 type BackupResultContext = {
-  updateBackupResults: React.Dispatch<
-    React.SetStateAction<StartBackupResultItem[]>
-  >;
+  updateBackupResults: (results: StartBackupResultItem[]) => void;
   getResultById: (id: number) => StartBackupResultItem | undefined;
-  clearResultById: (
-    id: number,
-    startType: StartBackupResultItem["start_type"],
-  ) => void;
 };
 
 const BackupResultContext = createContext<BackupResultContext | null>(null);
@@ -26,30 +21,40 @@ export const BackupResultProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [backupResults, setBackupResults] = useState<StartBackupResultItem[]>(
+  const [backupResults, setBackupResults] = useState<StartBackupResultItem[][]>(
     [],
   );
 
+  // Clear oldest backupResults every 3s, if any
+  useEffect(() => {
+    let timeoutId: number;
+    if (backupResults.length) {
+      timeoutId = setTimeout(() => {
+        setBackupResults((prev) => prev.slice(1));
+      }, 3000);
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [backupResults]);
+
   const getResultById = useCallback(
-    (id: number) => backupResults.find((b) => b.clientid === id),
+    (id: number) => backupResults.at(-1)?.find((b) => b.clientid === id),
     [backupResults],
   );
 
-  const clearResultById = useCallback(
-    (id: number, startType: StartBackupResultItem["start_type"]) =>
-      setBackupResults((prev) =>
-        prev.filter((b) => b.clientid !== id && b.start_type !== startType),
-      ),
+  const updateBackupResults = useCallback(
+    (results: StartBackupResultItem[]) => {
+      setBackupResults((prev) => [...prev, results]);
+    },
     [],
   );
 
   const value = useMemo(
     () => ({
-      updateBackupResults: setBackupResults,
+      updateBackupResults,
       getResultById,
-      clearResultById,
     }),
-    [backupResults, getResultById, clearResultById],
+    [backupResults, getResultById],
   );
 
   return (

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   Field,
   ProgressBar,
@@ -77,7 +76,7 @@ function ProcessResult({
   processes: ClientProcessItem[];
   validBackups: StartType[];
 }) {
-  const { getResultById, clearResultById } = useBackupResult();
+  const { getResultById } = useBackupResult();
 
   const result = getResultById(id);
 
@@ -92,14 +91,6 @@ function ProcessResult({
 
     return <div>Queued backup</div>;
   }
-
-  // Clear backup result to not show outdated status once status table is refetched
-  // after all processes are complete i.e. processes === [].
-  useEffect(() => {
-    if (result) {
-      clearResultById(id, result.start_type);
-    }
-  }, []);
 
   return processes.map((p) => {
     return (
