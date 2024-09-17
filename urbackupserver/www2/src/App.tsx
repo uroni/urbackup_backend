@@ -15,7 +15,7 @@ import {
 } from "@fluentui/react-components";
 import { useStackStyles } from "./components/StackStyles";
 import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
-import { QueryClient, QueryClientProvider } from "react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 

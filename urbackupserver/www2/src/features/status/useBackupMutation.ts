@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { urbackupServer } from "../../App";
 
 export function useBackupMutation() {
@@ -6,8 +6,10 @@ export function useBackupMutation() {
 
   return useMutation({
     mutationFn: startBackup,
-    onSuccess: () => {
-      queryClient.invalidateQueries("status");
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["status"],
+      });
     },
   });
 }

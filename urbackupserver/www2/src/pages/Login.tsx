@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   router,
   saveSessionToLocalStorage,
@@ -7,7 +7,7 @@ import {
 } from "../App";
 import { Field } from "@fluentui/react-components";
 import { Button, Input, Spinner } from "@fluentui/react-components";
-import { useQuery } from "react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   PasswordWrongError,
   UsernameNotFoundError,
@@ -24,22 +24,29 @@ const Login = () => {
   const [passwordValidationMessage, setPasswordValidationMessage] =
     useState("");
 
-  const anonymousLoginResult = useQuery(
-    "anonymousLogin",
-    urbackupServer.anonymousLogin,
-    {
-      suspense: true,
-      onSuccess: async (data) => {
+  const anonymousLoginResult = useSuspenseQuery({
+    queryKey: ["anonymousLogin"],
+    queryFn: urbackupServer.anonymousLogin,
+  });
+
+  // Handle successful login
+  useEffect(() => {
+    if (anonymousLoginResult.data) {
+      const data = anonymousLoginResult.data;
+
+      async function handleLogin() {
         if (data.session) saveSessionToLocalStorage(data.session);
+
         if (data.success) {
           state.loggedIn = true;
           state.startupComplete = true;
           await router.navigate(`/${state.pageAfterLogin}`);
-          return;
         }
-      },
-    },
-  );
+      }
+
+      void handleLogin();
+    }
+  }, [anonymousLoginResult.data]);
 
   const handleSubmitInt = async () => {
     const initres = anonymousLoginResult.data;

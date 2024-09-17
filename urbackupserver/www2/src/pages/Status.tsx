@@ -21,7 +21,7 @@ import {
 } from "@fluentui/react-components";
 import { StatusClientItem } from "../api/urbackupserver";
 import { Suspense, useState } from "react";
-import { useQuery } from "react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Pagination } from "@fluentui/react-experiments";
 import { urbackupServer } from "../App";
 import { chunk } from "../utils/chunk";
@@ -177,8 +177,9 @@ const DEFAULT_PAGE_SIZE = PAGE_SIZES[0];
 const REFETCH_INTERVAL = 5000;
 
 const Status = () => {
-  const statusResult = useQuery("status", urbackupServer.status, {
-    suspense: true,
+  const statusResult = useSuspenseQuery({
+    queryKey: ["status"],
+    queryFn: urbackupServer.status,
     refetchInterval: REFETCH_INTERVAL,
   });
   const { removeClients } = useStatusClientActions();

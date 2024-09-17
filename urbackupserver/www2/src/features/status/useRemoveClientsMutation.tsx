@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Toast,
   ToastTitle,
@@ -12,9 +12,12 @@ export function useRemoveClientsMutation() {
 
   const { dispatchToast } = useToastController("toaster");
 
-  return useMutation(urbackupServer.removeClients, {
-    onSuccess: () => {
-      queryClient.invalidateQueries("status");
+  return useMutation({
+    mutationFn: urbackupServer.removeClients,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["status"],
+      });
 
       dispatchToast(
         <Toast>
