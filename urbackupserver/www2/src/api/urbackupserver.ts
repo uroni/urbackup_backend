@@ -1,4 +1,5 @@
 import { PBKDF2, MD5, algo } from "crypto-js";
+import testoutputProgress from "./TestoutputProgress.json"
 
 interface SaltResult {
   salt: string;
@@ -179,6 +180,49 @@ export class PasswordWrongError extends Error {}
 
 export class UsernameOrPasswordWrongError extends Error {}
 
+export interface ProcessItem
+{
+  action: ClientProcessActionTypes;
+  pcdone: number; // Percentage (0-100) or <0 if currently e.g. "Indexing"
+  eta_ms: number; // Number of milliseconds estimated to be left for the process to finish
+  speed_bpms: number; // Backup speed in bytes per millisecond
+  total_bytes: number; // Total number of bytes to be backed up
+  done_bytes: number; // Number of bytes already backed up
+  can_show_backup_log: boolean; // Can show log (so show the "Show log" button)
+  can_stop_backup: boolean; // Can stop this process, so show the "stop" button
+  clientid: number; // Id of client this process runs for
+  detail_pc: number; // Can be a more detailed percentage
+  details: string; // Details about what is currently happening e.g. drive letter being backed up
+  id: number; // Id of the process
+  logid: number; // Id of where the logs go
+  name: string; // Name of the client the process belongs to
+  past_speed_bpms: number[]; // Array of the speed history (per second)
+  paused: boolean; // Is this process currently paused
+  queue: number; // Number of queued files/objects
+}
+
+export interface ActivityItem
+{
+  restore: number; // !=0 if this is a restore
+  image: number; // !=0 if this is a image backup
+  resumed: number; // !=0 if this is a resumed backup
+  incremental: number // !=0 if this is a incremental backup
+  size_bytes: number; // Size of backup in bytes
+  duration: number; // Backup duration in seconds
+  backuptime: number; // Unix timestamp of backup
+  clientid: number; // Id of the client that had the activity
+  del: boolean; // This was a deletion activitiy or not
+  details: string; // Details about the activitiy. E.g. drive letter that was backed up
+  id: number; // Id of the activity/backup
+  name: string; // Name of the client that had the activity
+}
+
+export interface ProgressResult
+{
+  progress: ProcessItem[];
+  lastacts: ActivityItem[] | undefined;
+}
+
 class UrBackupServer {
   private serverUrl: string;
   private session = "";
@@ -190,6 +234,12 @@ class UrBackupServer {
 
   // Generic function to fetch data from server
   fetchData = async (params: Record<string, string>, action: string) => {
+
+    const useTestoutput = true;
+
+    if(useTestoutput && action=="progress")
+      return testoutputProgress;
+
     const searchParams = new URLSearchParams();
 
     for (const [key, value] of Object.entries(params)) {
@@ -375,6 +425,22 @@ class UrBackupServer {
     }
     return this.getSiteURL() + this.serverUrl + "?" + params.toString();
   };
+
+  // Returns current running processes and last activities if withLastActivities is true
+  progress = async (withLastActivities: boolean) => {
+    const resp = await this.fetchData({"with_lastacts": withLastActivities ? "1" : "0"}, "progress");
+    return resp as ProgressResult;
+  }
+
+  // Stops a certain process identified by client and process id
+  // Returns last activities if withLastActivities is true
+  stopProcess = async (clientid: number, processId: number, withLastActivities: boolean) => {
+    const resp = await this.fetchData({"with_lastacts": withLastActivities ? "1" : "0",
+        "stop_clientid": "" + clientid,
+        "stop_id": "" + processId
+    }, "progress");
+    return resp as ProgressResult;
+  }
 }
 
 export default UrBackupServer;
