@@ -17,7 +17,7 @@ import {
   StatusClientItem,
 } from "../../api/urbackupserver";
 import { useBackupResult } from "./BackupResultContext";
-import { formatDatetime } from "./formatDatetime";
+import { formatDatetime } from "../../utils/format";
 
 export function LastFileBackup(item: StatusClientItem) {
   const formattedLastBackup =

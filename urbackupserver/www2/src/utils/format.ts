@@ -156,3 +156,23 @@ export function format_size_bits(s: number) {
   const suffix_trans = i18n._(suffix);
   return s + " " + (suffix_trans != null ? suffix_trans : suffix);
 }
+
+/**
+ * Formats a date object into - "YYYY-MM-DD, hh:mm"
+ * @param datetime {Date}
+ * @returns string
+ */
+export function formatDatetime(datetime: number) {
+  const date = new Date(datetime * 1000);
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(date);
+}

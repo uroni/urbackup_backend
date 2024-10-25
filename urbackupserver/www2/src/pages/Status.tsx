@@ -40,7 +40,7 @@ import {
   StatusMenuAction,
 } from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
-import { formatDatetime } from "../features/status/formatDatetime";
+import { formatDatetime } from "../utils/format";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
