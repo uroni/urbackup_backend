@@ -314,3 +314,15 @@ cryptoplugin/src/m4/libtool.m4
 /btrfs/btrfsplugin/x64
 /btrfs/fuse/oslib/x64
 /btrfs/fuse/x64
+/ARM64/*
+/blockalign_src/ARM64
+/clientctl/ARM64
+/cryptoplugin/ARM64
+/fileservplugin/ARM64
+/fsimageplugin/ARM64
+/httpserver/ARM64
+/luaplugin/ARM64
+/urbackupclient/ARM64
+/urbackupclient/sysvol_test/ARM64
+/urbackupserver/ARM64
+/urlplugin/ARM64
