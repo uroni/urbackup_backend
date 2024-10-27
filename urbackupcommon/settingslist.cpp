@@ -52,7 +52,6 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("allow_starting_incr_image_backups");
 	ret.push_back("allow_pause");
 	ret.push_back("allow_log_view");
-	ret.push_back("allow_overwrite");
 	ret.push_back("allow_tray_exit");
 	ret.push_back("image_letters");
 	ret.push_back("internet_server");
@@ -110,24 +109,28 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("hash_threads");
 	ret.push_back("client_hash_threads");
 	ret.push_back("image_compress_threads");
+	ret.push_back("allow_config_max_backups");
 	return ret;
 }
 
-std::vector<std::string> getClientConfigurableSettingsList()
+std::vector<std::string> getClientConfigurableSettingsList(const bool with_max_backups_config)
 {
 	std::vector<std::string> ret;
 	ret.push_back("update_freq_incr");
 	ret.push_back("update_freq_full");
 	ret.push_back("update_freq_image_incr");
 	ret.push_back("update_freq_image_full");
-	ret.push_back("max_file_incr");
-	ret.push_back("min_file_incr");
-	ret.push_back("max_file_full");
-	ret.push_back("min_file_full");
-	ret.push_back("min_image_incr");
-	ret.push_back("max_image_incr");
-	ret.push_back("min_image_full");
-	ret.push_back("max_image_full");
+	if (with_max_backups_config)
+	{
+		ret.push_back("max_file_incr");
+		ret.push_back("min_file_incr");
+		ret.push_back("max_file_full");
+		ret.push_back("min_file_full");
+		ret.push_back("min_image_incr");
+		ret.push_back("max_image_incr");
+		ret.push_back("min_image_full");
+		ret.push_back("max_image_full");
+	}
 	ret.push_back("startup_backup_delay");
 	ret.push_back("computername");
 	ret.push_back("virtual_clients");

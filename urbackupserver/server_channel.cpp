@@ -642,6 +642,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa |= DONT_ALLOW_COMPONENT_RESTORE;
 	if (!cs->allow_component_config)
 		capa |= DONT_ALLOW_COMPONENT_CONFIG;
+	if (!cs->allow_config_max_backups)
+		capa |= DONT_ALLOW_CONFIG_MAX_BACKUPS;
 
 	return capa;
 }

@@ -153,6 +153,7 @@ struct SSettings
 	int hash_threads;
 	int client_hash_threads;
 	int image_compress_threads;
+	bool allow_config_max_backups;
 };
 
 struct SLDAPSettings
