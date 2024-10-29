@@ -511,7 +511,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 
 	std::vector<std::string> sset_client_merge = getClientMergableSettingsList();
 	std::sort(sset_client_merge.begin(), sset_client_merge.end());
-	std::vector<std::string> sset_client_use = getClientConfigurableSettingsList(true);
+	std::vector<std::string> sset_client_use = getClientConfigurableSettingsList();
 	std::sort(sset_client_use.begin(), sset_client_use.end());
 	std::vector<std::string> sset_localized = getLocalizedSettingsList();
 	std::sort(sset_localized.begin(), sset_localized.end());

@@ -431,7 +431,6 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->hash_threads = 1;
 		settings->client_hash_threads = 1;
 		settings->image_compress_threads = 0;
-		settings->allow_config_max_backups = false;
 	}
 	
 	readStringClientSetting(q_get_client_setting, "update_freq_incr", std::string(), &settings->update_freq_incr, false);
@@ -595,8 +594,6 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
-
-	readBoolClientSetting(q_get_client_setting, "allow_config_max_backups", &settings->allow_config_max_backups, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -705,7 +702,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "allow_file_restore", &settings->allow_file_restore);
 	readBoolClientSetting(q_get_client_setting, "allow_component_config", &settings->allow_component_config);
 	readBoolClientSetting(q_get_client_setting, "allow_component_restore", &settings->allow_component_restore);
-	
+
 	readStringClientSetting(q_get_client_setting, "image_snapshot_groups", std::string(), &settings->image_snapshot_groups, false);
 	readStringClientSetting(q_get_client_setting, "file_snapshot_groups", std::string(), &settings->file_snapshot_groups, false);
 
@@ -722,8 +719,6 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
-
-	readBoolClientSetting(q_get_client_setting, "allow_config_max_backups", &settings->allow_config_max_backups);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
@@ -1549,7 +1544,6 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_INT(hash_threads);
 	SET_SETTING_INT(client_hash_threads);
 	SET_SETTING_INT(image_compress_threads);
-	SET_SETTING_BOOL(allow_config_max_backups);
 #undef SET_SETTING
 	return ret;
 }

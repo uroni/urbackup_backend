@@ -4307,8 +4307,7 @@ g.settings_list=[
 "download_threads",
 "hash_threads",
 "client_hash_threads",
-"image_compress_threads",
-"allow_config_max_backups"
+"image_compress_threads"
 ];
 g.general_settings_list=[
 "backupfolder",

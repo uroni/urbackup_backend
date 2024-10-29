@@ -2152,7 +2152,7 @@ bool upgrade59_60()
 		q_get->Reset();
 		if (!res.empty() && res[0]["value"] == "true")
 		{
-			std::vector<std::string> settings = getClientConfigurableSettingsList(true);
+			std::vector<std::string> settings = getClientConfigurableSettingsList();
 			for (size_t j = 0; j < settings.size(); ++j)
 			{
 				q_update_use_key->Bind(c_use_value_client);
