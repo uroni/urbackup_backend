@@ -282,6 +282,14 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 			std::auto_ptr<IFsFile> add_file(Server->openFile(os_file_prefix(filename), MODE_READ_SEQUENTIAL));
 			if (add_file.get() == NULL)
 			{
+#ifndef _WIN32
+				if(errno==ELOOP)
+				{
+					Server->Log("Error opening file \"" + filename + "\" for ZIP file download. Symlink loop. Ignoring file. " + os_last_error_str(), LL_INFO);
+					continue;
+				}
+#endif
+
 				Server->Log("Error opening file \"" + filename + "\" for ZIP file download. " + os_last_error_str(), LL_ERROR);
 				return false;
 			}

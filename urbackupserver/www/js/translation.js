@@ -1426,6 +1426,8 @@ translations.en = {
 "tSend reports to": "Send reports to",
 "tSend": "Send",
 "tBackup time": "Backup time",
+"tBackup ID": "Backup ID",
+"tErrors": "Errors",
 "tStorage usage": "Storage usage",
 "tAll": "All",
 "tFilter": "Filter",
