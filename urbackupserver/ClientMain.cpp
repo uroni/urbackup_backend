@@ -2040,13 +2040,13 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
-	std::vector<std::string> setting_names=getClientConfigurableSettingsList();
+	std::vector<std::string> setting_names=getClientConfigurableSettingsList(server_settings->getSettings()->allow_config_max_backups);
 	std::vector<std::string> merge_settings = getClientMergableSettingsList();
 
 	bool mod=false;
 	bool has_use = false;
 
-	bool allow_overwrite = server_settings->getSettings()->allow_overwrite;
+	const bool allow_overwrite = server_settings->getSettings()->allow_overwrite;
 
 	for (size_t i = 0; i < setting_names.size(); ++i)
 	{
@@ -2109,7 +2109,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 					continue;
 				}
 
-				bool b = updateClientSetting(key, value, use, use_lm, curr_allow_overwrite);
+				const bool b = updateClientSetting(key, value, use, use_lm, curr_allow_overwrite);
 				if (b)
 					mod = true;
 			}
@@ -2122,7 +2122,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 				continue;
 			}
 
-			bool b = updateClientSetting(key, value, def_use, 0, curr_allow_overwrite);
+			const bool b = updateClientSetting(key, value, def_use, 0, curr_allow_overwrite);
 			if (b)
 				mod = true;
 		}
