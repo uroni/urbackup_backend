@@ -9,7 +9,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "messages:extract": "lingui extract",
-    "format": "pnpm exec prettier . --write"
+    "format": "pnpm exec prettier . --write",
+    "test": "vitest"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.49.2",
@@ -41,6 +42,7 @@
     "prettier": "3.2.5",
     "typescript": "^5.4.5",
     "typescript-eslint": "^7.9.0",
-    "vite": "^5.2.11"
+    "vite": "^5.2.11",
+    "vitest": "^2.1.4"
   }
 }

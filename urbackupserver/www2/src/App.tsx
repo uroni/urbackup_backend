@@ -6,6 +6,7 @@ import { proxy, useSnapshot } from "valtio";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import LoginPage from "./pages/Login";
 import StatusPage from "./pages/Status";
+import { ActivitiesPage } from "./pages/Activities";
 import {
   FluentProvider,
   teamsLightTheme,
@@ -102,7 +103,7 @@ export const router = createHashRouter([
   },
   {
     path: `/${Pages.Activities}`,
-    element: <div>Activities page</div>,
+    element: <ActivitiesPage />,
     loader: async () => {
       state.pageAfterLogin = Pages.Activities;
       await jumpToLoginPageIfNeccessary();

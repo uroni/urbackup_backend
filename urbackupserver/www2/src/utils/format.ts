@@ -176,3 +176,15 @@ export function formatDatetime(datetime: number) {
 
   return formatter.format(date);
 }
+
+export function formatDuration(durationInSeconds: number) {
+  const hours = Math.floor(durationInSeconds / 60 / 60);
+
+  const minutes = Math.floor(durationInSeconds / 60) - hours * 60;
+
+  if (hours > 0) {
+    return `${hours} hour ${minutes} min`;
+  }
+
+  return `${minutes} min`;
+}
