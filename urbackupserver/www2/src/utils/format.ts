@@ -183,8 +183,8 @@ export function formatDuration(durationInSeconds: number) {
   const minutes = Math.floor(durationInSeconds / 60) - hours * 60;
 
   if (hours > 0) {
-    return `${hours} hour ${minutes} min`;
+    return `${hours}h ${minutes}m`;
   }
 
-  return `${minutes} min`;
+  return `${minutes}m`;
 }
