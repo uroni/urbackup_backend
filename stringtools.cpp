@@ -1241,7 +1241,7 @@ std::string UnescapeHTML(const std::string &html)
 	ret=greplace("&gt;", ">", ret);
 	ret=greplace("&quot;", "\"", ret);
 	ret=greplace("&#x27;", "'", ret);
-	ret = greplace("&#x2F", "/", ret);
+	ret = greplace("&#x2F;", "/", ret);
 	return ret;
 }
 
