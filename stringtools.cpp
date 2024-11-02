@@ -1256,7 +1256,7 @@ std::string EscapeHTML(const std::string & html)
 		else if (html[i] == '&') ret += "&amp;";
 		else if (html[i] == '\"') ret += "&quot;";
 		else if (html[i] == '\'') ret += "&#x27;";
-		else if (html[i] == '/') ret += "&#x2F";
+		else if (html[i] == '/') ret += "&#x2F;";
 		else ret += html[i];
 	}
 	return ret;
