@@ -4,11 +4,12 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { urbackupServer } from "../App";
 import { LastActivitiesTable } from "../features/activities/LastActivitiesTable";
+import { OngoingActivitiesTable } from "../features/activities/OngoingActivitiesTable";
 
 const useStyles = makeStyles({
   root: {
     display: "grid",
-    gap: tokens.spacingHorizontalL,
+    gap: tokens.spacingVerticalXXXL,
   },
   heading: {
     marginBlockStart: 0,
@@ -27,14 +28,19 @@ export const ActivitiesPage = () => {
   const classes = useStyles();
 
   const lastacts = progressResult.data!.lastacts;
+  const progress = progressResult.data!.progress;
 
   return (
     <Suspense fallback={<Spinner />}>
       <div className={classes.root}>
-        <div>
+        <section>
+          <h3 className={classes.heading}>Activities</h3>
+          <OngoingActivitiesTable data={progress} />
+        </section>
+        <section>
           <h3 className={classes.heading}>Last Activities</h3>
-        </div>
-        <LastActivitiesTable data={lastacts} />
+          <LastActivitiesTable data={lastacts} />
+        </section>
       </div>
     </Suspense>
   );
