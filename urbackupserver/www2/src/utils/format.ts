@@ -131,30 +131,56 @@ export function format_size(s: number) {
   return s + " " + suffix;
 }
 
-export function format_size_bits(s: number) {
+export function format_bits(bits: number) {
   let suffix = "bits";
-  if (s > 1000) {
-    s /= 1000.0;
+  if (bits > 1000) {
+    bits /= 1000.0;
     suffix = "Kbit";
   }
-  if (s > 1000) {
-    s /= 1000.0;
+  if (bits > 1000) {
+    bits /= 1000.0;
     suffix = "Mbit";
   }
-  if (s > 1000) {
-    s /= 1000.0;
+  if (bits > 1000) {
+    bits /= 1000.0;
     suffix = "Gbit";
   }
-  if (s > 1000) {
-    s /= 1000.0;
+  if (bits > 1000) {
+    bits /= 1000.0;
     suffix = "Tbit";
   }
 
-  s *= 100;
-  s = Math.round(s);
-  s /= 100.0;
+  bits *= 100;
+  bits = Math.round(bits);
+  bits /= 100.0;
+
+  return {
+    value: bits,
+    suffix,
+  };
+}
+
+export function format_size_bits(s: number) {
+  const { value, suffix } = format_bits(s);
+
   const suffix_trans = i18n._(suffix);
-  return s + " " + (suffix_trans != null ? suffix_trans : suffix);
+  return value + " " + (suffix_trans != null ? suffix_trans : suffix);
+}
+
+/**
+ * Convert speed from bytes/ms to bits/s
+ * @param bpms Speed in bytes per ms
+ * @returns Speed in bits per s
+ */
+export function format_speed_bpms_to_bps(bpms: number) {
+  const speedInBps = bpms * 8000;
+
+  const { value, suffix } = format_bits(speedInBps);
+
+  const speedSuffix = `${suffix}/s`;
+
+  const suffix_trans = i18n._(speedSuffix);
+  return value + " " + (suffix_trans != null ? suffix_trans : suffix);
 }
 
 /**
