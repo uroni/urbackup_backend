@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { ACTIONS, getActionFromLastAct } from "./getActionFromLastAct";
+import { getActionFromLastAct } from "./getActionFromLastAct";
+import { ACTIONS } from "./ACTIONS";
 
 const testCases: {
   lastact: Parameters<typeof getActionFromLastAct>[0];

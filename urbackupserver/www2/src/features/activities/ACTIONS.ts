@@ -1,0 +1,43 @@
+export const ACTIONS = {
+  NONE: "None",
+  INCR_FILE: "Incremental file backup",
+  FULL_FILE: "Full file backup",
+  INCR_IMAGE: "Incremental image backup",
+  FULL_IMAGE: "Full image backup",
+  RESUME_INCR_FILE: "Resumed incremental file backup",
+  RESUME_FULL_FILE: "Resumed full file backup",
+  RESTORE_FILE: "File restore",
+  RESTORE_IMAGE: "Image restore",
+  UPDATE: "Client update",
+  CHECK_INTEGRITY: "Checking database integrity",
+  BACKUP_DATABASE: "Backing up database",
+  RECALCULATE_STATISTICS: "Recalculating statistics",
+  NIGHTLY_CLEANUP: "Nightly clean-up",
+  EMERGENCY_CLEANUP: "Emergency clean-up",
+  STORAGE_MIGRATION: "Storage migration",
+
+  // Delete actions
+  DEL_INCR_FILE: "Deleting incremental file backup",
+  DEL_FULL_FILE: "Deleting full file backup",
+  DEL_INCR_IMAGE: "Deleting incremental image backup",
+  DEL_FULL_IMAGE: "Deleting full image backup",
+} as const;
+
+export const NUMBERED_ACTIONS_MAP = new Map([
+  [0, ACTIONS.NONE],
+  [1, ACTIONS.INCR_FILE],
+  [2, ACTIONS.FULL_FILE],
+  [3, ACTIONS.INCR_IMAGE],
+  [4, ACTIONS.FULL_IMAGE],
+  [5, ACTIONS.RESUME_INCR_FILE],
+  [6, ACTIONS.RESUME_FULL_FILE],
+  [8, ACTIONS.RESTORE_FILE],
+  [9, ACTIONS.RESTORE_IMAGE],
+  [10, ACTIONS.UPDATE],
+  [11, ACTIONS.CHECK_INTEGRITY],
+  [12, ACTIONS.BACKUP_DATABASE],
+  [13, ACTIONS.RECALCULATE_STATISTICS],
+  [14, ACTIONS.NIGHTLY_CLEANUP],
+  [15, ACTIONS.EMERGENCY_CLEANUP],
+  [16, ACTIONS.STORAGE_MIGRATION],
+]);
