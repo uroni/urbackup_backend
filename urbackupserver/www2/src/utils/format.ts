@@ -184,9 +184,7 @@ export function format_speed_bpms_to_bps(bpms: number) {
 }
 
 /**
- * Formats a date object into - "YYYY-MM-DD, hh:mm"
- * @param datetime {Date}
- * @returns string
+ * Formats a date object into - "YYYY-MM-DD, hh:mm".
  */
 export function formatDatetime(datetime: number) {
   const date = new Date(datetime * 1000);
