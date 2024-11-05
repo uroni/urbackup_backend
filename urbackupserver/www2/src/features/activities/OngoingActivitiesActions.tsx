@@ -32,7 +32,7 @@ export function OngoingActivitiesActions({
 }: {
   process: ProcessItem;
 }) {
-  const stopProcessMutatiion = useStopProcessMutation();
+  const stopProcessMutation = useStopProcessMutation();
 
   const classes = useStyles();
 
@@ -43,7 +43,7 @@ export function OngoingActivitiesActions({
           size="small"
           className={classes.stopButton}
           onClick={() =>
-            stopProcessMutatiion.mutate({
+            stopProcessMutation.mutate({
               clientId: process.clientid,
               processId: process.id,
             })
