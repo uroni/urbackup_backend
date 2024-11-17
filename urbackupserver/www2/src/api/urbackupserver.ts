@@ -1,5 +1,5 @@
 import { PBKDF2, MD5, algo } from "crypto-js";
-import testoutputProgress from "./TestoutputProgress.json"
+import testoutputProgress from "./TestoutputProgress.json";
 
 interface SaltResult {
   salt: string;
@@ -115,7 +115,7 @@ export interface StatusClientItem {
   os_simple: string;
   status: ClientSpecificStatus | ClientProcessActionTypes;
   lastseen: number;
-  processes: [ClientProcessItem];
+  processes: ClientProcessItem[];
 }
 
 interface StatusResult {
@@ -136,7 +136,7 @@ interface StatusResult {
   server_identity: string;
   server_pubkey: string;
 
-  status: [StatusClientItem];
+  status: StatusClientItem[];
 }
 
 export type StartType = "incr_file" | "full_file" | "incr_image" | "full_image";
@@ -148,7 +148,92 @@ export interface StartBackupResultItem {
 }
 
 interface StartBackupResult {
-  result: [StartBackupResultItem];
+  result: StartBackupResultItem[];
+}
+
+interface BackupsErr {
+  err: string | "access_denied" | undefined;
+}
+
+interface BackupsClient {
+  id: number; // client id
+  lastbackup: number; // unix timestamp
+  name: string; // name of client
+}
+
+interface BackupsClients {
+  clients: BackupsClient[];
+}
+
+interface Backup {
+  id: number; // Backup id
+  size_bytes: number; // Size of backup in bytes
+  incremental: number; // !=0 if this is a incremental backup
+  archive_timeout: number | undefined; // if not undefined or zero, unix timestamp of when the backup will be un-archived
+  can_archive: boolean; // Backup can be archived
+  clientid: number; // Id of the client that had the backup
+  backuptime: number; // Unix timestamp of when the backup was made
+  archived: number; // !=0 if this backup is archived
+  disable_delete: true | undefined; // If true backup cannot be deleted
+  delete_pending: true | undefined; // If true the backup is marked for deletion
+}
+
+interface Backups {
+  delete_now_err: undefined | "delete_file_backup_failed" | string; // Error message if delete now failed
+  backups: Backup[];
+  backup_images: undefined | Backup[];
+  can_archive: boolean; // If true backups can be archived
+  can_delete: boolean; // If true backups can be deleted
+  clientname: string; // Name of the client
+  clientid: number; // Id of the client
+}
+
+interface File {
+  name: string; // Name of the file
+  dir: boolean; // If true this is a directory
+  mod: number; // Unix timestamp of last modification
+  creat: number; // Unix timestamp of creation
+  access: number; // Unix timestamp of last access
+  size: undefined | number; // Size of the file in bytes (undefined if it is a directory)
+  shahash: undefined | string; // SHA hash of the file (undefined if it is a directory or if the hash is not available)
+}
+
+interface ImageBackupInfo {
+  id: number; // Backup id
+  backuptime: number; // Unix timestamp of when the backup was made
+  incremental: number; // !=0 if this is a incremental backup
+  size_bytes: number; // Size of backup in bytes
+  letter: string; // Drive letter of the image backup
+  archived: number; // !=0 if this backup is archived
+  archive_timeout: undefined | number; // if not undefined or zero, unix timestamp of when the backup will be un-archived
+  part_table: undefined | "MBR" | "GPT"; // Partition table type
+  disk_number: undefined | number; // Disk number
+  partition_number: undefined | number; // Partition number
+  volume_name: undefined | string; // Volume name
+  fs_type: undefined | string; // Filesystem type
+  serial_number: undefined | string; // Serial number of backed up volume
+  linux_image_restore: undefined | true; // If true the image backup is an image of a Linux system
+  volume_size: undefined | number; // Size of the volume in bytes
+}
+
+interface Files {
+  single_item: boolean; // If true there is only one item in the list
+  is_file: undefined | boolean; // If single item, if it is a file
+  backupid: number; // Backup id
+  backuptime: number; // Unix timestamp of when the backup was made
+  clientname: undefined | string; // Name of the client that had the backup
+  clientid: undefined | number; // Id of the client that had the backup
+  path: undefined | string; // Path of the files
+  can_restore: true | undefined; // If true the files can be restored
+  server_confirms_restore: true | undefined; // If true the server confirms the restore
+  image_backup_info: undefined | ImageBackupInfo; // If this is an image backup, the image backup info
+  mount_in_progress: true | undefined; // If true the image backup is currently being mounted
+  no_files: true | undefined; // If true there are no files in the backup
+  can_mount: true | undefined; // If true the image backup can be mounted
+  os_mount: true | undefined; // If true the image backup can be mounted non-sandboxed
+  mount_failed: true | undefined; // If true the image backup mount failed
+  mount_errmsg: undefined | string; // Error message if mount failed
+  files: File[]; // Files in the backup at path
 }
 
 function calcPwHash(
@@ -180,8 +265,30 @@ export class PasswordWrongError extends Error {}
 
 export class UsernameOrPasswordWrongError extends Error {}
 
-export interface ProcessItem
-{
+export class BackupsAccessDeniedError extends Error {}
+
+export class BackupsAccessError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackupsAccessError";
+  }
+}
+
+function handleBackupsErr(resp: BackupsErr) {
+  if (resp.err == undefined) return;
+  else if (resp.err == "access_denied") throw new BackupsAccessDeniedError();
+  else throw new BackupsAccessError(resp.err);
+}
+
+function prepareBackups(backups: Backups) {
+  if (backups.backup_images) {
+    for (const backup of backups.backup_images) {
+      backup.id *= -1;
+    }
+  }
+  return backups;
+}
+export interface ProcessItem {
   action: ClientProcessActionTypes;
   pcdone: number; // Percentage (0-100) or <0 if currently e.g. "Indexing"
   eta_ms: number; // Number of milliseconds estimated to be left for the process to finish
@@ -201,12 +308,11 @@ export interface ProcessItem
   queue: number; // Number of queued files/objects
 }
 
-export interface ActivityItem
-{
+export interface ActivityItem {
   restore: number; // !=0 if this is a restore
   image: number; // !=0 if this is a image backup
   resumed: number; // !=0 if this is a resumed backup
-  incremental: number // !=0 if this is a incremental backup
+  incremental: number; // !=0 if this is a incremental backup
   size_bytes: number; // Size of backup in bytes
   duration: number; // Backup duration in seconds
   backuptime: number; // Unix timestamp of backup
@@ -217,8 +323,7 @@ export interface ActivityItem
   name: string; // Name of the client that had the activity
 }
 
-export interface ProgressResult
-{
+export interface ProgressResult {
   progress: ProcessItem[];
   lastacts: ActivityItem[] | undefined;
 }
@@ -234,11 +339,9 @@ class UrBackupServer {
 
   // Generic function to fetch data from server
   fetchData = async (params: Record<string, string>, action: string) => {
-
     const useTestoutput = true;
 
-    if(useTestoutput && action=="progress")
-      return testoutputProgress;
+    if (useTestoutput && action == "progress") return testoutputProgress;
 
     const searchParams = new URLSearchParams();
 
@@ -428,19 +531,144 @@ class UrBackupServer {
 
   // Returns current running processes and last activities if withLastActivities is true
   progress = async (withLastActivities: boolean) => {
-    const resp = await this.fetchData({"with_lastacts": withLastActivities ? "1" : "0"}, "progress");
+    const resp = await this.fetchData(
+      { with_lastacts: withLastActivities ? "1" : "0" },
+      "progress",
+    );
     return resp as ProgressResult;
-  }
+  };
 
   // Stops a certain process identified by client and process id
   // Returns last activities if withLastActivities is true
-  stopProcess = async (clientid: number, processId: number, withLastActivities: boolean) => {
-    const resp = await this.fetchData({"with_lastacts": withLastActivities ? "1" : "0",
-        "stop_clientid": "" + clientid,
-        "stop_id": "" + processId
-    }, "progress");
+  stopProcess = async (
+    clientid: number,
+    processId: number,
+    withLastActivities: boolean,
+  ) => {
+    const resp = await this.fetchData(
+      {
+        with_lastacts: withLastActivities ? "1" : "0",
+        stop_clientid: "" + clientid,
+        stop_id: "" + processId,
+      },
+      "progress",
+    );
     return resp as ProgressResult;
-  }
+  };
+
+  // Get backup clients
+  getBackupsClients = async () => {
+    const resp = await this.fetchData({}, "backups");
+    handleBackupsErr(resp as BackupsErr);
+    return resp as BackupsClients;
+  };
+
+  // Get backups of a client
+  getBackups = async (clientid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Get files in a backup
+  // Returns a list of files in the backup
+  // If mount is true, the image backup is mounted automatically
+  getFiles = async (
+    clientid: number,
+    backupid: number,
+    path: string,
+    mount: boolean,
+  ) => {
+    const resp = await this.fetchData(
+      {
+        sa: "files",
+        clientid: "" + clientid,
+        backupid: "" + backupid,
+        path: path,
+        mount: mount ? "1" : "0",
+      },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return resp as Files;
+  };
+
+  // Archive a backup
+  archiveBackup = async (clientid: number, backupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid, archive: "" + backupid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Unarchive a backup
+  unarchiveBackup = async (clientid: number, backupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid, unarchive: "" + backupid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Delete a backup
+  deleteBackup = async (clientid: number, backupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid, delete: "" + backupid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Stop deleting a backup
+  stopDeleteBackup = async (clientid: number, backupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid, stop_delete: "" + backupid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Delete a backup now
+  deleteBackupNow = async (clientid: number, backupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "backups", clientid: "" + clientid, delete_now: "" + backupid },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return prepareBackups(resp as Backups);
+  };
+
+  // Get a download link for a file in a backup
+  downloadFileURL = (clientid: number, backupid: number, path: string) => {
+    const params = new URLSearchParams();
+    params.append("a", "backups");
+    params.append("sa", "filesdl");
+    params.append("ses", this.session);
+    params.append("clientid", "" + clientid);
+    params.append("backupid", "" + backupid);
+    params.append("path", path);
+    return this.getSiteURL() + this.serverUrl + "?" + params.toString();
+  };
+
+  // Get a download link for a zip of a directory in a backup
+  downloadZipURL = (clientid: number, backupid: number, path: string) => {
+    const params = new URLSearchParams();
+    params.append("a", "backups");
+    params.append("sa", "zipdl");
+    params.append("ses", this.session);
+    params.append("clientid", "" + clientid);
+    params.append("backupid", "" + backupid);
+    params.append("path", path);
+    return this.getSiteURL() + this.serverUrl + "?" + params.toString();
+  };
 }
 
 export default UrBackupServer;
