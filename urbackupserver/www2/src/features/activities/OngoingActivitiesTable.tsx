@@ -9,7 +9,6 @@ import {
   TableColumnDefinition,
   createTableColumn,
   TableColumnId,
-  DataGridCellFocusMode,
   Field,
   ProgressBar,
   tokens,
@@ -22,6 +21,7 @@ import { format_size, formatDuration } from "../../utils/format";
 import { NUMBERED_ACTIONS_MAP } from "./ACTIONS";
 import { OngoingActivitiesActions } from "./OngoingActivitiesActions";
 import { ProcessSpeedChart } from "./ProcessSpeedChart";
+import { getCellFocusMode } from "../../utils/table";
 
 const styles: Record<string, React.CSSProperties> = {
   progressField: {
@@ -152,15 +152,6 @@ export const columns: TableColumnDefinition<ProcessItem>[] = [
     },
   }),
 ];
-
-const getCellFocusMode = (columnId: TableColumnId): DataGridCellFocusMode => {
-  switch (columnId) {
-    case "actions":
-      return "group";
-    default:
-      return "cell";
-  }
-};
 
 export function OngoingActivitiesTable({ data }: { data: ProcessItem[] }) {
   if (data.length === 0) {
