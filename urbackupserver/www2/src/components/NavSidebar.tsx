@@ -19,6 +19,7 @@ export const NavSidebar = () => {
     <TabList selectedValue={snap.activePage} vertical onTabSelect={onTabSelect}>
       <Tab value={Pages.Status}>Status</Tab>
       <Tab value={Pages.Activities}>Activities</Tab>
+      <Tab value={Pages.Backups}>Backups</Tab>
     </TabList>
   );
 };

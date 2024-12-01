@@ -155,7 +155,7 @@ interface BackupsErr {
   err: string | "access_denied" | undefined;
 }
 
-interface BackupsClient {
+export interface BackupsClient {
   id: number; // client id
   lastbackup: number; // unix timestamp
   name: string; // name of client
@@ -165,7 +165,7 @@ interface BackupsClients {
   clients: BackupsClient[];
 }
 
-interface Backup {
+export interface Backup {
   id: number; // Backup id
   size_bytes: number; // Size of backup in bytes
   incremental: number; // !=0 if this is a incremental backup
@@ -188,7 +188,7 @@ interface Backups {
   clientid: number; // Id of the client
 }
 
-interface File {
+export interface File {
   name: string; // Name of the file
   dir: boolean; // If true this is a directory
   mod: number; // Unix timestamp of last modification
@@ -580,7 +580,7 @@ class UrBackupServer {
     clientid: number,
     backupid: number,
     path: string,
-    mount: boolean,
+    mount?: boolean,
   ) => {
     const resp = await this.fetchData(
       {

@@ -20,6 +20,11 @@ import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
+import { BackupsPage } from "./pages/Backups";
+import { ClientBackupsTable } from "./features/backups/ClientBackupsTable";
+import { BackupsTable } from "./features/backups/BackupsTable";
+import { BackupContentTable } from "./features/backups/BackupContentTable";
+import BackupErrorPage from "./features/backups/BackupsError";
 
 const initialDark =
   window.matchMedia &&
@@ -29,6 +34,7 @@ const initialTheme = initialDark ? teamsDarkTheme : teamsLightTheme;
 export enum Pages {
   Status = "status",
   Activities = "activities",
+  Backups = "backups",
   Login = "login",
   About = "about",
 }
@@ -110,6 +116,30 @@ export const router = createHashRouter([
       await jumpToLoginPageIfNeccessary();
       return null;
     },
+  },
+  {
+    path: `/${Pages.Backups}`,
+    element: <BackupsPage />,
+    loader: async () => {
+      state.pageAfterLogin = Pages.Backups;
+      await jumpToLoginPageIfNeccessary();
+      return null;
+    },
+    errorElement: <BackupErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <BackupsTable />,
+      },
+      {
+        path: ":clientId",
+        element: <ClientBackupsTable />,
+      },
+      {
+        path: ":clientId/:backupId",
+        element: <BackupContentTable />,
+      },
+    ],
   },
 ]);
 
