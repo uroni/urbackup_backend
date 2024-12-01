@@ -14,3 +14,15 @@
 .table-wrapper {
   --flow-space: 1.5em;
 }
+
+[role="gridcell"]:has(a) {
+  align-items: normal;
+}
+
+[role="gridcell"] a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}

@@ -26,16 +26,6 @@ import { makeBackupsBreadcrumbs } from "./makeBackupsBreadcrumbs";
 import { TableWrapper } from "../../components/TableWrapper";
 
 const useStyles = makeStyles({
-  cell: {
-    alignItems: "unset",
-  },
-  link: {
-    color: "inherit",
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    width: "100%",
-  },
   heading: {
     display: "flex",
     gap: tokens.spacingHorizontalM,
@@ -233,7 +223,6 @@ export function BackupContentTable() {
                       group: ["actions"],
                       none: noneColumns,
                     })}
-                    className={isInteractive ? "" : classes.cell}
                     style={getNarrowColumnStyles(columnId)}
                   >
                     {isInteractive ? (
@@ -264,7 +253,6 @@ export function BackupContentTable() {
                             );
                           }
                         }}
-                        className={classes.link}
                       >
                         {renderCell(item)}
                       </a>

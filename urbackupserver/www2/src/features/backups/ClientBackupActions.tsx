@@ -70,9 +70,6 @@ const useStyles = makeStyles({
     display: "flex",
     gap: tokens.spacingHorizontalXS,
   },
-  stopButton: {
-    minWidth: 0,
-  },
 });
 
 export function ClientBackupActions(backup: Backup & { clientid: number }) {

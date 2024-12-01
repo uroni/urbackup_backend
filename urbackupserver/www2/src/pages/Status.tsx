@@ -41,6 +41,7 @@ import {
 } from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
 import { formatDatetime } from "../utils/format";
+import { TableWrapper } from "../components/TableWrapper";
 
 // Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
 registerIcons({
@@ -127,13 +128,6 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
 ];
 
 const useStyles = makeStyles({
-  root: {
-    display: "grid",
-    gap: tokens.spacingHorizontalL,
-  },
-  heading: {
-    marginBlockStart: 0,
-  },
   topFilters: {
     display: "flex",
     gap: tokens.spacingHorizontalM,
@@ -203,35 +197,33 @@ const Status = () => {
   return (
     <>
       <Suspense fallback={<Spinner />}>
-        <div className={classes.root}>
-          <div>
-            <h3 className={classes.heading}>Status page</h3>
-            <div className={classes.topFilters}>
-              <Field label="Search" className={classes.search}>
-                <SearchBox
-                  autoComplete="off"
-                  className={classes.searchBox}
-                  onChange={(_, data) => {
-                    const search = data.value.toLowerCase();
+        <TableWrapper>
+          <h3>Status page</h3>
+          <div className={classes.topFilters}>
+            <Field label="Search" className={classes.search}>
+              <SearchBox
+                autoComplete="off"
+                className={classes.searchBox}
+                onChange={(_, data) => {
+                  const search = data.value.toLowerCase();
 
-                    setSearch(search);
-                  }}
-                />
-              </Field>
-              <label className={classes.pageSize}>
-                Show
-                <Select
-                  id="page-size"
-                  defaultValue={pageSize}
-                  onChange={(_, data) => setPageSize(+data.value)}
-                >
-                  {PAGE_SIZES.map((size, id) => (
-                    <option key={id}>{size}</option>
-                  ))}
-                </Select>
-                entries
-              </label>
-            </div>
+                  setSearch(search);
+                }}
+              />
+            </Field>
+            <label className={classes.pageSize}>
+              Show
+              <Select
+                id="page-size"
+                defaultValue={pageSize}
+                onChange={(_, data) => setPageSize(+data.value)}
+              >
+                {PAGE_SIZES.map((size, id) => (
+                  <option key={id}>{size}</option>
+                ))}
+              </Select>
+              entries
+            </label>
           </div>
           {pageData.length === 0 ? null : (
             <>
@@ -329,7 +321,7 @@ const Status = () => {
               </div>
             </>
           )}
-        </div>
+        </TableWrapper>
       </Suspense>
     </>
   );

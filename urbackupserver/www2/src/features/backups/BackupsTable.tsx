@@ -8,7 +8,6 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  makeStyles,
 } from "@fluentui/react-components";
 import { Link } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -18,19 +17,6 @@ import { getCellFocusMode } from "../../utils/table";
 import { formatDatetime } from "../../utils/format";
 import { urbackupServer } from "../../App";
 import { TableWrapper } from "../../components/TableWrapper";
-
-const useStyles = makeStyles({
-  cell: {
-    alignItems: "unset",
-  },
-  link: {
-    color: "inherit",
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    width: "100%",
-  },
-});
 
 export const columns: TableColumnDefinition<BackupsClient>[] = [
   createTableColumn<BackupsClient>({
@@ -68,8 +54,6 @@ export function BackupsTable() {
 
   const data = backupClientsResult.data!.clients;
 
-  const classes = useStyles();
-
   if (data.length === 0) {
     return <span>No activities</span>;
   }
@@ -93,11 +77,8 @@ export function BackupsTable() {
                   focusMode={getCellFocusMode(columnId, {
                     none: ["name", "lastFilebackup"],
                   })}
-                  className={classes.cell}
                 >
-                  <Link to={String(item.id)} className={classes.link}>
-                    {renderCell(item)}
-                  </Link>
+                  <Link to={String(item.id)}>{renderCell(item)}</Link>
                 </DataGridCell>
               )}
             </DataGridRow>

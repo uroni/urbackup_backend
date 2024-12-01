@@ -28,16 +28,6 @@ import { makeBackupsBreadcrumbs } from "./makeBackupsBreadcrumbs";
 import { TableWrapper } from "../../components/TableWrapper";
 
 const useStyles = makeStyles({
-  cell: {
-    alignItems: "unset",
-  },
-  link: {
-    color: "inherit",
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    width: "100%",
-  },
   heading: {
     // Negate the margin top and left values
     // to keep breadcrumbs aligned to initial top-left position
@@ -196,13 +186,10 @@ export function ClientBackupsTable() {
                       group: ["actions"],
                       none: noneColumns,
                     })}
-                    className={isInteractive ? "" : classes.cell}
                     style={getNarrowColumnStyles(columnId)}
                   >
                     {!isInteractive && (
-                      <Link to={String(item.id)} className={classes.link}>
-                        {renderCell(item)}
-                      </Link>
+                      <Link to={String(item.id)}>{renderCell(item)}</Link>
                     )}
                     {isInteractive && renderCell({ ...item, clientid })}
                   </DataGridCell>
