@@ -58,7 +58,7 @@ export const columns: TableColumnDefinition<ActivityItem>[] = [
   createTableColumn<ActivityItem>({
     columnId: "backuptime",
     renderHeaderCell: () => {
-      return "Starting Time";
+      return "Starting time";
     },
     renderCell: (item) => {
       return (
@@ -69,7 +69,7 @@ export const columns: TableColumnDefinition<ActivityItem>[] = [
   createTableColumn<ActivityItem>({
     columnId: "duration",
     renderHeaderCell: () => {
-      return "Required Time";
+      return "Required time";
     },
     renderCell: (item) => {
       return <TableCellLayout>{formatDuration(item.duration)}</TableCellLayout>;
