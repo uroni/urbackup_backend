@@ -14,6 +14,7 @@ import {
   Spinner,
   Toaster,
 } from "@fluentui/react-components";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useStackStyles } from "./components/StackStyles";
 import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -191,6 +192,8 @@ const App: React.FunctionComponent = () => {
               </div>
             </div>
             <Toaster toasterId="toaster" />
+            {/* Following only bundled in development mode */}
+            <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>
         </I18nProvider>
       </React.StrictMode>
