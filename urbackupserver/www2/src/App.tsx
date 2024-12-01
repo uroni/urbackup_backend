@@ -25,6 +25,7 @@ import { ClientBackupsTable } from "./features/backups/ClientBackupsTable";
 import { BackupsTable } from "./features/backups/BackupsTable";
 import { BackupContentTable } from "./features/backups/BackupContentTable";
 import BackupErrorPage from "./features/backups/BackupsError";
+import "./css/global.css";
 
 const initialDark =
   window.matchMedia &&
