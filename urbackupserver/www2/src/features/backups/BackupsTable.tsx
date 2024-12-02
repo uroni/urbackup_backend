@@ -43,13 +43,10 @@ export const columns: TableColumnDefinition<BackupsClient>[] = [
   }),
 ];
 
-const REFETCH_INTERVAL = 5000;
-
 export function BackupsTable() {
   const backupClientsResult = useSuspenseQuery({
     queryKey: ["backups"],
     queryFn: () => urbackupServer.getBackupsClients(),
-    refetchInterval: REFETCH_INTERVAL,
   });
 
   const data = backupClientsResult.data!.clients;
