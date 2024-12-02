@@ -19,14 +19,14 @@ export function makeBackupsBreadcrumbs({
 
   const baseBreadcrumbItems: BreadcrumbItem[] = [
     {
-      key: crypto.randomUUID(),
+      key: "backups",
       text: "Backups",
       itemProps: {
         href: backupsUrl,
       },
     },
     {
-      key: crypto.randomUUID(),
+      key: `client-${clientId}`,
       text: clientName,
       itemProps: {
         href: clientUrl,
@@ -41,7 +41,7 @@ export function makeBackupsBreadcrumbs({
   const backupUrl = `${clientUrl}/${backupId}`;
 
   const backupTimeBreadCrumb = {
-    key: crypto.randomUUID(),
+    key: `backup-${backupId}`,
     text: formatDatetime(backuptime),
     itemProps: {
       href: backupUrl,
