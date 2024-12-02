@@ -55,7 +55,7 @@ export function BackupsTable() {
   const data = backupClientsResult.data!.clients;
 
   if (data.length === 0) {
-    return <span>No activities</span>;
+    return <span>No clients</span>;
   }
 
   return (
