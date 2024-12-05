@@ -12,7 +12,6 @@ import {
   MenuButton,
   MenuItem,
   SearchBox,
-  Select,
   Spinner,
   TableCellLayout,
   TableColumnDefinition,
@@ -22,16 +21,7 @@ import {
 import { StatusClientItem } from "../api/urbackupserver";
 import { Suspense, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Pagination } from "@fluentui/react-experiments";
 import { urbackupServer } from "../App";
-import { chunk } from "../utils/chunk";
-import { registerIcons } from "@fluentui/react-experiments/lib/Styling";
-import {
-  ArrowNext20Filled,
-  ArrowPrevious20Filled,
-  ChevronLeft20Filled,
-  ChevronRight20Filled,
-} from "@fluentui/react-icons";
 import {
   BackupResultProvider,
   DownloadClient,
@@ -42,16 +32,11 @@ import {
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
 import { formatDatetime } from "../utils/format";
 import { TableWrapper } from "../components/TableWrapper";
-
-// Register icons used in Pagination @fluentui/react-experiments. See https://github.com/microsoft/fluentui/wiki/Using-icons#registering-custom-icons.
-registerIcons({
-  icons: {
-    CaretSolidLeft: <ChevronLeft20Filled />,
-    CaretSolidRight: <ChevronRight20Filled />,
-    Next: <ArrowNext20Filled />,
-    Previous: <ArrowPrevious20Filled />,
-  },
-});
+import {
+  Pagination,
+  PaginationItemsPerPageSelector,
+  usePagination,
+} from "../components/Pagination";
 
 const compareNum = (a: number, b: number) => {
   return a == b ? 0 : a < b ? 1 : -1;
@@ -140,11 +125,6 @@ const useStyles = makeStyles({
   searchBox: {
     width: "28ch",
   },
-  pageSize: {
-    display: "flex",
-    alignItems: "center",
-    gap: tokens.spacingHorizontalS,
-  },
   pagination: {
     marginInlineStart: "auto",
   },
@@ -155,19 +135,6 @@ const useStyles = makeStyles({
   },
 });
 
-const paginationStyles = {
-  root: {
-    alignItems: "end",
-    marginBlockStart: tokens.spacingHorizontalM,
-  },
-  pageNumber: {
-    verticalAlign: "top",
-    color: "currentColor",
-  },
-};
-
-const PAGE_SIZES = [10, 25, 50, 100];
-const DEFAULT_PAGE_SIZE = PAGE_SIZES[0];
 const REFETCH_INTERVAL = 5000;
 
 const Status = () => {
@@ -178,8 +145,6 @@ const Status = () => {
   });
   const { removeClients } = useStatusClientActions();
 
-  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [page, setPage] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<TableRowId>>(new Set());
 
   const selectedRowsArray = transformSelectedRows(selectedRows);
@@ -192,7 +157,8 @@ const Status = () => {
 
   const filteredItems = filterClientData(dataItems, search);
 
-  const pageData = chunk(filteredItems, pageSize);
+  const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
+    usePagination(filteredItems);
 
   return (
     <>
@@ -211,19 +177,10 @@ const Status = () => {
                 }}
               />
             </Field>
-            <label className={classes.pageSize}>
-              Show
-              <Select
-                id="page-size"
-                defaultValue={pageSize}
-                onChange={(_, data) => setPageSize(+data.value)}
-              >
-                {PAGE_SIZES.map((size, id) => (
-                  <option key={id}>{size}</option>
-                ))}
-              </Select>
-              entries
-            </label>
+            <PaginationItemsPerPageSelector
+              itemsPerPage={itemsPerPage}
+              setItemsPerPage={setItemsPerPage}
+            />
           </div>
           {pageData.length === 0 ? null : (
             <>
@@ -263,22 +220,14 @@ const Status = () => {
                 </DataGridBody>
               </DataGrid>
               <Pagination
-                selectedPageIndex={page}
                 pageCount={pageData.length}
-                itemsPerPage={pageSize}
+                page={page}
+                itemsPerPage={itemsPerPage}
                 totalItemCount={filteredItems.length}
-                format={"buttons"}
-                previousPageAriaLabel={"previous page"}
-                nextPageAriaLabel={"next page"}
-                firstPageAriaLabel={"first page"}
-                lastPageAriaLabel={"last page"}
-                pageAriaLabel={"page"}
-                selectedAriaLabel={"selected"}
-                onPageChange={(index) => setPage(index)}
-                styles={paginationStyles}
+                setPage={setPage}
               />
               <div className={classes.gridActions}>
-                <Button onClick={() => setPageSize(filteredItems.length)}>
+                <Button onClick={() => setItemsPerPage(filteredItems.length)}>
                   Show All Clients
                 </Button>
                 <div>
