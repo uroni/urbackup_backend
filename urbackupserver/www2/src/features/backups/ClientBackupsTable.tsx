@@ -26,6 +26,11 @@ import { ArchiveCheckbox } from "./ArchiveCheckbox";
 import { Breadcrumbs } from "../../components/Breadcrumbs";
 import { makeBackupsBreadcrumbs } from "./makeBackupsBreadcrumbs";
 import { TableWrapper } from "../../components/TableWrapper";
+import {
+  Pagination,
+  PaginationItemsPerPageSelector,
+  usePagination,
+} from "../../components/Pagination";
 
 const useStyles = makeStyles({
   heading: {
@@ -149,56 +154,80 @@ export function ClientBackupsTable() {
     );
   }
 
+  const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
+    usePagination(backups);
+
   return (
     <TableWrapper>
       <div className={classes.heading}>
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
       </div>
-      <DataGrid items={backups} getRowId={(item) => item.id} columns={columns}>
-        <DataGridHeader>
-          <DataGridRow>
-            {({ renderHeaderCell, columnId }) => (
-              <DataGridHeaderCell style={getNarrowColumnStyles(columnId)}>
-                {renderHeaderCell()}
-              </DataGridHeaderCell>
-            )}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<Backup>>
-          {({ item }) => (
-            <DataGridRow<Backup> key={item.id}>
-              {({ renderCell, columnId }) => {
-                const noneColumns = [
-                  "backuptime",
-                  "id",
-                  "incremental",
-                  "size",
-                  "archived",
-                  "actions",
-                ];
-                const isInteractive = ["archived", "actions"].includes(
-                  String(columnId),
-                );
+      <div>
+        <PaginationItemsPerPageSelector
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+        />
+      </div>
+      {pageData.length === 0 ? null : (
+        <>
+          <DataGrid
+            items={pageData[page]}
+            getRowId={(item) => item.id}
+            columns={columns}
+          >
+            <DataGridHeader>
+              <DataGridRow>
+                {({ renderHeaderCell, columnId }) => (
+                  <DataGridHeaderCell style={getNarrowColumnStyles(columnId)}>
+                    {renderHeaderCell()}
+                  </DataGridHeaderCell>
+                )}
+              </DataGridRow>
+            </DataGridHeader>
+            <DataGridBody<Backup>>
+              {({ item }) => (
+                <DataGridRow<Backup> key={item.id}>
+                  {({ renderCell, columnId }) => {
+                    const noneColumns = [
+                      "backuptime",
+                      "id",
+                      "incremental",
+                      "size",
+                      "archived",
+                      "actions",
+                    ];
+                    const isInteractive = ["archived", "actions"].includes(
+                      String(columnId),
+                    );
 
-                return (
-                  <DataGridCell
-                    focusMode={getCellFocusMode(columnId, {
-                      group: ["actions"],
-                      none: noneColumns,
-                    })}
-                    style={getNarrowColumnStyles(columnId)}
-                  >
-                    {!isInteractive && (
-                      <Link to={String(item.id)}>{renderCell(item)}</Link>
-                    )}
-                    {isInteractive && renderCell({ ...item, clientid })}
-                  </DataGridCell>
-                );
-              }}
-            </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
+                    return (
+                      <DataGridCell
+                        focusMode={getCellFocusMode(columnId, {
+                          group: ["actions"],
+                          none: noneColumns,
+                        })}
+                        style={getNarrowColumnStyles(columnId)}
+                      >
+                        {!isInteractive && (
+                          <Link to={String(item.id)}>{renderCell(item)}</Link>
+                        )}
+                        {isInteractive && renderCell({ ...item, clientid })}
+                      </DataGridCell>
+                    );
+                  }}
+                </DataGridRow>
+              )}
+            </DataGridBody>
+          </DataGrid>
+          <Pagination
+            pageCount={pageData.length}
+            page={page}
+            itemsPerPage={itemsPerPage}
+            totalItemCount={backups.length}
+            setPage={setPage}
+          />
+        </>
+      )}
     </TableWrapper>
   );
 }

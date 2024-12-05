@@ -24,6 +24,11 @@ import { urbackupServer } from "../../App";
 import { Breadcrumbs } from "../../components/Breadcrumbs";
 import { makeBackupsBreadcrumbs } from "./makeBackupsBreadcrumbs";
 import { TableWrapper } from "../../components/TableWrapper";
+import {
+  Pagination,
+  PaginationItemsPerPageSelector,
+  usePagination,
+} from "../../components/Pagination";
 
 const useStyles = makeStyles({
   heading: {
@@ -180,6 +185,9 @@ export function BackupContentTable() {
     );
   }
 
+  const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
+    usePagination(files);
+
   return (
     <TableWrapper>
       <div className={classes.heading}>
@@ -201,69 +209,92 @@ export function BackupContentTable() {
           Download Folder as ZIP
         </Button>
       </div>
-      <DataGrid items={files} getRowId={(item) => item.id} columns={columns}>
-        <DataGridHeader>
-          <DataGridRow>
-            {({ renderHeaderCell, columnId }) => (
-              <DataGridHeaderCell style={getNarrowColumnStyles(columnId)}>
-                {renderHeaderCell()}
-              </DataGridHeaderCell>
-            )}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<File>>
-          {({ item }) => (
-            <DataGridRow<File>>
-              {({ renderCell, columnId }) => {
-                const isInteractive = ["actions"].includes(String(columnId));
+      <div>
+        <PaginationItemsPerPageSelector
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+        />
+      </div>
+      {pageData.length === 0 ? null : (
+        <>
+          <DataGrid
+            items={pageData[page]}
+            getRowId={(item) => item.id}
+            columns={columns}
+          >
+            <DataGridHeader>
+              <DataGridRow>
+                {({ renderHeaderCell, columnId }) => (
+                  <DataGridHeaderCell style={getNarrowColumnStyles(columnId)}>
+                    {renderHeaderCell()}
+                  </DataGridHeaderCell>
+                )}
+              </DataGridRow>
+            </DataGridHeader>
+            <DataGridBody<File>>
+              {({ item }) => (
+                <DataGridRow<File>>
+                  {({ renderCell, columnId }) => {
+                    const isInteractive = ["actions"].includes(
+                      String(columnId),
+                    );
 
-                return (
-                  <DataGridCell
-                    focusMode={getCellFocusMode(columnId, {
-                      group: ["actions"],
-                      none: noneColumns,
-                    })}
-                    style={getNarrowColumnStyles(columnId)}
-                  >
-                    {isInteractive ? (
-                      renderCell(item)
-                    ) : (
-                      <a
-                        href=""
-                        onClick={(e) => {
-                          e.preventDefault();
-
-                          // Navigate to new path if item is a directory
-                          if (item.dir) {
-                            const params = {
-                              path: `${path ?? ""}/${item.name}`,
-                            };
-
-                            setSearchParams(params);
-
-                            return;
-                          }
-
-                          if (path) {
-                            const filePath = `${path}/${item.name}`;
-                            location.href = urbackupServer.downloadFileURL(
-                              Number(clientId),
-                              Number(backupId),
-                              filePath,
-                            );
-                          }
-                        }}
+                    return (
+                      <DataGridCell
+                        focusMode={getCellFocusMode(columnId, {
+                          group: ["actions"],
+                          none: noneColumns,
+                        })}
+                        style={getNarrowColumnStyles(columnId)}
                       >
-                        {renderCell(item)}
-                      </a>
-                    )}
-                  </DataGridCell>
-                );
-              }}
-            </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
+                        {isInteractive ? (
+                          renderCell(item)
+                        ) : (
+                          <a
+                            href=""
+                            onClick={(e) => {
+                              e.preventDefault();
+
+                              // Navigate to new path if item is a directory
+                              if (item.dir) {
+                                const params = {
+                                  path: `${path ?? ""}/${item.name}`,
+                                };
+
+                                setSearchParams(params);
+
+                                return;
+                              }
+
+                              if (path) {
+                                const filePath = `${path}/${item.name}`;
+                                location.href = urbackupServer.downloadFileURL(
+                                  Number(clientId),
+                                  Number(backupId),
+                                  filePath,
+                                );
+                              }
+                            }}
+                          >
+                            {renderCell(item)}
+                          </a>
+                        )}
+                      </DataGridCell>
+                    );
+                  }}
+                </DataGridRow>
+              )}
+            </DataGridBody>
+          </DataGrid>
+          <Pagination
+            pageCount={pageData.length}
+            page={page}
+            itemsPerPage={itemsPerPage}
+            totalItemCount={files.length}
+            setPage={setPage}
+          />
+        </>
+      )}
     </TableWrapper>
   );
 }

@@ -30,9 +30,28 @@ const paginationStyles: Partial<IPaginationStyles> = {
   root: {
     alignItems: "end",
     marginBlockStart: tokens.spacingHorizontalM,
+    // Fix centering of page selection buttons
+    "[role=radiogroup]": {
+      display: "flex",
+      alignItems: "center",
+    },
+    i: {
+      display: "flex",
+      alignItems: "center",
+    },
+    // First, previous, next, last
+    "button:not([aria-disabled]) i": {
+      color: tokens.colorBrandForeground1,
+    },
+    // Selected page
+    "button[aria-checked='true']": {
+      fontWeight: "bold",
+      color: tokens.colorBrandForeground1,
+      position: "relative",
+      borderBottom: `1px solid ${tokens.colorBrandForeground1}`,
+    },
   },
   pageNumber: {
-    verticalAlign: "top",
     color: "currentColor",
   },
 };

@@ -17,6 +17,11 @@ import { getCellFocusMode } from "../../utils/table";
 import { formatDatetime } from "../../utils/format";
 import { urbackupServer } from "../../App";
 import { TableWrapper } from "../../components/TableWrapper";
+import {
+  Pagination,
+  PaginationItemsPerPageSelector,
+  usePagination,
+} from "../../components/Pagination";
 
 export const columns: TableColumnDefinition<BackupsClient>[] = [
   createTableColumn<BackupsClient>({
@@ -55,33 +60,57 @@ export function BackupsTable() {
     return <span>No clients</span>;
   }
 
+  const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
+    usePagination(data);
+
   return (
     <TableWrapper>
       <h3>Backups</h3>
-      <DataGrid items={data} getRowId={(item) => item.id} columns={columns}>
-        <DataGridHeader>
-          <DataGridRow>
-            {({ renderHeaderCell }) => (
-              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-            )}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<BackupsClient>>
-          {({ item }) => (
-            <DataGridRow<BackupsClient> key={item.id}>
-              {({ renderCell, columnId }) => (
-                <DataGridCell
-                  focusMode={getCellFocusMode(columnId, {
-                    none: ["name", "lastFilebackup"],
-                  })}
-                >
-                  <Link to={String(item.id)}>{renderCell(item)}</Link>
-                </DataGridCell>
+      <div>
+        <PaginationItemsPerPageSelector
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+        />
+      </div>
+      {pageData.length === 0 ? null : (
+        <>
+          <DataGrid
+            items={pageData[page]}
+            getRowId={(item) => item.id}
+            columns={columns}
+          >
+            <DataGridHeader>
+              <DataGridRow>
+                {({ renderHeaderCell }) => (
+                  <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                )}
+              </DataGridRow>
+            </DataGridHeader>
+            <DataGridBody<BackupsClient>>
+              {({ item }) => (
+                <DataGridRow<BackupsClient> key={item.id}>
+                  {({ renderCell, columnId }) => (
+                    <DataGridCell
+                      focusMode={getCellFocusMode(columnId, {
+                        none: ["name", "lastFilebackup"],
+                      })}
+                    >
+                      <Link to={String(item.id)}>{renderCell(item)}</Link>
+                    </DataGridCell>
+                  )}
+                </DataGridRow>
               )}
-            </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
+            </DataGridBody>
+          </DataGrid>
+          <Pagination
+            pageCount={pageData.length}
+            page={page}
+            itemsPerPage={itemsPerPage}
+            totalItemCount={data.length}
+            setPage={setPage}
+          />
+        </>
+      )}
     </TableWrapper>
   );
 }
