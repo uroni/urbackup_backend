@@ -304,8 +304,9 @@ function filterClientData(dataItems: StatusClientItem[], search: string) {
       const searchableFields = {
         id,
         name,
-        lastbackup: formatDatetime(lastbackup),
-        lastbackup_image: formatDatetime(lastbackup_image),
+        lastbackup: lastbackup === 0 ? "Never" : formatDatetime(lastbackup),
+        lastbackup_image:
+          lastbackup === 0 ? "Never" : formatDatetime(lastbackup_image),
       };
 
       // Find matching search term in data values
