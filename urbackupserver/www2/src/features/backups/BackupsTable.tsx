@@ -134,7 +134,7 @@ export function BackupsTable() {
             pageCount={pageData.length}
             page={page}
             itemsPerPage={itemsPerPage}
-            totalItemCount={data.length}
+            totalItemCount={filteredItems.length}
             setPage={setPage}
           />
         </>

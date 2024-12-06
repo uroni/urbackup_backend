@@ -232,7 +232,7 @@ export function ClientBackupsTable() {
             pageCount={pageData.length}
             page={page}
             itemsPerPage={itemsPerPage}
-            totalItemCount={backups.length}
+            totalItemCount={filteredItems.length}
             setPage={setPage}
           />
         </>

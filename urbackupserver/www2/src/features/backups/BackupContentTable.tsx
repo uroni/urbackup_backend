@@ -296,7 +296,7 @@ export function BackupContentTable() {
             pageCount={pageData.length}
             page={page}
             itemsPerPage={itemsPerPage}
-            totalItemCount={files.length}
+            totalItemCount={filteredItems.length}
             setPage={setPage}
           />
         </>
