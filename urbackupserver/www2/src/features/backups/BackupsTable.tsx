@@ -22,6 +22,19 @@ import {
   PaginationItemsPerPageSelector,
   usePagination,
 } from "../../components/Pagination";
+import {
+  filterBySearch,
+  SearchBox,
+  useFilteredBySearch,
+} from "../../components/SearchBox";
+
+function createFormatter<T extends BackupsClient>() {
+  return {
+    lastbackup: (d: T) => (d.lastbackup ? formatDatetime(d.lastbackup) : "-"),
+  } as Record<keyof T, (d: T) => string>;
+}
+
+const formatter = createFormatter();
 
 export const columns: TableColumnDefinition<BackupsClient>[] = [
   createTableColumn<BackupsClient>({
@@ -39,11 +52,7 @@ export const columns: TableColumnDefinition<BackupsClient>[] = [
       return "Last file backup";
     },
     renderCell: (item) => {
-      return (
-        <TableCellLayout>
-          {item.lastbackup ? formatDatetime(item.lastbackup) : "-"}
-        </TableCellLayout>
-      );
+      return <TableCellLayout>{formatter.lastbackup(item)}</TableCellLayout>;
     },
   }),
 ];
@@ -60,13 +69,19 @@ export function BackupsTable() {
     return <span>No clients</span>;
   }
 
+  const { setSearch, filteredItems } = useFilteredBySearch<BackupsClient>(
+    data,
+    filterData,
+  );
+
   const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
-    usePagination(data);
+    usePagination(filteredItems);
 
   return (
     <TableWrapper>
       <h3>Backups</h3>
-      <div>
+      <div className="cluster">
+        <SearchBox onSearch={setSearch} />
         <PaginationItemsPerPageSelector
           itemsPerPage={itemsPerPage}
           setItemsPerPage={setItemsPerPage}
@@ -113,4 +128,15 @@ export function BackupsTable() {
       )}
     </TableWrapper>
   );
+}
+
+function filterData(item: BackupsClient, search: string) {
+  const { name } = item;
+
+  const searchableFields = {
+    name,
+    lastbackup: formatter.lastbackup(item),
+  };
+
+  return filterBySearch(search, searchableFields);
 }

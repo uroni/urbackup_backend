@@ -31,6 +31,11 @@ import {
   PaginationItemsPerPageSelector,
   usePagination,
 } from "../../components/Pagination";
+import {
+  filterBySearch,
+  SearchBox,
+  useFilteredBySearch,
+} from "../../components/SearchBox";
 
 const useStyles = makeStyles({
   heading: {
@@ -41,6 +46,23 @@ const useStyles = makeStyles({
   },
 });
 
+function createFormatter<T extends Backup>() {
+  return {
+    backuptime: (d: T) => formatDatetime(d.backuptime),
+    archived: (d: T) => {
+      if (d.archive_timeout) {
+        return `archived: Unarchives ${formatDatetime(d.archive_timeout)}`;
+      }
+
+      return d.archived ? `archived` : "";
+    },
+    incremental: (d: T) => (d.incremental !== 0 ? `incremental` : ""),
+    size_bytes: (d: T) => format_size(d.size_bytes),
+  } as Record<keyof T, (d: T) => string>;
+}
+
+const formatter = createFormatter();
+
 export const columns: TableColumnDefinition<Backup>[] = [
   createTableColumn<Backup>({
     columnId: "backuptime",
@@ -48,9 +70,7 @@ export const columns: TableColumnDefinition<Backup>[] = [
       return "Backup time";
     },
     renderCell: (item) => {
-      return (
-        <TableCellLayout>{formatDatetime(item.backuptime)}</TableCellLayout>
-      );
+      return <TableCellLayout>{formatter.backuptime(item)}</TableCellLayout>;
     },
   }),
   createTableColumn<Backup>({
@@ -59,24 +79,7 @@ export const columns: TableColumnDefinition<Backup>[] = [
       return "Backup ID";
     },
     renderCell: (item) => {
-      return (
-        <TableCellLayout>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: tokens.spacingHorizontalS,
-            }}
-          >
-            <span>{item.id}</span>
-            {!!item.archive_timeout && (
-              <Badge color="informative">
-                Unarchives: {formatDatetime(item.archive_timeout)}
-              </Badge>
-            )}
-          </div>
-        </TableCellLayout>
-      );
+      return <TableCellLayout>{item.id}</TableCellLayout>;
     },
   }),
   createTableColumn<Backup>({
@@ -100,7 +103,7 @@ export const columns: TableColumnDefinition<Backup>[] = [
       return "Size";
     },
     renderCell: (item) => {
-      return <TableCellLayout>{format_size(item.size_bytes)}</TableCellLayout>;
+      return <TableCellLayout>{formatter.size_bytes(item)}</TableCellLayout>;
     },
   }),
   createTableColumn<Backup & { clientid: number }>({
@@ -154,15 +157,21 @@ export function ClientBackupsTable() {
     );
   }
 
+  const { setSearch, filteredItems } = useFilteredBySearch<Backup>(
+    backups,
+    filterData,
+  );
+
   const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
-    usePagination(backups);
+    usePagination(filteredItems);
 
   return (
     <TableWrapper>
       <div className={classes.heading}>
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
       </div>
-      <div>
+      <div className="cluster">
+        <SearchBox onSearch={setSearch} />
         <PaginationItemsPerPageSelector
           itemsPerPage={itemsPerPage}
           setItemsPerPage={setItemsPerPage}
@@ -253,4 +262,18 @@ function getNarrowColumnStyles(columnId: TableColumnId) {
     flexGrow,
     flexBasis: narrowColumnIds.includes(stringId) ? "14ch" : "0",
   };
+}
+
+function filterData<T extends Backup>(item: T, search: string) {
+  const { id } = item;
+
+  const searchableFields = {
+    id,
+    backuptime: formatter.backuptime(item),
+    archived: formatter.archived(item),
+    incremental: formatter.incremental(item),
+    size_bytes: formatter.size_bytes(item),
+  } as Record<keyof T, string>;
+
+  return filterBySearch(search, searchableFields);
 }
