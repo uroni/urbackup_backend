@@ -54,6 +54,9 @@ const paginationStyles: Partial<IPaginationStyles> = {
   pageNumber: {
     color: "currentColor",
   },
+  visibleItemLabel: {
+    marginBlockStart: tokens.spacingVerticalS,
+  },
 };
 
 const pageSizeStyles = {
