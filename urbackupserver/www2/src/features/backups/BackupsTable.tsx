@@ -8,6 +8,7 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
+  makeStyles,
 } from "@fluentui/react-components";
 import { Link } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -27,6 +28,14 @@ import {
   SearchBox,
   useFilteredBySearch,
 } from "../../components/SearchBox";
+
+const useStyles = makeStyles({
+  heading: {
+    // Adjust height to match other backup tables with breadcrumbs
+    // (this table has an h3 instead of breadcrumbs for heading)
+    paddingBlockEnd: "7px",
+  },
+});
 
 function createFormatter<T extends BackupsClient>() {
   return {
@@ -65,6 +74,8 @@ export function BackupsTable() {
 
   const data = backupClientsResult.data!.clients;
 
+  const classes = useStyles();
+
   if (data.length === 0) {
     return <span>No clients</span>;
   }
@@ -79,7 +90,9 @@ export function BackupsTable() {
 
   return (
     <TableWrapper>
-      <h3>Backups</h3>
+      <div className={classes.heading}>
+        <h3>Backups</h3>
+      </div>
       <div className="cluster">
         <SearchBox onSearch={setSearch} />
         <PaginationItemsPerPageSelector
