@@ -116,10 +116,6 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
 ];
 
 const useStyles = makeStyles({
-  // TODO: remove following unused style
-  pagination: {
-    marginInlineStart: "auto",
-  },
   gridActions: {
     display: "flex",
     gap: tokens.spacingHorizontalS,
