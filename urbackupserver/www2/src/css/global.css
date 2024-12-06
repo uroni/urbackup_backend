@@ -1,5 +1,22 @@
 @import url("reset.css") layer(reset);
 
+:root {
+  /* FluentUI Spacing - https://react.fluentui.dev/?path=/docs/theme-spacing--docs */
+  --spacingXXS: 2px;
+  --spacingXS: 4px;
+  --spacingSNudge: 6px;
+  --spacingS: 8px;
+  --spacingMNudge: 10px;
+  --spacingM: 12px;
+  --spacingL: 16px;
+  --spacingXL: 20px;
+  --spacingXXL: 24px;
+  --spacingXXXL: 32px;
+
+  /* App variables */
+  --gutter: var(--spacingM);
+}
+
 @layer composition {
   /* 
   FLOW COMPOSITION 
@@ -8,6 +25,30 @@
   */
   .flow > * + * {
     margin-top: var(--flow-space, 1em);
+  }
+
+  /*
+  CLUSTER
+  More info: https://every-layout.dev/layouts/cluster/
+  A layout that lets you distribute items with consitent
+  spacing, regardless of their size
+
+  CUSTOM PROPERTIES AND CONFIGURATION
+  --gutter: This defines the space
+  between each item.
+
+  --cluster-horizontal-alignment (flex-start) How items should align
+  horizontally. Can be any acceptable flexbox aligmnent value.
+
+  --cluster-vertical-alignment How items should align vertically.
+  Can be any acceptable flexbox alignment value.
+  */
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gutter);
+    justify-content: var(--cluster-horizontal-alignment, flex-start);
+    align-items: var(--cluster-vertical-alignment, center);
   }
 }
 

@@ -7,11 +7,9 @@ import {
   DataGridHeader,
   DataGridHeaderCell,
   DataGridRow,
-  Field,
   makeStyles,
   MenuButton,
   MenuItem,
-  SearchBox,
   Spinner,
   TableCellLayout,
   TableColumnDefinition,
@@ -37,6 +35,11 @@ import {
   PaginationItemsPerPageSelector,
   usePagination,
 } from "../components/Pagination";
+import {
+  filterBySearch,
+  SearchBox,
+  useFilteredBySearch,
+} from "../components/SearchBox";
 
 const compareNum = (a: number, b: number) => {
   return a == b ? 0 : a < b ? 1 : -1;
@@ -113,18 +116,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
 ];
 
 const useStyles = makeStyles({
-  topFilters: {
-    display: "flex",
-    gap: tokens.spacingHorizontalM,
-  },
-  search: {
-    display: "flex",
-    alignItems: "center",
-    gap: tokens.spacingHorizontalS,
-  },
-  searchBox: {
-    width: "28ch",
-  },
+  // TODO: remove following unused style
   pagination: {
     marginInlineStart: "auto",
   },
@@ -151,11 +143,12 @@ const Status = () => {
 
   const classes = useStyles();
 
-  const [search, setSearch] = useState("");
+  const data = statusResult.data!.status;
 
-  const dataItems = statusResult.data!.status;
-
-  const filteredItems = filterClientData(dataItems, search);
+  const { setSearch, filteredItems } = useFilteredBySearch<StatusClientItem>(
+    data,
+    filterClientData,
+  );
 
   const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
     usePagination(filteredItems);
@@ -165,18 +158,8 @@ const Status = () => {
       <Suspense fallback={<Spinner />}>
         <TableWrapper>
           <h3>Status page</h3>
-          <div className={classes.topFilters}>
-            <Field label="Search" className={classes.search}>
-              <SearchBox
-                autoComplete="off"
-                className={classes.searchBox}
-                onChange={(_, data) => {
-                  const search = data.value.toLowerCase();
-
-                  setSearch(search);
-                }}
-              />
-            </Field>
+          <div className="cluster">
+            <SearchBox onSearch={setSearch} />
             <PaginationItemsPerPageSelector
               itemsPerPage={itemsPerPage}
               setItemsPerPage={setItemsPerPage}
@@ -289,34 +272,22 @@ function transformSelectedRows(selectedRows: Set<TableRowId>) {
   return clientIds;
 }
 
-function filterClientData(dataItems: StatusClientItem[], search: string) {
-  return dataItems.filter((d) => {
-    // Hide items scheduled for delete
-    if (d.delete_pending === "1") {
-      return false;
-    }
+function filterClientData(item: StatusClientItem, search: string) {
+  // Hide items scheduled for delete
+  if (item.delete_pending === "1") {
+    return false;
+  }
 
-    // If there's a search term, filter by search term within object values
-    if (search.length) {
-      const { id, name, lastbackup, lastbackup_image } = d;
+  const { id, name, lastbackup, lastbackup_image } = item;
 
-      // Search in fields as displayed in the table
-      const searchableFields = {
-        id,
-        name,
-        lastbackup: lastbackup === 0 ? "Never" : formatDatetime(lastbackup),
-        lastbackup_image:
-          lastbackup === 0 ? "Never" : formatDatetime(lastbackup_image),
-      };
+  // Search in fields as displayed in the table
+  const searchableFields = {
+    id: String(id),
+    name,
+    lastbackup: lastbackup === 0 ? "Never" : formatDatetime(lastbackup),
+    lastbackup_image:
+      lastbackup === 0 ? "Never" : formatDatetime(lastbackup_image),
+  };
 
-      // Find matching search term in data values
-      const match = Object.values(searchableFields).some((v) =>
-        String(v).toLowerCase().includes(search),
-      );
-
-      return match;
-    }
-
-    return true;
-  });
+  return filterBySearch(search, searchableFields);
 }
