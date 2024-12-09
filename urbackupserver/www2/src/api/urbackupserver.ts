@@ -118,7 +118,7 @@ export interface StatusClientItem {
   processes: ClientProcessItem[];
 }
 
-interface StatusResult {
+export interface StatusResult {
   has_status_check: boolean | undefined;
   nospc_stalled: boolean | undefined;
   nospc_fatal: boolean | undefined;
@@ -147,11 +147,11 @@ export interface StartBackupResultItem {
   start_ok: boolean;
 }
 
-interface StartBackupResult {
+export interface StartBackupResult {
   result: StartBackupResultItem[];
 }
 
-interface BackupsErr {
+export interface BackupsErr {
   err: string | "access_denied" | undefined;
 }
 
@@ -161,7 +161,7 @@ export interface BackupsClient {
   name: string; // name of client
 }
 
-interface BackupsClients {
+export interface BackupsClients {
   clients: BackupsClient[];
 }
 
@@ -178,7 +178,7 @@ export interface Backup {
   delete_pending: true | undefined; // If true the backup is marked for deletion
 }
 
-interface Backups {
+export interface Backups {
   delete_now_err: undefined | "delete_file_backup_failed" | string; // Error message if delete now failed
   backups: Backup[];
   backup_images: undefined | Backup[];
@@ -198,7 +198,7 @@ export interface File {
   shahash: undefined | string; // SHA hash of the file (undefined if it is a directory or if the hash is not available)
 }
 
-interface ImageBackupInfo {
+export interface ImageBackupInfo {
   id: number; // Backup id
   backuptime: number; // Unix timestamp of when the backup was made
   incremental: number; // !=0 if this is a incremental backup
@@ -216,7 +216,7 @@ interface ImageBackupInfo {
   volume_size: undefined | number; // Size of the volume in bytes
 }
 
-interface Files {
+export interface Files {
   single_item: boolean; // If true there is only one item in the list
   is_file: undefined | boolean; // If single item, if it is a file
   backupid: number; // Backup id
@@ -234,6 +234,12 @@ interface Files {
   mount_failed: true | undefined; // If true the image backup mount failed
   mount_errmsg: undefined | string; // Error message if mount failed
   files: File[]; // Files in the backup at path
+}
+
+export interface ClientInfo
+{
+  id: number;
+  name: string;
 }
 
 function calcPwHash(
@@ -266,6 +272,9 @@ export class PasswordWrongError extends Error {}
 export class UsernameOrPasswordWrongError extends Error {}
 
 export class BackupsAccessDeniedError extends Error {}
+
+// Error parsing server response
+export class ResponseParseError extends Error {}
 
 export class BackupsAccessError extends Error {
   constructor(message: string) {
@@ -326,6 +335,29 @@ export interface ActivityItem {
 export interface ProgressResult {
   progress: ProcessItem[];
   lastacts: ActivityItem[] | undefined;
+}
+
+export interface UsageClientStat
+{
+  files: number; // Number of bytes of file backup usage the client has
+  images: number; // Number of bytes of image backup usage the client has
+  name: string; // Name of the client
+  used: number; // Combined file and image backup usage
+}
+export interface UsageStats
+{
+  reset_statistics: undefined|"true"; // If string "true" the statistics can be reset
+  usage: UsageClientStat[]; // Usage stats for each client
+}
+
+export interface PieGraphData {
+  data: number; // Number of bytes used for backups of this client
+  label: string; // Name of the client
+}
+
+export interface UsageGraphData {
+  data: number; // Number of GiB used for backups
+  xlabel: string; // ISO Date of the data (YYYY-MM-DD)
 }
 
 class UrBackupServer {
@@ -669,6 +701,46 @@ class UrBackupServer {
     params.append("path", path);
     return this.getSiteURL() + this.serverUrl + "?" + params.toString();
   };
+
+  // Gets the clients that are on the server
+  getClients = async () => {
+    const resp = await this.fetchData({}, "users");
+    if(typeof resp.users == "undefined")
+      throw new ResponseParseError("No users found in response");
+
+    return resp.users as ClientInfo[];
+  }
+
+  // Get information about storage usage by client
+  getUsageStats = async () => {
+    const resp = await this.fetchData({}, "usage");
+    return resp as UsageStats;
+  }
+
+  // Get data for pie graph showing storage usage by client
+  getPiegraphData = async () => {
+    const resp = await this.fetchData({}, "piegraph");
+    if(typeof resp.data == "undefined")
+      throw new ResponseParseError("No data found in response");
+
+    return resp.data as PieGraphData[];
+  }
+
+  // Get data for usage graph showing storage usage over time
+  // scale: "d" for daily, "m" for monthly, "y" for yearly
+  getUsageGraphData = async (scale: "d"|"m"|"y") => {
+    const resp = await this.fetchData({"scale": scale}, "usagegraph");
+    if(typeof resp.data == "undefined")
+      throw new ResponseParseError("No data found in response");
+
+    return resp.data as UsageGraphData[];
+  }
+
+  // Start recalculation of all statistics
+  recalculateStats = async () => {
+    const resp = await this.fetchData({"recalculate": "true"}, "usage");
+    return resp as UsageStats;
+  }
 }
 
 export default UrBackupServer;
