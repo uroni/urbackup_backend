@@ -39,7 +39,7 @@ ACTION_IMPL(salt)
 
 	const std::string remote_addr = helper.remoteAddr();
 
-	Helper::IpLogin ip_login(remote_addr);
+	Helper::IpLogin ip_login(remote_addr, username);
 
 	if (helper.rateLimited(remote_addr))
 	{

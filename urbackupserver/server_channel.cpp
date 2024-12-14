@@ -662,7 +662,9 @@ void ServerChannelThread::LOGIN(str_map& params)
 
 	if(needs_login())
 	{
-		Helper::IpLogin ip_login(client_addr);
+		const std::string username = params["username"];
+
+		Helper::IpLogin ip_login(client_addr, username);
 
 		if (helper.rateLimited(client_addr))
 		{
@@ -687,18 +689,18 @@ void ServerChannelThread::LOGIN(str_map& params)
 		helper.getSession()->mStr["rnd"]=salt;
 
 		int user_id;
-		if(helper.checkPassword(params["username"], params["password"], &user_id, false))
+		if(helper.checkPassword(username, params["password"], &user_id, false))
 		{
 			helper.getSession()->id=user_id;
 			PARAMS["REMOTE_ADDR"]=client_addr;
-			logSuccessfulLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
+			logSuccessfulLogin(helper, PARAMS, username, LoginMethod_RestoreCD);
 			tcpstack.Send(input, "ok");
 		}
 		else
 		{
 			helper.getSession()->id=-1;
 			tcpstack.Send(input, "err");
-			logFailedLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
+			logFailedLogin(helper, PARAMS, username, LoginMethod_RestoreCD);
 			helper.addToRateLimit(client_addr);
 		}
 	}

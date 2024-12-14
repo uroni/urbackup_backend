@@ -57,21 +57,22 @@ public:
 	class IpLogin
 	{
 		const std::string remote_addr;
+		const std::string username;
 	public:
-		IpLogin(const std::string& remote_addr)
-			: remote_addr(remote_addr)
+		IpLogin(const std::string& remote_addr, const std::string& username)
+			: remote_addr(remote_addr), username(username)
 		{
-			Helper::startLogin(remote_addr);
+			Helper::startLogin(remote_addr, username);
 		}
 		~IpLogin()
 		{
-			Helper::stopLogin(remote_addr);
+			Helper::stopLogin(remote_addr, username);
 		}
 	};
 
-	static void startLogin(const std::string& remote_addr);
+	static void startLogin(const std::string& remote_addr, const std::string& username);
 
-	static void stopLogin(const std::string& remote_addr);
+	static void stopLogin(const std::string& remote_addr, const std::string& username);
 
 	static bool rateLimited(const std::string& remote_addr);
 
@@ -109,11 +110,14 @@ private:
 	SPrioInfo prio_info;
 
 	static ISharedMutex* rate_limit_mutex;
-	static IMutex* login_wait_mutex;
-	static ICondition* login_wait_cond;
+	static IMutex* login_wait_addr_mutex;
+	static ICondition* login_wait_addr_cond;
+	static IMutex* login_wait_username_mutex;
+	static ICondition* login_wait_username_cond;
 	typedef std::map<int64, std::map<std::string, int64> > rate_limit_map;
 	static rate_limit_map rates_per_bucket;
-	static std::set<std::string> logging_in;
+	static std::set<std::string> logging_in_addrs;
+	static std::set<std::string> logging_in_usernames;
 	static std::map<std::string, int64> banned_ips;
 };
 

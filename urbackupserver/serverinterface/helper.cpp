@@ -35,9 +35,12 @@ extern ICryptoFactory *crypto_fak;
 ISharedMutex* Helper::rate_limit_mutex;
 Helper::rate_limit_map Helper::rates_per_bucket;
 std::map<std::string, int64> Helper::banned_ips;
-ICondition* Helper::login_wait_cond;
-IMutex* Helper::login_wait_mutex;
-std::set<std::string> Helper::logging_in;
+ICondition* Helper::login_wait_addr_cond;
+IMutex* Helper::login_wait_addr_mutex;
+ICondition* Helper::login_wait_username_cond;
+IMutex* Helper::login_wait_username_mutex;
+std::set<std::string> Helper::logging_in_addrs;
+std::set<std::string> Helper::logging_in_usernames;
 
 Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
@@ -241,8 +244,10 @@ namespace
 void Helper::init_mutex()
 {
 	rate_limit_mutex = Server->createSharedMutex();
-	login_wait_cond = Server->createCondition();
-	login_wait_mutex = Server->createMutex();
+	login_wait_username_cond = Server->createCondition();
+	login_wait_username_mutex = Server->createMutex();
+	login_wait_addr_cond = Server->createCondition();
+	login_wait_addr_mutex = Server->createMutex();
 
 	if (failedLoginRateLimit())
 		Server->createThread(new RateLimitTimeout, "rate limit timeout");
@@ -497,27 +502,54 @@ std::string Helper::remoteAddr()
 	return (*PARAMS)["REMOTE_ADDR"];
 }
 
-void Helper::startLogin(const std::string& remote_addr)
+void Helper::startLogin(const std::string& remote_addr, const std::string& username)
 {
 	if (!failedLoginRateLimit())
 		return;
 
-	IScopedLock lock(login_wait_mutex);
-
-	while (logging_in.find(remote_addr) != logging_in.end())
 	{
-		login_wait_cond->wait(&lock);
+		IScopedLock lock(login_wait_addr_mutex);
+
+		if (!remote_addr.empty())
+		{
+			while (logging_in_addrs.find(remote_addr) != logging_in_addrs.end())
+			{
+				login_wait_addr_cond->wait(&lock);
+			}
+			logging_in_addrs.insert(remote_addr);
+		}
+	}
+
+	IScopedLock lock(login_wait_username_mutex);
+
+	if (!username.empty())
+	{
+		while (logging_in_usernames.find(username) != logging_in_addrs.end())
+		{
+			login_wait_username_cond->wait(&lock);
+		}
+		logging_in_usernames.insert(username);
 	}
 }
 
-void Helper::stopLogin(const std::string& remote_addr)
+void Helper::stopLogin(const std::string& remote_addr, const std::string& username)
 {
 	if (!failedLoginRateLimit())
 		return;
 
-	IScopedLock lock(login_wait_mutex);
-	logging_in.erase(remote_addr);
-	login_wait_cond->notify_all();
+	if (!remote_addr.empty())
+	{
+		IScopedLock lock(login_wait_addr_mutex);
+		logging_in_addrs.erase(remote_addr);
+		login_wait_addr_cond->notify_all();
+	}
+
+	if (!username.empty())
+	{
+		IScopedLock lock(login_wait_username_mutex);
+		logging_in_usernames.erase(username);
+		login_wait_username_cond->notify_all();
+	}
 }
 
 bool Helper::rateLimited(const std::string& remote_addr)

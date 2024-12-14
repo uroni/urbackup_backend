@@ -146,8 +146,9 @@ ACTION_IMPL(login)
 	}
 
 	const std::string remote_addr = helper.remoteAddr();
+	const std::string username = POST["username"];
 
-	Helper::IpLogin ipLogin(remote_addr);
+	Helper::IpLogin ipLogin(remote_addr, username);
 
 	if (helper.rateLimited(remote_addr))
 	{
@@ -156,10 +157,9 @@ ACTION_IMPL(login)
 		return;
 	}
 
-	std::string username=POST["username"];
 	if(!username.empty())
 	{
-		bool plainpw=POST["plainpw"]=="1";
+		const bool plainpw=POST["plainpw"]=="1";
 		if(!has_session && plainpw)
 		{
 			ses=helper.generateSession("anonymous");
