@@ -46,6 +46,7 @@
 #include "ImageThread.h"
 #include "../common/adler32.h"
 #include <string.h>
+#include "CachedFile.h"
 
 #ifdef __APPLE__
 #include <iostream>
@@ -9188,7 +9189,8 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 		&& ref->cbt
 		&& !vol.empty())
 	{
-		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE));
+		IFsFile* backing_file = Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE);
+		index_hdat_file.reset(backing_file ? (new CachedFile(backing_file)) : backing_file);
 		index_hdat_fs_block_size = -1;
 
 #ifdef _WIN32
@@ -9228,7 +9230,7 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 			{
 				CWData data;
 				data.addChar(ID_CBT_DATA);
-				data.addVoidPtr(f);
+				data.addVoidPtr(new CachedFile(f));
 				data.addVarInt(index_hdat_fs_block_size);
 				data.addVoidPtr(seq_id);
 				data.addVarInt(*seq_id);

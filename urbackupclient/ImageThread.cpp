@@ -26,6 +26,7 @@
 #include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../urbackupcommon/os_functions.h"
+#include "CachedFile.h"
 
 #include "ClientService.h"
 #include "ImageThread.h"
@@ -1332,9 +1333,11 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 		return NULL;
 	}
 
-	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat");
+	IFsFile* ret = Server->openFileFromHandle(hfile, volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat");
+	return ret ? new CachedFile(ret) : ret;
 #else
-	return Server->openFile("urbackup/hdat_img_"+conv_filename(volume)+".dat", MODE_RW_CREATE);
+	IFsFile* ret = Server->openFile("urbackup/hdat_img_"+conv_filename(volume)+".dat", MODE_RW_CREATE);
+	return ret ? new CachedFile(ret) : ret;
 #endif
 }
 
