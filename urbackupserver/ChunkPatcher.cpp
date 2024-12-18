@@ -202,7 +202,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			}
 			next_header.patch_off=-1;
 		}
-		else if(file_pos<size && file_pos<filesize)
+		else
 		{
 			while (curr_sparse_extent.offset != -1
 				&& curr_sparse_extent.offset+curr_sparse_extent.size <= file_pos)
@@ -210,7 +210,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				curr_sparse_extent = extent_iterator->nextExtent();
 			}
 
-			if (file_pos + tr>filesize)
+			if (file_pos<filesize && file_pos + tr>filesize)
 			{
 				tr = static_cast<unsigned int>(filesize - file_pos);
 			}
@@ -267,6 +267,14 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					}
 				}
 			}
+
+			if(!was_sparse && (file_pos>=size || file_pos>=filesize))
+			{
+				Server->Log("Patch corrupt. file_pos="+convert(file_pos)+" next_header.patch_off="+convert(next_header.patch_off)+" next_header.patch_size="+convert(next_header.patch_size)+" tr="+convert(tr)+" size="+convert(size)+" filesize="+convert(filesize), LL_ERROR);
+				assert(false);
+				return false;
+			}
+
 
 			while(!was_sparse
 				&& tr>0 && file_pos<size && file_pos<filesize)
@@ -377,12 +385,6 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					}
 				}
 			}
-		}
-		else
-		{
-			Server->Log("Patch corrupt. file_pos="+convert(file_pos)+" next_header.patch_off="+convert(next_header.patch_off)+" next_header.patch_size="+convert(next_header.patch_size)+" tr="+convert(tr)+" size="+convert(size)+" filesize="+convert(filesize), LL_ERROR);
-			assert(false);
-			return false;
 		}
 
 		if(patching_finished)
