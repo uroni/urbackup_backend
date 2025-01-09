@@ -3,7 +3,6 @@ import {
   Combobox,
   ComboboxProps,
   makeStyles,
-  OptionOnSelectData,
   Popover,
   PopoverSurface,
   PopoverTrigger,
