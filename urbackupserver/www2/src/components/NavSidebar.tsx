@@ -20,6 +20,7 @@ export const NavSidebar = () => {
       <Tab value={Pages.Status}>Status</Tab>
       <Tab value={Pages.Activities}>Activities</Tab>
       <Tab value={Pages.Backups}>Backups</Tab>
+      <Tab value={Pages.Statistics}>Statistics</Tab>
     </TabList>
   );
 };

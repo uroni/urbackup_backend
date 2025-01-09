@@ -25,6 +25,7 @@ import { ClientBackupsTable } from "./features/backups/ClientBackupsTable";
 import { BackupsTable } from "./features/backups/BackupsTable";
 import { BackupContentTable } from "./features/backups/BackupContentTable";
 import BackupErrorPage from "./features/backups/BackupsError";
+import { StatisticsPage } from "./pages/Statistics";
 import "./css/global.css";
 
 const initialDark =
@@ -36,6 +37,7 @@ export enum Pages {
   Status = "status",
   Activities = "activities",
   Backups = "backups",
+  Statistics = "statistics",
   Login = "login",
   About = "about",
 }
@@ -141,6 +143,15 @@ export const router = createHashRouter([
         element: <BackupContentTable />,
       },
     ],
+  },
+  {
+    path: `/${Pages.Statistics}`,
+    element: <StatisticsPage />,
+    loader: async () => {
+      state.pageAfterLogin = Pages.Statistics;
+      await jumpToLoginPageIfNeccessary();
+      return null;
+    },
   },
 ]);
 
