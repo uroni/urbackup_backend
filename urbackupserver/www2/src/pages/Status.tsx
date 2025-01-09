@@ -6,6 +6,7 @@ import {
   DataGridCell,
   DataGridHeader,
   DataGridHeaderCell,
+  DataGridProps,
   DataGridRow,
   makeStyles,
   MenuButton,
@@ -42,7 +43,7 @@ import {
 } from "../components/SearchBox";
 
 const compareNum = (a: number, b: number) => {
-  return a == b ? 0 : a < b ? 1 : -1;
+  return a == b ? 0 : a < b ? -1 : 1;
 };
 
 const columns: TableColumnDefinition<StatusClientItem>[] = [
@@ -141,8 +142,17 @@ const Status = () => {
 
   const data = statusResult.data!.status;
 
+  const [sortState, setSortState] =
+    useState<Parameters<NonNullable<DataGridProps["onSortChange"]>>[1]>();
+
+  const onSortChange: DataGridProps["onSortChange"] = (e) => {
+    e.preventDefault();
+  };
+
+  const [sortedData, setSortedData] = useState(data);
+
   const { setSearch, filteredItems } = useFilteredBySearch<StatusClientItem>(
-    data,
+    sortedData,
     filterClientData,
   );
 
@@ -164,7 +174,9 @@ const Status = () => {
           {pageData.length === 0 ? null : (
             <>
               <DataGrid
+                key={`${sortState?.sortColumn}-${sortState?.sortDirection}`}
                 sortable
+                onSortChange={onSortChange}
                 selectionMode="multiselect"
                 items={pageData[page]}
                 getRowId={(item) => item.id}
@@ -178,8 +190,41 @@ const Status = () => {
                   <DataGridRow
                     selectionCell={{ "aria-label": "Select all rows" }}
                   >
-                    {({ renderHeaderCell }) => (
-                      <DataGridHeaderCell>
+                    {({ renderHeaderCell, columnId, compare }) => (
+                      <DataGridHeaderCell
+                        sortDirection={
+                          sortState?.sortColumn === columnId
+                            ? sortState.sortDirection
+                            : undefined
+                        }
+                        button={{
+                          onClick: () => {
+                            const newSortState: typeof sortState = {
+                              sortColumn: columnId,
+                              sortDirection:
+                                sortState?.sortDirection === "descending" ||
+                                sortState?.sortColumn !== columnId
+                                  ? "ascending"
+                                  : "descending",
+                            };
+
+                            if (newSortState.sortDirection === "ascending") {
+                              const newSortedData = sortedData.sort(compare);
+                              setSortedData(newSortedData);
+                            }
+
+                            if (newSortState.sortDirection === "descending") {
+                              const newSortedData = sortedData.sort((a, b) =>
+                                // Reverse compare function params for descending order
+                                compare(b, a),
+                              );
+                              setSortedData(newSortedData);
+                            }
+
+                            setSortState(newSortState);
+                          },
+                        }}
+                      >
                         {renderHeaderCell(selectedRowsArray)}
                       </DataGridHeaderCell>
                     )}
