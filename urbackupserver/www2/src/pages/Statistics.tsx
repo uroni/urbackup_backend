@@ -4,6 +4,8 @@ import { Spinner } from "@fluentui/react-components";
 import { StorageUsage } from "../features/statistics/StorageUsage";
 import { StorageUsageBreakdownTable } from "../features/statistics/StorageUsageBreakdownTable";
 
+const STORAGE_USAGE_CHART_HEIGHT = 300;
+
 export const StatisticsPage = () => {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -37,7 +39,15 @@ export const StatisticsPage = () => {
           }}
         >
           <h4>Storage Usage</h4>
-          <StorageUsage width={width / 2} height={300} />
+          <div
+            style={{
+              height: `${STORAGE_USAGE_CHART_HEIGHT + 50}px`,
+            }}
+          >
+            <Suspense fallback={<Spinner />}>
+              <StorageUsage width={width} height={STORAGE_USAGE_CHART_HEIGHT} />
+            </Suspense>
+          </div>
         </div>
       </div>
       <div>
