@@ -18,9 +18,13 @@ const DURATIONS = {
 
 const lineChartStyles: ILineChartStyles = {
   root: {
+    overflow: "hidden",
     line: {
       strokeWidth: "1px",
     },
+  },
+  chartWrapper: {
+    overflow: "hidden",
   },
   axisTitle: {
     fill: "currentColor",
@@ -56,7 +60,13 @@ const lineChartStyles: ILineChartStyles = {
   },
 };
 
-export function StorageUsage() {
+export function StorageUsage({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
   const [duration, setDuration] =
     useState<Parameters<typeof urbackupServer.getUsageGraphData>[0]>("d");
 
@@ -83,8 +93,8 @@ export function StorageUsage() {
     max: Math.max(...storageUsage.map((d) => d.data)),
   };
 
-  const width = 550;
-  const height = 300;
+  // const width = 550;
+  // const height = 300;
 
   const data: IChartProps = {
     chartTitle: "Storage Usage",
@@ -135,8 +145,8 @@ export function StorageUsage() {
       </div>
       <div
         style={{
-          width: `${width}px`,
           height: `${height}px`,
+          overflow: "hidden",
         }}
       >
         <LineChart
