@@ -728,8 +728,13 @@ class UrBackupServer {
 
   // Get data for usage graph showing storage usage over time
   // scale: "d" for daily, "m" for monthly, "y" for yearly
-  getUsageGraphData = async (scale: "d"|"m"|"y") => {
-    const resp = await this.fetchData({"scale": scale}, "usagegraph");
+  getUsageGraphData = async (scale: "d"|"m"|"y", clientId?: string) => {
+    const params = {
+      scale, 
+      clientid: clientId ?? ""
+    }
+
+    const resp = await this.fetchData(params, "usagegraph");
     if(typeof resp.data == "undefined")
       throw new ResponseParseError("No data found in response");
 
