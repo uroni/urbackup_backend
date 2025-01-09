@@ -15,6 +15,23 @@
 
   /* App variables */
   --gutter: var(--spacingM);
+
+  /* 
+  tokens color variables to apply to charting callout components
+  rendered out of FluentProvider 
+  */
+  --colorNeutralForeground1: #242424;
+  --colorNeutralCardBackground: #fafafa;
+
+  --colorTooltipBackground: var(--colorNeutralCardBackground);
+  --colorTooltipForeground: var(--colorNeutralForeground1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralCardBackground: #333333;
+  }
 }
 
 @layer composition {
