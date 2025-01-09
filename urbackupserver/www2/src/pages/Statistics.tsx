@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { Spinner } from "@fluentui/react-components";
 
 import { StorageUsage } from "../features/statistics/StorageUsage";
+import { StorageUsageBreakdownTable } from "../features/statistics/StorageUsageBreakdownTable";
 
 export const StatisticsPage = () => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -38,6 +39,9 @@ export const StatisticsPage = () => {
           <h4>Storage Usage</h4>
           <StorageUsage width={width / 2} height={300} />
         </div>
+      </div>
+      <div>
+        <StorageUsageBreakdownTable />
       </div>
     </Suspense>
   );
