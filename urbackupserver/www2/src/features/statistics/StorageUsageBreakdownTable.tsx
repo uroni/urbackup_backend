@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   DataGrid,
   DataGridHeader,
@@ -11,10 +12,8 @@ import {
   DataGridProps,
 } from "@fluentui/react-components";
 
-import type { UsageClientStat } from "../../api/urbackupserver";
+import type { UsageClientStat, UsageStats } from "../../api/urbackupserver";
 import { format_size } from "../../utils/format";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { urbackupServer } from "../../App";
 import {
   filterBySearch,
   SearchBox,
@@ -26,7 +25,6 @@ import {
   usePagination,
 } from "../../components/Pagination";
 import { TableWrapper } from "../../components/TableWrapper";
-import { useState } from "react";
 
 const compareNum = (a: number, b: number) => {
   return a == b ? 0 : a < b ? -1 : 1;
@@ -83,14 +81,11 @@ export const columns: TableColumnDefinition<UsageClientStat>[] = [
   }),
 ];
 
-export function StorageUsageBreakdownTable() {
-  const storageUsageStatsResult = useSuspenseQuery({
-    queryKey: ["storage-usage"],
-    queryFn: () => urbackupServer.getUsageStats(),
-  });
-
-  const data = storageUsageStatsResult.data!.usage;
-
+export function StorageUsageBreakdownTable({
+  data,
+}: {
+  data: UsageStats["usage"];
+}) {
   if (data.length === 0) {
     return <span>No storage in use</span>;
   }

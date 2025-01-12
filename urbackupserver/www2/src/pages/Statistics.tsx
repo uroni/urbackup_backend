@@ -1,15 +1,31 @@
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Spinner } from "@fluentui/react-components";
+import { Button, Spinner } from "@fluentui/react-components";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { StorageUsage } from "../features/statistics/StorageUsage";
 import { StorageUsageBreakdownTable } from "../features/statistics/StorageUsageBreakdownTable";
+import { TotalStorageUsage } from "../features/statistics/TotalStorageUsage";
+import { urbackupServer } from "../App";
 
 const STORAGE_USAGE_CHART_HEIGHT = 300;
+const STORAGE_USAGE_CHART_PADDING = 50;
 
 export const StatisticsPage = () => {
   const ref = useRef<HTMLDivElement | null>(null);
 
   const [width, setWidth] = useState(0);
+
+  const [recalculateStatistics, setRecalculateStatistics] = useState(false);
+
+  const storageUsageStatsResult = useSuspenseQuery({
+    queryKey: ["storage-usage", recalculateStatistics],
+    queryFn: () =>
+      recalculateStatistics
+        ? urbackupServer.recalculateStats()
+        : urbackupServer.getUsageStats(),
+  });
+
+  const { usage, reset_statistics } = storageUsageStatsResult.data!;
 
   useEffect(() => {
     function handleResize() {
@@ -41,7 +57,7 @@ export const StatisticsPage = () => {
           <h4>Storage Usage</h4>
           <div
             style={{
-              height: `${STORAGE_USAGE_CHART_HEIGHT + 50}px`,
+              height: `${STORAGE_USAGE_CHART_HEIGHT + STORAGE_USAGE_CHART_PADDING}px`,
             }}
           >
             <Suspense fallback={<Spinner />}>
@@ -50,8 +66,25 @@ export const StatisticsPage = () => {
           </div>
         </div>
       </div>
-      <div>
-        <StorageUsageBreakdownTable />
+      <div className="flow">
+        <div className="flow">
+          <div className="cluster" data-justify-content="space-between">
+            <h4>Total Storage Usage</h4>
+            <Button
+              size="small"
+              onClick={() => {
+                if (reset_statistics) {
+                  setRecalculateStatistics(true);
+                }
+              }}
+            >
+              Recalculate Statistics
+            </Button>
+          </div>
+          <TotalStorageUsage usage={usage} />
+        </div>
+
+        <StorageUsageBreakdownTable data={usage} />
       </div>
     </Suspense>
   );

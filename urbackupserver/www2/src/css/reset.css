@@ -32,6 +32,7 @@ dd {
 ul,
 ol {
   list-style: none;
+  padding: 0;
 }
 
 /* Set core body defaults */

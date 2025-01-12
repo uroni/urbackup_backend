@@ -67,6 +67,10 @@
     justify-content: var(--cluster-horizontal-alignment, flex-start);
     align-items: var(--cluster-vertical-alignment, center);
   }
+
+  .cluster[data-justify-content="space-between"] {
+    --cluster-horizontal-alignment: space-between;
+  }
 }
 
 .table-wrapper {
