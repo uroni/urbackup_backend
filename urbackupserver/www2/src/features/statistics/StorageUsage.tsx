@@ -88,13 +88,14 @@ export function StorageUsage({
 
   const storageUsage = storageUsageResult.data!;
 
+  if (!storageUsage.length) {
+    return <span>No storage in use</span>;
+  }
+
   const limits = {
     min: Math.min(...storageUsage.map((d) => d.data)),
     max: Math.max(...storageUsage.map((d) => d.data)),
   };
-
-  // const width = 550;
-  // const height = 300;
 
   const data: IChartProps = {
     chartTitle: "Storage Usage",
