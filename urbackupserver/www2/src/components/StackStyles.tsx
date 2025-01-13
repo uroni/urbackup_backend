@@ -45,4 +45,9 @@ export const useStackStyles = makeStyles({
     width: "auto",
     flex: 1,
   },
+  content: {
+    padding: "10pt",
+    maxWidth: "1200px",
+    marginInline: "auto",
+  },
 });

@@ -13,6 +13,7 @@ import {
   teamsDarkTheme,
   Spinner,
   Toaster,
+  mergeClasses,
 } from "@fluentui/react-components";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useStackStyles } from "./components/StackStyles";
@@ -225,7 +226,9 @@ const App: React.FunctionComponent = () => {
                       <NavSidebar />
                     </div>
                   )}
-                  <div className={styles.itemGrow} style={{ padding: "10pt" }}>
+                  <div
+                    className={mergeClasses(styles.itemGrow, styles.content)}
+                  >
                     <Suspense fallback={<Spinner />}>
                       <RouterProvider router={router} />
                     </Suspense>
