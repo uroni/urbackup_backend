@@ -709,6 +709,8 @@ void IndexThread::operator()(void)
 	if (os_get_file_type("urbctctl.exe") != 0)
 	{
 		add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
+
+		system("urbctctl.exe setup");
 	}
 #endif
 
