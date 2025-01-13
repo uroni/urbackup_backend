@@ -1,11 +1,17 @@
-import { useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+/**
+ * TODO: Replace with LineChart from `@fluentui/react-charts-preview` once
+ * the LineChart is fixed in it.
+ * Review if the old charting library, `@fluentui/react-charting`
+ * can be uininstalled after replacing the following chart.
+ */
 import {
   IChartProps,
   ILineChartStyles,
   LineChart,
 } from "@fluentui/react-charting";
 import { Tab, TabList, tokens } from "@fluentui/react-components";
+import { useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { urbackupServer } from "../../App";
 import { SelectStorageUsageClient } from "./SelectStorageUsageClient";
