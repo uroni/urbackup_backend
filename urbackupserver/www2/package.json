@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fluentui/react-charting": "^5.23.11",
+    "@fluentui/react-charts-preview": "^0.1.6",
     "@fluentui/react-components": "^9.57.0",
     "@fluentui/react-experiments": "^8.14.152",
     "@fluentui/react-icons": "^2.0.239",

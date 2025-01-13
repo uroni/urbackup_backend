@@ -1,14 +1,37 @@
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Button, Spinner } from "@fluentui/react-components";
+import { Button, Spinner, tokens } from "@fluentui/react-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { StorageUsage } from "../features/statistics/StorageUsage";
 import { StorageUsageBreakdownTable } from "../features/statistics/StorageUsageBreakdownTable";
 import { TotalStorageUsage } from "../features/statistics/TotalStorageUsage";
+import { StorageAllocation } from "../features/statistics/StorageAllocation";
 import { urbackupServer } from "../App";
 
-const STORAGE_USAGE_CHART_HEIGHT = 300;
+const STORAGE_USAGE_CHART_HEIGHT = 200;
 const STORAGE_USAGE_CHART_PADDING = 50;
+
+const styles: Record<string, React.CSSProperties> = {
+  root: {
+    display: "grid",
+    gap: tokens.spacingVerticalXXL,
+    gridTemplateColumns: "1fr 320px",
+  },
+  storageUsage: {
+    overflow: "hidden",
+    width: "clamp(300px, 60vw, 800px)",
+  },
+  totalStorageUsage: {
+    display: "flex",
+    flexDirection: "column",
+    background: tokens.colorNeutralCardBackground,
+    padding: tokens.spacingHorizontalL,
+    borderRadius: tokens.borderRadiusLarge,
+  },
+  recalculateButton: {
+    marginBlockStart: "auto",
+  },
+};
 
 export const StatisticsPage = () => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -46,45 +69,46 @@ export const StatisticsPage = () => {
     <Suspense fallback={<Spinner />}>
       <div className="flow">
         <h3>Statistics</h3>
-        <div
-          className="flow"
-          ref={ref}
-          style={{
-            overflow: "hidden",
-            width: "clamp(500px, 84vw, 1200px)",
-          }}
-        >
-          <h4>Storage Usage</h4>
-          <div
-            style={{
-              height: `${STORAGE_USAGE_CHART_HEIGHT + STORAGE_USAGE_CHART_PADDING}px`,
-            }}
-          >
-            <Suspense fallback={<Spinner />}>
-              <StorageUsage width={width} height={STORAGE_USAGE_CHART_HEIGHT} />
-            </Suspense>
+        <div style={styles.root}>
+          <div ref={ref} className="flow" style={styles.storageUsage}>
+            <h4>Storage Usage</h4>
+            <div
+              style={{
+                height: `${STORAGE_USAGE_CHART_HEIGHT + STORAGE_USAGE_CHART_PADDING}px`,
+              }}
+            >
+              <Suspense fallback={<Spinner />}>
+                <StorageUsage
+                  width={width}
+                  height={STORAGE_USAGE_CHART_HEIGHT}
+                />
+              </Suspense>
+            </div>
           </div>
-        </div>
-      </div>
-      <div className="flow">
-        <div className="flow">
-          <div className="cluster" data-justify-content="space-between">
+          <div className="flow" style={styles.totalStorageUsage}>
             <h4>Total Storage Usage</h4>
+            <TotalStorageUsage usage={usage} />
             <Button
-              size="small"
               onClick={() => {
                 if (reset_statistics) {
                   setRecalculateStatistics(true);
                 }
               }}
+              style={styles.recalculateButton}
             >
               Recalculate Statistics
             </Button>
           </div>
-          <TotalStorageUsage usage={usage} />
-        </div>
 
-        <StorageUsageBreakdownTable data={usage} />
+          <StorageUsageBreakdownTable data={usage} />
+
+          <div ref={ref} className="flow">
+            <h4>Storage Allocation</h4>
+            <div>
+              <StorageAllocation />
+            </div>
+          </div>
+        </div>
       </div>
     </Suspense>
   );

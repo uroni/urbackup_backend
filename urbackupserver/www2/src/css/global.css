@@ -73,6 +73,7 @@
   }
 }
 
+/* Table */
 .table-wrapper {
   --flow-space: 1.5em;
 }
@@ -87,4 +88,31 @@
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+/* Chart */
+.donut-chart {
+  transform: translateY(-20px);
+}
+
+.donut-chart__legend {
+  transform: translateY(-30px);
+}
+
+.donut-chart__legend-rect {
+  border-radius: var(--borderRadiusSmall);
+}
+
+/* 
+TODO: Review after @fluentui/react-charts-preview is updated,
+if there's another way to target the following styles without FUI classes.
+*/
+.donut-chart__legend .fui-legend__resizableArea {
+  justify-content: center;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.donut-chart__legend .fui-legend__resizableArea > * {
+  margin: 0 !important;
 }
