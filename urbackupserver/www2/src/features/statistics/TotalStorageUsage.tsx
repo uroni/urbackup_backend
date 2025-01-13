@@ -13,8 +13,14 @@ const FILES_COLOR = getColorFromToken(DataVizPalette.color1);
 const IMAGES_COLOR = getColorFromToken(DataVizPalette.color4);
 
 const styles: Record<string, React.CSSProperties> = {
+  root: {
+    "--flow-space": tokens.spacingVerticalS,
+  } as React.CSSProperties,
   legendList: {
     "--flow-space": tokens.spacingVerticalS,
+  } as React.CSSProperties,
+  legendItem: {
+    "--gutter": tokens.spacingHorizontalS,
   } as React.CSSProperties,
   legendShape: {
     width: "12px",
@@ -33,25 +39,27 @@ export function TotalStorageUsage({ usage }: { usage: UsageStats["usage"] }) {
 
   return (
     <div className="flow">
-      <span>
-        <Subtitle1>{format_size(totalUsage)}</Subtitle1> used
-      </span>
-      <svg width="100%" height={CHART_HEIGHT}>
-        <g>
-          <ChartRect
-            x="0"
-            width={`${(totalFilesUsage / totalUsage) * 100}%`}
-            fill={FILES_COLOR}
-          />
-          <ChartRect
-            x={`${(totalFilesUsage / totalUsage) * 100 + CHART_GAP}%`}
-            width={`${Math.max(0, (totalImagesUsage / totalUsage) * 100 - CHART_GAP)}%`}
-            fill={IMAGES_COLOR}
-          />
-        </g>
-      </svg>
+      <div className="flow" style={styles.root}>
+        <span>
+          <Subtitle1>{format_size(totalUsage)}</Subtitle1> used
+        </span>
+        <svg width="100%" height={CHART_HEIGHT}>
+          <g>
+            <ChartRect
+              x="0"
+              width={`${(totalFilesUsage / totalUsage) * 100}%`}
+              fill={FILES_COLOR}
+            />
+            <ChartRect
+              x={`${(totalFilesUsage / totalUsage) * 100 + CHART_GAP}%`}
+              width={`${Math.max(0, (totalImagesUsage / totalUsage) * 100 - CHART_GAP)}%`}
+              fill={IMAGES_COLOR}
+            />
+          </g>
+        </svg>
+      </div>
       <ul className="flow" style={styles.legendList}>
-        <li className="cluster">
+        <li className="cluster" style={styles.legendItem}>
           <div
             style={{
               ...styles.legendShape,
@@ -61,7 +69,7 @@ export function TotalStorageUsage({ usage }: { usage: UsageStats["usage"] }) {
           <span>Files</span>
           <span style={styles.legendValue}>{format_size(totalFilesUsage)}</span>
         </li>
-        <li className="cluster">
+        <li className="cluster" style={styles.legendItem}>
           <div
             style={{
               ...styles.legendShape,
