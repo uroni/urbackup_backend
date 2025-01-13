@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Button, Spinner, tokens } from "@fluentui/react-components";
+import { Spinner, tokens } from "@fluentui/react-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { StorageUsage } from "../features/statistics/StorageUsage";
@@ -28,9 +28,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: tokens.spacingHorizontalL,
     borderRadius: tokens.borderRadiusLarge,
   },
-  recalculateButton: {
-    marginBlockStart: "auto",
-  },
 };
 
 export const StatisticsPage = () => {
@@ -38,14 +35,9 @@ export const StatisticsPage = () => {
 
   const [width, setWidth] = useState(0);
 
-  const [recalculateStatistics, setRecalculateStatistics] = useState(false);
-
   const storageUsageStatsResult = useSuspenseQuery({
-    queryKey: ["storage-usage", recalculateStatistics],
-    queryFn: () =>
-      recalculateStatistics
-        ? urbackupServer.recalculateStats()
-        : urbackupServer.getUsageStats(),
+    queryKey: ["storage-usage"],
+    queryFn: () => urbackupServer.getUsageStats(),
   });
 
   const { usage, reset_statistics } = storageUsageStatsResult.data!;
@@ -87,17 +79,10 @@ export const StatisticsPage = () => {
           </div>
           <div className="flow" style={styles.totalStorageUsage}>
             <h4>Total Storage Usage</h4>
-            <TotalStorageUsage usage={usage} />
-            <Button
-              onClick={() => {
-                if (reset_statistics) {
-                  setRecalculateStatistics(true);
-                }
-              }}
-              style={styles.recalculateButton}
-            >
-              Recalculate Statistics
-            </Button>
+            <TotalStorageUsage
+              usage={usage}
+              canResetStatistics={!!reset_statistics}
+            />
           </div>
 
           <StorageUsageBreakdownTable data={usage} />
