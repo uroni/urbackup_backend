@@ -525,8 +525,8 @@ namespace backupaccess
 		{
 			if(valid_path_component(t_path[i]))
 			{
-				ret.rel_path+=UnescapeSQLString(t_path[i]);
-				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]));
+				ret.rel_path+=t_path[i];
+				ret.rel_metadata_path+=escape_metadata_fn(t_path[i]);
 				
 				std::string curr_full_dir = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?"":(os_file_sep()+ret.rel_path));
 				
