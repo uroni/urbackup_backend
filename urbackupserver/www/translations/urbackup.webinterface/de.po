@@ -1169,10 +1169,10 @@ msgid "tShow when a new server version is available"
 msgstr "Eine neu verfügbare Serverversion anzeigen"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr "VHD (Virtuelle FestPlatte)"
+msgstr "VHD (Virtuelle Festplatte)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr "Komprimierte VHD (Komprimierte, nicht dem Standard entsprechende virtuelle FestPlatte)"
+msgstr "Komprimierte VHD (Komprimierte, nicht dem Standard entsprechende virtuelle Festplatte)"
 
 msgid "tBlock differences - hashed"
 msgstr "Blockunterschiede - gehasht"
@@ -1377,7 +1377,7 @@ msgid "tBackups interrupted"
 msgstr "Backups unterbrochen"
 
 msgid "tStop"
-msgstr "Stopp"
+msgstr "Stop"
 
 msgid "tShow log"
 msgstr "Protokoll anzeigen"
@@ -1392,7 +1392,7 @@ msgid "tFile Backups"
 msgstr "Dateisicherungen"
 
 msgid "tImage Backups"
-msgstr "Image Backups"
+msgstr "Abbildsicherungen"
 
 msgid "tArchive"
 msgstr "Archiv"
@@ -1622,13 +1622,13 @@ msgid "image_locked"
 msgstr "Abbildsicherung wird momenten verwendet"
 
 msgid "locked_ref"
-msgstr "Das Inkrementelle Image Backup das auf diesem Backup basiert wird gerade benutzt."
+msgstr "Die inkrementelle Abbildsicherung, die auf diesem Backup basiert wird gerade benutzt."
 
 msgid "incomplete_ref"
-msgstr "Das Inkrementelle Image Backup das auf diesem Backup basiert, läuft gerade."
+msgstr "Die inkrementelle Abbildsicherung, die auf diesem Backup basiert, läuft gerade."
 
 msgid "archived_ref"
-msgstr "Das Image Backup das von diesem Backup abhängt, wurde archiviert."
+msgstr "Die Abbildsicherung, die von diesem Backup abhängt, wurde archiviert."
 
 msgid "remove_image_failed"
 msgstr "Für Details siehe Serverprotokolldatei"
@@ -1684,10 +1684,10 @@ msgstr "Abbild einhängen"
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr "UrBackup wird eine keine Sandbox Servereinstellung benutzen, um das Image einzubinden. Binde das Image nur ein, wenn Du der Quelle vertraust."
+msgstr "UrBackup wird eine keine Sandbox Servereinstellung benutzen, um das Abbilds einzubinden. Binde das Image nur ein, wenn Du der Quelle vertraust."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr "Das Einbinden des Image ist fehlgeschlagen. Bitte lies die Server Log Datei für mehr Informationen."
+msgstr "Das Einbinden des Abbilds ist fehlgeschlagen. Bitte lies die Server Log Datei für mehr Informationen."
 
 msgid "tOk. Reset this error"
 msgstr "Ok. Diesen Fehler zurücksetzen"
