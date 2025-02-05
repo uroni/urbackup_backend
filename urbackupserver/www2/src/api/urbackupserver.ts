@@ -357,6 +357,73 @@ export interface UsageGraphData {
   xlabel: string; // ISO Date of the data (YYYY-MM-DD)
 }
 
+export type LogIdType = number;
+
+export interface LogClient {
+  id: ClientIdType; // Id of the client
+  name: string; // Name of the client
+}
+
+export interface LogInfo {
+  name: string; // Name of the client
+  id: LogIdType; // Id of the log
+  time: number; // Unix timestamp of when the log was created
+  errors: number; // Number of errors logged
+  warnings: number; // Number of warnings logged
+  image: number; // !=0 if this is a log of an image backup
+  incremental: number; // !=0 if this is a log of an incremental backup
+  resumed: number; // !=0 if this is a log of a resumed backup
+  restore: number; // !=0 if this is a log of a restore
+}
+
+export interface LogsResp {
+  clients: LogClient[]; // List of clients with logs (does not include clients that don't have logs)
+  all_clients: boolean; // If true all clients are selected
+  has_user: boolean; // Logged in via user. Reports can only be configured if logged in as user
+  log_right_clients: LogClient[]; // List of clients the user has log rights for
+  filter: string; // Filter used
+  logs: LogInfo[]; // List of logs
+  ll: number; // Loglevel filter
+  report_mail: string[]; // List of email addresses to send the report to
+  report_loglevel: "" | LogLevel; // Loglevel when to send a report
+  report_sendonly: "" | SendOnly; // When to send a report
+  can_report_script_edit: boolean | undefined; // If true the user can edit the report script
+}
+
+export interface LogDataRow {
+  level: LogLevel; // Log level
+  message: string; // Log message
+  time: number; // Unix timestamp of when the log entry was created
+}
+
+export interface LogData {
+  data: LogDataRow[]; // Log data
+  time: number; // Unix timestamp of when the log was created
+  clientname: string; // Name of the client
+}
+
+export interface LogDataResp {
+  clients: LogClient[]; // List of clients with logs (does not include clients that don't have logs)
+  all_clients: boolean; // If true all clients are selected
+  has_user: boolean; // If true this is non-admin user
+  log_right_clients: LogClient[]; // List of clients the user has log rights for
+  filter: string; // Filter used
+  log: LogData; // Log data
+}
+
+export enum LogLevel {
+  Info = 0,
+  Warning = 1,
+  Error = 2
+}
+
+export enum SendOnly {
+  Always = 0,
+  Failed = 1,
+  Succeeded = 2,
+  FailedExcludingTimeout = 3
+}
+
 class UrBackupServer {
   private serverUrl: string;
   private session = "";
@@ -742,6 +809,52 @@ class UrBackupServer {
   recalculateStats = async () => {
     const resp = await this.fetchData({ "recalculate": "true" }, "usage");
     return resp as UsageStats;
+  }
+
+  // Get Logs
+  // Use an empty filter and loglevel LogLevel.Info to get all logs
+  getLogs = async (filter: ClientIdType[], logLevel: LogLevel) => {
+    const resp = await this.fetchData({ "filter": filter.join(","), "ll": logLevel.toString() }, "logs");
+    const ret = resp as LogsResp;
+    ret.report_mail = resp.report_mail.length == 0 ? [] : resp.report_mail.split(/[;,]/);
+    return ret;
+  }
+
+  // Parse log data
+  parseLog = (d: string) => {
+    const msgs = d.split("\n");
+    const rows: LogDataRow[] = [];
+    for (const msg of msgs) {
+      const level = parseInt(msg.substring(0, 1));
+      let message: string;
+      const idx = msg.indexOf("-", 2);
+      let time = NaN;
+      if (idx != -1) {
+        time = parseInt(msg.substring(2, idx));
+        message = msg.substring(idx + 1);
+      } else {
+        message = msg.substring(2);
+      }
+
+      rows.push({ level: level, message: message, time: time });
+    }
+    return rows;
+  }
+
+  // Get log data via log id
+  getLog = async (logid: LogIdType) => {
+    const resp = await this.fetchData({ "logid": logid.toString() }, "logs");
+    const ret = resp as LogDataResp;
+    ret.log.data = this.parseLog(resp.log.data);
+    return ret;
+  }
+
+  // Save reporting configuration of user
+  saveLogReporting = async (mails: string[], logLevel: LogLevel, sendOnly: SendOnly) => {
+    const resp = await this.fetchData({ "report_mail": mails.join(";"), "report_loglevel": logLevel.toString(), "report_sendonly": sendOnly.toString() }, "logs");
+    const ret = resp as LogsResp;
+    ret.report_mail = resp.report_mail.length == 0 ? [] : resp.report_mail.split(/[;,]/);
+    return ret;
   }
 }
 
