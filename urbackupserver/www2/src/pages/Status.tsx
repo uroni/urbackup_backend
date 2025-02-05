@@ -325,9 +325,9 @@ function filterClientData(item: StatusClientItem, search: string) {
   const searchableFields = {
     id: String(id),
     name,
-    lastbackup: lastbackup === 0 ? "Never" : formatDatetime(lastbackup),
+    lastbackup: (lastbackup === 0 || lastbackup === "-") ? "Never" : formatDatetime(lastbackup),
     lastbackup_image:
-      lastbackup === 0 ? "Never" : formatDatetime(lastbackup_image),
+      (lastbackup_image === 0 || lastbackup_image === "-") ? "Never" : formatDatetime(lastbackup_image),
   };
 
   return filterBySearch(search, searchableFields);

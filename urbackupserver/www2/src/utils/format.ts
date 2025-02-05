@@ -198,7 +198,14 @@ export function formatDatetime(datetime: number) {
     hour12: false,
   });
 
-  return formatter.format(date);
+  try
+  {
+    return formatter.format(date);
+  }
+  catch(e)
+  {
+    return "Invalid Date";
+  }
 }
 
 export function formatDuration(durationInSeconds: number) {

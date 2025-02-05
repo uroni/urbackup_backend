@@ -96,8 +96,8 @@ export interface ClientProcessItem {
 export interface StatusClientItem {
   id: ClientIdType;
   name: string;
-  lastbackup: number;
-  lastbackup_image: number;
+  lastbackup: "-" | number;
+  lastbackup_image: "-" | number;
   delete_pending: string;
   uid: string;
   last_filebackup_issues: number;
