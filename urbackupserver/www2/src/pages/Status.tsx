@@ -46,6 +46,14 @@ const compareNum = (a: number, b: number) => {
   return a == b ? 0 : a < b ? -1 : 1;
 };
 
+const compareLastbackup = (a: "-" | number, b: "-" | number) => {
+  if (a==="-")
+    a = 0;
+  if (b==="-")
+    b = 0;
+  return compareNum(a, b);
+};
+
 const columns: TableColumnDefinition<StatusClientItem>[] = [
   createTableColumn<StatusClientItem>({
     columnId: "id",
@@ -77,7 +85,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
       return "Last file backup";
     },
     compare: (a, b) => {
-      return compareNum(a.lastbackup, b.lastbackup);
+      return compareLastbackup(a.lastbackup, b.lastbackup);
     },
     renderCell: LastFileBackup,
   }),
@@ -87,7 +95,7 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
       return "Last image backup";
     },
     compare: (a, b) => {
-      return compareNum(a.lastbackup_image, b.lastbackup_image);
+      return compareLastbackup(a.lastbackup_image, b.lastbackup_image);
     },
     renderCell: LastImageBackup,
   }),
