@@ -236,8 +236,7 @@ export interface Files {
   files: File[]; // Files in the backup at path
 }
 
-export interface ClientInfo
-{
+export interface ClientInfo {
   id: number;
   name: string;
 }
@@ -263,18 +262,18 @@ function calcPwHash(
 
 export type OsType = "windows" | "linux" | "mac";
 
-export class SessionNotFoundError extends Error {}
+export class SessionNotFoundError extends Error { }
 
-export class UsernameNotFoundError extends Error {}
+export class UsernameNotFoundError extends Error { }
 
-export class PasswordWrongError extends Error {}
+export class PasswordWrongError extends Error { }
 
-export class UsernameOrPasswordWrongError extends Error {}
+export class UsernameOrPasswordWrongError extends Error { }
 
-export class BackupsAccessDeniedError extends Error {}
+export class BackupsAccessDeniedError extends Error { }
 
 // Error parsing server response
-export class ResponseParseError extends Error {}
+export class ResponseParseError extends Error { }
 
 export class BackupsAccessError extends Error {
   constructor(message: string) {
@@ -337,16 +336,14 @@ export interface ProgressResult {
   lastacts: ActivityItem[] | undefined;
 }
 
-export interface UsageClientStat
-{
+export interface UsageClientStat {
   files: number; // Number of bytes of file backup usage the client has
   images: number; // Number of bytes of image backup usage the client has
   name: string; // Name of the client
   used: number; // Combined file and image backup usage
 }
-export interface UsageStats
-{
-  reset_statistics: undefined|"true"; // If string "true" the statistics can be reset
+export interface UsageStats {
+  reset_statistics: undefined | "true"; // If string "true" the statistics can be reset
   usage: UsageClientStat[]; // Usage stats for each client
 }
 
@@ -705,7 +702,7 @@ class UrBackupServer {
   // Gets the clients that are on the server
   getClients = async () => {
     const resp = await this.fetchData({}, "users");
-    if(typeof resp.users == "undefined")
+    if (typeof resp.users == "undefined")
       throw new ResponseParseError("No users found in response");
 
     return resp.users as ClientInfo[];
@@ -720,7 +717,7 @@ class UrBackupServer {
   // Get data for pie graph showing storage usage by client
   getPiegraphData = async () => {
     const resp = await this.fetchData({}, "piegraph");
-    if(typeof resp.data == "undefined")
+    if (typeof resp.data == "undefined")
       throw new ResponseParseError("No data found in response");
 
     return resp.data as PieGraphData[];
@@ -728,14 +725,14 @@ class UrBackupServer {
 
   // Get data for usage graph showing storage usage over time
   // scale: "d" for daily, "m" for monthly, "y" for yearly
-  getUsageGraphData = async (scale: "d"|"m"|"y", clientId?: string) => {
+  getUsageGraphData = async (scale: "d" | "m" | "y", clientId?: string) => {
     const params = {
-      scale, 
+      scale,
       clientid: clientId ?? ""
     }
 
     const resp = await this.fetchData(params, "usagegraph");
-    if(typeof resp.data == "undefined")
+    if (typeof resp.data == "undefined")
       throw new ResponseParseError("No data found in response");
 
     return resp.data as UsageGraphData[];
@@ -743,7 +740,7 @@ class UrBackupServer {
 
   // Start recalculation of all statistics
   recalculateStats = async () => {
-    const resp = await this.fetchData({"recalculate": "true"}, "usage");
+    const resp = await this.fetchData({ "recalculate": "true" }, "usage");
     return resp as UsageStats;
   }
 }
