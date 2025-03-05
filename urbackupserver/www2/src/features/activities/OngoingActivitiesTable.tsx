@@ -155,7 +155,7 @@ export const columns: TableColumnDefinition<ProcessItem>[] = [
 
 export function OngoingActivitiesTable({ data }: { data: ProcessItem[] }) {
   if (data.length === 0) {
-    return <span>No activities</span>;
+    return <div>No activities</div>;
   }
 
   return (

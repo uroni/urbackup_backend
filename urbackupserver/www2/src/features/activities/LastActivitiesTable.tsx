@@ -92,7 +92,7 @@ export function LastActivitiesTable({
   data: ActivityItem[] | undefined;
 }) {
   if (!data || data.length === 0) {
-    return <span>No recent activities</span>;
+    return <div>No recent activities</div>;
   }
 
   return (
