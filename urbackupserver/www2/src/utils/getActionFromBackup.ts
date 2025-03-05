@@ -1,14 +1,14 @@
-import { ActivityItem } from "../../api/urbackupserver";
-import { ACTIONS } from "./ACTIONS";
+import { ACTIONS } from "../constants/ACTIONS";
 
-export function getActionFromLastAct(
-  lastact: Pick<
-    ActivityItem,
-    "restore" | "image" | "resumed" | "incremental" | "del"
-  >,
-) {
-  const isFileRestore = lastact.restore !== 0 && lastact.image === 0;
-  const isImageRestore = lastact.restore !== 0 && lastact.image !== 0;
+export function getActionFromBackup(backup: {
+  restore: number; // !=0 if this is a restore
+  image: number; // !=0 if this is a image backup
+  resumed: number; // !=0 if this is a resumed backup
+  incremental: number; // !=0 if this is a incremental backup
+  del?: boolean; // This was a deletion activitiy or not
+}): string {
+  const isFileRestore = backup.restore !== 0 && backup.image === 0;
+  const isImageRestore = backup.restore !== 0 && backup.image !== 0;
 
   if (isFileRestore) {
     // action = 8
@@ -20,15 +20,15 @@ export function getActionFromLastAct(
     return ACTIONS.RESTORE_IMAGE;
   }
 
-  const isFileBackup = lastact.image === 0;
-  const isImageBackup = lastact.image !== 0;
-  const isIncremental = lastact.incremental > 0;
-  const isDelBackup = lastact.del;
+  const isFileBackup = backup.image === 0;
+  const isImageBackup = backup.image !== 0;
+  const isIncremental = backup.incremental > 0;
+  const isDelBackup = backup.del;
 
   // TODO: Remove action variable comments,
   // if the refactored values from ACTIONS are approved
   if (isFileBackup) {
-    const isResumableFileBackup = lastact.resumed !== 0;
+    const isResumableFileBackup = backup.resumed !== 0;
 
     if (isResumableFileBackup) {
       // action = 5 | action = 6;

@@ -16,7 +16,7 @@ import {
   formatDatetime,
   formatDuration,
 } from "../../utils/format";
-import { getActionFromLastAct } from "./getActionFromLastAct";
+import { getActionFromBackup } from "../../utils/getActionFromBackup";
 
 export const columns: TableColumnDefinition<ActivityItem>[] = [
   createTableColumn<ActivityItem>({
@@ -43,7 +43,7 @@ export const columns: TableColumnDefinition<ActivityItem>[] = [
       return "Action";
     },
     renderCell: (item) => {
-      return <TableCellLayout>{getActionFromLastAct(item)}</TableCellLayout>;
+      return <TableCellLayout>{getActionFromBackup(item)}</TableCellLayout>;
     },
   }),
   createTableColumn<ActivityItem>({

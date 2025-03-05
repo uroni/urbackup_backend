@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest";
 
-import { getActionFromLastAct } from "./getActionFromLastAct";
-import { ACTIONS } from "./ACTIONS";
+import { getActionFromBackup } from "./getActionFromBackup";
+import { ACTIONS } from "../constants/ACTIONS";
 
 const testCases: {
-  lastact: Parameters<typeof getActionFromLastAct>[0];
+  backup: Parameters<typeof getActionFromBackup>[0];
   expected: (typeof ACTIONS)[keyof typeof ACTIONS];
 }[] = [
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 0,
@@ -18,7 +18,7 @@ const testCases: {
     expected: ACTIONS.INCR_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 0,
@@ -28,7 +28,7 @@ const testCases: {
     expected: ACTIONS.FULL_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 1,
       resumed: 0,
@@ -38,7 +38,7 @@ const testCases: {
     expected: ACTIONS.INCR_IMAGE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 1,
       resumed: 0,
@@ -48,7 +48,7 @@ const testCases: {
     expected: ACTIONS.FULL_IMAGE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 1,
@@ -58,7 +58,7 @@ const testCases: {
     expected: ACTIONS.RESUME_INCR_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 1,
@@ -68,7 +68,7 @@ const testCases: {
     expected: ACTIONS.RESUME_FULL_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 1,
       image: 0,
       resumed: 0,
@@ -78,7 +78,7 @@ const testCases: {
     expected: ACTIONS.RESTORE_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 1,
       image: 1,
       resumed: 0,
@@ -88,7 +88,7 @@ const testCases: {
     expected: ACTIONS.RESTORE_IMAGE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 0,
@@ -98,7 +98,7 @@ const testCases: {
     expected: ACTIONS.DEL_INCR_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 0,
       resumed: 0,
@@ -108,7 +108,7 @@ const testCases: {
     expected: ACTIONS.DEL_FULL_FILE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 1,
       resumed: 0,
@@ -118,7 +118,7 @@ const testCases: {
     expected: ACTIONS.DEL_INCR_IMAGE,
   },
   {
-    lastact: {
+    backup: {
       restore: 0,
       image: 1,
       resumed: 0,
@@ -129,11 +129,11 @@ const testCases: {
   },
 ];
 
-describe.concurrent("action from lastact", () => {
+describe.concurrent("action from backup", () => {
   test.each(testCases)(
-    "lastact %# should be action: $expected",
-    ({ lastact, expected }) => {
-      expect(getActionFromLastAct(lastact)).toBe(expected);
+    "%# should be action: $expected",
+    ({ backup, expected }) => {
+      expect(getActionFromBackup(backup)).toBe(expected);
     },
   );
 });

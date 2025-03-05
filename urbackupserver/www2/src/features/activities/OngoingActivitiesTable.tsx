@@ -18,10 +18,29 @@ import {
 
 import type { ProcessItem } from "../../api/urbackupserver";
 import { format_size, formatDuration } from "../../utils/format";
-import { NUMBERED_ACTIONS_MAP } from "./ACTIONS";
 import { OngoingActivitiesActions } from "./OngoingActivitiesActions";
 import { ProcessSpeedChart } from "./ProcessSpeedChart";
 import { getCellFocusMode } from "../../utils/table";
+import { ACTIONS } from "../../constants/ACTIONS";
+
+const NUMBERED_ACTIONS_MAP = new Map([
+  [0, ACTIONS.NONE],
+  [1, ACTIONS.INCR_FILE],
+  [2, ACTIONS.FULL_FILE],
+  [3, ACTIONS.INCR_IMAGE],
+  [4, ACTIONS.FULL_IMAGE],
+  [5, ACTIONS.RESUME_INCR_FILE],
+  [6, ACTIONS.RESUME_FULL_FILE],
+  [8, ACTIONS.RESTORE_FILE],
+  [9, ACTIONS.RESTORE_IMAGE],
+  [10, ACTIONS.UPDATE],
+  [11, ACTIONS.CHECK_INTEGRITY],
+  [12, ACTIONS.BACKUP_DATABASE],
+  [13, ACTIONS.RECALCULATE_STATISTICS],
+  [14, ACTIONS.NIGHTLY_CLEANUP],
+  [15, ACTIONS.EMERGENCY_CLEANUP],
+  [16, ACTIONS.STORAGE_MIGRATION],
+]);
 
 const styles: Record<string, React.CSSProperties> = {
   progressField: {
