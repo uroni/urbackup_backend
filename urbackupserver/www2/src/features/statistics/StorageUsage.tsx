@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { urbackupServer } from "../../App";
-import { SelectStorageUsageClient } from "./SelectStorageUsageClient";
+import { SelectClientCombobox } from "../../components/SelectClientCombobox";
 
 const DURATIONS = {
   d: "Day",
@@ -132,7 +132,7 @@ export function StorageUsage({
         }
       >
         <div>
-          <SelectStorageUsageClient
+          <SelectClientCombobox
             clients={clients}
             onSelect={(id) => setSelectedClientId(id)}
           />

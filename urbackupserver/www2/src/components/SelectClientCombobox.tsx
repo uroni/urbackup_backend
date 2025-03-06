@@ -4,9 +4,9 @@ import {
   Combobox,
 } from "@fluentui/react-components";
 import { useId, useState } from "react";
-import { ClientInfo } from "../../api/urbackupserver";
+import { ClientInfo } from "../api/urbackupserver";
 
-export function SelectStorageUsageClient({
+export function SelectClientCombobox({
   clients,
   onSelect,
 }: {
