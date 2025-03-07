@@ -4,14 +4,17 @@ import {
   Combobox,
 } from "@fluentui/react-components";
 import { useId, useState } from "react";
+
 import { ClientInfo } from "../api/urbackupserver";
 
 export function SelectClientCombobox({
   clients,
   onSelect,
+  defaultValue,
 }: {
   clients: ClientInfo[];
   onSelect: (value?: string) => void;
+  defaultValue?: ClientInfo["name"];
 }) {
   const options = [
     {
@@ -26,7 +29,9 @@ export function SelectClientCombobox({
 
   const comboId = useId();
 
-  const [query, setQuery] = useState<string>(options[0].children);
+  const [query, setQuery] = useState<ClientInfo["name"]>(
+    defaultValue ?? options[0].children,
+  );
   const comboBoxChildren = useComboboxFilter(query, options, {
     optionToText: (d) => d.children,
     noOptionsMessage: `No results matched "${query}"`,
@@ -47,7 +52,7 @@ export function SelectClientCombobox({
   };
 
   return (
-    <div className="cluster">
+    <div className="cluster" data-spacing="s">
       <label id={comboId}>Select client</label>
       <Combobox
         aria-labelledby={comboId}

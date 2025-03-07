@@ -71,6 +71,10 @@
   .cluster[data-justify-content="space-between"] {
     --cluster-horizontal-alignment: space-between;
   }
+
+  .cluster[data-spacing="s"] {
+    --gutter: var(--spacingS);
+  }
 }
 
 /* Table */
