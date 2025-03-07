@@ -33,7 +33,7 @@ interface LoginResult {
   logs: string | undefined;
 }
 
-type ClientIdType = number;
+export type ClientIdType = number;
 
 export enum ClientProcessActionTypes {
   NONE = 0,
@@ -357,6 +357,12 @@ export interface UsageGraphData {
   xlabel: string; // ISO Date of the data (YYYY-MM-DD)
 }
 
+export const LOG_LEVELS ={
+ INFO: 0, 
+ WARNING: 1, 
+ ERROR: 2, 
+} as const
+
 export type LogIdType = number;
 
 export interface LogClient {
@@ -383,15 +389,15 @@ export interface LogsResp {
   log_right_clients: LogClient[]; // List of clients the user has log rights for
   filter: string; // Filter used
   logs: LogInfo[]; // List of logs
-  ll: number; // Loglevel filter
+  ll: typeof LOG_LEVELS[keyof typeof LOG_LEVELS]; // Loglevel filter
   report_mail: string[]; // List of email addresses to send the report to
-  report_loglevel: "" | LogLevel; // Loglevel when to send a report
+  report_loglevel: "" | typeof LOG_LEVELS[keyof typeof LOG_LEVELS]; // Loglevel when to send a report
   report_sendonly: "" | SendOnly; // When to send a report
   can_report_script_edit: boolean | undefined; // If true the user can edit the report script
 }
 
 export interface LogDataRow {
-  level: LogLevel; // Log level
+  level: typeof LOG_LEVELS[keyof typeof LOG_LEVELS]; // Log level
   message: string; // Log message
   time: number; // Unix timestamp of when the log entry was created
 }
@@ -409,12 +415,6 @@ export interface LogDataResp {
   log_right_clients: LogClient[]; // List of clients the user has log rights for
   filter: string; // Filter used
   log: LogData; // Log data
-}
-
-export enum LogLevel {
-  Info = 0,
-  Warning = 1,
-  Error = 2
 }
 
 export enum SendOnly {
@@ -812,9 +812,9 @@ class UrBackupServer {
   }
 
   // Get Logs
-  // Use an empty filter and loglevel LogLevel.Info to get all logs
-  getLogs = async (filter: ClientIdType[], logLevel: LogLevel) => {
-    const resp = await this.fetchData({ "filter": filter.join(","), "ll": logLevel.toString() }, "logs");
+  // Use an empty filter and loglevel LOG_LEVELS.INFO to get all logs
+  getLogs = async (filter: ClientIdType[], logLevel: typeof LOG_LEVELS[keyof typeof LOG_LEVELS]) => {
+    const resp = await this.fetchData({ "filter": filter.join(","), "ll": String(logLevel) }, "logs");
     const ret = resp as LogsResp;
     ret.report_mail = resp.report_mail.length == 0 ? [] : resp.report_mail.split(/[;,]/);
     return ret;
@@ -825,7 +825,7 @@ class UrBackupServer {
     const msgs = d.split("\n");
     const rows: LogDataRow[] = [];
     for (const msg of msgs) {
-      const level = parseInt(msg.substring(0, 1));
+      const level = parseInt(msg.substring(0, 1)) as typeof LOG_LEVELS[keyof typeof LOG_LEVELS];
       let message: string;
       const idx = msg.indexOf("-", 2);
       let time = NaN;
@@ -850,7 +850,7 @@ class UrBackupServer {
   }
 
   // Save reporting configuration of user
-  saveLogReporting = async (mails: string[], logLevel: LogLevel, sendOnly: SendOnly) => {
+  saveLogReporting = async (mails: string[], logLevel: typeof LOG_LEVELS[keyof typeof LOG_LEVELS], sendOnly: SendOnly) => {
     const resp = await this.fetchData({ "report_mail": mails.join(";"), "report_loglevel": logLevel.toString(), "report_sendonly": sendOnly.toString() }, "logs");
     const ret = resp as LogsResp;
     ret.report_mail = resp.report_mail.length == 0 ? [] : resp.report_mail.split(/[;,]/);
