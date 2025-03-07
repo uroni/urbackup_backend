@@ -27,6 +27,7 @@ import { BackupsTable } from "./features/backups/BackupsTable";
 import { BackupContentTable } from "./features/backups/BackupContentTable";
 import BackupErrorPage from "./features/backups/BackupsError";
 import { StatisticsPage } from "./pages/Statistics";
+import { LogsPage } from "./pages/Logs";
 import "./css/global.css";
 
 const initialDark =
@@ -41,6 +42,7 @@ export enum Pages {
   Statistics = "statistics",
   Login = "login",
   About = "about",
+  Logs = "logs",
 }
 
 export const state = proxy({
@@ -150,6 +152,15 @@ export const router = createHashRouter([
     element: <StatisticsPage />,
     loader: async () => {
       state.pageAfterLogin = Pages.Statistics;
+      await jumpToLoginPageIfNeccessary();
+      return null;
+    },
+  },
+  {
+    path: `/${Pages.Logs}`,
+    element: <LogsPage />,
+    loader: async () => {
+      state.pageAfterLogin = Pages.Logs;
       await jumpToLoginPageIfNeccessary();
       return null;
     },
