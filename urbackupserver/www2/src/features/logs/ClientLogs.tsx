@@ -6,6 +6,7 @@ import { LOG_LEVELS, type ClientIdType } from "../../api/urbackupserver";
 import { urbackupServer } from "../../App";
 import { SelectClientCombobox } from "../../components/SelectClientCombobox";
 import { LogsTable } from "./LogsTable";
+import { TableWrapper } from "../../components/TableWrapper";
 
 const FORMATTED_LOG_LEVELS = {
   INFO: "All",
@@ -31,7 +32,8 @@ export function ClientLogs() {
   const { clients } = logsResult.data;
 
   return (
-    <div className="flow">
+    <TableWrapper>
+      <h3>Logs</h3>
       <div className="cluster">
         <SelectClientCombobox
           clients={clients}
@@ -55,6 +57,6 @@ export function ClientLogs() {
       <Suspense fallback={<Spinner />}>
         <LogsTable selectedClientId={selectedClientId} logLevel={logLevel} />
       </Suspense>
-    </div>
+    </TableWrapper>
   );
 }

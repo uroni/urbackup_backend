@@ -29,6 +29,8 @@ import { BackupContentTable } from "./features/backups/BackupContentTable";
 import { ErrorPage } from "./components/ErrorPage";
 import { StatisticsPage } from "./pages/Statistics";
 import { LogsPage } from "./pages/Logs";
+import { ClientLogs } from "./features/logs/ClientLogs";
+import { ClientLog } from "./features/logs/ClientLog";
 import "./css/global.css";
 
 const initialDark =
@@ -167,6 +169,17 @@ export const router = createHashRouter([
       await jumpToLoginPageIfNeccessary();
       return null;
     },
+    errorElement: <ErrorPage returnToLink={<Link href="/#/logs">Logs</Link>} />,
+    children: [
+      {
+        index: true,
+        element: <ClientLogs />,
+      },
+      {
+        path: ":logId",
+        element: <ClientLog />,
+      },
+    ],
   },
 ]);
 

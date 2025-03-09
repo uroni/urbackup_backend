@@ -1,16 +1,13 @@
 import { Suspense } from "react";
 import { Spinner } from "@fluentui/react-components";
-
-import { TableWrapper } from "../components/TableWrapper";
-import { ClientLogs } from "../features/logs/ClientLogs";
+import { Outlet } from "react-router-dom";
 
 export const LogsPage = () => {
   return (
     <Suspense fallback={<Spinner />}>
-      <TableWrapper>
-        <h3>Logs</h3>
-        <ClientLogs />
-      </TableWrapper>
+      <div>
+        <Outlet />
+      </div>
     </Suspense>
   );
 };

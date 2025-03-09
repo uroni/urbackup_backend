@@ -11,8 +11,9 @@ import {
   tokens,
   TableColumnId,
 } from "@fluentui/react-components";
+import { Link } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { ErrorCircle16Filled, Warning16Filled } from "@fluentui/react-icons";
+import { DismissCircle16Filled, Warning16Filled } from "@fluentui/react-icons";
 
 import {
   LOG_LEVELS,
@@ -20,6 +21,7 @@ import {
   type LogInfo,
 } from "../../api/urbackupserver";
 import { formatDatetime } from "../../utils/format";
+import { getCellFocusMode } from "../../utils/table";
 import { urbackupServer } from "../../App";
 import { getActionFromBackup } from "../../utils/getActionFromBackup";
 
@@ -61,7 +63,7 @@ const columns: TableColumnDefinition<LogInfo>[] = [
         <TableCellLayout>
           <div className="cluster" data-spacing="s">
             {item.errors > 0 && (
-              <ErrorCircle16Filled
+              <DismissCircle16Filled
                 style={{
                   color: tokens.colorStatusDangerForeground1,
                 }}
@@ -134,8 +136,13 @@ export function LogsTable({
         {({ item }) => (
           <DataGridRow<LogInfo> key={item.id}>
             {({ renderCell, columnId }) => (
-              <DataGridCell style={getNarrowColumnStyles(columnId)}>
-                {renderCell(item)}
+              <DataGridCell
+                focusMode={getCellFocusMode(columnId, {
+                  none: ["name", "backuptime", "action", "errors", "warnings"],
+                })}
+                style={getNarrowColumnStyles(columnId)}
+              >
+                <Link to={String(item.id)}>{renderCell(item)}</Link>
               </DataGridCell>
             )}
           </DataGridRow>
