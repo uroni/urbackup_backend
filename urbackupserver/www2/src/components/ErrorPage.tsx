@@ -1,8 +1,8 @@
 import { useRouteError } from "react-router-dom";
-import { BackupsAccessDeniedError } from "../../api/urbackupserver";
-import { Link } from "@fluentui/react-components";
 
-export default function BackupErrorPage() {
+import { BackupsAccessDeniedError } from "../api/urbackupserver";
+
+export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
   const error = useRouteError();
 
   if (error instanceof BackupsAccessDeniedError) {
@@ -12,9 +12,7 @@ export default function BackupErrorPage() {
         <p>
           <i>{error.statusText || error.message}</i>
         </p>
-        <p>
-          Return to <Link href="/#/backups">Backups</Link>.
-        </p>
+        <p>Return to {returnToLink}</p>
       </article>
     );
   }
@@ -25,9 +23,7 @@ export default function BackupErrorPage() {
       <p>
         <i>{error.statusText || error.message}</i>
       </p>
-      <p>
-        Return to <Link href="/#/backups">Backups</Link>.
-      </p>
+      <p>Return to {returnToLink}</p>
     </article>
   );
 }

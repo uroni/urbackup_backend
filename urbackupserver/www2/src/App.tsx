@@ -14,6 +14,7 @@ import {
   Spinner,
   Toaster,
   mergeClasses,
+  Link,
 } from "@fluentui/react-components";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useStackStyles } from "./components/StackStyles";
@@ -25,7 +26,7 @@ import { BackupsPage } from "./pages/Backups";
 import { ClientBackupsTable } from "./features/backups/ClientBackupsTable";
 import { BackupsTable } from "./features/backups/BackupsTable";
 import { BackupContentTable } from "./features/backups/BackupContentTable";
-import BackupErrorPage from "./features/backups/BackupsError";
+import { ErrorPage } from "./components/ErrorPage";
 import { StatisticsPage } from "./pages/Statistics";
 import { LogsPage } from "./pages/Logs";
 import "./css/global.css";
@@ -131,7 +132,9 @@ export const router = createHashRouter([
       await jumpToLoginPageIfNeccessary();
       return null;
     },
-    errorElement: <BackupErrorPage />,
+    errorElement: (
+      <ErrorPage returnToLink={<Link href="/#/backups">Backups</Link>} />
+    ),
     children: [
       {
         index: true,
