@@ -50,4 +50,12 @@ export const useStackStyles = makeStyles({
     maxWidth: "1200px",
     marginInline: "auto",
   },
+  sidebar: {
+    borderRight: "1px solid",
+    padding: "10pt",
+    position: "sticky",
+    top: 0,
+    left: 0,
+    maxHeight: "100vh",
+  },
 });

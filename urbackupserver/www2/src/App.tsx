@@ -227,13 +227,7 @@ const App: React.FunctionComponent = () => {
                   }}
                 >
                   {snap.loggedIn && (
-                    <div
-                      className={styles.item}
-                      style={{
-                        borderRight: "1px solid",
-                        padding: "10pt",
-                      }}
-                    >
+                    <div className={styles.sidebar}>
                       <NavSidebar />
                     </div>
                   )}
