@@ -1,5 +1,10 @@
 import { Suspense, useState } from "react";
-import { Spinner, Select } from "@fluentui/react-components";
+import {
+  Spinner,
+  Select,
+  makeStyles,
+  mergeClasses,
+} from "@fluentui/react-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { LOG_LEVELS, type ClientIdType } from "../../api/urbackupserver";
@@ -7,12 +12,20 @@ import { urbackupServer } from "../../App";
 import { SelectClientCombobox } from "../../components/SelectClientCombobox";
 import { LogsTable } from "./LogsTable";
 import { TableWrapper } from "../../components/TableWrapper";
+import { LiveLog } from "./LiveLog";
 
 const FORMATTED_LOG_LEVELS = {
   INFO: "All",
   WARNING: "Warnings",
   ERROR: "Errors",
 } as const;
+
+const useStyles = makeStyles({
+  heading: {
+    // Adjust height to match client log tables with breadcrumbs
+    marginBlockStart: "-7px",
+  },
+});
 
 export function ClientLogs() {
   const [selectedClientId, setSelectedClientId] = useState<
@@ -22,6 +35,8 @@ export function ClientLogs() {
   const [logLevel, setLogLevel] = useState<
     (typeof LOG_LEVELS)[keyof typeof LOG_LEVELS]
   >(LOG_LEVELS.ERROR);
+
+  const classes = useStyles();
 
   // Used for fetching clients list for logs
   const logsResult = useSuspenseQuery({
@@ -33,7 +48,10 @@ export function ClientLogs() {
 
   return (
     <TableWrapper>
-      <h3>Logs</h3>
+      <div className={mergeClasses(classes.heading, "repel")}>
+        <h3>Logs</h3>
+        <LiveLog clients={clients}>Open Live Log</LiveLog>
+      </div>
       <div className="cluster">
         <SelectClientCombobox
           clients={clients}
