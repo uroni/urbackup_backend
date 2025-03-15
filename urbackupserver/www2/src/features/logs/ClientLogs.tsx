@@ -4,6 +4,7 @@ import {
   Select,
   makeStyles,
   mergeClasses,
+  tokens,
 } from "@fluentui/react-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
@@ -13,6 +14,7 @@ import { SelectClientCombobox } from "../../components/SelectClientCombobox";
 import { LogsTable } from "./LogsTable";
 import { TableWrapper } from "../../components/TableWrapper";
 import { LiveLog } from "./LiveLog";
+import { LogReports } from "./LogReports";
 
 const FORMATTED_LOG_LEVELS = {
   INFO: "All",
@@ -21,9 +23,21 @@ const FORMATTED_LOG_LEVELS = {
 } as const;
 
 const useStyles = makeStyles({
-  heading: {
+  root: {
+    display: "grid",
+    gap: tokens.spacingVerticalXXL,
+    gridTemplateColumns: "1fr 320px",
+    alignItems: "start",
     // Adjust height to match client log tables with breadcrumbs
     marginBlockStart: "-7px",
+  },
+  reports: {
+    display: "flex",
+    flexDirection: "column",
+    background: tokens.colorNeutralCardBackground,
+    padding: tokens.spacingHorizontalL,
+    borderRadius: tokens.borderRadiusLarge,
+    height: "min-content",
   },
 });
 
@@ -47,34 +61,45 @@ export function ClientLogs() {
   const { clients } = logsResult.data;
 
   return (
-    <TableWrapper>
-      <div className={mergeClasses(classes.heading, "repel")}>
-        <h3>Logs</h3>
-        <LiveLog clients={clients}>Open Live Log</LiveLog>
-      </div>
-      <div className="cluster">
-        <SelectClientCombobox
-          clients={clients}
-          onSelect={(id) => setSelectedClientId(Number(id))}
-        />
-        <div className="cluster" data-spacing="s">
-          Filter
-          <Select
-            id="log-level"
-            defaultValue={logLevel}
-            onChange={(_, data) => setLogLevel(+data.value as typeof logLevel)}
-          >
-            {Object.entries(LOG_LEVELS).map(([k, v]) => (
-              <option key={k} value={v}>
-                {FORMATTED_LOG_LEVELS[k as keyof typeof LOG_LEVELS]}
-              </option>
-            ))}
-          </Select>
+    <div className={classes.root}>
+      <TableWrapper>
+        <div className="repel">
+          <h3>Logs</h3>
+          <LiveLog clients={clients}>Open Live Log</LiveLog>
         </div>
+        <div className="cluster">
+          <SelectClientCombobox
+            clients={clients}
+            onSelect={(id) => setSelectedClientId(Number(id))}
+          />
+          <div className="cluster" data-spacing="s">
+            Filter
+            <Select
+              id="log-level"
+              defaultValue={logLevel}
+              onChange={(_, data) =>
+                setLogLevel(+data.value as typeof logLevel)
+              }
+            >
+              {Object.entries(LOG_LEVELS).map(([k, v]) => (
+                <option key={k} value={v}>
+                  {FORMATTED_LOG_LEVELS[k as keyof typeof LOG_LEVELS]}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <Suspense fallback={<Spinner />}>
+          <LogsTable selectedClientId={selectedClientId} logLevel={logLevel} />
+        </Suspense>
+      </TableWrapper>
+      <div className={mergeClasses(classes.reports, "flow")}>
+        <h4>Reports</h4>
+        <p>Automatically send reports to emails.</p>
+        <Suspense fallback={<Spinner />}>
+          <LogReports />
+        </Suspense>
       </div>
-      <Suspense fallback={<Spinner />}>
-        <LogsTable selectedClientId={selectedClientId} logLevel={logLevel} />
-      </Suspense>
-    </TableWrapper>
+    </div>
   );
 }
