@@ -111,7 +111,7 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	  use_file_snapshots(use_file_snapshots), use_image_snapshots(use_image_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
 	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false),
-	restore_mutex(Server->createMutex())
+	restore_mutex(Server->createMutex()), settings_update_version(0)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -1866,14 +1866,14 @@ void ClientMain::sendSettings(void)
 {
 	std::string s_settings;
 
-	if(!clientsubname.empty())
+	if (!clientsubname.empty())
 	{
-		s_settings+="clientsubname="+clientsubname+"\n";
-		s_settings+="filebackup_group_offset="+convert(filebackup_group_offset)+"\n";
+		s_settings += "clientsubname=" + clientsubname + "\n";
+		s_settings += "filebackup_group_offset=" + convert(filebackup_group_offset) + "\n";
 	}
 
-	const std::vector<std::string> settings_names=getSettingsList();
-	const std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
+	const std::vector<std::string> settings_names = getSettingsList();
+	const std::vector<std::string> global_settings_names = getGlobalizedSettingsList();
 	std::vector<std::string> merge_settings = getClientMergableSettingsList();
 	std::sort(merge_settings.begin(), merge_settings.end());
 
@@ -1907,7 +1907,7 @@ void ClientMain::sendSettings(void)
 			std::string value_default;
 			std::map<std::string, ServerSettings::SClientSetting>::iterator it_client_default_setting = client_default_settings.find(key);
 			if (it_client_default_setting != client_default_settings.end() &&
-				it_client_default_setting->second.value_group.getType()!=JSON::null_type)
+				it_client_default_setting->second.value_group.getType() != JSON::null_type)
 			{
 				value_default = it_client_default_setting->second.value_group.toString();
 			}
@@ -1919,7 +1919,7 @@ void ClientMain::sendSettings(void)
 			if (!setting.exists)
 			{
 				s_settings += key + "=" + value_default + "\n";
-				s_settings += key+".use=" + convert(c_use_group) + "\n";
+				s_settings += key + ".use=" + convert(c_use_group) + "\n";
 			}
 			else
 			{
@@ -1935,7 +1935,7 @@ void ClientMain::sendSettings(void)
 					s_settings += key + ".use=" + convert(setting.use) + "\n";
 					s_settings += key + ".use_lm=" + convert(setting.use_last_modified) + "\n";
 				}
-				
+
 				if (setting.use == c_use_group)
 				{
 					value = value_default;
@@ -1953,7 +1953,7 @@ void ClientMain::sendSettings(void)
 					if (std::binary_search(merge_settings.begin(), merge_settings.end(), key))
 					{
 						const char sep_ch = key == "virtual_clients" ? '|' :
-								( (key=="vss_select_components" || key=="archive") ? '&' : ';');
+							((key == "vss_select_components" || key == "archive") ? '&' : ';');
 
 						if (setting.use & c_use_group)
 							value = value_default;
@@ -1979,11 +1979,16 @@ void ClientMain::sendSettings(void)
 						value = setting.value;
 					}
 				}
-				
+
 				s_settings += key + "=" + value + "\n";
 			}
 		}
 	}
+	{
+		IScopedLock lock(clientaddr_mutex);
+		s_settings += "update_version=" + convert(settings_update_version) + "\n";
+	}
+
 	escapeClientMessage(s_settings);
 	if(!sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{
@@ -2063,6 +2068,11 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	if (sr->getValue("client_set_settings") == "true")
 	{
 		def_use = c_use_value_client;
+	}
+
+	{
+		IScopedLock lock(clientaddr_mutex);
+		settings_update_version = (std::max)(sr->getValue("update_version", int64()), settings_update_version);
 	}
 	
 	for(size_t i=0;i<setting_names.size();++i)

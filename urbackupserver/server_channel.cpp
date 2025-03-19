@@ -281,7 +281,8 @@ void ServerChannelThread::run()
 				curr_ident = client_main->getIdentity();
 				tcpstack.reset();
 				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client));
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client)+
+					"&settings_update_version="+convert(client_main->getSettingsUpdateVersion()));
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;

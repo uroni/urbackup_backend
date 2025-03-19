@@ -207,6 +207,12 @@ public:
 		return protocol_versions;
 	}
 
+	int64 getSettingsUpdateVersion()
+	{
+		IScopedLock lock(clientaddr_mutex);
+		return settings_update_version;
+	}
+
 	void refreshSessionIdentity()
 	{
 		IScopedLock lock(clientaddr_mutex);
@@ -453,4 +459,6 @@ private:
 
 	static IMutex* client_uid_reset_mutex;
 	static ICondition* client_uid_reset_cond;
+
+	int64 settings_update_version;
 };

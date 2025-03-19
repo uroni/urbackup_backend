@@ -107,7 +107,7 @@ std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
 std::deque<std::pair<std::string, std::string> > ClientConnector::finished_async_file_index;
 bool ClientConnector::last_metered = false;
 int64 ClientConnector::startup_timestamp = 0;
-
+std::map<std::string, int64> ClientConnector::settings_update_versions;
 
 #ifdef _WIN32
 SVolumesCache* ClientConnector::volumes_cache;
@@ -1849,6 +1849,13 @@ void ClientConnector::updateSettings(const std::string &pData)
 		db->destroyQuery(q);
 	}
 
+	int64 settings_update_version = new_settings->getValue("update_version", int64());
+	if (settings_update_version != 0)
+	{
+		IScopedLock lock(backup_mutex);
+		settings_update_versions[clientsubname] = (std::max)(settings_update_version, settings_update_versions[clientsubname]);
+	}
+
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> critical_settings;
@@ -1978,6 +1985,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 	}
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
+	
 
 	bool set_client_settings = new_settings->getValue("set_client_settings", "0") == "1";
 	bool merge_client_settings = new_settings->getValue("merge_client_settings", "0") == "1";
@@ -2020,6 +2028,13 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 	if(modified_settings)
 	{
+		int64 local_settings_version;
+		{
+			IScopedLock lock(backup_mutex);
+			settings_update_versions[clientsubname] = (std::max)(settings_update_versions[clientsubname], (std::max)(old_settings->getValue("update_version", int64()), new_settings->getValue("update_version", int64()))) + 1;
+			local_settings_version = settings_update_versions[clientsubname];
+		}
+
 		std::string new_data;
 
 		std::vector<std::string> add_new_keys;
@@ -2107,6 +2122,8 @@ void ClientConnector::replaceSettings(const std::string &pData)
 				}
 			}
 		}
+
+		new_data += "update_version=" + convert(local_settings_version) + "\n";
 
 		writestring(new_data, settings_fn);
 
@@ -3939,6 +3956,22 @@ int ClientConnector::parseVersion(const std::string & version, std::vector<std::
 
 		return atoi(getuntil("-", version).c_str());
 	}
+}
+
+int64 ClientConnector::readSettingsUpdateVersion(const std::string& virtual_client)
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+	if (!virtual_client.empty())
+	{
+		settings_fn = "urbackup/data/settings_" + conv_filename(virtual_client) + ".cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+
+	if (!curr_settings.get())
+		return 0;
+
+	return curr_settings->getValue("update_version", int64());
 }
 
 void ClientConnector::requestRestoreRestart()

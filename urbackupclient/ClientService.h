@@ -271,6 +271,7 @@ private:
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
 	int parseVersion(const std::string& version, std::vector<std::string>& features);
+	int64 readSettingsUpdateVersion(const std::string& virtual_client);
 
 	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client);
 
@@ -444,6 +445,7 @@ private:
 	static size_t ask_restore_ok;
 	static int64 service_starttime;
 	static SRestoreToken restore_token;
+	static std::map<std::string, int64> settings_update_versions;
 
 	IFile* hashdatafile;
 	unsigned int hashdataleft;

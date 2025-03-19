@@ -1374,6 +1374,34 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));
 		}
 
+		int64 settings_update_version = watoi64(params["settings_update_version"]);
+
+		int64 curr_settings_update_version;
+		{
+			IScopedLock lock(backup_mutex);
+			std::map<std::string, int64>::iterator it = settings_update_versions.find(params["virtual_client"]);
+			if (it == settings_update_versions.end())
+			{
+				curr_settings_update_version = readSettingsUpdateVersion(params["virtual_client"]);
+				settings_update_versions[params["virtual_client"]] = curr_settings_update_version;
+			}
+			else
+			{
+				curr_settings_update_version = it->second;
+			}
+		}
+
+		if (settings_update_version != 0 &&
+			settings_update_version != curr_settings_update_version)
+		{
+			Server->Log("Settings update version mismatch. Server=" + convert(settings_update_version) + " Client=" + convert(curr_settings_update_version)+". Updating settings", LL_DEBUG);
+			tcpstack.Send(pipe, "UPDATE SETTINGS");
+		}
+		else
+		{
+			Server->Log("Settings update versions Server=" + convert(settings_update_version) + " Client=" + convert(curr_settings_update_version), LL_DEBUG);
+		}
+
 		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
