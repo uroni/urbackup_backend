@@ -90,7 +90,9 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 				return;
 			}
 
-			if( ServerIdentityMgr::numServerIdentities()==0 )
+			const bool alwaysAcceptInternetIdent = Server->getServerParameter("always_accept_internet_ident") != "false";
+
+			if( ServerIdentityMgr::numServerIdentities()==0 || (internet_conn && alwaysAcceptInternetIdent ) )
 			{
 				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
