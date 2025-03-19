@@ -15,7 +15,7 @@
 
 OpenSSLPipe::OpenSSLPipe(CStreamPipe * bpipe)
 	: bpipe(bpipe), bbio(NULL), ctx(NULL),
-	has_error(false)
+	has_error(false), mutex(Server->createMutex())
 {
 	
 }
@@ -406,6 +406,8 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 
 size_t OpenSSLPipe::Read(char * buffer, size_t bsize, int timeoutms)
 {
+	IScopedLock lock(mutex.get());
+
 	bool retry=false;
 	do
 	{
@@ -451,6 +453,8 @@ bool OpenSSLPipe::Write(const char * buffer, size_t bsize, int timeoutms, bool f
 		return false;
 	}
 
+	IScopedLock lock(mutex.get());
+
 	int rc = BIO_write(bbio, buffer, static_cast<int>(bsize));
 
 	if (rc <= 0)
@@ -468,6 +472,11 @@ bool OpenSSLPipe::Write(const char * buffer, size_t bsize, int timeoutms, bool f
 			bpipe->doThrottle(rc, true, true);
 
 			return Write(buffer + rc, bsize - rc, -1, flush);
+		}
+
+		if(flush)
+		{
+			BIO_flush(bbio);
 		}
 
 		return true;
@@ -496,6 +505,10 @@ bool OpenSSLPipe::Write(const std::string & str, int timeoutms, bool flush)
 
 bool OpenSSLPipe::Flush(int timeoutms)
 {
+	IScopedLock lock(mutex.get());
+
+	BIO_flush(bbio);
+
 	return bpipe->Flush(timeoutms);
 }
 
@@ -506,6 +519,7 @@ bool OpenSSLPipe::isWritable(int timeoutms)
 
 bool OpenSSLPipe::isReadable(int timeoutms)
 {
+	IScopedLock lock(mutex.get());
 	return BIO_pending(bbio)>0 || bpipe->isReadable(timeoutms);
 }
 

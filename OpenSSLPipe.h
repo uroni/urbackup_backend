@@ -11,6 +11,7 @@
 #ifdef WITH_OPENSSL
 
 #include "Interface/Pipe.h"
+#include "Interface/Mutex.h"
 #include "StreamPipe.h"
 #include <memory>
 #include <openssl/bio.h>
@@ -71,6 +72,7 @@ private:
 	SSL_CTX* ctx;
 
 	bool has_error;
+	std::auto_ptr<IMutex> mutex;
 };
 
 #endif //WITH_OPENSSL
