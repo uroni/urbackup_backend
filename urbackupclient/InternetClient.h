@@ -97,6 +97,7 @@ public:
 private:
 	std::string generateRandomBinaryAuthKey(void);
 	void printInfo( IPipe * pipe );
+	void checkHttp(IPipe* pipe, const std::string& hostname);
 	IPipe *cs;
 	CTCPStack* tcpstack;
 	SServerSettings server_settings;

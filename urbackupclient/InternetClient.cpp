@@ -617,6 +617,7 @@ void InternetClientThread::operator()(void)
 		if(buf==NULL)
 		{
 			Server->Log("Error receiving challenge packet");
+			checkHttp(cs, server_settings.servers[server_settings.selected_server].hostname);
 			goto cleanup;
 		}
 		SDelBuf delBuf(buf);
@@ -994,6 +995,27 @@ void InternetClientThread::printInfo( IPipe * pipe )
 			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+convert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");
 			Server->Log("Average sent paket size: "+PrettyPrintBytes(comp_pipe->getUncompressedSentBytes()/comp_pipe->getSentFlushes()));
 		}
+	}
+}
+
+void InternetClientThread::checkHttp(IPipe* pipe, const std::string& hostname)
+{
+	if (!pipe->Write("GET / HTTP/1.1\r\nHost: " + hostname + "\r\n\r\n", 5000))
+		return;
+
+	char buf[512];
+	const size_t rc = pipe->Read(buf, sizeof(buf), 5000);
+	if (rc == 0)
+		return;
+
+	std::string data(buf, rc);
+
+	Server->Log("HTTP response: " + data+ ". Connected to HTTP port?", LL_INFO);
+
+	if (next(data, 0, "HTTP/1.1"))
+	{
+		Server->Log("Probably mistakenly configured to connect to a HTTP port", LL_ERROR);
+		InternetClient::setStatusMsg("error:Probably mistakenly configured to connect to a HTTP port");
 	}
 }
 
