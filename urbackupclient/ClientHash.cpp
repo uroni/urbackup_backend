@@ -106,7 +106,7 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 	std::vector<IFsFile::SFileExtent> extents;
 	size_t curr_extent_idx = 0;
 	if (with_cbt
-		&& fsize>c_checkpoint_dist)
+		&& fsize>c_checkpoint_dist*3)
 	{
 		extents = f->getFileExtents(0, index_hdat_fs_block_size, has_more_extents);
 

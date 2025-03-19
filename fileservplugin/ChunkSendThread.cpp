@@ -397,6 +397,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	_u16 index_chunkhash_pos_offset;
 
 	if (cbt_hash_file_info.cbt_hash_file!=NULL
+		&& curr_file_size > 3* c_checkpoint_dist
 		&&  curr_pos+c_checkpoint_dist<=curr_file_size
 		&& (cbt_hash_file_info.metadata_offset!=-1
 			|| !file_extents.empty()
@@ -639,6 +640,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	md5_hash.finalize();
 
 	if (!new_chunkhashes.empty()
+		&& curr_file_size > 3 * c_checkpoint_dist
 		&& *cbt_hash_file_info.snapshot_sequence_id == cbt_hash_file_info.snapshot_sequence_id_reference)
 	{
 		memcpy(new_chunkhashes.data(), &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
