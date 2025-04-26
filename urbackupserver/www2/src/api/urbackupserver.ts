@@ -424,6 +424,71 @@ export enum SendOnly {
   FailedExcludingTimeout = 3
 }
 
+export interface SettingsClients
+{
+  group: number; // Id of the group the client belongs to
+  id: number; // Id of the client
+  name: string; // Name of the client
+  override: boolean; // At least some setting is client specific
+}
+
+export interface SettingsGroups
+{
+  id: number; // Id of group
+  name: string; // Name of group
+}
+
+export interface SettingsNavitems
+{
+  admin: boolean; // Current user is an admin user
+  clients: SettingsClients[]; // List of clients
+  disable_change_pw: boolean; // If true the user cannot change the password
+  general: boolean; // Can change general settings
+  groupmod: boolean; // Can modify which groups clients are assigned to
+  groups: SettingsGroups[]; // List of groups
+  internet: boolean; // Can change internet settings
+  ldap: boolean; // Can change LDAP settings
+  mail: boolean; // Can change mail settings
+  users: boolean; // Can change user settings
+}
+
+export interface AlertScriptParam
+{
+  default_value: string; // Default value of the parameter
+  has_translation: 0 | 1; // If 1 the parameter has a translation
+  label: string; // Label of the setting
+  name: string; // Name of the setting
+  type: string; // Type of the setting
+}
+
+export interface SettingsAlertScript
+{
+  id: number; // Id of the alert script
+  name: string; // Name of the alert script
+  params: AlertScriptParam[]; // List of parameters
+}
+
+type SettingValueType = string | boolean | number;
+
+export interface SettingState
+{
+  value: SettingValueType; // Value of the setting
+}
+
+export interface GeneralSettingsVals
+{
+  can_edit_scripts: boolean; // If true the user can edit scripts
+}
+
+export interface GeneralSettings
+{
+  sa: "general"; // Request settings sub-action
+  navitems: SettingsNavitems; // Navigation items
+  cowraw_available: boolean; // If true the cowraw feature is available
+  settings: GeneralSettingsVals | [string: SettingState] | [string: SettingValueType]; // Settings
+  saved_ok: undefined | boolean; // If true the settings were saved successfully
+}
+
 class UrBackupServer {
   private serverUrl: string;
   private session = "";
@@ -856,6 +921,250 @@ class UrBackupServer {
     ret.report_mail = resp.report_mail.length == 0 ? [] : resp.report_mail.split(/[;,]/);
     return ret;
   }
+
+  // Get general server settings
+  // Returns a list of settings listed by `generalSettingsList` and `settingsList`
+  // The settings of `generalSettingsList` are returned as plain [string:string] values
+  // while the settings of `settingsList` are returned as [string:SettingState] values
+  getGeneralSettings = async () => {
+    const resp = await this.fetchData({ sa: "general" }, "settings");
+    const ret = resp as GeneralSettings;
+    return ret;
+  }
+
+  // Save general server settings
+  saveGeneralSettings = async (settings: GeneralSettings) => {
+    let params : Record<string, string> = { "sa": "general_save" };
+    for (const [key, value] of Object.entries(settings.settings)) {
+      if (typeof value == "object")
+        params[key] = (value as SettingState).value.toString();
+      else
+        params[key] = value.toString();
+    }
+    const resp = await this.fetchData(params, "settings");
+    const ret = resp as GeneralSettings;
+    return ret;
+  }
+
+  // Get list of all client and group settings
+  settingsList = () => {
+    return [
+      "update_freq_incr",
+      "update_freq_full",
+      "update_freq_image_full",
+      "update_freq_image_incr",
+      "max_file_incr",
+      "min_file_incr",
+      "max_file_full",
+      "min_file_full",
+      "min_image_incr",
+      "max_image_incr",
+      "min_image_full",
+      "max_image_full",
+      "allow_overwrite",
+      "startup_backup_delay",
+      "pause_if_windows_unlocked",
+      "backup_window_incr_file",
+      "backup_window_full_file",
+      "backup_window_incr_image",
+      "backup_window_full_image",
+      "computername",
+      "exclude_files",
+      "include_files",
+      "default_dirs",
+      "backup_dirs_optional",
+      "allow_config_paths",
+      "allow_starting_full_file_backups",
+      "allow_starting_incr_file_backups",
+      "allow_starting_full_image_backups",
+      "allow_starting_incr_image_backups",
+      "allow_pause",
+      "allow_log_view",
+      "allow_tray_exit",
+      "allow_file_restore",
+      "allow_component_restore",
+      "allow_component_config",
+      "image_letters",
+      "internet_authkey",
+      "internet_speed",
+      "local_speed",
+      "internet_image_backups",
+      "internet_full_file_backups",
+      "internet_encrypt",
+      "internet_compress",
+      "internet_mode_enabled",
+      "silent_update",
+      "client_quota",
+      "virtual_clients",
+      "end_to_end_file_backup_verification",
+      "local_full_file_transfer_mode",
+      "internet_full_file_transfer_mode",
+      "local_incr_file_transfer_mode",
+      "internet_incr_file_transfer_mode",
+      "local_image_transfer_mode",
+      "internet_image_transfer_mode",
+      "internet_calculate_filehashes_on_client",
+      "internet_parallel_file_hashing",
+      "image_file_format",
+      "internet_connect_always",
+      "verify_using_client_hashes",
+      "internet_readd_file_entries",
+      "local_incr_image_style",
+      "local_full_image_style",
+      "background_backups",
+      "create_linked_user_views",
+      "internet_incr_image_style",
+      "internet_full_image_style",
+      "max_running_jobs_per_client",
+      "cbt_volumes",
+      "cbt_crash_persistent_volumes",
+      "ignore_disk_errors",
+      "image_snapshot_groups",
+      "file_snapshot_groups",
+      "vss_select_components",
+      "internet_file_dataplan_limit",
+      "internet_image_dataplan_limit",
+      "update_dataplan_db",
+      "alert_script",
+      "alert_params",
+      "archive",
+      "client_settings_tray_access_pw",
+      "local_encrypt",
+      "local_compress",
+      "download_threads",
+      "hash_threads",
+      "client_hash_threads",
+      "image_compress_threads",
+      "ransomware_canary_paths",
+      "backup_dest_url",
+      "backup_dest_params",
+      "backup_dest_secret_params",
+      "backup_unlocked_window"
+      ];
+    }
+
+    // Get list of general server settings
+    generalSettingsList = () => {
+      return [
+        "backupfolder", // Folder where backups are stored : string
+        "no_images", // Switch if image backups should be disabled : boolean
+        "no_file_backups", // Switch if file backups should be disabled : boolean
+        "autoshutdown", // Switch if autoshutdown should be enabled : boolean
+        "download_client", // Switch if downloading client should be enabled : boolean
+        "autoupdate_clients", // Switch if autoupdate of clients should be enabled : boolean
+        "max_sim_backups", // Maximum number of simultaneous backups : integer number
+        "max_active_clients", // Maximum number of active clients : integer number
+        "tmpdir", // Temporary directory for backups : string
+        "cleanup_window", // Time window for cleanup : string
+        "backup_database", // Switch if nightly backup of database should be enabled : boolean
+        "global_local_speed", // Global local speed limit: speed (MBit/s)
+        "global_internet_speed", // Global internet speed limit: speed (MBit/s)
+        "use_tmpfiles", // Switch if tmpfiles should be used : boolean (advanced)
+        "use_tmpfiles_images", // Switch if tmpfiles should be used for images : boolean (advanced)
+        "update_stats_cachesize", // Size of the cache for statistics : integer number (MiBytes)
+        "global_soft_fs_quota", // Global soft filesystem quota: size (percentage or size in bytes)
+        "use_incremental_symlinks", // Switch if incremental symlinks should be used : boolean (advanced)
+        "show_server_updates", // Switch if server updates should be shown : boolean (advanced)
+        "server_url", // URL of the server : string/URL
+        "internet_expect_endpoint", // Expect endpoint for internet backups : string (don't add)
+        "internet_server_bind_port" // Non-default port to bind to for internet backups : integer number (port range 1-65535)
+        ];
+    }
+
+    // Get list of mail server settings
+    mailSettingsList = () => {
+      return [
+        "mail_servername", // Name of the mail server : string
+        "mail_serverport", // Port of the mail server : integer number (port range 1-65535)
+        "mail_username", // Username for the mail server : string
+        "mail_password", // Password for the mail server : string (password)
+        "mail_from", // Sender address for the mail server : string (with @ in it)
+        "mail_ssl_only", // Switch if SSL should be used to connect to server: boolean
+        "mail_check_certificate", // Switch if SSL certificate should be checked: boolean
+        "mail_use_smtps", // Switch if SMTPS should be used (instead of STARTTLS): boolean
+        "mail_admin_addrs" // List of email addresses to send mails to: string (comma/semicolon separated list)
+        ];
+    }
+
+    // Get list of client internet server settings
+    internetSettingsList = () => {
+      return [
+        "internet_server",
+        "internet_server_proxy"
+        ];
+    }
+
+    // Get list of LDAP server settings
+    ldapSettingsList = () => {
+      return [
+        "ldap_login_enabled",
+        "ldap_server_name",
+        "ldap_server_port",
+        "ldap_username_prefix",
+        "ldap_username_suffix",
+        "ldap_group_class_query",
+        "ldap_group_key_name",
+        "ldap_class_key_name",
+        "ldap_group_rights_map",
+        "ldap_class_rights_map",
+        "testusername",
+        "testpassword"
+        ];
+    }
+
+    // Get list of settings where the group, server and client settings can be merged
+    mergableSettingsList = () => {
+      return [
+        "virtual_clients",
+        "exclude_files",
+        "include_files",
+        "default_dirs",
+        "image_letters",
+        "vss_select_components",
+        "archive",
+        "ransomware_canary_paths",
+        "backup_dest_params",
+        "backup_dest_secret_params"
+        ];
+    }
+
+    // Get list of settings that can be modified on the client
+    clientSettingsList = () => {
+      return [
+        "update_freq_incr",
+        "update_freq_full",
+        "update_freq_image_incr",
+        "update_freq_image_full",
+        "max_file_incr",
+        "min_file_incr",
+        "max_file_full",
+        "min_file_full",
+        "min_image_incr",
+        "max_image_incr",
+        "min_image_full",
+        "max_image_full",
+        "startup_backup_delay",
+        "computername",
+        "virtual_clients",
+        "exclude_files",
+        "include_files",
+        "default_dirs",
+        "image_letters",
+        "internet_speeds",
+        "local_speed",
+        "internet_mode_enabled",
+        "internet_full_file_backups",
+        "internet_image_backups",
+        "internet_compress",
+        "internet_encrypt",
+        "internet_connect_always",
+        "vss_select_components",
+        "local_compress",
+        "local_encrypt"
+        ];
+    }
+
+
 }
 
 export default UrBackupServer;
