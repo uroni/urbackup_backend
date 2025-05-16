@@ -1198,8 +1198,12 @@ IPipe* CServer::ConnectStream(const std::string& connect_str, const SLookupBlock
 		rc=getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
 		if(rc<0)
 		{
-			closesocket(s);
-			Server->Log("Error getting socket status.", LL_ERROR);
+#ifdef _WIN32
+			Server->Log("Error getting socket status: " + convert(WSAGetLastError()), LL_ERROR);
+#else
+			Server->Log("Error getting socket status: " + convert(errno), LL_ERROR);
+#endif
+			closesocket(s);			
 			return NULL;
 		}
 		if(err)
