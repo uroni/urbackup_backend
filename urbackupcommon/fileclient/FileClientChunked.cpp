@@ -1599,7 +1599,21 @@ void FileClientChunked::writePatch(_i64 pos, unsigned int length, char *buf, boo
 			}
 			else
 			{
-				writePatchInt(pos, length, buf);
+				if (!last && length % c_chunk_size != 0)
+				{
+					const unsigned int wchunks = length / c_chunk_size;
+					const unsigned int towrite = wchunks * c_chunk_size;
+					writePatchInt(pos, towrite, buf);
+
+					const unsigned int wleft = length - towrite;
+					memcpy(&patch_buf[patch_buf_pos], buf + towrite, wleft);
+					patch_buf_start = pos;
+					patch_buf_pos += wleft;
+				}
+				else
+				{
+					writePatchInt(pos, length, buf);
+				}
 			}
 		}
 	}
