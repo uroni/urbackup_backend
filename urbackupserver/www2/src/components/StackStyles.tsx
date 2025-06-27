@@ -46,16 +46,19 @@ export const useStackStyles = makeStyles({
     flex: 1,
   },
   content: {
-    padding: "10pt",
+    paddingInline: "10pt",
+    paddingBlock: "10pt 40pt",
     maxWidth: "1200px",
     marginInline: "auto",
   },
   sidebar: {
+    width: "22ch",
     borderRight: "1px solid",
     padding: "10pt",
     position: "sticky",
     top: 0,
     left: 0,
     maxHeight: "100vh",
+    overflowY: "auto",
   },
 });

@@ -1,0 +1,38 @@
+.field:has(.reset-input) {
+  grid-template-columns: auto 34ch;
+  align-items: center;
+}
+
+.field [role="alert"] {
+  grid-column: 1 / -1;
+}
+
+.reset-input {
+  display: flex;
+  align-self: baseline;
+  align-items: center;
+  justify-content: end;
+  width: 100%;
+  gap: var(--spacingXS);
+}
+
+.reset-input > [data-hidden="true"] {
+  visibility: hidden;
+}
+
+.reset-input > :has(input) {
+  flex: 1;
+}
+
+.reset-input :has([data-field-width="33%"]) {
+  max-width: 33%;
+}
+
+.reset-input :has([data-field-width="50%"]) {
+  max-width: 50%;
+}
+
+.field-description {
+  color: var(--colorNeutralForeground2);
+  margin-block-start: var(--spacingXS);
+}

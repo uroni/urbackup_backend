@@ -31,6 +31,9 @@ import { StatisticsPage } from "./pages/Statistics";
 import { LogsPage } from "./pages/Logs";
 import { ClientLogs } from "./features/logs/ClientLogs";
 import { ClientLog } from "./features/logs/ClientLog";
+import { SettingsPage } from "./pages/SettingsPage";
+import { SettingsNavSidebar } from "./features/settings/SettingsNavSidebar";
+import { SettingsServer } from "./features/settings/SettingsServer/SettingsServer";
 import "./css/global.css";
 
 const initialDark =
@@ -46,6 +49,7 @@ export enum Pages {
   Login = "login",
   About = "about",
   Logs = "logs",
+  Settings = "settings",
 }
 
 export const state = proxy({
@@ -181,6 +185,25 @@ export const router = createHashRouter([
       },
     ],
   },
+  {
+    path: `/${Pages.Settings}`,
+    element: <SettingsPage />,
+    loader: async () => {
+      state.pageAfterLogin = Pages.Settings;
+      await jumpToLoginPageIfNeccessary();
+      return null;
+    },
+    children: [
+      {
+        index: true,
+        element: <SettingsServer />,
+      },
+      {
+        path: "server",
+        element: <SettingsServer />,
+      },
+    ],
+  },
 ]);
 
 function getSessionFromLocalStorage(): string {
@@ -244,7 +267,14 @@ const App: React.FunctionComponent = () => {
                 >
                   {snap.loggedIn && (
                     <div className={styles.sidebar}>
-                      <NavSidebar />
+                      {snap.activePage === Pages.Settings ? (
+                        // TODO: Move sidebars into RouterProvider via common layout
+                        <Suspense fallback={<Spinner />}>
+                          <SettingsNavSidebar />
+                        </Suspense>
+                      ) : (
+                        <NavSidebar />
+                      )}
                     </div>
                   )}
                   <div

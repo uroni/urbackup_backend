@@ -11,27 +11,76 @@ export function SelectClientCombobox({
   clients,
   onSelect,
   defaultValue,
+  label,
+  placeholder,
+  showLabel = true,
+  hideAllClients,
 }: {
   clients: ClientInfo[];
   onSelect: (value?: string) => void;
   defaultValue?: ClientInfo["name"];
+  label?: string;
+  placeholder?: string;
+  showLabel?: boolean;
+  hideAllClients?: boolean;
 }) {
-  const options = [
-    {
-      children: "All clients",
-      value: "all",
-    },
-    ...clients.map((client) => ({
-      children: client.name,
-      value: String(client.id),
-    })),
-  ];
+  const { onOptionSelect, query, setQuery, comboBoxChildren } =
+    useClientCombobox(clients, onSelect, defaultValue, hideAllClients);
 
-  const comboId = useId();
+  const id = useId();
+  const labelId = useId();
+
+  return (
+    <div className="cluster" data-spacing="s">
+      {showLabel && (
+        <label htmlFor={id} id={labelId}>
+          {label ?? "Select client"}
+        </label>
+      )}
+      <Combobox
+        id={id}
+        aria-labelledby={labelId}
+        placeholder={placeholder}
+        onOptionSelect={onOptionSelect}
+        onChange={(ev) => setQuery(ev.target.value)}
+        onOpenChange={(_, data) => {
+          if (data.open) {
+            setQuery("");
+          }
+        }}
+        value={query}
+      >
+        {comboBoxChildren}
+      </Combobox>
+    </div>
+  );
+}
+
+function useClientCombobox(
+  clients: ClientInfo[],
+  onSelect: (value?: string) => void,
+  defaultValue?: ClientInfo["name"],
+  hideAllClients?: boolean,
+) {
+  const clientsOptions = clients.map((client) => ({
+    children: client.name,
+    value: String(client.id),
+  }));
+
+  const options = hideAllClients
+    ? clientsOptions
+    : [
+        {
+          children: "All clients",
+          value: "all",
+        },
+        ...clientsOptions,
+      ];
 
   const [query, setQuery] = useState<ClientInfo["name"]>(
     defaultValue ?? options[0].children,
   );
+
   const comboBoxChildren = useComboboxFilter(query, options, {
     optionToText: (d) => d.children,
     noOptionsMessage: `No results matched "${query}"`,
@@ -51,22 +100,10 @@ export function SelectClientCombobox({
     setQuery(selectedClient.name);
   };
 
-  return (
-    <div className="cluster" data-spacing="s">
-      <label id={comboId}>Select client</label>
-      <Combobox
-        aria-labelledby={comboId}
-        onOptionSelect={onOptionSelect}
-        onChange={(ev) => setQuery(ev.target.value)}
-        onOpenChange={(_, data) => {
-          if (data.open) {
-            setQuery("");
-          }
-        }}
-        value={query}
-      >
-        {comboBoxChildren}
-      </Combobox>
-    </div>
-  );
+  return {
+    query,
+    setQuery,
+    onOptionSelect,
+    comboBoxChildren,
+  };
 }

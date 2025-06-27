@@ -28,7 +28,8 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.0",
     "urbackup-server-webinterface": "link:",
-    "valtio": "^1.13.2"
+    "valtio": "^1.13.2",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.2.0",
