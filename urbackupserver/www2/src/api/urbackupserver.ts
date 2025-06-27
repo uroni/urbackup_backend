@@ -430,6 +430,7 @@ export interface SettingsClients
   id: number; // Id of the client
   name: string; // Name of the client
   override: boolean; // At least some setting is client specific
+  groupname: string
 }
 
 export interface SettingsGroups
@@ -485,7 +486,7 @@ export interface GeneralSettings
   sa: "general"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   cowraw_available: boolean; // If true the cowraw feature is available
-  settings: GeneralSettingsVals | [string: SettingState] | [string: SettingValueType]; // Settings
+  settings: GeneralSettingsVals | { [key: string]: SettingState } | { [key: string]: SettingValueType }; // Settings
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
 
@@ -1059,16 +1060,18 @@ class UrBackupServer {
         "backup_database", // Switch if nightly backup of database should be enabled : boolean
         "global_local_speed", // Global local speed limit: speed (MBit/s)
         "global_internet_speed", // Global internet speed limit: speed (MBit/s)
-        "use_tmpfiles", // Switch if tmpfiles should be used : boolean (advanced)
-        "use_tmpfiles_images", // Switch if tmpfiles should be used for images : boolean (advanced)
         "update_stats_cachesize", // Size of the cache for statistics : integer number (MiBytes)
         "global_soft_fs_quota", // Global soft filesystem quota: size (percentage or size in bytes)
+        "server_url", // URL of the server : string/URL
+        "internet_server_bind_port", // Non-default port to bind to for internet backups : integer number (port range 1-65535)
+        // Advanced
+        "use_tmpfiles", // Switch if tmpfiles should be used : boolean (advanced)
+        "use_tmpfiles_images", // Switch if tmpfiles should be used for images : boolean (advanced)
         "use_incremental_symlinks", // Switch if incremental symlinks should be used : boolean (advanced)
         "show_server_updates", // Switch if server updates should be shown : boolean (advanced)
-        "server_url", // URL of the server : string/URL
+        // Don't add
         "internet_expect_endpoint", // Expect endpoint for internet backups : string (don't add)
-        "internet_server_bind_port" // Non-default port to bind to for internet backups : integer number (port range 1-65535)
-        ];
+        ] as const;
     }
 
     // Get list of mail server settings
