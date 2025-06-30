@@ -774,7 +774,7 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::string,std::string
 		{
 			pos=1;
 		}
-		else if( (ch=='&'||ch=='$') && pos==1 )
+		else if( ch=='&' && pos==1 )
 		{
 			pos=0;
 			std::string wv=htmldecode(value, false);
