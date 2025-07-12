@@ -119,7 +119,7 @@ function FormSection<T extends string>({
             type={f.type}
             onChange={(data) => {
               const newSetting = {
-                [f.name]: f.transformer?.api(+data) ?? data,
+                [f.name]: f.transformer?.api(Number(data)) ?? data,
               };
 
               updateSettings(newSetting);

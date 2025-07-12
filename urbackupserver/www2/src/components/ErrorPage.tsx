@@ -1,4 +1,4 @@
-import { useRouteError } from "react-router-dom";
+import { isRouteErrorResponse, useRouteError } from "react-router-dom";
 
 import { BackupsAccessDeniedError } from "../api/urbackupserver";
 
@@ -9,9 +9,7 @@ export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
     return (
       <article className="flow">
         <h1>Backups Access Denied</h1>
-        <p>
-          <i>{error.statusText || error.message}</i>
-        </p>
+        <ErrorPageContent error={error} />
         <p>Return to {returnToLink}</p>
       </article>
     );
@@ -20,10 +18,26 @@ export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
   return (
     <article className="flow">
       <h1>Page not found</h1>
-      <p>
-        <i>{error.statusText || error.message}</i>
-      </p>
+      <ErrorPageContent error={error} />
       <p>Return to {returnToLink}</p>
     </article>
   );
+}
+
+function ErrorPageContent({ error }: { error: unknown }) {
+  if (isRouteErrorResponse(error)) {
+    return (
+      <p>
+        <i>{error.statusText} </i>
+      </p>
+    );
+  }
+
+  if (error instanceof Error) {
+    return (
+      <p>
+        <i>{error.message}</i>
+      </p>
+    );
+  }
 }

@@ -20,8 +20,7 @@ import { useBackupResult } from "./BackupResultContext";
 import { formatDatetime } from "../../utils/format";
 
 export function LastFileBackup(item: StatusClientItem) {
-  const formattedLastBackup =
-    item.lastbackup === 0 ? "Never" : formatDatetime(item.lastbackup);
+  const formattedLastBackup = formatLastBackup(item.lastbackup);
 
   const fileBackupProcesses = item.processes.filter(
     (p) =>
@@ -46,10 +45,7 @@ export function LastFileBackup(item: StatusClientItem) {
 }
 
 export function LastImageBackup(item: StatusClientItem) {
-  const formattedLastBackup =
-    item.lastbackup_image === 0
-      ? "Never"
-      : formatDatetime(item.lastbackup_image);
+  const formattedLastBackup = formatLastBackup(item.lastbackup_image);
 
   const imageBackupProcesses = item.processes.filter(
     (p) =>
@@ -135,4 +131,16 @@ function ProcessResult({
       </Field>
     );
   });
+}
+
+function formatLastBackup(
+  lastBackup:
+    | StatusClientItem["lastbackup"]
+    | StatusClientItem["lastbackup_image"],
+) {
+  if (lastBackup === 0 || lastBackup === "-") {
+    return "Never";
+  }
+
+  return formatDatetime(lastBackup);
 }

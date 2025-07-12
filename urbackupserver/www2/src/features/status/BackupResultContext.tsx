@@ -27,7 +27,7 @@ export const BackupResultProvider = ({
 
   // Clear oldest backupResults every 3s, if any
   useEffect(() => {
-    let timeoutId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
     if (backupResults.length) {
       timeoutId = setTimeout(() => {
         setBackupResults((prev) => prev.slice(1));

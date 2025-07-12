@@ -571,11 +571,11 @@ export enum AddUserResult {
 
 function randomString()
 {
-	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
-	var string_length = 50;
-	var randomstring = '';
+	const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+	const string_length = 50;
+	let randomstring = '';
 	
-	var array = new Uint32Array(string_length);
+	const array = new Uint32Array(string_length);
 	if(window.crypto && window.crypto.getRandomValues(array))
 	{
 		for (var i=0; i<string_length; i++) {
@@ -585,7 +585,7 @@ function randomString()
 	}
 	
 	for (var i=0; i<string_length; i++) {
-		var rnum = Math.floor(Math.random() * chars.length);
+		const rnum = Math.floor(Math.random() * chars.length);
 		randomstring += chars.substring(rnum,rnum+1);
 	}
 	return randomstring;
@@ -1035,7 +1035,11 @@ class UrBackupServer {
   }
 
   // Save general server settings
-  saveGeneralSettings = async (settings: GeneralSettings) => {
+  saveGeneralSettings = async (
+    settings: Partial<GeneralSettings> & {
+      settings: GeneralSettings['settings']
+    },
+  ) => {
     const params : Record<string, string> = { "sa": "general_save" };
     for (const [key, value] of Object.entries(settings.settings)) {
       if (typeof value == "object")

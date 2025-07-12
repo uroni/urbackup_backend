@@ -51,6 +51,8 @@ export function TextField({
   return (
     <Field
       hint={showHint ? hint : undefined}
+      // @ts-expect-error: label takes both string and JSX.element -
+      // remove when FluentUI components package is updated to reflect that
       label={{
         children: (_: unknown, slotProps: LabelProps) => (
           <div>
