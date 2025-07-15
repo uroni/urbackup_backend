@@ -1607,7 +1607,7 @@ void FileClientChunked::writePatch(_i64 pos, unsigned int length, char *buf, boo
 
 					const unsigned int wleft = length - towrite;
 					memcpy(&patch_buf[patch_buf_pos], buf + towrite, wleft);
-					patch_buf_start = pos;
+					patch_buf_start = pos + towrite;
 					patch_buf_pos += wleft;
 				}
 				else
