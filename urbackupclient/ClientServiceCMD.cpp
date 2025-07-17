@@ -1325,7 +1325,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->done_bytes = watoi64(params["done_bytes"]);
 
 #ifdef _WIN32
-	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+	preventSleep();
 #endif
 }
 
