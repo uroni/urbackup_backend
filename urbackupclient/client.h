@@ -450,7 +450,8 @@ private:
 	{
 		IndexErrorInfo_Ok = 0,
 		IndexErrorInfo_Error = 1,
-		IndexErrorInfo_NoBackupPaths = 2
+		IndexErrorInfo_NoBackupPaths = 2,
+		IndexErrorInfo_FilelistWriteError = 3
 	};
 
 	IndexErrorInfo indexDirs(bool full_backup, bool simultaneous_other);

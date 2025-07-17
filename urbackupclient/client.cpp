@@ -1915,6 +1915,11 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 					SCDirs *scd=getSCDir(backup_dirs[k].tname, index_clientsubname, false);
 					release_shadowcopy(scd);
 				}
+
+				if (outfile.bad() || outfile.fail())
+				{
+					VSSLog("Error writing to file list at " + filelist_fn, LL_ERROR);
+				}
 				
 				outfile.close();
 				removeFile((filelist_fn));
@@ -1943,6 +1948,14 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		if (outfile.is_open())
 		{
 			addBackupScripts(outfile);
+		}
+
+		if (outfile.bad() || outfile.fail())
+		{
+			VSSLog("Error writing to file list at " + filelist_fn, LL_ERROR);
+			outfile.close();
+			removeFile(filelist_fn);
+			return IndexErrorInfo_FilelistWriteError;
 		}
 
 		std::streampos pos=outfile.tellp();
