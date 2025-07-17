@@ -608,6 +608,13 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		{
 			buf = stack_buf;
 			rc = getPipe()->Read(buf, BUFFERSIZE, 0);
+
+			if (initial_read && rc > 0 && rc < 10 && buf[0] == ID_ERR)
+			{
+				Server->Log("Received ID_ERR from server fc_chunked rc=" + convert(rc) + ". Reconnecting...", LL_WARNING);
+				rc = 0;
+				flush_rc = ERR_ERROR;
+			}
 		}
 
 		initial_read = false;

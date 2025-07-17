@@ -35,6 +35,8 @@ const uchar ID_FLUSH_SOCKET=13;
 const uchar ID_SCRIPT_FINISH = 14;
 const uchar ID_FREE_SERVER_FILE=18;
 const uchar ID_STOP_PHASH = 19;
+// Server returns ERR to FILESRV request
+const uchar ID_ERR = 3;
 
 //errors
 const unsigned int ERR_SEEKING_FAILED = 0;

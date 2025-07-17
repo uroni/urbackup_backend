@@ -1133,6 +1133,12 @@ bool FileClient::Reconnect(void)
 			{
 				rc += dl_off;
 			}
+
+			if (firstpacket && dl_off + rc > 0 && dl_off + rc < 10 && buf[0] == ID_ERR)
+			{
+				Server->Log("Received ID_ERR from server rc=" + convert(rc)+". Reconnecting...", LL_WARNING);
+				rc = 0;
+			}
 		}
 		else
 		{
