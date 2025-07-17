@@ -22,11 +22,21 @@
 #include <stdlib.h>
 #endif
 
-std::string CSettingsReader::getValue(std::string key,std::string def)
+std::string CSettingsReader::getValue(std::string key, const std::string& def)
 {
 	std::string value;
-	bool b=getValue(key,&value);
-	if(b==false)
+	const bool b=getValue(key,&value);
+	if(!b)
+		return def;
+	else
+		return value;
+}
+
+std::string CSettingsReader::getValue(const std::string& key, const char* def)
+{
+	std::string value;
+	const bool b = getValue(key, &value);
+	if (!b)
 		return def;
 	else
 		return value;
@@ -70,4 +80,15 @@ int64 CSettingsReader::getValue(std::string key, int64 def)
 		return def;
 	else
 		return watoi64(value);
+}
+
+bool CSettingsReader::getValue(const std::string& key, const bool def)
+{
+	std::string value;
+	const bool b = getValue(key, &value);
+	if (!b)
+		return def;
+
+	const std::string tkey = trim(value);
+	return tkey == "true" || tkey == "1" || tkey == "yes";
 }
