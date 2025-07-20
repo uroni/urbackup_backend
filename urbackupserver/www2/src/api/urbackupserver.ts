@@ -490,6 +490,49 @@ export interface GeneralSettings
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
 
+export type StringBoolSetting = "true" | "false";
+
+export interface MailSettingsVals
+{
+  mail_servername: string; // Name of the mail server
+  mail_serverport: string; // Port of the mail server
+  mail_username: string; // Username for the mail server
+  mail_password: string; // Password for the mail server
+  mail_from: string; // Sender address for the mail server
+  mail_ssl_only: StringBoolSetting; // If true SSL should be used to connect to server
+  mail_check_certificate: StringBoolSetting; // If true SSL certificate should be checked
+  mail_use_smtps: StringBoolSetting; // If true SMTPS should be used (instead of STARTTLS)
+  mail_admin_addrs: string; // List of email addresses to send mails to (comma/semicolon separated list)
+}
+
+export interface MailSettings
+{
+  sa: "mail"; // Request settings sub-action
+  navitems: SettingsNavitems; // Navigation items
+  settings: MailSettingsVals; // Settings
+}
+
+export interface LdapSettingsVals
+{
+  ldap_login_enabled: boolean; // If true LDAP login is enabled
+  ldap_server_name: string; // Name of the LDAP server
+  ldap_server_port: number; // Port of the LDAP server
+  ldap_username_prefix: string; // Prefix of the LDAP username
+  ldap_username_suffix: string; // Suffix of the LDAP username
+  ldap_group_class_query: string; // LDAP query to get the group class
+  ldap_group_key_name: string; // Key name of the group in the LDAP query
+  ldap_class_key_name: string; // Key name of the class in the LDAP query
+  ldap_group_rights_map: string; // Map of group rights
+  ldap_class_rights_map: string; // Map of class rights
+}
+
+export interface LdapSettings
+{
+  sa: "ldap"; // Request settings sub-action
+  navitems: SettingsNavitems; // Navigation items
+  settings: LdapSettingsVals; // Settings
+}
+
 class UrBackupServer {
   private serverUrl: string;
   private session = "";
@@ -935,7 +978,7 @@ class UrBackupServer {
 
   // Save general server settings
   saveGeneralSettings = async (settings: GeneralSettings) => {
-    let params : Record<string, string> = { "sa": "general_save" };
+    const params : Record<string, string> = { "sa": "general_save" };
     for (const [key, value] of Object.entries(settings.settings)) {
       if (typeof value == "object")
         params[key] = (value as SettingState).value.toString();
@@ -944,6 +987,47 @@ class UrBackupServer {
     }
     const resp = await this.fetchData(params, "settings");
     const ret = resp as GeneralSettings;
+    return ret;
+  }
+
+  // Get mail server settings
+  getMailSettings = async () => {
+    const resp = await this.fetchData({ sa: "mail" }, "settings");
+    const ret = resp as MailSettings;
+    return ret;
+  }
+
+  // Save mail server settings
+  // If testmailaddr is not empty, a test mail is sent to that address
+  // Returns the saved settings
+  saveMailSettings = async (settings: MailSettingsVals, testmailaddr: string = "") => {
+    const params: Record<string, string> = { "sa": "mail_save", "testmailaddr": testmailaddr };
+    for (const [key, value] of Object.entries(settings)) {
+      params[key] = value.toString();
+    }
+    const resp = await this.fetchData(params, "settings");
+    const ret = resp as MailSettings;
+    return ret;
+  }
+
+  // Get LDAP settings
+  // Returns a list of settings listed by `ldapSettingsList`
+  getLdapSettings = async () => {
+    const resp = await this.fetchData({ sa: "ldap" }, "settings");
+    const ret = resp as LdapSettings;
+    return ret;
+  }
+
+  // Save LDAP settings
+  // If testusername is not empty, a test login is performed
+  // Returns the saved settings
+  saveLdapSettings = async (settings: LdapSettingsVals, testusername: string = "", testpassword : string = "") => {
+    const params: Record<string, string> = { "sa": "ldap_save", "testusername": testusername, "testpassword": testpassword };
+    for (const [key, value] of Object.entries(settings)) {
+      params[key] = value.toString();
+    }
+    const resp = await this.fetchData(params, "settings");
+    const ret = resp as LdapSettings;
     return ret;
   }
 
