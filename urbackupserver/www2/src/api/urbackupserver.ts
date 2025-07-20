@@ -272,8 +272,18 @@ export class UsernameOrPasswordWrongError extends Error { }
 
 export class BackupsAccessDeniedError extends Error { }
 
+export class UserAlreadyExistsError extends Error {}
+
+export class UnknownUserAddError extends Error {}
+
 // Error parsing server response
 export class ResponseParseError extends Error { }
+
+export class UnknownUpdateRightsError extends Error {}
+
+export class UnknownRemoveUserError extends Error {}
+
+export class UnknownChangePasswordError extends Error {}
 
 export class BackupsAccessError extends Error {
   constructor(message: string) {
@@ -531,6 +541,54 @@ export interface LdapSettings
   sa: "ldap"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   settings: LdapSettingsVals; // Settings
+}
+
+export interface UserRight
+{
+  domain: string; // Domain of the user right
+  right: string; // Right of the user. E.g. "all" or a list of client ids separated by commas
+}
+
+export interface UserListItem
+{
+  id: string; // Id of the user (integer)
+  name: string; // Name of the user
+  rights: UserRight[]; // List of rights the user has
+}
+
+export interface UserList
+{
+  sa: "listusers"; // Request settings sub-action
+  navitems: SettingsNavitems; // Navigation items
+  users: UserListItem[]; // List of users
+}
+
+export enum AddUserResult {
+  OK = 0, // User was added successfully
+  USERNAME_EXISTS = 1, // Username already exists
+  ERROR = 2, // An error occurred
+}
+
+function randomString()
+{
+	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+	var string_length = 50;
+	var randomstring = '';
+	
+	var array = new Uint32Array(string_length);
+	if(window.crypto && window.crypto.getRandomValues(array))
+	{
+		for (var i=0; i<string_length; i++) {
+			randomstring += chars.charAt(array[i]%chars.length);
+		}
+		return randomstring;
+	}
+	
+	for (var i=0; i<string_length; i++) {
+		var rnum = Math.floor(Math.random() * chars.length);
+		randomstring += chars.substring(rnum,rnum+1);
+	}
+	return randomstring;
 }
 
 class UrBackupServer {
@@ -1029,6 +1087,77 @@ class UrBackupServer {
     const resp = await this.fetchData(params, "settings");
     const ret = resp as LdapSettings;
     return ret;
+  }
+
+  getUserList = async () => {
+    const resp = await this.fetchData({ sa: "listusers" }, "settings");
+    return resp as UserList;
+  }
+
+  // Add a user with the given name, password and rights
+  // Throws UserAlreadyExistsError if the user already exists on the server  
+  createUser = async (name: string, password: string, rights: UserRight[]) => {
+    const salt=randomString();	
+	  const password_md5=MD5(salt+password).toString();
+    const params: Record<string, string> = { sa: "useradd", name: name, pwmd5: password_md5, salt: salt };
+    let i = 0;
+    let idx = "";
+    for (const right of rights) {
+      params[i+"_domain"] = right.domain;
+      params[i+"_right"] = right.right;
+      i++;
+      if(idx.length>0)
+        idx += ",";
+      idx += "" + i;
+    }
+    params["idx"] = idx;
+    const resp = await this.fetchData(params, "settings");
+    if (typeof resp.add_ok != "undefined" && resp.add_ok) {
+      return;
+    } else if (typeof resp.alread_exists != "undefined" && resp.alread_exists) {
+      throw new UserAlreadyExistsError();
+    } else {
+      throw new UnknownUserAddError();
+    }
+  }
+
+  // Change the rights of a user with the given userId
+  // Throws UnknownUpdateRightsError if the rights could not be updated
+  changeUserRights = async (userId: string, rights: string) => {
+    const params: Record<string, string> = { sa: "updaterights", rights: rights, userid: userId };
+    const resp = await this.fetchData(params, "settings");
+    if (typeof resp.update_right != "undefined" && resp.update_right) {
+      return resp as UserList;
+    }
+
+    throw new UnknownUpdateRightsError();
+  }
+
+  // Remove a user with the given userId
+  // Throws UnknownRemoveUserError if the user could not be removed
+  removeUser = async (userId: string) => {
+    const params: Record<string, string> = { sa: "removeuser", userid: userId };
+    const resp = await this.fetchData(params, "settings");
+    if (typeof resp.removeuser != "undefined" && resp.removeuser) {
+      return resp as UserList;
+    }
+
+    throw new UnknownRemoveUserError();
+  }
+
+  // Change the password of a user with the given userId
+  // Throws UnknownChangePasswordError if the password could not be changed
+  changeUserPassword = async (userId: string, password: string) => {
+    // TODO: Add function to change own password
+    const salt = randomString();
+    const password_md5 = MD5(salt + password).toString();
+    const params: Record<string, string> = { sa: "changepw", userid: userId, pwmd5: password_md5, salt: salt };
+    const resp = await this.fetchData(params, "settings");
+    if (typeof resp.change_ok != "undefined" && resp.change_ok) {
+      return resp as UserList;
+    }
+
+    throw new UnknownChangePasswordError();
   }
 
   // Get list of all client and group settings
