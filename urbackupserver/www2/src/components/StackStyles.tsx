@@ -52,7 +52,7 @@ export const useStackStyles = makeStyles({
     marginInline: "auto",
   },
   sidebar: {
-    width: "22ch",
+    width: "19ch",
     borderRight: "1px solid",
     padding: "10pt",
     position: "sticky",
