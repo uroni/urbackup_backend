@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Suspense, useEffect, useState } from "react";
-import HeaderBar from "./components/HeaderBar";
 import NavSidebar from "./components/NavSidebar";
 import { proxy, useSnapshot } from "valtio";
 import { createHashRouter, RouterProvider } from "react-router-dom";
@@ -13,11 +12,9 @@ import {
   teamsDarkTheme,
   Spinner,
   Toaster,
-  mergeClasses,
   Link,
 } from "@fluentui/react-components";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useStackStyles } from "./components/StackStyles";
 import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
@@ -34,6 +31,7 @@ import { ClientLog } from "./features/logs/ClientLog";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SettingsNavSidebar } from "./features/settings/SettingsNavSidebar";
 import { SettingsServer } from "./features/settings/SettingsServer/SettingsServer";
+import { Layout } from "./components/Layout";
 import "./css/global.css";
 
 const initialDark =
@@ -241,52 +239,30 @@ const App: React.FunctionComponent = () => {
     })();
   }, []);
 
-  const styles = useStackStyles();
-
   return (
     <FluentProvider theme={selectedTheme}>
       <React.StrictMode>
         <I18nProvider i18n={i18n}>
           <QueryClientProvider client={queryClient}>
-            <div className={styles.stackVertical}>
-              <div className={styles.item}>
-                <HeaderBar />
-              </div>
-              <div
-                className={styles.itemGrow}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
-                  className={styles.stackHorizontal}
-                  style={{
-                    flex: 1,
-                  }}
-                >
-                  {snap.loggedIn && (
-                    <div className={styles.sidebar}>
-                      {snap.activePage === Pages.Settings ? (
-                        // TODO: Move sidebars into RouterProvider via common layout
-                        <Suspense fallback={<Spinner />}>
-                          <SettingsNavSidebar />
-                        </Suspense>
-                      ) : (
-                        <NavSidebar />
-                      )}
-                    </div>
-                  )}
-                  <div
-                    className={mergeClasses(styles.itemGrow, styles.content)}
-                  >
+            <Layout>
+              {snap.loggedIn && (
+                <Layout.Sidebar>
+                  {snap.activePage === Pages.Settings ? (
+                    // TODO: Move sidebars into RouterProvider via common layout
                     <Suspense fallback={<Spinner />}>
-                      <RouterProvider router={router} />
+                      <SettingsNavSidebar />
                     </Suspense>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  ) : (
+                    <NavSidebar />
+                  )}
+                </Layout.Sidebar>
+              )}
+              <Layout.Content>
+                <Suspense fallback={<Spinner />}>
+                  <RouterProvider router={router} />
+                </Suspense>
+              </Layout.Content>
+            </Layout>
             <Toaster toasterId="toaster" />
             {/* Following only bundled in development mode */}
             <ReactQueryDevtools initialIsOpen={false} />

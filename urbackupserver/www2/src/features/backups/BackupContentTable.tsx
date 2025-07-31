@@ -8,10 +8,8 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  makeStyles,
   Button,
   TableColumnId,
-  tokens,
 } from "@fluentui/react-components";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -35,31 +33,6 @@ import {
   useFilteredBySearch,
 } from "../../components/SearchBox";
 
-const useStyles = makeStyles({
-  heading: {
-    display: "flex",
-    gap: tokens.spacingHorizontalM,
-    // Negate the margin top and left values
-    // to keep breadcrumbs aligned to initial top-left position
-    marginInlineStart: "-7px",
-    marginBlockStart: "-7px",
-  },
-  headingAction: {
-    marginInlineStart: "auto",
-  },
-});
-
-const tableStyles = {
-  name: {
-    display: "flex",
-    gap: tokens.spacingHorizontalS,
-    alignItems: "center",
-  },
-  file: {
-    color: tokens.colorBrandBackground,
-  },
-};
-
 function createFormatter<T extends File>() {
   return {
     size: (d: T) => (d.size ? format_size(d.size) : ""),
@@ -80,11 +53,11 @@ export const columns: TableColumnDefinition<File>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          <span style={tableStyles.name}>
+          <span className="cluster gutter-s">
             {item.dir ? (
               <Folder20Filled />
             ) : (
-              <Document20Filled style={tableStyles.file} />
+              <Document20Filled color="var(--colorBrandBackground)" />
             )}
             {item.name}
           </span>
@@ -158,8 +131,6 @@ export function BackupContentTable() {
     retry: 1,
   });
 
-  const classes = useStyles();
-
   const { clientname, backuptime, files } = data;
 
   const breadcrumbItems = makeBackupsBreadcrumbs({
@@ -177,7 +148,7 @@ export function BackupContentTable() {
   if (files.length === 0) {
     return (
       <TableWrapper>
-        <div className={classes.heading}>
+        <div className="heading-breadcrumbs">
           <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
         </div>
         <p>No files exist in this path.</p>
@@ -195,11 +166,10 @@ export function BackupContentTable() {
 
   return (
     <TableWrapper>
-      <div className={classes.heading}>
+      <div className="repel heading-breadcrumbs">
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
         <Button
           appearance="primary"
-          className={classes.headingAction}
           onClick={() => {
             const folderPath = path ?? "/";
             if (folderPath) {

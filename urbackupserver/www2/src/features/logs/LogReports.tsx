@@ -1,12 +1,9 @@
 import {
   Select,
-  makeStyles,
-  tokens,
   Field,
   Button,
   Textarea,
   Link,
-  mergeClasses,
   Caption1,
 } from "@fluentui/react-components";
 import { useState } from "react";
@@ -14,12 +11,6 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 
 import { urbackupServer } from "../../App";
 import { LOG_LEVELS, SendOnly } from "../../api/urbackupserver";
-
-const useStyles = makeStyles({
-  actions: {
-    "--flow-space": tokens.spacingVerticalXL,
-  },
-});
 
 const initialFormState = {
   report_sendonly: false,
@@ -60,8 +51,6 @@ export function LogReports() {
   const [emailErrorMessage, setEmailErrorMessage] = useState("");
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(initialFormState);
-
-  const classes = useStyles();
 
   if (!has_user) {
     return <div>You need to create a user to send reports</div>;
@@ -186,7 +175,7 @@ export function LogReports() {
           }}
         />
       </Field>
-      <div className={mergeClasses(classes.actions, "flow")}>
+      <div className="flow flow-xl">
         <div className="cluster">
           <Button type="submit">Save Settings</Button>
           {Object.values(hasUnsavedChanges).some(Boolean) && (

@@ -8,14 +8,12 @@ import {
   DataGridHeaderCell,
   DataGridProps,
   DataGridRow,
-  makeStyles,
   MenuButton,
   MenuItem,
   Spinner,
   TableCellLayout,
   TableColumnDefinition,
   TableRowId,
-  tokens,
 } from "@fluentui/react-components";
 import { StatusClientItem } from "../api/urbackupserver";
 import { Suspense, useState } from "react";
@@ -124,14 +122,6 @@ const columns: TableColumnDefinition<StatusClientItem>[] = [
   }),
 ];
 
-const useStyles = makeStyles({
-  gridActions: {
-    display: "flex",
-    gap: tokens.spacingHorizontalS,
-    flexWrap: "wrap",
-  },
-});
-
 const REFETCH_INTERVAL = 5000;
 
 const Status = () => {
@@ -145,8 +135,6 @@ const Status = () => {
   const [selectedRows, setSelectedRows] = useState<Set<TableRowId>>(new Set());
 
   const selectedRowsArray = transformSelectedRows(selectedRows);
-
-  const classes = useStyles();
 
   const data = statusResult.data!.status;
 
@@ -258,7 +246,7 @@ const Status = () => {
                 totalItemCount={filteredItems.length}
                 setPage={setPage}
               />
-              <div className={classes.gridActions}>
+              <div className="cluster">
                 <Button onClick={() => setItemsPerPage(filteredItems.length)}>
                   Show All Clients
                 </Button>

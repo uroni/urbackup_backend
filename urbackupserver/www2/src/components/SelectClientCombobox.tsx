@@ -31,7 +31,7 @@ export function SelectClientCombobox({
   const labelId = useId();
 
   return (
-    <div className="cluster" data-spacing="s">
+    <div className="cluster gutter-s">
       {showLabel && (
         <label htmlFor={id} id={labelId}>
           {label ?? "Select client"}

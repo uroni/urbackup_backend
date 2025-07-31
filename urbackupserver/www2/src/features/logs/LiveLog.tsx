@@ -2,28 +2,15 @@ import {
   Button,
   Combobox,
   ComboboxProps,
-  makeStyles,
   Popover,
   PopoverSurface,
   PopoverTrigger,
-  tokens,
   useComboboxFilter,
 } from "@fluentui/react-components";
 import { useId, useState } from "react";
 import { Open16Regular } from "@fluentui/react-icons";
 
 import type { LogClient } from "../../api/urbackupserver";
-
-const useStyles = makeStyles({
-  combobox: {
-    display: "grid",
-    justifyItems: "start",
-    gap: tokens.spacingVerticalXS,
-  },
-  listbox: {
-    translate: `0 ${tokens.spacingVerticalS}`,
-  },
-});
 
 export function LiveLog({
   clients,
@@ -32,7 +19,6 @@ export function LiveLog({
   clients: LogClient[];
   children: React.ReactNode;
 }) {
-  const styles = useStyles();
   const id = useId();
 
   const [open, setOpen] = useState(false);
@@ -81,17 +67,18 @@ export function LiveLog({
       </PopoverTrigger>
 
       <PopoverSurface aria-labelledby={id}>
-        <div className={styles.combobox}>
-          <label id={comboId}>Select client</label>
+        <div className="flow flow-xs">
+          <div>
+            <label id={comboId}>Select client</label>
+          </div>
           <Combobox
+            open={true}
             defaultOpen
             onOptionSelect={onOptionSelect}
             aria-labelledby={comboId}
             onChange={(ev) => setQuery(ev.target.value)}
             value={query}
-            listbox={{
-              className: styles.listbox,
-            }}
+            inlinePopup
           >
             {comboBoxChildren}
           </Combobox>

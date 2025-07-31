@@ -1,9 +1,13 @@
-import { tokens, Button, makeStyles } from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import { OpenRegular } from "@fluentui/react-icons";
 import { useMutation } from "@tanstack/react-query";
 
 import type { ProcessItem } from "../../api/urbackupserver";
 import { urbackupServer } from "../../App";
+
+const stopButtonStyle = {
+  minWidth: 0,
+};
 
 function useStopProcessMutation() {
   return useMutation({
@@ -17,16 +21,6 @@ function useStopProcessMutation() {
   });
 }
 
-const useStyles = makeStyles({
-  root: {
-    display: "flex",
-    gap: tokens.spacingHorizontalXS,
-  },
-  stopButton: {
-    minWidth: 0,
-  },
-});
-
 export function OngoingActivitiesActions({
   process,
 }: {
@@ -34,14 +28,12 @@ export function OngoingActivitiesActions({
 }) {
   const stopProcessMutation = useStopProcessMutation();
 
-  const classes = useStyles();
-
   return (
-    <div className={classes.root}>
+    <div className="cluster gutter-xs">
       {process.can_stop_backup && (
         <Button
           size="small"
-          className={classes.stopButton}
+          style={stopButtonStyle}
           onClick={() =>
             stopProcessMutation.mutate({
               clientId: process.clientid,

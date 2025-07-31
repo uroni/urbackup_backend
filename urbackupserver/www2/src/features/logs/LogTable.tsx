@@ -8,13 +8,12 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  tokens,
   TableColumnId,
 } from "@fluentui/react-components";
 import {
-  DismissCircle16Filled,
-  Info16Filled,
-  Warning16Filled,
+  DismissCircleFilled,
+  InfoFilled,
+  WarningFilled,
 } from "@fluentui/react-icons";
 
 import { LOG_LEVELS, type LogDataRow } from "../../api/urbackupserver";
@@ -42,27 +41,15 @@ const columns: TableColumnDefinition<LogDataRow>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          <div className="cluster" data-spacing="s">
+          <div className="cluster gutter-s">
             {LOG_LEVELS_MAP.get(item.level) === "INFO" && (
-              <Info16Filled
-                style={{
-                  color: tokens.colorBrandForeground1,
-                }}
-              />
+              <InfoFilled className="icon fg-color-info" />
             )}
             {LOG_LEVELS_MAP.get(item.level) === "WARNING" && (
-              <Warning16Filled
-                style={{
-                  color: tokens.colorStatusWarningForeground1,
-                }}
-              />
+              <WarningFilled className="icon fg-color-warning" />
             )}
             {LOG_LEVELS_MAP.get(item.level) === "ERROR" && (
-              <DismissCircle16Filled
-                style={{
-                  color: tokens.colorStatusDangerForeground1,
-                }}
-              />
+              <DismissCircleFilled className="icon fg-color-error" />
             )}
             {FORMATTED_LOG_TABLE_LEVELS[LOG_LEVELS_MAP.get(item.level)!]}
           </div>

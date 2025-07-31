@@ -8,9 +8,7 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  makeStyles,
   Badge,
-  tokens,
   PresenceBadge,
   TableColumnId,
 } from "@fluentui/react-components";
@@ -36,15 +34,6 @@ import {
   SearchBox,
   useFilteredBySearch,
 } from "../../components/SearchBox";
-
-const useStyles = makeStyles({
-  heading: {
-    // Negate the margin top and left values
-    // to keep breadcrumbs aligned to initial top-left position
-    marginInlineStart: "-7px",
-    marginBlockStart: "-7px",
-  },
-});
 
 function createFormatter<T extends Backup>() {
   return {
@@ -130,8 +119,6 @@ export function ClientBackupsTable() {
     queryFn: () => urbackupServer.getBackups(Number(clientId)),
   });
 
-  const classes = useStyles();
-
   const { clientname, clientid, backups } = backupsResult.data!;
 
   const breadcrumbItems = makeBackupsBreadcrumbs({
@@ -147,7 +134,7 @@ export function ClientBackupsTable() {
   if (backups.length === 0) {
     return (
       <TableWrapper>
-        <div className={classes.heading}>
+        <div className="heading-breadcrumbs">
           <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
         </div>
         <p>
@@ -167,7 +154,7 @@ export function ClientBackupsTable() {
 
   return (
     <TableWrapper>
-      <div className={classes.heading}>
+      <div className="heading-breadcrumbs">
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
       </div>
       <div className="cluster">

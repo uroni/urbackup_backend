@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Select,
-  Text,
-  makeStyles,
-  tokens,
-  mergeClasses,
-} from "@fluentui/react-components";
+import { Select, Text } from "@fluentui/react-components";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
@@ -20,21 +14,6 @@ import {
 import { FORMATTED_LOG_TABLE_LEVELS, LogTable } from "./LogTable";
 
 const logsUrl = `${BASE_HREF}/logs`;
-
-const useStyles = makeStyles({
-  heading: {
-    display: "flex",
-    gap: tokens.spacingHorizontalM,
-    alignItems: "center",
-    // Negate the margin top and left values
-    // to keep breadcrumbs aligned to initial top-left position
-    marginInlineStart: "-7px",
-    marginBlockStart: "-7px",
-  },
-  filters: {
-    marginTop: `calc(1em + 3px)`,
-  },
-});
 
 export function ClientLog() {
   const { logId } = useParams();
@@ -54,8 +33,6 @@ export function ClientLog() {
       }
     },
   });
-
-  const classes = useStyles();
 
   const { log } = logResult.data;
 
@@ -82,7 +59,7 @@ export function ClientLog() {
 
   return (
     <TableWrapper>
-      <div className={classes.heading}>
+      <div className="cluster heading-breadcrumbs">
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
         <Text
           font="numeric"
@@ -93,10 +70,7 @@ export function ClientLog() {
           ID #{logId}
         </Text>
       </div>
-      <div
-        className={mergeClasses(classes.filters, "cluster")}
-        data-spacing="s"
-      >
+      <div className="cluster gutter-s">
         Filter
         <Select
           id="log-level"

@@ -8,12 +8,11 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
-  tokens,
   TableColumnId,
 } from "@fluentui/react-components";
 import { Link } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { DismissCircle16Filled, Warning16Filled } from "@fluentui/react-icons";
+import { DismissCircleFilled, WarningFilled } from "@fluentui/react-icons";
 
 import {
   LOG_LEVELS,
@@ -61,15 +60,11 @@ const columns: TableColumnDefinition<LogInfo>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          <div className="cluster" data-spacing="s">
+          <div className="cluster gutter-s">
             {item.errors > 0 && (
-              <DismissCircle16Filled
-                style={{
-                  color: tokens.colorStatusDangerForeground1,
-                }}
-              />
+              <DismissCircleFilled className="icon fg-color-error" />
             )}
-            {item.errors}
+            {item.errors} errors
           </div>
         </TableCellLayout>
       );
@@ -83,13 +78,9 @@ const columns: TableColumnDefinition<LogInfo>[] = [
     renderCell: (item) => {
       return (
         <TableCellLayout>
-          <div className="cluster" data-spacing="s">
+          <div className="cluster gutter-s">
             {item.warnings > 0 && (
-              <Warning16Filled
-                style={{
-                  color: tokens.colorStatusWarningForeground1,
-                }}
-              />
+              <WarningFilled className="icon fg-color-warning" />
             )}
             {item.warnings}
           </div>

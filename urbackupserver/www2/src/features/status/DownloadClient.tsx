@@ -2,30 +2,15 @@ import {
   Button,
   Combobox,
   ComboboxProps,
-  makeStyles,
   Popover,
   PopoverSurface,
   PopoverTrigger,
-  tokens,
   useComboboxFilter,
 } from "@fluentui/react-components";
 import { useId, useState } from "react";
+
 import { urbackupServer } from "../../App";
 import { OsType, StatusClientItem } from "../../api/urbackupserver";
-
-const useStyles = makeStyles({
-  surface: {
-    marginInline: tokens.spacingHorizontalS,
-  },
-  combobox: {
-    display: "grid",
-    justifyItems: "start",
-    gap: tokens.spacingHorizontalXS,
-  },
-  listbox: {
-    translate: "-20px -40px",
-  },
-});
 
 export function DownloadClient({
   clients,
@@ -36,7 +21,6 @@ export function DownloadClient({
   os: OsType;
   children: React.ReactNode;
 }) {
-  const styles = useStyles();
   const id = useId();
 
   const [open, setOpen] = useState(false);
@@ -86,18 +70,15 @@ export function DownloadClient({
       </PopoverTrigger>
 
       <PopoverSurface aria-labelledby={id}>
-        <div className={styles.combobox}>
+        <div className="cluster gutter-s">
           <label id={comboId}>Select client</label>
           <Combobox
             defaultOpen
-            positioning="before"
             onOptionSelect={onOptionSelect}
             aria-labelledby={comboId}
             onChange={(ev) => setQuery(ev.target.value)}
             value={query}
-            listbox={{
-              className: styles.listbox,
-            }}
+            inlinePopup
           >
             {comboBoxChildren}
           </Combobox>

@@ -76,10 +76,6 @@
     --cluster-horizontal-alignment: space-between;
   }
 
-  .cluster[data-spacing="s"] {
-    --gutter: var(--spacingS);
-  }
-
   /*
   REPEL
   A little layout that pushes items away from each other where
@@ -101,6 +97,28 @@
   }
 }
 
+@layer blocks {
+  .icon {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .heading-breadcrumbs {
+    --_spacing: 7px;
+  }
+
+  .heading-breadcrumbs:has(nav) {
+    --_negative-spacing: calc(-1 * var(--_spacing));
+
+    margin-inline-start: var(--_negative-spacing);
+    margin-block-start: var(--_negative-spacing);
+  }
+
+  .heading-breadcrumbs:not(:has(nav)) {
+    padding-block-end: var(--_spacing);
+  }
+}
+
 @layer utilities {
   .visually-hidden {
     position: absolute;
@@ -114,6 +132,40 @@
     border: 0;
     white-space: nowrap;
     user-select: none;
+  }
+
+  /* Spacing */
+  .flow-xs {
+    --flow-space: var(--spacingXS);
+  }
+
+  .flow-xl {
+    --flow-space: var(--spacingXL);
+  }
+
+  .gutter-s {
+    --gutter: var(--spacingS);
+  }
+
+  .gutter-xs {
+    --gutter: var(--spacingXS);
+  }
+
+  /* Colors */
+  .fg-color-info {
+    color: var(--colorBrandForeground1);
+  }
+
+  .fg-color-error {
+    color: var(--colorStatusDangerForeground1);
+  }
+
+  .fg-color-success {
+    color: var(--colorStatusSuccessForeground1);
+  }
+
+  .fg-color-warning {
+    color: var(--colorStatusWarningForeground1);
   }
 }
 

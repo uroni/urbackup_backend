@@ -1,0 +1,29 @@
+.stackVertical {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.stackHorizontal {
+  display: flex;
+  flex: 1;
+}
+
+.content {
+  flex: 1;
+  padding-inline: 10pt;
+  padding-block: 10pt 40pt;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+.sidebar {
+  width: 19ch;
+  border-right: 1px solid;
+  padding: 10pt;
+  position: sticky;
+  top: 0;
+  left: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}

@@ -1,4 +1,4 @@
-import { tokens, Button, makeStyles } from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import {
   Delete16Regular,
   PresenceOffline16Regular,
@@ -65,19 +65,10 @@ function useDeleteBackupNowMutation() {
   });
 }
 
-const useStyles = makeStyles({
-  root: {
-    display: "flex",
-    gap: tokens.spacingHorizontalXS,
-  },
-});
-
 export function ClientBackupActions(backup: Backup & { clientid: number }) {
   const deleteBackupMutation = useDeleteBackupMutation();
   const stopDeleteBackupMutation = useStopDeleteBackupMutation();
   const deleteBackupNowMutation = useDeleteBackupNowMutation();
-
-  const classes = useStyles();
 
   if (backup.disable_delete || backup.archived) {
     return null;
@@ -85,7 +76,7 @@ export function ClientBackupActions(backup: Backup & { clientid: number }) {
 
   if (backup.delete_pending) {
     return (
-      <div className={classes.root}>
+      <div className="cluster gutter-xs">
         <Button
           icon={<PresenceOffline16Regular />}
           onClick={() => {
@@ -113,18 +104,16 @@ export function ClientBackupActions(backup: Backup & { clientid: number }) {
   }
 
   return (
-    <div className={classes.root}>
-      <Button
-        icon={<Delete16Regular />}
-        onClick={() => {
-          deleteBackupMutation.mutate({
-            clientId: backup.clientid,
-            backupId: backup.id,
-          });
-        }}
-      >
-        Delete
-      </Button>
-    </div>
+    <Button
+      icon={<Delete16Regular />}
+      onClick={() => {
+        deleteBackupMutation.mutate({
+          clientId: backup.clientid,
+          backupId: backup.id,
+        });
+      }}
+    >
+      Delete
+    </Button>
   );
 }
