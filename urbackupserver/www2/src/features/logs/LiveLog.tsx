@@ -69,13 +69,13 @@ export function LiveLog({
       <PopoverSurface aria-labelledby={id}>
         <div className="flow flow-xs">
           <div>
-            <label id={comboId}>Select client</label>
+            <label htmlFor={comboId}>Select client</label>
           </div>
           <Combobox
+            id={comboId}
             open={true}
             defaultOpen
             onOptionSelect={onOptionSelect}
-            aria-labelledby={comboId}
             onChange={(ev) => setQuery(ev.target.value)}
             value={query}
             inlinePopup

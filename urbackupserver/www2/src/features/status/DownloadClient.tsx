@@ -71,11 +71,11 @@ export function DownloadClient({
 
       <PopoverSurface aria-labelledby={id}>
         <div className="cluster gutter-s">
-          <label id={comboId}>Select client</label>
+          <label htmlFor={comboId}>Select client</label>
           <Combobox
+            id={comboId}
             defaultOpen
             onOptionSelect={onOptionSelect}
-            aria-labelledby={comboId}
             onChange={(ev) => setQuery(ev.target.value)}
             value={query}
             inlinePopup
