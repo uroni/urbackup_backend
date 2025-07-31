@@ -4,8 +4,7 @@ import NavSidebar from "./components/NavSidebar";
 import { proxy, useSnapshot } from "valtio";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import LoginPage from "./pages/Login";
-import StatusPage from "./pages/Status";
-import { ActivitiesPage } from "./pages/Activities";
+import { StatusPage } from "./pages/Status";
 import {
   FluentProvider,
   teamsLightTheme,
@@ -19,18 +18,8 @@ import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { BackupsPage } from "./pages/Backups";
-import { ClientBackupsTable } from "./features/backups/ClientBackupsTable";
-import { BackupsTable } from "./features/backups/BackupsTable";
-import { BackupContentTable } from "./features/backups/BackupContentTable";
 import { ErrorPage } from "./components/ErrorPage";
-import { StatisticsPage } from "./pages/Statistics";
-import { LogsPage } from "./pages/Logs";
-import { ClientLogs } from "./features/logs/ClientLogs";
-import { ClientLog } from "./features/logs/ClientLog";
-import { SettingsPage } from "./pages/SettingsPage";
 import { SettingsNavSidebar } from "./features/settings/SettingsNavSidebar";
-import { SettingsServer } from "./features/settings/SettingsServer/SettingsServer";
 import { Layout } from "./components/Layout";
 import "./css/global.css";
 
@@ -121,7 +110,10 @@ export const router = createHashRouter([
   },
   {
     path: `/${Pages.Activities}`,
-    element: <ActivitiesPage />,
+    lazy: async () => {
+      const { ActivitiesPage } = await import("./pages/Activities");
+      return { Component: ActivitiesPage };
+    },
     loader: async () => {
       state.pageAfterLogin = Pages.Activities;
       await jumpToLoginPageIfNeccessary();
@@ -130,7 +122,10 @@ export const router = createHashRouter([
   },
   {
     path: `/${Pages.Backups}`,
-    element: <BackupsPage />,
+    lazy: async () => {
+      const { BackupsPage } = await import("./pages/Backups");
+      return { Component: BackupsPage };
+    },
     loader: async () => {
       state.pageAfterLogin = Pages.Backups;
       await jumpToLoginPageIfNeccessary();
@@ -142,21 +137,39 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        element: <BackupsTable />,
+        lazy: async () => {
+          const { BackupsTable } = await import(
+            "./features/backups/BackupsTable"
+          );
+          return { Component: BackupsTable };
+        },
       },
       {
         path: ":clientId",
-        element: <ClientBackupsTable />,
+        lazy: async () => {
+          const { ClientBackupsTable } = await import(
+            "./features/backups/ClientBackupsTable"
+          );
+          return { Component: ClientBackupsTable };
+        },
       },
       {
         path: ":clientId/:backupId",
-        element: <BackupContentTable />,
+        lazy: async () => {
+          const { BackupContentTable } = await import(
+            "./features/backups/BackupContentTable"
+          );
+          return { Component: BackupContentTable };
+        },
       },
     ],
   },
   {
     path: `/${Pages.Statistics}`,
-    element: <StatisticsPage />,
+    lazy: async () => {
+      const { StatisticsPage } = await import("./pages/Statistics");
+      return { Component: StatisticsPage };
+    },
     loader: async () => {
       state.pageAfterLogin = Pages.Statistics;
       await jumpToLoginPageIfNeccessary();
@@ -165,7 +178,10 @@ export const router = createHashRouter([
   },
   {
     path: `/${Pages.Logs}`,
-    element: <LogsPage />,
+    lazy: async () => {
+      const { LogsPage } = await import("./pages/Logs");
+      return { Component: LogsPage };
+    },
     loader: async () => {
       state.pageAfterLogin = Pages.Logs;
       await jumpToLoginPageIfNeccessary();
@@ -175,17 +191,26 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        element: <ClientLogs />,
+        lazy: async () => {
+          const { ClientLogs } = await import("./features/logs/ClientLogs");
+          return { Component: ClientLogs };
+        },
       },
       {
         path: ":logId",
-        element: <ClientLog />,
+        lazy: async () => {
+          const { ClientLog } = await import("./features/logs/ClientLog");
+          return { Component: ClientLog };
+        },
       },
     ],
   },
   {
     path: `/${Pages.Settings}`,
-    element: <SettingsPage />,
+    lazy: async () => {
+      const { SettingsPage } = await import("./pages/Settings");
+      return { Component: SettingsPage };
+    },
     loader: async () => {
       state.pageAfterLogin = Pages.Settings;
       await jumpToLoginPageIfNeccessary();
@@ -194,11 +219,21 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        element: <SettingsServer />,
+        lazy: async () => {
+          const { SettingsServer } = await import(
+            "./features/settings/SettingsServer/SettingsServer"
+          );
+          return { Component: SettingsServer };
+        },
       },
       {
         path: "server",
-        element: <SettingsServer />,
+        lazy: async () => {
+          const { SettingsServer } = await import(
+            "./features/settings/SettingsServer/SettingsServer"
+          );
+          return { Component: SettingsServer };
+        },
       },
     ],
   },

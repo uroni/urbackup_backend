@@ -296,13 +296,11 @@ const Status = () => {
   );
 };
 
-const StatusPage = () => (
+export const StatusPage = () => (
   <BackupResultProvider>
     <Status />
   </BackupResultProvider>
 );
-
-export default StatusPage;
 
 function transformSelectedRows(selectedRows: Set<TableRowId>) {
   const clientIds = Array.from(selectedRows, Number);
