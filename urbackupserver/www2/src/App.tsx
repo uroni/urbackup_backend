@@ -1,9 +1,12 @@
 import * as React from "react";
 import { Suspense, useEffect, useState } from "react";
-import NavSidebar from "./components/NavSidebar";
-import { proxy, useSnapshot } from "valtio";
-import { createHashRouter, RouterProvider } from "react-router-dom";
-import LoginPage from "./pages/Login";
+import {
+  createHashRouter,
+  Navigate,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
+import LoginPage, { getSessionFromLocalStorage, useUser } from "./pages/Login";
 import { StatusPage } from "./pages/Status";
 import {
   FluentProvider,
@@ -14,12 +17,11 @@ import {
   Link,
 } from "@fluentui/react-components";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import UrBackupServer, { SessionNotFoundError } from "./api/urbackupserver";
+import UrBackupServer from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { ErrorPage } from "./components/ErrorPage";
-import { SettingsNavSidebar } from "./features/settings/SettingsNavSidebar";
 import { Layout } from "./components/Layout";
 import "./css/global.css";
 
@@ -39,215 +41,161 @@ export enum Pages {
   Settings = "settings",
 }
 
-export const state = proxy({
-  loggedIn: false,
-  activePage: Pages.Status,
-  pageAfterLogin: Pages.Status,
-  startupComplete: false,
-});
+// Not using any global state, at the moment
+// export const state = proxy({});
 
 export const urbackupServer = new UrBackupServer(
   "x",
   getSessionFromLocalStorage(),
 );
 
-async function isLoggedIn(): Promise<boolean> {
-  try {
-    await urbackupServer.status();
-  } catch (error) {
-    if (error instanceof SessionNotFoundError) return false;
-  }
-  return true;
-}
+function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const { session } = useUser();
 
-async function jumpToLoginPageIfNeccessary() {
-  if (state.startupComplete && state.loggedIn) {
-    state.activePage = state.pageAfterLogin;
-    return;
+  if (!session) {
+    return <Navigate to="/login" replace state={{ pathname }} />;
   }
 
-  if (await isLoggedIn()) {
-    state.loggedIn = true;
-    state.startupComplete = true;
-    state.activePage = state.pageAfterLogin;
-  } else {
-    state.loggedIn = false;
-    await router.navigate(`/`);
-  }
+  return children;
 }
 
 export const router = createHashRouter([
   {
-    path: "/",
+    path: "/login",
     element: <LoginPage />,
-    loader: async () => {
-      if (await isLoggedIn()) {
-        state.loggedIn = true;
-        state.startupComplete = true;
-        await router.navigate(`/${Pages.Status}`);
-        return;
-      }
-      state.activePage = Pages.Login;
-      state.startupComplete = true;
-      state.loggedIn = false;
-      return null;
-    },
     errorElement: <div>Failed to log in.</div>,
   },
   {
-    path: `/${Pages.Status}`,
-    element: <StatusPage />,
-    loader: async () => {
-      state.pageAfterLogin = Pages.Status;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-    errorElement: <div>Failed to fetch clients.</div>,
-  },
-  {
-    path: "/about",
-    element: <div>About page</div>,
-  },
-  {
-    path: `/${Pages.Activities}`,
-    lazy: async () => {
-      const { ActivitiesPage } = await import("./pages/Activities");
-      return { Component: ActivitiesPage };
-    },
-    loader: async () => {
-      state.pageAfterLogin = Pages.Activities;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-  },
-  {
-    path: `/${Pages.Backups}`,
-    lazy: async () => {
-      const { BackupsPage } = await import("./pages/Backups");
-      return { Component: BackupsPage };
-    },
-    loader: async () => {
-      state.pageAfterLogin = Pages.Backups;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-    errorElement: (
-      <ErrorPage returnToLink={<Link href="/#/backups">Backups</Link>} />
+    path: "/",
+    element: (
+      <AuthenticatedRoute>
+        <Layout />
+      </AuthenticatedRoute>
     ),
     children: [
       {
         index: true,
+        element: <StatusPage />,
+      },
+      {
+        path: `/${Pages.Status}`,
+        element: <StatusPage />,
+        errorElement: <div>Failed to fetch clients.</div>,
+      },
+      {
+        path: "/about",
+        element: <div>About page</div>,
+      },
+      {
+        path: `/${Pages.Activities}`,
         lazy: async () => {
-          const { BackupsTable } = await import(
-            "./features/backups/BackupsTable"
-          );
-          return { Component: BackupsTable };
+          const { ActivitiesPage } = await import("./pages/Activities");
+          return { Component: ActivitiesPage };
         },
       },
       {
-        path: ":clientId",
+        path: `/${Pages.Backups}`,
         lazy: async () => {
-          const { ClientBackupsTable } = await import(
-            "./features/backups/ClientBackupsTable"
-          );
-          return { Component: ClientBackupsTable };
+          const { BackupsPage } = await import("./pages/Backups");
+          return { Component: BackupsPage };
+        },
+        errorElement: (
+          <ErrorPage returnToLink={<Link href="/#/backups">Backups</Link>} />
+        ),
+        children: [
+          {
+            index: true,
+            lazy: async () => {
+              const { BackupsTable } = await import(
+                "./features/backups/BackupsTable"
+              );
+              return { Component: BackupsTable };
+            },
+          },
+          {
+            path: ":clientId",
+            lazy: async () => {
+              const { ClientBackupsTable } = await import(
+                "./features/backups/ClientBackupsTable"
+              );
+              return { Component: ClientBackupsTable };
+            },
+          },
+          {
+            path: ":clientId/:backupId",
+            lazy: async () => {
+              const { BackupContentTable } = await import(
+                "./features/backups/BackupContentTable"
+              );
+              return { Component: BackupContentTable };
+            },
+          },
+        ],
+      },
+      {
+        path: `/${Pages.Statistics}`,
+        lazy: async () => {
+          const { StatisticsPage } = await import("./pages/Statistics");
+          return { Component: StatisticsPage };
         },
       },
       {
-        path: ":clientId/:backupId",
+        path: `/${Pages.Logs}`,
         lazy: async () => {
-          const { BackupContentTable } = await import(
-            "./features/backups/BackupContentTable"
-          );
-          return { Component: BackupContentTable };
+          const { LogsPage } = await import("./pages/Logs");
+          return { Component: LogsPage };
         },
-      },
-    ],
-  },
-  {
-    path: `/${Pages.Statistics}`,
-    lazy: async () => {
-      const { StatisticsPage } = await import("./pages/Statistics");
-      return { Component: StatisticsPage };
-    },
-    loader: async () => {
-      state.pageAfterLogin = Pages.Statistics;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-  },
-  {
-    path: `/${Pages.Logs}`,
-    lazy: async () => {
-      const { LogsPage } = await import("./pages/Logs");
-      return { Component: LogsPage };
-    },
-    loader: async () => {
-      state.pageAfterLogin = Pages.Logs;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-    errorElement: <ErrorPage returnToLink={<Link href="/#/logs">Logs</Link>} />,
-    children: [
-      {
-        index: true,
-        lazy: async () => {
-          const { ClientLogs } = await import("./features/logs/ClientLogs");
-          return { Component: ClientLogs };
-        },
+        errorElement: (
+          <ErrorPage returnToLink={<Link href="/#/logs">Logs</Link>} />
+        ),
+        children: [
+          {
+            index: true,
+            lazy: async () => {
+              const { ClientLogs } = await import("./features/logs/ClientLogs");
+              return { Component: ClientLogs };
+            },
+          },
+          {
+            path: ":logId",
+            lazy: async () => {
+              const { ClientLog } = await import("./features/logs/ClientLog");
+              return { Component: ClientLog };
+            },
+          },
+        ],
       },
       {
-        path: ":logId",
+        path: `/${Pages.Settings}`,
         lazy: async () => {
-          const { ClientLog } = await import("./features/logs/ClientLog");
-          return { Component: ClientLog };
+          const { SettingsPage } = await import("./pages/Settings");
+          return { Component: SettingsPage };
         },
-      },
-    ],
-  },
-  {
-    path: `/${Pages.Settings}`,
-    lazy: async () => {
-      const { SettingsPage } = await import("./pages/Settings");
-      return { Component: SettingsPage };
-    },
-    loader: async () => {
-      state.pageAfterLogin = Pages.Settings;
-      await jumpToLoginPageIfNeccessary();
-      return null;
-    },
-    children: [
-      {
-        index: true,
-        lazy: async () => {
-          const { SettingsServer } = await import(
-            "./features/settings/SettingsServer/SettingsServer"
-          );
-          return { Component: SettingsServer };
-        },
-      },
-      {
-        path: "server",
-        lazy: async () => {
-          const { SettingsServer } = await import(
-            "./features/settings/SettingsServer/SettingsServer"
-          );
-          return { Component: SettingsServer };
-        },
+        children: [
+          {
+            index: true,
+            lazy: async () => {
+              const { SettingsServer } = await import(
+                "./features/settings/SettingsServer/SettingsServer"
+              );
+              return { Component: SettingsServer };
+            },
+          },
+          {
+            path: "server",
+            lazy: async () => {
+              const { SettingsServer } = await import(
+                "./features/settings/SettingsServer/SettingsServer"
+              );
+              return { Component: SettingsServer };
+            },
+          },
+        ],
       },
     ],
   },
 ]);
-
-function getSessionFromLocalStorage(): string {
-  if (!window.localStorage) return "";
-  return localStorage.getItem("ses") ?? "";
-}
-
-export function saveSessionToLocalStorage(session: string) {
-  if (!window.localStorage) return;
-  localStorage.setItem("ses", session);
-}
 
 const queryClient = new QueryClient();
 
@@ -260,8 +208,6 @@ export async function dynamicActivateTranslation(locale: string) {
 
 const App: React.FunctionComponent = () => {
   const [selectedTheme, setTheme] = useState(initialTheme);
-
-  const snap = useSnapshot(state);
 
   useEffect(() => {
     window
@@ -279,25 +225,21 @@ const App: React.FunctionComponent = () => {
       <React.StrictMode>
         <I18nProvider i18n={i18n}>
           <QueryClientProvider client={queryClient}>
-            <Layout>
-              {snap.loggedIn && (
-                <Layout.Sidebar>
-                  {snap.activePage === Pages.Settings ? (
-                    // TODO: Move sidebars into RouterProvider via common layout
-                    <Suspense fallback={<Spinner />}>
-                      <SettingsNavSidebar />
-                    </Suspense>
-                  ) : (
-                    <NavSidebar />
-                  )}
-                </Layout.Sidebar>
-              )}
-              <Layout.Content>
-                <Suspense fallback={<Spinner />}>
-                  <RouterProvider router={router} />
-                </Suspense>
-              </Layout.Content>
-            </Layout>
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    display: "grid",
+                    placeContent: "center",
+                    minHeight: "100vh",
+                  }}
+                >
+                  <Spinner />
+                </div>
+              }
+            >
+              <RouterProvider router={router} />
+            </Suspense>
             <Toaster toasterId="toaster" />
             {/* Following only bundled in development mode */}
             <ReactQueryDevtools initialIsOpen={false} />

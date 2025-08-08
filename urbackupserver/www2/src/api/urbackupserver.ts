@@ -9,7 +9,7 @@ interface SaltResult {
   ses: string | undefined;
 }
 
-interface LoginResult {
+export interface LoginResult {
   upgrading_database: boolean | undefined;
   curr_db_version: number | undefined;
   target_db_version: number | undefined;
@@ -659,6 +659,7 @@ class UrBackupServer {
         { username: username, password: password, plainpw: "1" },
         "login",
       );
+      console.log(resp)
       if (typeof resp.error != "undefined" && resp.error == 2) {
         throw new UsernameOrPasswordWrongError();
       }
