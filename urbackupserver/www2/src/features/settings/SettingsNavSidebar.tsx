@@ -1,12 +1,7 @@
 import { Fragment } from "react";
-import {
-  Link,
-  Tab as FUITab,
-  TabList,
-  Body1,
-} from "@fluentui/react-components";
+import { Tab as FUITab, TabList, Body1 } from "@fluentui/react-components";
+import { NavLink } from "react-router-dom";
 
-import { router } from "../../App";
 import { type Tab, useSettingsTabs } from "./useSettingsTabs";
 import styles from "./SettingsNavSidebar.module.css";
 
@@ -15,13 +10,7 @@ export const SettingsNavSidebar = () => {
 
   return (
     <div className={styles["settings-tab"]}>
-      <Link
-        onMouseDown={async () => {
-          await router.navigate("/");
-        }}
-      >
-        Back to app
-      </Link>
+      <NavLink to="/">Back to app</NavLink>
 
       <div
         style={{

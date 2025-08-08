@@ -206,14 +206,24 @@ export function OngoingActivitiesTable({ data }: { data: ProcessItem[] }) {
   );
 }
 
+const BASE_COL_WIDTH = {
+  actions: "18ch",
+  queue: "12ch",
+  eta: "10ch",
+} as const;
+
 /**
  * Style some columns to take up less space.
  */
 function getNarrowColumnStyles(columnId: TableColumnId) {
   const stringId = columnId.toString();
 
+  if (!Object.keys(BASE_COL_WIDTH).includes(stringId)) {
+    return;
+  }
+
   return {
-    flexGrow: ["queue", "eta"].includes(stringId) ? "0" : "1",
-    flexBasis: ["queue", "eta"].includes(stringId) ? "12ch" : "0",
+    flexGrow: "0",
+    flexBasis: BASE_COL_WIDTH[stringId as keyof typeof BASE_COL_WIDTH],
   };
 }

@@ -34,6 +34,13 @@
   }
 }
 
+@layer base {
+  html,
+  body {
+    overflow: hidden;
+  }
+}
+
 @layer composition {
   /* 
   Based on https://github.com/Set-Creative-Studio/cube-boilerplate/tree/main/src/css/compositions 

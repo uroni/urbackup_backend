@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   SelectTabData,
   SelectTabEvent,
@@ -10,9 +10,12 @@ import {
 import { Pages } from "../App";
 
 export const NavSidebar = () => {
-  const [selectedValue, setSelectedValue] = useState(Pages.Status);
-
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  const [selectedValue, setSelectedValue] = useState(() =>
+    getInitialTab(pathname),
+  );
 
   const onTabSelect = async (event: SelectTabEvent, data: SelectTabData) => {
     setSelectedValue(data.value as Pages);
@@ -34,3 +37,8 @@ export const NavSidebar = () => {
 };
 
 export default NavSidebar;
+
+function getInitialTab(pathname: string) {
+  const page = pathname.split("/").filter((p) => p.length)[0] ?? Pages.Status;
+  return page;
+}
