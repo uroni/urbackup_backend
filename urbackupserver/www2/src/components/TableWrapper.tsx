@@ -1,3 +1,11 @@
-export function TableWrapper({ children }: { children: React.ReactNode }) {
-  return <section className="flow table-wrapper">{children}</section>;
+export function TableWrapper({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`flow table-wrapper ${className}`}>{children}</section>
+  );
 }

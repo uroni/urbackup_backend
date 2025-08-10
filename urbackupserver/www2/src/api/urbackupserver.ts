@@ -1,5 +1,6 @@
 import { PBKDF2, MD5, algo } from "crypto-js";
 import testoutputProgress from "./TestoutputProgress.json";
+import { formatUserRights } from "../utils/formatUserRights";
 
 interface SaltResult {
   salt: string;
@@ -1105,17 +1106,7 @@ class UrBackupServer {
     const salt=randomString();	
 	  const password_md5=MD5(salt+password).toString();
     const params: Record<string, string> = { sa: "useradd", name: name, pwmd5: password_md5, salt: salt };
-    let i = 0;
-    let idx = "";
-    for (const right of rights) {
-      params[i+"_domain"] = right.domain;
-      params[i+"_right"] = right.right;
-      i++;
-      if(idx.length>0)
-        idx += ",";
-      idx += "" + i;
-    }
-    params["idx"] = idx;
+    params['rights'] = formatUserRights(rights)   
     const resp = await this.fetchData(params, "settings");
     if (typeof resp.add_ok != "undefined" && resp.add_ok) {
       return;

@@ -1,0 +1,7 @@
+.dialog {
+  max-width: 50ch;
+}
+
+.actions {
+  margin-block-start: var(--spacingL);
+}

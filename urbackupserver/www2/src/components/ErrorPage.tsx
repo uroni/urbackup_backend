@@ -1,9 +1,22 @@
-import { isRouteErrorResponse, useRouteError } from "react-router-dom";
+import {
+  isRouteErrorResponse,
+  Navigate,
+  useLocation,
+  useRouteError,
+} from "react-router-dom";
 
-import { BackupsAccessDeniedError } from "../api/urbackupserver";
+import {
+  BackupsAccessDeniedError,
+  SessionNotFoundError,
+} from "../api/urbackupserver";
 
 export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
   const error = useRouteError();
+  const { pathname } = useLocation();
+
+  if (error instanceof SessionNotFoundError) {
+    return <Navigate to="/login" replace state={{ pathname }} />;
+  }
 
   if (error instanceof BackupsAccessDeniedError) {
     return (

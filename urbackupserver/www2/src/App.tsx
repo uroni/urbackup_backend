@@ -191,6 +191,15 @@ export const router = createHashRouter([
               return { Component: SettingsServer };
             },
           },
+          {
+            path: "users",
+            lazy: async () => {
+              const { SettingsUsers } = await import(
+                "./features/settings/SettingsUsers/SettingsUsers"
+              );
+              return { Component: SettingsUsers };
+            },
+          },
         ],
       },
     ],

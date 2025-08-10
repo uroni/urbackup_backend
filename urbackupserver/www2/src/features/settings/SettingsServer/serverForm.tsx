@@ -2,6 +2,7 @@ import { z, type ZodMiniType } from "zod/v4-mini";
 import { InputProps } from "@fluentui/react-components";
 
 import { NewTabLink } from "../../../components/NewTabLink";
+import { VALIDATION_MESSAGES } from "../Fields/validation";
 
 const CLEANUP_WINDOW_REGEX =
   /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
@@ -44,14 +45,6 @@ function getLabelFromName(name: string, labels: Record<string, string>) {
 
   return labels[name as keyof typeof labels];
 }
-
-const VALIDATION_MESSAGES = {
-  required: (label: string) =>
-    `Please enter a value for ${label.toLowerCase()}`,
-  numeric: (label: string) =>
-    `Please enter a numeric value for ${label.toLowerCase()}`,
-  regex: (label: string) => `The format for ${label.toLowerCase()} is invalid`,
-} as const;
 
 const FORM_MESSAGES = {
   backupfolder: VALIDATION_MESSAGES.required(SERVER_LABELS["backupfolder"]),

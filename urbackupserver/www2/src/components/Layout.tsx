@@ -8,7 +8,7 @@ import NavSidebar from "./NavSidebar";
 import { SettingsNavSidebar } from "../features/settings/SettingsNavSidebar";
 
 export function Layout() {
-  const match = useMatch("settings");
+  const match = useMatch("/settings/*");
 
   return (
     <div className={styles.layout}>

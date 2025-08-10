@@ -102,6 +102,11 @@
     align-items: var(--repel-vertical-alignment, center);
     gap: var(--gutter);
   }
+
+  .centered {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
 }
 
 @layer blocks {

@@ -21,6 +21,12 @@ export default tseslint.config(
     ],
     rules: {
       "@typescript-eslint/no-floating-promises": "error",
+      rules: {
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          { ignoreRestSiblings: true },
+        ],
+      },
     },
     plugins: {
       lingui,
