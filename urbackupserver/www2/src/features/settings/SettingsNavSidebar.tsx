@@ -1,6 +1,11 @@
 import { Fragment } from "react";
-import { Tab as FUITab, TabList, Body1 } from "@fluentui/react-components";
-import { NavLink } from "react-router-dom";
+import {
+  Tab as FUITab,
+  TabList,
+  Body1,
+  Link,
+} from "@fluentui/react-components";
+import { useNavigate } from "react-router-dom";
 
 import { type Tab, useSettingsTabs } from "./useSettingsTabs";
 import styles from "./SettingsNavSidebar.module.css";
@@ -8,9 +13,11 @@ import styles from "./SettingsNavSidebar.module.css";
 export const SettingsNavSidebar = () => {
   const { settingsTabs, selectedTab, onTabSelect } = useSettingsTabs();
 
+  const navigate = useNavigate();
+
   return (
-    <div className={styles["settings-tab"]}>
-      <NavLink to="/">Back to app</NavLink>
+    <div className={styles.settingsTab}>
+      <Link onClick={() => navigate("/")}>Back to app</Link>
 
       <div
         style={{

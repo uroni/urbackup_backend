@@ -41,7 +41,6 @@ export const useUser = () => {
     queryFn: async (): Promise<Partial<LoginResult> | null> => {
       try {
         const session = getSessionFromLocalStorage();
-        console.log(session);
 
         if (session) {
           // Check if session is valid by making a request.
@@ -190,39 +189,41 @@ const Login = () => {
       </div>
       <form
         onSubmit={handleSubmit}
-        className="flow flow-xl"
+        className="flow"
         style={{
           width: "32ch",
         }}
       >
-        <Field
-          label={t`Username`}
-          required
-          validationMessage={usernameValidationMessage}
-        >
-          <Input
-            id="username"
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-            }}
-          />
-        </Field>
-        <Field
-          label={t`Password`}
-          required
-          validationMessage={passwordValidationMessage}
-        >
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-            }}
-          />
-        </Field>
-        <div>
+        <div className="flow">
+          <Field
+            label={t`Username`}
+            required
+            validationMessage={usernameValidationMessage}
+          >
+            <Input
+              id="username"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+              }}
+            />
+          </Field>
+          <Field
+            label={t`Password`}
+            required
+            validationMessage={passwordValidationMessage}
+          >
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+            />
+          </Field>
+        </div>
+        <div className="flow-xl">
           {isLoading && <Spinner label={t`Logging in...`} />}
           {!isLoading && (
             <Button appearance="primary" type="submit">

@@ -1,8 +1,8 @@
-.settings-tab div:has([type="text"]) {
+.settingsTab div:has([type="text"]) {
   margin-block-start: var(--spacingXS);
   min-width: auto;
 }
 
-.settings-tab [type="text"] {
+.settingsTab [type="text"] {
   min-width: 100%;
 }

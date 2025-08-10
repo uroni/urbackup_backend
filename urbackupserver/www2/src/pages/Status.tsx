@@ -45,10 +45,8 @@ const compareNum = (a: number, b: number) => {
 };
 
 const compareLastbackup = (a: "-" | number, b: "-" | number) => {
-  if (a==="-")
-    a = 0;
-  if (b==="-")
-    b = 0;
+  if (a === "-") a = 0;
+  if (b === "-") b = 0;
   return compareNum(a, b);
 };
 
@@ -158,7 +156,7 @@ const Status = () => {
   return (
     <>
       <Suspense fallback={<Spinner />}>
-        <TableWrapper>
+        <TableWrapper className="centered">
           <h3>Status page</h3>
           <div className="cluster">
             <SearchBox onSearch={setSearch} />
@@ -319,9 +317,14 @@ function filterClientData(item: StatusClientItem, search: string) {
   const searchableFields = {
     id: String(id),
     name,
-    lastbackup: (lastbackup === 0 || lastbackup === "-") ? "Never" : formatDatetime(lastbackup),
+    lastbackup:
+      lastbackup === 0 || lastbackup === "-"
+        ? "Never"
+        : formatDatetime(lastbackup),
     lastbackup_image:
-      (lastbackup_image === 0 || lastbackup_image === "-") ? "Never" : formatDatetime(lastbackup_image),
+      lastbackup_image === 0 || lastbackup_image === "-"
+        ? "Never"
+        : formatDatetime(lastbackup_image),
   };
 
   return filterBySearch(search, searchableFields);

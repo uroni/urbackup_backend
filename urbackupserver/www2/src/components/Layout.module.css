@@ -14,7 +14,6 @@
 
   padding-inline: 20pt;
   padding-block: 20pt 40pt;
-  max-width: 1200px;
   margin-inline: auto;
   width: 100%;
   overflow: auto;
@@ -24,7 +23,7 @@
 
 .sidebar {
   flex-basis: var(--size-sidebar);
-  flex-grow: 1;
+  flex-grow: 0;
 
   background-color: var(--colorNeutralBackground3);
   box-shadow: var(--shadow4);
