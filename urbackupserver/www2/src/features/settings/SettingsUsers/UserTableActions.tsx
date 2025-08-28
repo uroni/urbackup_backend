@@ -11,7 +11,10 @@ import {
 
 import { UserListItem } from "../../../api/urbackupserver";
 import { useUsers } from "./useUsers";
-import { addMessage, clearMessages } from "./messageStore";
+import {
+  addMessage,
+  clearMessages,
+} from "../../../components/Banner/messageStore";
 import { useState } from "react";
 
 export function UserTableActions(user: UserListItem) {
@@ -19,12 +22,18 @@ export function UserTableActions(user: UserListItem) {
 
   const handleSuccess = () => {
     clearMessages();
-    addMessage("success", "Successfully removed user.");
+    addMessage({
+      intent: "success",
+      text: "Successfully removed user.",
+    });
   };
 
   const handleFailure = () => {
     clearMessages();
-    addMessage("error", `Failed to remove user.`);
+    addMessage({
+      intent: "error",
+      text: "Failed to remove user.",
+    });
   };
 
   const handleRemove = () => {

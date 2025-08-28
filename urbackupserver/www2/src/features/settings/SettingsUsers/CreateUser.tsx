@@ -22,7 +22,10 @@ import {
 } from "../Fields/validation";
 import { DismissRegular } from "@fluentui/react-icons";
 import { UserAlreadyExistsError, UserRight } from "../../../api/urbackupserver";
-import { addMessage, clearMessages } from "./messageStore";
+import {
+  addMessage,
+  clearMessages,
+} from "../../../components/Banner/messageStore";
 import { useUsers, type UserInput } from "./useUsers";
 
 const ADMIN_RIGHTS: UserRight[] = [
@@ -84,14 +87,20 @@ export const CreateUser = () => {
 
   const handleSuccess = () => {
     clearMessages();
-    addMessage("success", `New user successfully added.`);
+    addMessage({
+      intent: "success",
+      text: "New user successfully added.",
+    });
 
     setOpen(false);
   };
 
   const handleFailure = () => {
     clearMessages();
-    addMessage("error", `Failed to create new user.`);
+    addMessage({
+      intent: "error",
+      text: "Failed to create new user.",
+    });
 
     setOpen(false);
   };

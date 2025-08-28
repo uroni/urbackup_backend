@@ -1,24 +1,21 @@
 import { MessageBarIntent } from "@fluentui/react-components";
 import { proxy } from "valtio";
 
-interface Message {
+export interface Message {
   id: string;
-  intent: MessageBarIntent;
-  message: string;
+  text: string;
+  intent?: MessageBarIntent;
+  title?: string;
 }
 
 export const messageStore = proxy<{ messages: Message[] }>({
   messages: [],
 });
 
-export function addMessage(
-  intent: Message["intent"],
-  message: Message["message"],
-) {
-  messageStore.messages.push({
+export function addMessage(message: Omit<Message, "id">) {
+  messageStore.messages.unshift({
+    ...message,
     id: crypto.randomUUID(),
-    intent,
-    message,
   });
 }
 
