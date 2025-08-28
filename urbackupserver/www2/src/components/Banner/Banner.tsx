@@ -47,6 +47,7 @@ export function SingleBanner({
     <MessageBar
       intent={message.intent}
       role={message.intent === "error" ? "alert" : "status"}
+      layout="multiline"
     >
       <MessageBarBody>
         <MessageBarTitle>{message.title}</MessageBarTitle>
