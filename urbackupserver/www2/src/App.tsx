@@ -192,6 +192,13 @@ export const router = createHashRouter([
             },
           },
           {
+            path: "mail",
+            lazy: async () => {
+              const { Mail } = await import("./features/settings/Mail/Mail");
+              return { Component: Mail };
+            },
+          },
+          {
             path: "users",
             lazy: async () => {
               const { SettingsUsers } = await import(

@@ -1,0 +1,52 @@
+.container {
+  --border-color: var(--colorNeutralStroke2);
+  --flow-space: 2em;
+
+  width: 74ch;
+  margin: 0 auto;
+  padding-block-end: --spacing;
+}
+
+.card {
+  display: "flex";
+  flex-direction: "column";
+  background: var(--colorNeutralCardBackground);
+  padding: var(--spacingL);
+  border-radius: var(--borderRadiusLarge);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border-color);
+}
+
+.form > :has(label) {
+  padding-block: 0.5em;
+}
+
+.form > :first-child:has(label) {
+  padding-block-start: 0em;
+}
+
+.form > :last-child:has(label) {
+  padding-block-end: 0em;
+}
+
+.form > :has(label):not(:last-of-type) {
+  border-block-end: 1px solid var(--border-color);
+}
+
+.form > [type="submit"] {
+  display: block;
+  margin-block-start: var(--spacingXL);
+}
+
+.single-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--gutter);
+}
+
+.field-description {
+  color: var(--colorNeutralForeground2);
+  margin-block-start: var(--spacingXS);
+}

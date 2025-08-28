@@ -521,6 +521,7 @@ export interface MailSettings
   sa: "mail"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   settings: MailSettingsVals; // Settings
+  mail_test?: string
 }
 
 export interface LdapSettingsVals

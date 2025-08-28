@@ -33,3 +33,26 @@ export function CheckboxField({
     </Field>
   );
 }
+
+export function CheckboxFieldUncontrolled({
+  label,
+  id,
+  name,
+  defaultChecked,
+}: {
+  label: string;
+  id: string;
+  name: string;
+  defaultChecked: boolean;
+}) {
+  return (
+    <Field>
+      <Checkbox
+        id={id}
+        label={label}
+        name={name}
+        defaultChecked={defaultChecked}
+      />
+    </Field>
+  );
+}

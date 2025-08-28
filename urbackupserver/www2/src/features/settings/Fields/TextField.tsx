@@ -113,3 +113,77 @@ export function TextField({
     </Field>
   );
 }
+
+export function TextFieldUncontrolled({
+  label,
+  description,
+  hint,
+  name,
+  defaultValue,
+  type,
+  validationMessage,
+  inputProps,
+}: {
+  label: string;
+  description: React.ReactNode;
+  hint?: string;
+  name: string;
+  defaultValue: string;
+  type: InputProps["type"];
+  inputProps?: InputProps;
+  validationMessage?: string;
+}) {
+  const [value, setValue] = useState(defaultValue);
+
+  const showHint = !validationMessage;
+
+  return (
+    <Field
+      hint={showHint ? hint : undefined}
+      // @ts-expect-error: label takes both string and JSX.element -
+      // remove when FluentUI components package is updated to reflect that
+      label={{
+        children: (_: unknown, slotProps: LabelProps) => (
+          <div>
+            <Label {...slotProps}>{label}</Label>
+            {description && (
+              <p className={styles["field-description"]}>
+                <Body1>{description}</Body1>
+              </p>
+            )}
+          </div>
+        ),
+      }}
+      {...(validationMessage && {
+        validationState: "error",
+        validationMessage,
+      })}
+      orientation="horizontal"
+      className={styles.field}
+    >
+      <div className={styles["reset-input"]}>
+        <Button
+          appearance="subtle"
+          icon={<ArrowResetRegular />}
+          data-hidden={value == defaultValue}
+          onClick={() => {
+            const value = String(defaultValue);
+
+            setValue(value);
+          }}
+        >
+          Reset
+        </Button>
+        <Input
+          name={name}
+          type={type}
+          value={value}
+          {...inputProps}
+          onChange={(_, { value }) => {
+            setValue(value);
+          }}
+        />
+      </div>
+    </Field>
+  );
+}

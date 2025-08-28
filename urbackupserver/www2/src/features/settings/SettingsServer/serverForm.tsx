@@ -1,8 +1,12 @@
 import { z, type ZodMiniType } from "zod/v4-mini";
-import { InputProps } from "@fluentui/react-components";
 
 import { NewTabLink } from "../../../components/NewTabLink";
-import { VALIDATION_MESSAGES } from "../Fields/validation";
+import {
+  integerValidation,
+  requiredStringValidation,
+  VALIDATION_MESSAGES,
+} from "../Fields/validation";
+import { BaseField, Field } from "../Fields/types";
 
 const CLEANUP_WINDOW_REGEX =
   /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
@@ -71,24 +75,6 @@ const FORM_MESSAGES = {
     "The internet server bind port must have port range from 1-65535",
 } as const;
 
-const requiredStringValidation = (message?: string) =>
-  z.string().check(z.minLength(1, message));
-
-const stringToInt = (message?: string, minLength = 0) =>
-  z.pipe(
-    z.string().check(z.minLength(minLength, message)),
-    z.transform(Number),
-  );
-
-const integerValidation = (
-  message?: string,
-  options?: { required?: boolean },
-) =>
-  stringToInt(message, options?.required ? 1 : 0).check(
-    z.int(message),
-    z.nonnegative(message),
-  );
-
 export const serverFormSchema: Record<ServerFieldNames, ZodMiniType> = {
   backupfolder: requiredStringValidation(FORM_MESSAGES["backupfolder"]),
   max_sim_backups: integerValidation(FORM_MESSAGES["max_sim_backups"], {
@@ -141,25 +127,6 @@ export const advancedServerFormSchema: Record<
   use_incremental_symlinks: z.boolean(),
   show_server_updates: z.boolean(),
 };
-
-interface BaseField<Names> {
-  name: Names;
-  type: "checkbox" | "number" | "text";
-  validation?: (options?: { label?: string }) => z.ZodMiniType;
-  description?: React.ReactNode;
-  hint?: string;
-  inputProps?: InputProps & {
-    "data-field-width": string;
-  };
-  transformer?: {
-    ui: (v: number) => number | string;
-    api: (v: number) => number | string;
-  };
-}
-
-export interface Field<Name> extends BaseField<Name> {
-  label: string;
-}
 
 const DATA_RATE_UNIT_LOCAL = "Mbit/s";
 const DATA_RATE_UNIT_INTERNET = "kbit/s";

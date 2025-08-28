@@ -10,3 +10,18 @@ export const VALIDATION_MESSAGES = {
 
 export const requiredStringValidation = (message?: string) =>
   z.string().check(z.minLength(1, message));
+
+const stringToInt = (message?: string, minLength = 0) =>
+  z.pipe(
+    z.string().check(z.minLength(minLength, message)),
+    z.transform(Number),
+  );
+
+export const integerValidation = (
+  message?: string,
+  options?: { required?: boolean },
+) =>
+  stringToInt(message, options?.required ? 1 : 0).check(
+    z.int(message),
+    z.nonnegative(message),
+  );
