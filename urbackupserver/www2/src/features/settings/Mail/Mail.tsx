@@ -8,15 +8,15 @@ import type {
   SettingState,
   StringBoolSetting,
 } from "../../../api/urbackupserver";
-import styles from "./Mail.module.css";
-import { CheckboxFieldUncontrolled } from "../Fields/CheckboxField";
+import { CheckboxFieldUncontrolled } from "../Form/CheckboxField";
 import { mailFields, mailFormSchema, MailSettingsKey } from "./mailForm";
-import { TextFieldUncontrolled } from "../Fields/TextField";
+import { TextFieldUncontrolled } from "../Form/TextField";
 import { Banner } from "../../../components/Banner/Banner";
 import { clearMessages } from "../../../components/Banner/messageStore";
 import { useMail } from "./useMail";
 import { TestMail } from "./TestMail";
-import { Field } from "../Fields/types";
+import { Field } from "../Form/types";
+import { Form, FormCard, FormContainer } from "../Form/Form";
 
 export function Mail() {
   const { settings, handleSubmit, sendTestMail } = useMail();
@@ -30,22 +30,22 @@ export function Mail() {
   }
 
   return (
-    <div className={`${styles.container} flow`}>
+    <FormContainer>
       <h1>Mail</h1>
 
       <Banner />
 
-      <section className={styles.card}>
+      <FormCard>
         <FormSection
           fields={mailFields}
           schema={mailFormSchema}
           initialFormState={initialFormState}
           onSubmit={handleSubmit}
         />
-      </section>
+      </FormCard>
 
       <TestMail onSubmit={sendTestMail} />
-    </div>
+    </FormContainer>
   );
 }
 
@@ -94,7 +94,7 @@ function FormSection<T extends string>({
   };
 
   return (
-    <form className={`${styles.form}`} onSubmit={handleSubmit} noValidate>
+    <Form onSubmit={handleSubmit} noValidate>
       {fields.map((f) => {
         const initialValue = initialFormState[f.name];
 
@@ -130,7 +130,7 @@ function FormSection<T extends string>({
       <Button type="submit" appearance="primary">
         Save mail settings
       </Button>
-    </form>
+    </Form>
   );
 }
 

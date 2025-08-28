@@ -38,15 +38,3 @@
   display: block;
   margin-block-start: var(--spacingXL);
 }
-
-.single-field {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: var(--gutter);
-}
-
-.field-description {
-  color: var(--colorNeutralForeground2);
-  margin-block-start: var(--spacingXS);
-}

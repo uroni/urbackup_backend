@@ -5,8 +5,8 @@ import {
   integerValidation,
   requiredStringValidation,
   VALIDATION_MESSAGES,
-} from "../Fields/validation";
-import { BaseField, Field } from "../Fields/types";
+} from "../Form/validation";
+import { BaseField, Field } from "../Form/types";
 
 const CLEANUP_WINDOW_REGEX =
   /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;

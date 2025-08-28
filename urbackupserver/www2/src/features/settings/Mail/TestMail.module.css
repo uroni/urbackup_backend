@@ -1,0 +1,6 @@
+.single-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--gutter);
+}

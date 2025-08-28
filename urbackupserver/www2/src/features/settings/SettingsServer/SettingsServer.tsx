@@ -6,19 +6,19 @@ import type {
   GeneralSettings,
   SettingState,
 } from "../../../api/urbackupserver";
-import styles from "./SettingsServer.module.css";
-import { CheckboxField } from "../Fields/CheckboxField";
+import { CheckboxField } from "../Form/CheckboxField";
 import {
   AdvancedServerFieldNames,
   advancedServerFields,
   advancedServerFormSchema,
-  Field,
   ServerFieldNames,
   serverFields,
   serverFormSchema,
 } from "./serverForm";
-import { TextField } from "../Fields/TextField";
+import { TextField } from "../Form/TextField";
 import { useSettings } from "../useSettings";
+import { Form, FormCard, FormContainer } from "../Form/Form";
+import { Field } from "../Form/types";
 
 export function SettingsServer() {
   const { settings, updateSettings } = useSettings();
@@ -34,16 +34,16 @@ export function SettingsServer() {
   }
 
   return (
-    <div className={`${styles.container} flow`}>
+    <FormContainer>
       <h1>Server</h1>
-      <section className={styles.card}>
+      <FormCard>
         <FormSection
           fields={serverFields}
           schema={serverFormSchema}
           initialFormState={initialFormState}
           updateSettings={updateSettings}
         />
-      </section>
+      </FormCard>
 
       {!showAdvancedSettings && (
         <div>
@@ -56,17 +56,17 @@ export function SettingsServer() {
       {showAdvancedSettings && (
         <>
           <h2>Advanced</h2>
-          <section className={styles.card}>
+          <FormCard>
             <FormSection
               fields={advancedServerFields}
               schema={advancedServerFormSchema}
               initialFormState={initialFormState}
               updateSettings={updateSettings}
             />
-          </section>
+          </FormCard>
         </>
       )}
-    </div>
+    </FormContainer>
   );
 }
 
@@ -84,7 +84,7 @@ function FormSection<T extends string>({
   ) => void;
 }) {
   return (
-    <form className={`${styles.form}`}>
+    <Form>
       {fields.map((f) => {
         const initialValue = initialFormState[f.name];
 
@@ -128,7 +128,7 @@ function FormSection<T extends string>({
           />
         );
       })}
-    </form>
+    </Form>
   );
 }
 

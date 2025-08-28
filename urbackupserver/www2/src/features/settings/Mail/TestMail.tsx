@@ -6,9 +6,10 @@ import {
   clearMessages,
   Message,
 } from "../../../components/Banner/messageStore";
-import styles from "./Mail.module.css";
+import styles from "./TestMail.module.css";
 import { SingleBanner } from "../../../components/Banner/Banner";
 import { MailSettings } from "../../../api/urbackupserver";
+import { FormCard } from "../Form/Form";
 
 const TESTMAIL = {
   LABEL: "Send test mail to this email address",
@@ -78,7 +79,7 @@ export function TestMail({
       {feedback && (
         <SingleBanner message={feedback} onClick={() => setFeedback(null)} />
       )}
-      <div className={styles.card}>
+      <FormCard>
         <div className="flow flow-xs">
           <Label htmlFor={TESTMAIL.ID}>{TESTMAIL.LABEL}</Label>
           <form className={styles["single-field"]} onSubmit={handleSubmit}>
@@ -87,14 +88,13 @@ export function TestMail({
                 validationState: "error",
                 validationMessage,
               })}
-              className={styles.field}
             >
               <Input id={TESTMAIL.ID} name={TESTMAIL.ID} type="email" />
             </Field>
             <Button type="submit">Send test mail</Button>
           </form>
         </div>
-      </div>
+      </FormCard>
     </section>
   );
 }

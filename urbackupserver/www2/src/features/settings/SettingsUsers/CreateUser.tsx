@@ -19,7 +19,7 @@ import styles from "./CreateUser.module.css";
 import {
   requiredStringValidation,
   VALIDATION_MESSAGES,
-} from "../Fields/validation";
+} from "../Form/validation";
 import { DismissRegular } from "@fluentui/react-icons";
 import { UserAlreadyExistsError, UserRight } from "../../../api/urbackupserver";
 import {

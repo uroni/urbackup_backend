@@ -1,8 +1,8 @@
 import { z } from "zod/v4-mini";
 
-import { integerValidation, VALIDATION_MESSAGES } from "../Fields/validation";
+import { integerValidation, VALIDATION_MESSAGES } from "../Form/validation";
 import { type MailSettingsVals } from "../../../api/urbackupserver";
-import { BaseField, Field } from "../Fields/types";
+import { BaseField, Field } from "../Form/types";
 
 export type MailSettingsKey = keyof MailSettingsVals;
 
