@@ -9,8 +9,14 @@ import {
   BackupsAccessDeniedError,
   SessionNotFoundError,
 } from "../api/urbackupserver";
+import { BaseLayout } from "./Layout";
+import { AuthenticatedRoute } from "./AuthenticatedRoute";
 
-export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
+export function ErrorPage({
+  returnToLink,
+}: {
+  returnToLink?: React.ReactNode;
+}) {
   const error = useRouteError();
   const { pathname } = useLocation();
 
@@ -23,7 +29,7 @@ export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
       <article className="flow">
         <h1>Backups Access Denied</h1>
         <ErrorPageContent error={error} />
-        <p>Return to {returnToLink}</p>
+        {returnToLink && <p>Return to {returnToLink}</p>}
       </article>
     );
   }
@@ -32,13 +38,17 @@ export function ErrorPage({ returnToLink }: { returnToLink: React.ReactNode }) {
     <article className="flow">
       <h1>Page not found</h1>
       <ErrorPageContent error={error} />
-      <p>Return to {returnToLink}</p>
+      {returnToLink && <p>Return to {returnToLink}</p>}
     </article>
   );
 }
 
 function ErrorPageContent({ error }: { error: unknown }) {
   if (isRouteErrorResponse(error)) {
+    if (error.status === 404) {
+      return <p>We couldn't find the page you're looking for.</p>;
+    }
+
     return (
       <p>
         <i>{error.statusText} </i>
@@ -54,3 +64,13 @@ function ErrorPageContent({ error }: { error: unknown }) {
     );
   }
 }
+
+export const ErrorBoundary = () => {
+  return (
+    <AuthenticatedRoute>
+      <BaseLayout>
+        <ErrorPage />
+      </BaseLayout>
+    </AuthenticatedRoute>
+  );
+};

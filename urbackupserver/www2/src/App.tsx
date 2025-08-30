@@ -1,12 +1,7 @@
 import * as React from "react";
 import { Suspense, useEffect, useState } from "react";
-import {
-  createHashRouter,
-  Navigate,
-  RouterProvider,
-  useLocation,
-} from "react-router-dom";
-import LoginPage, { getSessionFromLocalStorage, useUser } from "./pages/Login";
+import { createHashRouter, RouterProvider } from "react-router-dom";
+import LoginPage, { getSessionFromLocalStorage } from "./pages/Login";
 import { StatusPage } from "./pages/Status";
 import {
   FluentProvider,
@@ -21,8 +16,9 @@ import UrBackupServer from "./api/urbackupserver";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { ErrorPage } from "./components/ErrorPage";
+import { ErrorBoundary, ErrorPage } from "./components/ErrorPage";
 import { Layout } from "./components/Layout";
+import { AuthenticatedRoute } from "./components/AuthenticatedRoute";
 import "./css/global.css";
 
 const initialDark =
@@ -49,17 +45,6 @@ export const urbackupServer = new UrBackupServer(
   getSessionFromLocalStorage(),
 );
 
-function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
-  const { pathname } = useLocation();
-  const { session } = useUser();
-
-  if (!session) {
-    return <Navigate to="/login" replace state={{ pathname }} />;
-  }
-
-  return children;
-}
-
 export const router = createHashRouter([
   {
     path: "/login",
@@ -73,6 +58,7 @@ export const router = createHashRouter([
         <Layout />
       </AuthenticatedRoute>
     ),
+    ErrorBoundary,
     children: [
       {
         index: true,
@@ -81,7 +67,6 @@ export const router = createHashRouter([
       {
         path: `/${Pages.Status}`,
         element: <StatusPage />,
-        errorElement: <div>Failed to fetch clients.</div>,
       },
       {
         path: "/about",

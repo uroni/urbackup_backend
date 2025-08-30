@@ -7,7 +7,7 @@ import styles from "./Layout.module.css";
 import NavSidebar from "./NavSidebar";
 import { SettingsNavSidebar } from "../features/settings/SettingsNavSidebar";
 
-export function Layout() {
+export function BaseLayout({ children }: { children: React.ReactNode }) {
   const match = useMatch("/settings/*");
 
   return (
@@ -21,10 +21,16 @@ export function Layout() {
           <NavSidebar />
         )}
       </Layout.Sidebar>
-      <Layout.Content>
-        <Outlet />
-      </Layout.Content>
+      <Layout.Content>{children}</Layout.Content>
     </div>
+  );
+}
+
+export function Layout() {
+  return (
+    <BaseLayout>
+      <Outlet />
+    </BaseLayout>
   );
 }
 
