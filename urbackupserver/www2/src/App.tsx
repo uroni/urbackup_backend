@@ -184,6 +184,15 @@ export const router = createHashRouter([
             },
           },
           {
+            path: "ldap-ad",
+            lazy: async () => {
+              const { LdapAd } = await import(
+                "./features/settings/LdapAd/LdapAd"
+              );
+              return { Component: LdapAd };
+            },
+          },
+          {
             path: "users",
             lazy: async () => {
               const { SettingsUsers } = await import(

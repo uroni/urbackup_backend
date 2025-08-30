@@ -1,5 +1,7 @@
 .field:has(.reset-input) {
-  grid-template-columns: auto 34ch;
+  --field-width: 34ch;
+
+  grid-template-columns: auto var(--field-width);
   align-items: center;
 }
 
@@ -30,6 +32,14 @@
 
 .reset-input :has([data-field-width="50%"]) {
   max-width: 50%;
+}
+
+.field:has([data-field-width="max"]) {
+  --field-width: 1fr;
+}
+
+.field:has([data-field-width="max"]) > div:has(label) {
+  min-width: 20ch;
 }
 
 .field-description {
