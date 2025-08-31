@@ -4,10 +4,10 @@ import type { ZodMiniObject } from "zod/v4-mini";
 import type { $ZodIssue } from "zod/v4/core";
 import type { SettingState } from "../../../api/urbackupserver";
 import { clearMessages } from "../../../components/Banner/messageStore";
-import { CheckboxFieldUncontrolled } from "../Form/CheckboxField";
-import { Form } from "../Form/Form";
-import { TextFieldUncontrolled } from "../Form/TextField";
-import { Field } from "../Form/types";
+import { CheckboxFieldUncontrolled } from "./CheckboxField";
+import { Form } from "./Form";
+import { TextFieldUncontrolled } from "./TextField";
+import { Field } from "./types";
 
 export function FormSection<T extends string, Settings>({
   fields,

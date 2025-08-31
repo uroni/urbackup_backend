@@ -5,7 +5,7 @@ import { Banner } from "../../../components/Banner/Banner";
 import { useMail } from "./useMail";
 import { TestMail } from "./TestMail";
 import { FormCard, FormContainer } from "../Form/Form";
-import { FormSection } from "../LdapAd/FormSection";
+import { FormSection } from "../Form/FormSection";
 import { getInitialFormState } from "../Form/utils";
 
 export function Mail() {

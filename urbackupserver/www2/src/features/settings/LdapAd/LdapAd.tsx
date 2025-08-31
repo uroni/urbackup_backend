@@ -8,7 +8,7 @@ import {
   ldapFields,
   type LdapSettingsKey,
 } from "./ldapAdForm";
-import { FormSection } from "./FormSection";
+import { FormSection } from "../Form/FormSection";
 import { getInitialFormState } from "../Form/utils";
 
 export function LdapAd() {
