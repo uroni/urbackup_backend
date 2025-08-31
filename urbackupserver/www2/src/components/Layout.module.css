@@ -12,8 +12,9 @@
   flex-basis: 0;
   flex-grow: 999;
 
-  padding-inline: 20pt;
-  padding-block: 20pt 40pt;
+  padding-inline: var(--layout-padding-inline, 20pt);
+  padding-block: var(--layout-padding-block-start, 20pt)
+    var(--layout-padding-block-end, 40pt);
   margin-inline: auto;
   width: 100%;
   overflow: auto;
@@ -30,4 +31,10 @@
   padding: 10pt;
   max-height: 100vh;
   overflow-y: auto;
+}
+
+.without-padding-content {
+  --layout-padding-inline: 0pt;
+  --layout-padding-block-start: 0pt;
+  --layout-padding-block-end: 0pt;
 }

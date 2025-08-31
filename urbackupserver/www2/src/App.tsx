@@ -201,6 +201,26 @@ export const router = createHashRouter([
               return { Component: SettingsUsers };
             },
           },
+          {
+            path: "clients",
+            lazy: async () => {
+              const { Clients } = await import(
+                "./features/settings/Clients/Clients"
+              );
+              return { Component: Clients };
+            },
+            children: [
+              {
+                path: ":clientId",
+                lazy: async () => {
+                  const { Client } = await import(
+                    "./features/settings/Clients/Client"
+                  );
+                  return { Component: Client };
+                },
+              },
+            ],
+          },
         ],
       },
     ],

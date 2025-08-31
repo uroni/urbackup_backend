@@ -44,7 +44,15 @@ function Sidebar({ children }: { children: React.ReactNode }) {
 }
 
 function Content({ children }: { children: React.ReactNode }) {
-  return <main className={styles.content}>{children}</main>;
+  const clientMatch = useMatch("/settings/clients/*");
+
+  return (
+    <main
+      className={`${styles.content} ${clientMatch ? styles["without-padding-content"] : ""}`}
+    >
+      {children}
+    </main>
+  );
 }
 
 Layout.Sidebar = Sidebar;

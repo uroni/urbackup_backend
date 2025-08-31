@@ -1,0 +1,85 @@
+.wrapper {
+  --size-sidebar: 48ch;
+
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.content {
+  width: 100%;
+}
+
+.content nav {
+  background-color: var(--colorNeutralCardBackground);
+}
+
+.client-content {
+  flex-basis: 0;
+  flex-grow: 999;
+
+  padding-inline: 20pt;
+  padding-block: 20pt 40pt;
+  margin-inline: auto;
+  width: 100%;
+  overflow: auto;
+  height: 100%;
+  max-height: 100vh;
+}
+
+.sidebar {
+  --border-color: var(--colorNeutralStroke3);
+
+  flex-basis: var(--size-sidebar);
+  flex-grow: 0;
+
+  box-shadow: var(--shadow4);
+  max-height: 100vh;
+  overflow-y: auto;
+  border-inline: 1px solid var(--border-color);
+}
+
+.sidebar ul {
+  margin: 0;
+}
+
+.client a {
+  display: inline-flex;
+  gap: var(--spacingS);
+  align-items: baseline;
+  justify-content: space-between;
+
+  width: 100%;
+  padding: var(--spacingS) var(--spacingM);
+  text-decoration: none;
+  border-block-start: 1px solid var(--border-color);
+}
+
+.client a:nth-child(2) {
+  flex-shrink: 0;
+}
+
+.client a:is(:hover, :focus) {
+  background-color: var(--colorNeutralBackground3);
+}
+
+.group {
+  position: sticky;
+  top: -1px;
+  z-index: 1;
+
+  width: 100%;
+  padding: var(--spacingXS) var(--spacingM);
+  background-color: var(--colorNeutralCardBackground);
+  border-block-start: 1px solid var(--border-color);
+}
+
+.search {
+  padding: var(--spacingM);
+}
+
+.client-name {
+  display: inline-flex;
+  color: var(--colorBrandForeground2);
+  margin-block-end: var(--spacingS);
+}
