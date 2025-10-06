@@ -3703,7 +3703,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 	std::vector<std::string> groups;
 	Tokenize(image_snapshot_groups, groups, "|");
 
-	image_snapshot_groups = strlower(image_snapshot_groups);
+	image_snapshot_groups = strlower(trim(image_snapshot_groups));
 
 	std::string vol = normalizeVolumeUpper(letter);
 
