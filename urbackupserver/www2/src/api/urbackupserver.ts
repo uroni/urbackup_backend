@@ -273,18 +273,18 @@ export class UsernameOrPasswordWrongError extends Error { }
 
 export class BackupsAccessDeniedError extends Error { }
 
-export class UserAlreadyExistsError extends Error {}
+export class UserAlreadyExistsError extends Error { }
 
-export class UnknownUserAddError extends Error {}
+export class UnknownUserAddError extends Error { }
 
 // Error parsing server response
 export class ResponseParseError extends Error { }
 
-export class UnknownUpdateRightsError extends Error {}
+export class UnknownUpdateRightsError extends Error { }
 
-export class UnknownRemoveUserError extends Error {}
+export class UnknownRemoveUserError extends Error { }
 
-export class UnknownChangePasswordError extends Error {}
+export class UnknownChangePasswordError extends Error { }
 
 export class BackupsAccessError extends Error {
   constructor(message: string) {
@@ -368,10 +368,10 @@ export interface UsageGraphData {
   xlabel: string; // ISO Date of the data (YYYY-MM-DD)
 }
 
-export const LOG_LEVELS ={
- INFO: 0, 
- WARNING: 1, 
- ERROR: 2, 
+export const LOG_LEVELS = {
+  INFO: 0,
+  WARNING: 1,
+  ERROR: 2,
 } as const
 
 export type LogIdType = number;
@@ -435,8 +435,7 @@ export enum SendOnly {
   FailedExcludingTimeout = 3
 }
 
-export interface SettingsClients
-{
+export interface SettingsClients {
   group: number; // Id of the group the client belongs to
   id: number; // Id of the client
   name: string; // Name of the client
@@ -444,14 +443,12 @@ export interface SettingsClients
   groupname: string
 }
 
-export interface SettingsGroups
-{
+export interface SettingsGroups {
   id: number; // Id of group
   name: string; // Name of group
 }
 
-export interface SettingsNavitems
-{
+export interface SettingsNavitems {
   admin: boolean; // Current user is an admin user
   clients: SettingsClients[]; // List of clients
   disable_change_pw: boolean; // If true the user cannot change the password
@@ -464,8 +461,7 @@ export interface SettingsNavitems
   users: boolean; // Can change user settings
 }
 
-export interface AlertScriptParam
-{
+export interface AlertScriptParam {
   default_value: string; // Default value of the parameter
   has_translation: 0 | 1; // If 1 the parameter has a translation
   label: string; // Label of the setting
@@ -473,8 +469,7 @@ export interface AlertScriptParam
   type: string; // Type of the setting
 }
 
-export interface SettingsAlertScript
-{
+export interface SettingsAlertScript {
   id: number; // Id of the alert script
   name: string; // Name of the alert script
   params: AlertScriptParam[]; // List of parameters
@@ -482,18 +477,61 @@ export interface SettingsAlertScript
 
 type SettingValueType = string | boolean | number;
 
-export interface SettingState
-{
+export interface SettingState {
   value: SettingValueType; // Value of the setting
 }
 
-export interface GeneralSettingsVals
-{
+export interface ClientSettingState {
+  value: SettingValueType; // Value of the setting
+  value_group: SettingValueType; // Inherited settings value (from specific or global default group)
+  value_client: SettingValueType; // Value coming from the client
+  use: undefined | number;
+}
+
+export const enum UseValue {
+  Group = 1,
+  Server = 2,
+  Client = 4
+}
+
+export function isUseValueSet(use: number, val: UseValue) {
+  return (use & val) > 0;
+}
+
+export function setUseValue(use: number, val: UseValue): number {
+  return use | val;
+}
+
+export function getCurrentValue(setting: ClientSettingState): SettingValueType {
+  if (typeof setting.use == "undefined") {
+    if (typeof setting.value != "undefined")
+      return setting.value;
+
+    if (typeof setting != "object")
+      return setting;
+
+    return "";
+  }
+
+  if (setting.use == UseValue.Group) {
+    return setting.value_group;
+  }
+  else if (setting.use == UseValue.Server) {
+    return setting.value;
+  }
+  else if (setting.use == UseValue.Client) {
+    return setting.value_client;
+  }
+  else {
+    return setting.value;
+  }
+}
+
+export interface GeneralSettingsVals {
   can_edit_scripts: boolean; // If true the user can edit scripts
 }
 
-export interface GeneralSettings
-{
+export interface GeneralSettings {
   sa: "general"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   cowraw_available: boolean; // If true the cowraw feature is available
@@ -501,10 +539,16 @@ export interface GeneralSettings
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
 
+export interface ClientSettings {
+  sa: "clientsettings"; // Request settings sub-action
+  navitems: SettingsNavitems; // Navigation items
+  settings: { [key: string]: ClientSettingState } | { [key: string]: SettingValueType };
+  saved_ok: undefined | boolean; // If true the settings were saved successfully
+}
+
 export type StringBoolSetting = "true" | "false";
 
-export interface MailSettingsVals
-{
+export interface MailSettingsVals {
   mail_servername: string; // Name of the mail server
   mail_serverport: string; // Port of the mail server
   mail_username: string; // Username for the mail server
@@ -516,16 +560,14 @@ export interface MailSettingsVals
   mail_admin_addrs: string; // List of email addresses to send mails to (comma/semicolon separated list)
 }
 
-export interface MailSettings
-{
+export interface MailSettings {
   sa: "mail"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   settings: MailSettingsVals; // Settings
   mail_test?: string
 }
 
-export interface LdapSettingsVals
-{
+export interface LdapSettingsVals {
   ldap_login_enabled: boolean; // If true LDAP login is enabled
   ldap_server_name: string; // Name of the LDAP server
   ldap_server_port: number; // Port of the LDAP server
@@ -538,28 +580,24 @@ export interface LdapSettingsVals
   ldap_class_rights_map: string; // Map of class rights
 }
 
-export interface LdapSettings
-{
+export interface LdapSettings {
   sa: "ldap"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   settings: LdapSettingsVals; // Settings
 }
 
-export interface UserRight
-{
+export interface UserRight {
   domain: string; // Domain of the user right
   right: string; // Right of the user. E.g. "all" or a list of client ids separated by commas
 }
 
-export interface UserListItem
-{
+export interface UserListItem {
   id: string; // Id of the user (integer)
   name: string; // Name of the user
   rights: UserRight[]; // List of rights the user has
 }
 
-export interface UserList
-{
+export interface UserList {
   sa: "listusers"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
   users: UserListItem[]; // List of users
@@ -571,26 +609,24 @@ export enum AddUserResult {
   ERROR = 2, // An error occurred
 }
 
-function randomString()
-{
-	const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
-	const string_length = 50;
-	let randomstring = '';
-	
-	const array = new Uint32Array(string_length);
-	if(window.crypto && window.crypto.getRandomValues(array))
-	{
-		for (var i=0; i<string_length; i++) {
-			randomstring += chars.charAt(array[i]%chars.length);
-		}
-		return randomstring;
-	}
-	
-	for (var i=0; i<string_length; i++) {
-		const rnum = Math.floor(Math.random() * chars.length);
-		randomstring += chars.substring(rnum,rnum+1);
-	}
-	return randomstring;
+function randomString() {
+  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+  const string_length = 50;
+  let randomstring = '';
+
+  const array = new Uint32Array(string_length);
+  if (window.crypto && window.crypto.getRandomValues(array)) {
+    for (var i = 0; i < string_length; i++) {
+      randomstring += chars.charAt(array[i] % chars.length);
+    }
+    return randomstring;
+  }
+
+  for (var i = 0; i < string_length; i++) {
+    const rnum = Math.floor(Math.random() * chars.length);
+    randomstring += chars.substring(rnum, rnum + 1);
+  }
+  return randomstring;
 }
 
 class UrBackupServer {
@@ -1043,7 +1079,7 @@ class UrBackupServer {
       settings: GeneralSettings['settings']
     },
   ) => {
-    const params : Record<string, string> = { "sa": "general_save" };
+    const params: Record<string, string> = { "sa": "general_save" };
     for (const [key, value] of Object.entries(settings.settings)) {
       if (typeof value == "object")
         params[key] = (value as SettingState).value.toString();
@@ -1086,7 +1122,7 @@ class UrBackupServer {
   // Save LDAP settings
   // If testusername is not empty, a test login is performed
   // Returns the saved settings
-  saveLdapSettings = async (settings: LdapSettingsVals, testusername: string = "", testpassword : string = "") => {
+  saveLdapSettings = async (settings: LdapSettingsVals, testusername: string = "", testpassword: string = "") => {
     const params: Record<string, string> = { "sa": "ldap_save", "testusername": testusername, "testpassword": testpassword };
     for (const [key, value] of Object.entries(settings)) {
       params[key] = value.toString();
@@ -1104,10 +1140,10 @@ class UrBackupServer {
   // Add a user with the given name, password and rights
   // Throws UserAlreadyExistsError if the user already exists on the server  
   createUser = async (name: string, password: string, rights: UserRight[]) => {
-    const salt=randomString();	
-	  const password_md5=MD5(salt+password).toString();
+    const salt = randomString();
+    const password_md5 = MD5(salt + password).toString();
     const params: Record<string, string> = { sa: "useradd", name: name, pwmd5: password_md5, salt: salt };
-    params['rights'] = formatUserRights(rights)   
+    params['rights'] = formatUserRights(rights)
     const resp = await this.fetchData(params, "settings");
     if (typeof resp.add_ok != "undefined" && resp.add_ok) {
       return;
@@ -1251,133 +1287,162 @@ class UrBackupServer {
       "backup_dest_params",
       "backup_dest_secret_params",
       "backup_unlocked_window"
-      ];
+    ];
+  }
+
+  // Get list of general server settings
+  generalSettingsList = () => {
+    return [
+      "backupfolder", // Folder where backups are stored : string
+      "no_images", // Switch if image backups should be disabled : boolean
+      "no_file_backups", // Switch if file backups should be disabled : boolean
+      "autoshutdown", // Switch if autoshutdown should be enabled : boolean
+      "download_client", // Switch if downloading client should be enabled : boolean
+      "autoupdate_clients", // Switch if autoupdate of clients should be enabled : boolean
+      "max_sim_backups", // Maximum number of simultaneous backups : integer number
+      "max_active_clients", // Maximum number of active clients : integer number
+      "tmpdir", // Temporary directory for backups : string
+      "cleanup_window", // Time window for cleanup : string
+      "backup_database", // Switch if nightly backup of database should be enabled : boolean
+      "global_local_speed", // Global local speed limit: speed (MBit/s)
+      "global_internet_speed", // Global internet speed limit: speed (MBit/s)
+      "update_stats_cachesize", // Size of the cache for statistics : integer number (MiBytes)
+      "global_soft_fs_quota", // Global soft filesystem quota: size (percentage or size in bytes)
+      "server_url", // URL of the server : string/URL
+      "internet_server_bind_port", // Non-default port to bind to for internet backups : integer number (port range 1-65535)
+      // Advanced
+      "use_tmpfiles", // Switch if tmpfiles should be used : boolean (advanced)
+      "use_tmpfiles_images", // Switch if tmpfiles should be used for images : boolean (advanced)
+      "use_incremental_symlinks", // Switch if incremental symlinks should be used : boolean (advanced)
+      "show_server_updates", // Switch if server updates should be shown : boolean (advanced)
+      // Don't add
+      "internet_expect_endpoint", // Expect endpoint for internet backups : string (don't add)
+    ] as const;
+  }
+
+  // Get list of mail server settings
+  mailSettingsList = () => {
+    return [
+      "mail_servername", // Name of the mail server : string
+      "mail_serverport", // Port of the mail server : integer number (port range 1-65535)
+      "mail_username", // Username for the mail server : string
+      "mail_password", // Password for the mail server : string (password)
+      "mail_from", // Sender address for the mail server : string (with @ in it)
+      "mail_ssl_only", // Switch if SSL should be used to connect to server: boolean
+      "mail_check_certificate", // Switch if SSL certificate should be checked: boolean
+      "mail_use_smtps", // Switch if SMTPS should be used (instead of STARTTLS): boolean
+      "mail_admin_addrs" // List of email addresses to send mails to: string (comma/semicolon separated list)
+    ];
+  }
+
+  // Get list of client internet server settings
+  internetSettingsList = () => {
+    return [
+      "internet_server",
+      "internet_server_proxy"
+    ];
+  }
+
+  // Get list of LDAP server settings
+  ldapSettingsList = () => {
+    return [
+      "ldap_login_enabled",
+      "ldap_server_name",
+      "ldap_server_port",
+      "ldap_username_prefix",
+      "ldap_username_suffix",
+      "ldap_group_class_query",
+      "ldap_group_key_name",
+      "ldap_class_key_name",
+      "ldap_group_rights_map",
+      "ldap_class_rights_map",
+      "testusername",
+      "testpassword"
+    ];
+  }
+
+  // Get list of settings where the group, server and client settings can be merged
+  mergableSettingsList = () => {
+    return [
+      "virtual_clients",
+      "exclude_files",
+      "include_files",
+      "default_dirs",
+      "image_letters",
+      "vss_select_components",
+      "archive",
+      "ransomware_canary_paths",
+      "backup_dest_params",
+      "backup_dest_secret_params"
+    ];
+  }
+
+  // Get list of settings that can be modified on the client
+  clientSettingsList = () => {
+    return [
+      "update_freq_incr",
+      "update_freq_full",
+      "update_freq_image_incr",
+      "update_freq_image_full",
+      "max_file_incr",
+      "min_file_incr",
+      "max_file_full",
+      "min_file_full",
+      "min_image_incr",
+      "max_image_incr",
+      "min_image_full",
+      "max_image_full",
+      "startup_backup_delay",
+      "computername",
+      "virtual_clients",
+      "exclude_files",
+      "include_files",
+      "default_dirs",
+      "image_letters",
+      "internet_speeds",
+      "local_speed",
+      "internet_mode_enabled",
+      "internet_full_file_backups",
+      "internet_image_backups",
+      "internet_compress",
+      "internet_encrypt",
+      "internet_connect_always",
+      "vss_select_components",
+      "local_compress",
+      "local_encrypt"
+    ];
+  }
+
+  // Get client settings for client with id `clientid`
+  getClientSettings = async (clientid: ClientIdType) => {
+    const resp = await this.fetchData({ sa: "clientsettings", t_clientid: "" + clientid }, "settings");
+    return resp as ClientSettings;
+  }
+
+  // Save client settings
+  saveClientSettings = async (
+    clientid: ClientIdType,
+    settings: Partial<ClientSettings> & {
+      settings: ClientSettings['settings']
+    },
+  ) => {
+    const params: Record<string, string> = { sa: "clientsettings_save", t_clientid: "" + clientid };
+    for (const [key, value] of Object.entries(settings.settings)) {
+      if (typeof value == "object") {
+        const v = (value as ClientSettingState);
+        params[key] = v.value.toString();
+        if (typeof v.use != "undefined") {
+          params[key + ".use"] = v.use.toString();
+        }
+      }
+      else {
+        params[key] = value.toString();
+      }
     }
-
-    // Get list of general server settings
-    generalSettingsList = () => {
-      return [
-        "backupfolder", // Folder where backups are stored : string
-        "no_images", // Switch if image backups should be disabled : boolean
-        "no_file_backups", // Switch if file backups should be disabled : boolean
-        "autoshutdown", // Switch if autoshutdown should be enabled : boolean
-        "download_client", // Switch if downloading client should be enabled : boolean
-        "autoupdate_clients", // Switch if autoupdate of clients should be enabled : boolean
-        "max_sim_backups", // Maximum number of simultaneous backups : integer number
-        "max_active_clients", // Maximum number of active clients : integer number
-        "tmpdir", // Temporary directory for backups : string
-        "cleanup_window", // Time window for cleanup : string
-        "backup_database", // Switch if nightly backup of database should be enabled : boolean
-        "global_local_speed", // Global local speed limit: speed (MBit/s)
-        "global_internet_speed", // Global internet speed limit: speed (MBit/s)
-        "update_stats_cachesize", // Size of the cache for statistics : integer number (MiBytes)
-        "global_soft_fs_quota", // Global soft filesystem quota: size (percentage or size in bytes)
-        "server_url", // URL of the server : string/URL
-        "internet_server_bind_port", // Non-default port to bind to for internet backups : integer number (port range 1-65535)
-        // Advanced
-        "use_tmpfiles", // Switch if tmpfiles should be used : boolean (advanced)
-        "use_tmpfiles_images", // Switch if tmpfiles should be used for images : boolean (advanced)
-        "use_incremental_symlinks", // Switch if incremental symlinks should be used : boolean (advanced)
-        "show_server_updates", // Switch if server updates should be shown : boolean (advanced)
-        // Don't add
-        "internet_expect_endpoint", // Expect endpoint for internet backups : string (don't add)
-        ] as const;
-    }
-
-    // Get list of mail server settings
-    mailSettingsList = () => {
-      return [
-        "mail_servername", // Name of the mail server : string
-        "mail_serverport", // Port of the mail server : integer number (port range 1-65535)
-        "mail_username", // Username for the mail server : string
-        "mail_password", // Password for the mail server : string (password)
-        "mail_from", // Sender address for the mail server : string (with @ in it)
-        "mail_ssl_only", // Switch if SSL should be used to connect to server: boolean
-        "mail_check_certificate", // Switch if SSL certificate should be checked: boolean
-        "mail_use_smtps", // Switch if SMTPS should be used (instead of STARTTLS): boolean
-        "mail_admin_addrs" // List of email addresses to send mails to: string (comma/semicolon separated list)
-        ];
-    }
-
-    // Get list of client internet server settings
-    internetSettingsList = () => {
-      return [
-        "internet_server",
-        "internet_server_proxy"
-        ];
-    }
-
-    // Get list of LDAP server settings
-    ldapSettingsList = () => {
-      return [
-        "ldap_login_enabled",
-        "ldap_server_name",
-        "ldap_server_port",
-        "ldap_username_prefix",
-        "ldap_username_suffix",
-        "ldap_group_class_query",
-        "ldap_group_key_name",
-        "ldap_class_key_name",
-        "ldap_group_rights_map",
-        "ldap_class_rights_map",
-        "testusername",
-        "testpassword"
-        ];
-    }
-
-    // Get list of settings where the group, server and client settings can be merged
-    mergableSettingsList = () => {
-      return [
-        "virtual_clients",
-        "exclude_files",
-        "include_files",
-        "default_dirs",
-        "image_letters",
-        "vss_select_components",
-        "archive",
-        "ransomware_canary_paths",
-        "backup_dest_params",
-        "backup_dest_secret_params"
-        ];
-    }
-
-    // Get list of settings that can be modified on the client
-    clientSettingsList = () => {
-      return [
-        "update_freq_incr",
-        "update_freq_full",
-        "update_freq_image_incr",
-        "update_freq_image_full",
-        "max_file_incr",
-        "min_file_incr",
-        "max_file_full",
-        "min_file_full",
-        "min_image_incr",
-        "max_image_incr",
-        "min_image_full",
-        "max_image_full",
-        "startup_backup_delay",
-        "computername",
-        "virtual_clients",
-        "exclude_files",
-        "include_files",
-        "default_dirs",
-        "image_letters",
-        "internet_speeds",
-        "local_speed",
-        "internet_mode_enabled",
-        "internet_full_file_backups",
-        "internet_image_backups",
-        "internet_compress",
-        "internet_encrypt",
-        "internet_connect_always",
-        "vss_select_components",
-        "local_compress",
-        "local_encrypt"
-        ];
-    }
-
-
+    const resp = await this.fetchData(params, "settings");
+    const ret = resp as ClientSettings;
+    return ret;
+  }
 }
 
 export default UrBackupServer;
