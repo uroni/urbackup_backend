@@ -63,61 +63,45 @@ Section "install"
 	
 	SetOutPath "$TEMP"
 	${If} ${RunningX64}
-		; Push $R0
-   		; ClearErrors
-   		; ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{DA5E371C-6333-3D8A-93A4-6FD5B20BCC6E}" "Version"
-	   	; IfErrors 0 VSRedistInstalled64
-		; inetc::get "http://www.urserver.de/vc10/vcredist_x64.exe" $TEMP\vcredist_x64.exe
-		; Pop $0
-		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
-		; Delete '$TEMP\vcredist_x64.exe'
-; VSRedistInstalled64:
-		File "..\deps\redist\vc_redist_2019.x64.exe"
-		ExecWait '"$TEMP\vc_redist_2019.x64.exe" /q /norestart' $0
+		File "..\deps\redist\vc_redist_2022.x64.exe"
+		ExecWait '"$TEMP\vc_redist_2022.x64.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
 		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
-			ExecWait '"$TEMP\vc_redist_2019.x64.exe" /passive /norestart' $0
+			ExecWait '"$TEMP\vc_redist_2022.x64.exe" /passive /norestart' $0
 			${If} $0 != '0'
 			${If} $0 != '3010'
-				MessageBox MB_OK "Unable to install Visual Studio 2019 runtime. UrBackup needs that runtime."
+			${If} $0 != '1638'
+				MessageBox MB_OK "Unable to install Visual Studio 2022 runtime. UrBackup needs that runtime."
 				Quit
 			${EndIf}
 			${EndIf}
+			${EndIf}
 		${EndIf}
 		${EndIf}
 		${EndIf}
 		${EndIf}
 		${EndIf}
-		${EndIf}
-			
+		${EndIf}			
 	${Else}
-		; ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\10.0\VC\Runtimes\x86" 'Installed'
-		; ${If} $0 != '1'
-			; ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\10.0\VC\VCRedist\x86" 'Installed'
-			; ${If} $0 != '1'
-				; inetc::get "http://www.urserver.de/vc10/vcredist_x86.exe" $TEMP\vcredist_x86.exe
-				; Pop $0
-				; ExecWait '"$TEMP\vcredist_x86.exe" /q'   
-				; Delete '$TEMP\vcredist_x86.exe'
-			; ${EndIf}
-		; ${EndIf}
-		File "..\deps\redist\vc_redist_2019.x86.exe"
-		ExecWait '"$TEMP\vc_redist_2019.x86.exe" /q /norestart' $0
+		File "..\deps\redist\vc_redist_2022.x86.exe"
+		ExecWait '"$TEMP\vc_redist_2022.x86.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
 		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
-			ExecWait '"$TEMP\vc_redist_2019.x86.exe"  /passive /norestart' $0
+			ExecWait '"$TEMP\vc_redist_2022.x86.exe"  /passive /norestart' $0
 			${If} $0 != '0'
 			${If} $0 != '3010'
-				MessageBox MB_OK "Unable to install Visual Studio 2019 runtime. UrBackup needs that runtime."
+			${If} $0 != '1638'
+				MessageBox MB_OK "Unable to install Visual Studio 2022 runtime. UrBackup needs that runtime."
 				Quit
+			${EndIf}
 			${EndIf}
 			${EndIf}
 		${EndIf}
