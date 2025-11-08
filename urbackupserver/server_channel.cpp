@@ -1215,10 +1215,25 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				&& file_extension!="raw")
 				skip=512*512;
 
-			if (is_disk_mbr(res[0]["path"] + ".mbr"))
+			const bool whole_disk = is_disk_mbr(res[0]["path"] + ".mbr");
+			if (whole_disk)
 				skip = 0;
 
 			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
+
+			if (!whole_disk && imgsize + skip > 2LL * 1024 * 1024 * 1024 * 1024)
+			{
+				// Get size of volume without GPT footer for images > 2TiB
+				bool gpt_style = false;
+				const std::vector<IFSImageFactory::SPartition> parts = image_fak->readPartitions(vhdfile, 0, gpt_style);
+				if (gpt_style && parts.size() == 1
+					&& parts[0].length < imgsize && parts[0].length >= imgsize - 1*1024*1024 - 2*512)
+				{
+					Server->Log("Using volume size " + convert(parts[0].length) + " from GPT (image file size " + convert(imgsize) + ")", LL_INFO);
+					imgsize = parts[0].length;
+				}
+			}
+
 			_i64 r=little_endian(imgsize);
 			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
 			{
