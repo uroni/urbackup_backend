@@ -56,6 +56,8 @@ then
     exit 1
 fi
 
+add_to_updatedb_conf "/mnt/urbackup_snaps"
+
 echo "Snapshotting device $DEVICE via dattobd..."
 
 NUM=0

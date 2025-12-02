@@ -43,6 +43,8 @@ then
     exit 1
 fi
 
+add_to_updatedb_conf "/mnt/urbackup_snaps"
+
 echo "Snapshotting device $DEVICE via dm..."
 
 if ! dmsetup table "$DEVICE" > /dev/null 2>&1
