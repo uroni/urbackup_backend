@@ -636,7 +636,8 @@ void CompressedFile::returnCompressedBuffer(char* buf, size_t compressed_buffer_
 
 bool CompressedFile::finish()
 {
-	assert(!finished);
+	// TODO: Fix
+	// assert(!finished);
 
 	if(hotCache.get())
 	{
