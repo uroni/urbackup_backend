@@ -528,6 +528,8 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 	{
 		error=true;
 		Server->Log("Error while writing compressed data to file", LL_ERROR);
+		IScopedLock lock(mutex.get());
+		returnCompressedBuffer(compBuffer, compBufferIdx);
 		return;
 	}
 
