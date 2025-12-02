@@ -379,7 +379,6 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 #ifndef NO_ZSTD_COMPRESSION
 	else if (mode == mode_zstd)
 	{
-		rdecomp = blocksize;
 		const size_t rc = ZSTD_decompress(buf, blocksize,
 			compressedBuffer.data(), compressedSize);
 
@@ -388,6 +387,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 			Server->Log(std::string("Error while decompressing file (zstd). Error code ") + ZSTD_getErrorName(rc), LL_ERROR);
 			return false;
 		}
+		rdecomp = rc;
 	}
 #endif
 	else
