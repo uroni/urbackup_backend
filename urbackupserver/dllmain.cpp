@@ -88,6 +88,7 @@ SStartupStatus startup_status;
 #include "Mailer.h"
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/settings.h"
+#include "../urbackupcommon/filelist_utils.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -676,6 +677,60 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			Server->deleteFile("verification_result.txt");
 			exit(0);
 		}
+	}
+
+	std::string list_filelist = Server->getServerParameter("list_filelist");
+	if (!list_filelist.empty())
+	{
+		IFile* f = Server->openFile(list_filelist, MODE_READ);
+
+		if (!f)
+		{
+			Server->Log("Error opening filelist at " + list_filelist);
+			exit(2);
+		}
+
+		char buffer[4096];
+		_u32 read;
+
+		FileListParser list_parser;
+	
+		std::string path;
+		SFile cf;
+
+		while ((read = f->Read(buffer, 4096)) > 0)
+		{
+			for (size_t i = 0; i < read; ++i)
+			{				
+				bool b = list_parser.nextEntry(buffer[i], cf, NULL);
+				if (b)
+				{
+					if (cf.isdir)
+					{
+						if (cf.name == "..")
+						{
+							if (path.empty())
+							{
+								Server->Log("Path is empty");
+								exit(1);
+							}
+							path = ExtractFilePath(path);
+						}
+						else
+						{
+							path += os_file_sep() + cf.name;
+							Server->Log("Folder: " + path);
+						}
+					}
+					else
+					{
+						Server->Log("File: " + path + "/"+ cf.name+" Size: " + PrettyPrintBytes(cf.size));
+					}
+				}
+			}
+		}
+
+		exit(0);
 	}
 
 	Server->destroyAllDatabases();
