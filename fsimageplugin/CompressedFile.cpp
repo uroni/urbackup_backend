@@ -718,6 +718,58 @@ _u32 CompressedFile::writeToFile(int64 offset, const char* buffer, _u32 bsize)
 	return written;
 }
 
+void CompressedFile::resetSparseExtentIter()
+{
+}
+
+IFsFile::SSparseExtent CompressedFile::nextSparseExtent()
+{
+	return SSparseExtent();
+}
+
+bool CompressedFile::Resize(int64 new_size, bool set_sparse)
+{
+	IScopedLock lock(mutex.get());
+	if (new_size > filesize)
+	{
+		const size_t blockIdx = static_cast<size_t>(new_size / blocksize);
+		const size_t currNumBlockOffsets = blockOffsets.size();
+		if (blockOffsets.size() <= blockIdx)
+		{
+			const size_t new_size = (blockIdx + 1) * 2;
+			blockOffsets.resize(new_size);
+			for (size_t i = currNumBlockOffsets; i < new_size; ++i)
+			{
+				blockOffsets[i] = -1;
+			}
+		}
+		filesize = new_size;
+		numBlockOffsets = (std::max)(numBlockOffsets, blockIdx + 1);
+	}
+	return true;
+}
+
+std::vector<IFsFile::SFileExtent> CompressedFile::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+{
+	more_data = false;
+	return std::vector<SFileExtent>();
+}
+
+IVdlVolCache* CompressedFile::createVdlVolCache()
+{
+	return nullptr;
+}
+
+int64 CompressedFile::getValidDataLength(IVdlVolCache* vol_cache)
+{
+	return int64();
+}
+
+IFsFile::os_file_handle CompressedFile::getOsHandle(bool release_handle)
+{
+	return os_file_handle();
+}
+
 bool CompressedFile::hasNoMagic()
 {
 	return noMagic;
