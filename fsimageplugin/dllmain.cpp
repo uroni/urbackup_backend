@@ -884,10 +884,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			else
 			{
 				std::string skip_s=Server->getServerParameter("skip");
-				int skip=1024*512;
+				int64 skip=1024*512;
 				if(!skip_s.empty())
 				{
-					skip=atoi(skip_s.c_str());
+					skip=watoi64(skip_s);
 				}
 				else if (is_disk_mbr(vhdcopy_in + ".mbr"))
 				{
@@ -940,7 +940,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 								exit(7);
 							}
 						}
-						if (!is_ok)
+						if (!is_ok && currpos + read < in->getSize())
 						{
 							Server->Log("Error reading from input file. " + os_last_error_str(), LL_ERROR);
 						}
