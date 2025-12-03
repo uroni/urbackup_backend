@@ -142,6 +142,8 @@ private:
 
 	bool has_block(bool use_parent);
 
+	void check_bat_buf();
+
 	VhdxHeader curr_header;
 	int64 curr_header_pos;
 
