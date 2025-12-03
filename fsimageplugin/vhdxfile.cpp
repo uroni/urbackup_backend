@@ -1693,6 +1693,8 @@ bool VHDXFile::syncInt(bool full)
 			}
 		}
 
+		check_bat_buf();
+
 		int64 b_idx = -1;
 		for (std::set<int64>::iterator it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
 		{
@@ -1730,6 +1732,8 @@ bool VHDXFile::syncInt(bool full)
 
 		if(stop_idx==-1)
 			pending_bat_entries.clear();
+
+		check_bat_buf();
 
 		if (fast_mode)
 		{
@@ -2167,6 +2171,8 @@ bool VHDXFile::readBat()
 			return false;
 		}
 	}
+
+	check_bat_buf();
 
 	return true;
 }
@@ -2925,4 +2931,16 @@ bool VHDXFile::has_block(bool use_parent)
 	}
 
 	return true;
+}
+
+void VHDXFile::check_bat_buf()
+{
+#ifndef NDEBUG
+	for (size_t i = 0; i < bat_buf.size(); i += sizeof(VhdxBatEntry))
+	{
+		const VhdxBatEntry* entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data() + i);
+		assert(entry->State != 5);
+		assert(entry->State != 4);
+	}
+#endif
 }
