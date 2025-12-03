@@ -1252,7 +1252,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 {
 	if (spos> dst_size)
 	{
-		if (has_error != NULL)
+		Server->Log("Error reading from VHDX file. Trying to read beyond file size at " + convert(spos) + " size=" + convert(dst_size));
+		if (has_error != NULL)		
 			*has_error = true;
 
 		return 0;
@@ -1267,13 +1268,14 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 	{
 		_u32 block = getBatEntry(spos, block_size, sector_size);
 
-		VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
+		const VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
 
 		if (bat_entry->State == PAYLOAD_BLOCK_FULLY_PRESENT)
 		{
-			_u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
+			const _u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
 
-			_u32 rc = file->Read(bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size,
+			const int64 fpos = bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size;
+			const _u32 rc = file->Read(fpos,
 				buffer + read, toread);
 
 			read += rc;
@@ -1281,6 +1283,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (rc < toread)
 			{
+				Server->Log("Error reading " + convert(toread) + " bytes from vhdx file at pos " + convert(fpos)
+					+ " read " + convert(rc) + " toread " + convert(toread) + " error: " + os_last_error_str());
 				if (has_error != NULL)
 					*has_error = true;
 
@@ -1296,7 +1300,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != NULL)
+				Server->Log("VHDX parent partially present though there is no parent pos=" + convert(spos), LL_WARNING);
+				if (has_error != NULL)				
 					*has_error = true;
 
 				return read;
@@ -1314,6 +1319,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
+				Server->Log("Unknown VHDX bat state " + convert(bat_entry->State) + " pos=" + convert(spos), LL_WARNING);
 				if (has_error != NULL)
 					*has_error = true;
 
@@ -1337,7 +1343,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 				bool set;
 				if (!isSectorSet(spos, set))
 				{
-					if (has_error != NULL)
+					Server->Log("Sector of partially present VHDX block not set pos=" + convert(spos), LL_WARNING);
+					if (has_error != NULL)					
 						*has_error = true;
 
 					return read;
@@ -1359,7 +1366,11 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != NULL)
+					Server->Log("Error reading " + convert(toread) + " bytes from vhdx file at pos "
+						+ convert(bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size) + " spos " + convert(spos) + " set " + convert(set)
+						+ " read " + convert(rc) + " toread " + convert(toread) + " error: " + os_last_error_str());
+
+					if (has_error != NULL)				
 						*has_error = true;
 
 					return read;
@@ -1375,7 +1386,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else if (bat_entry->State == PAYLOAD_BLOCK_NOT_PRESENT)
 			{
-				_u32 rc = parent->Read(spos, buffer + read, toread);
+				const _u32 rc = parent->Read(spos, buffer + read, toread, has_error);
 
 				read += rc;
 				spos += rc;
@@ -1390,6 +1401,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
+				Server->Log("Unknown VHDX bat state (with parent) " + convert(bat_entry->State) + " pos=" + convert(spos), LL_WARNING);
+
 				if (has_error != NULL)
 					*has_error = true;
 
