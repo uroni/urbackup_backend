@@ -1204,19 +1204,14 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 
 bool VHDXFile::setBackingFileSize(_i64 fsize)
 {
-	if (file != backing_file)
-	{
-		return false;
-	}
-
 	fsize += 1 * 1024 * 1024;
 	fsize += bat_region.Length;
 	fsize += curr_header.LogLength;
 	fsize += meta_table_region.Length;
 
-	if (fsize > backing_file->Size())
+	if (fsize > file->Size())
 	{
-		return backing_file->Resize(fsize, false);
+		return file->Resize(fsize, false);
 	}	
 
 	return false;
@@ -1910,8 +1905,7 @@ bool VHDXFile::createNew()
 		return false;
 	}
 
-	if (file == backing_file &&
-		!backing_file->Resize(bat_region.FileOffset + bat_region.Length + allocate_size_add_size, false))
+	if (!file->Resize(bat_region.FileOffset + bat_region.Length + allocate_size_add_size, false))
 	{
 		Server->Log("Error writing new bat region. " + os_last_error_str(), LL_WARNING);
 		return false;
@@ -2023,10 +2017,9 @@ bool VHDXFile::replayLog()
 	}
 	
 	int64 new_fsize = -1;
-	if (file->Size() < head_entry.new_fsize &&
-		file == backing_file)
+	if (file->Size() < head_entry.new_fsize)
 	{
-		if (backing_file->Resize(head_entry.new_fsize, false))
+		if (file->Resize(head_entry.new_fsize, false))
 			new_fsize = head_entry.new_fsize;
 	}
 
@@ -2470,8 +2463,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 	{
 		allocated_size = new_pos + block_size + allocate_size_add_size;
 
-		if (file == backing_file &&
-			!backing_file->Resize(allocated_size, false))
+		if (!file->Resize(allocated_size, false))
 		{
 			Server->Log("Error resizing backing file to new allocated size " 
 				+ convert(allocated_size) + ". " + os_last_error_str(),
