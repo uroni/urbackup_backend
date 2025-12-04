@@ -2353,7 +2353,7 @@ namespace
 		}
 
 		std::string dl_devnum;
-		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
+		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", "mmcblk", NULL};
 
 		for (const char* const * devname = devnames; *devname != NULL; ++devname)
 		{
@@ -2550,6 +2550,11 @@ void parse_devnum_test()
 	assert(deviceNumber == 2);
 	assert(partNumber == 3);
 	assert(dev == "/dev/loop2");
+	assert(parseDevicePartNumber("/dev/mmcblk0p45", dev, deviceNumber, partNumber));
+	assert(deviceNumber == 0);
+	assert(partNumber == 45);
+	assert(dev == "/dev/mmcblk0");
+	
 }
 
 bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
