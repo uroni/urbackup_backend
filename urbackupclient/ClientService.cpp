@@ -2295,7 +2295,8 @@ namespace
 	bool parseDevicePartNumber(const std::string& volfn, std::string& dev, int& DeviceNumber, int& PartNumber)
 	{
 		if (next(volfn, 0, "/dev/mapper/")
-			|| next(volfn, 0, "/dev/dm-") )
+			|| next(volfn, 0, "/dev/dm-")
+			|| (next(volfn, 0, "/dev/") && volfn.find('/', 5) != std::string::npos) )
 		{
 			std::string dm_table;
 			//TODO: Use ioctl here
