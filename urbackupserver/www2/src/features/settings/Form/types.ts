@@ -3,7 +3,7 @@ import type { ZodMiniType } from "zod/v4-mini";
 
 export interface BaseField<Names> {
   name: Names;
-  type: "checkbox" | "number" | "text" | "password" | "email";
+  type: "checkbox" | "number" | "text" | "password" | "email" | "custom";
   validation?: (options?: { label?: string }) => ZodMiniType;
   description?: React.ReactNode;
   hint?: string;

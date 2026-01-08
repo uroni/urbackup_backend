@@ -1,0 +1,31 @@
+.secondary-form {
+  --flow-space: 2.5em;
+}
+
+.secondary-form > div {
+  --flow-space: 1.5em;
+}
+
+.secondary-form div:has(> h3) {
+  --flow-space: 0.5em;
+}
+
+.description {
+  color: var(--colorNeutralForeground2);
+}
+
+.mergeable:has([type="checkbox"]) {
+  padding-block: 0;
+}
+
+.mergeable__row {
+  --repel-wrap: nowrap;
+}
+
+.checkbox-wrapper:has([type="checkbox"]) {
+  --margin-inline-start: 0;
+
+  & *:has(> [type="checkbox"]) {
+    margin-inline-start: -6px;
+  }
+}

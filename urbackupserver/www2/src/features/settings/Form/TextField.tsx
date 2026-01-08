@@ -161,19 +161,15 @@ export function TextFieldUncontrolled({
       orientation="horizontal"
       className={styles.field}
     >
-      <div className={styles["reset-input"]}>
-        <Button
-          appearance="subtle"
-          icon={<ArrowResetRegular />}
-          data-hidden={value == defaultValue}
-          onClick={() => {
-            const value = String(defaultValue);
+      <ResettableInput
+        hidden={value == defaultValue}
+        onReset={() => {
+          const value = String(defaultValue);
 
-            setValue(value);
-          }}
-        >
-          Reset
-        </Button>
+          setValue(value);
+        }}
+      >
+        Reset
         <Input
           name={name}
           type={type}
@@ -183,7 +179,31 @@ export function TextFieldUncontrolled({
             setValue(value);
           }}
         />
-      </div>
+      </ResettableInput>
     </Field>
+  );
+}
+
+export function ResettableInput({
+  hidden,
+  onReset,
+  children,
+}: {
+  hidden: boolean;
+  onReset: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles["reset-input"]}>
+      <Button
+        appearance="subtle"
+        icon={<ArrowResetRegular />}
+        data-hidden={hidden}
+        onClick={onReset}
+      >
+        Reset
+      </Button>
+      {children}
+    </div>
   );
 }

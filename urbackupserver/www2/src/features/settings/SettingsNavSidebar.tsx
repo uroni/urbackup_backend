@@ -7,11 +7,11 @@ import {
 } from "@fluentui/react-components";
 import { useNavigate } from "react-router-dom";
 
-import { type Tab, useSettingsTabs } from "./useSettingsTabs";
+import { type TabItem, useSettingsTabs } from "./useSettingsTabs";
 import styles from "./SettingsNavSidebar.module.css";
 
 export const SettingsNavSidebar = () => {
-  const { settingsTabs, selectedTab, onTabSelect } = useSettingsTabs();
+  const { selectedTab, onTabSelect } = useSettingsTabs(SETTINGS_TABS);
 
   const navigate = useNavigate();
 
@@ -25,7 +25,7 @@ export const SettingsNavSidebar = () => {
         }}
       >
         <TabList selectedValue={selectedTab} vertical onTabSelect={onTabSelect}>
-          <SettingsTabs tabs={settingsTabs} />
+          <SettingsTabs tabs={SETTINGS_TABS} />
         </TabList>
       </div>
     </div>
@@ -36,7 +36,7 @@ function SettingsTabs({
   tabs,
   baseValue = "",
 }: {
-  tabs: Tab[];
+  tabs: TabItem[];
   baseValue?: string;
 }) {
   return (
@@ -55,7 +55,6 @@ function SettingsTabs({
                 {st.title}
               </h4>
               <SettingsTabs tabs={st.children} baseValue={`${st.value}/`} />
-              {st?.afterChildren && st.afterChildren}
             </Fragment>
           );
         }
@@ -75,3 +74,52 @@ function SettingsTabs({
     </>
   );
 }
+
+const SETTINGS_TABS: TabItem[] = [
+  {
+    value: "server",
+    title: "Server",
+  },
+  {
+    value: "mail",
+    title: "Mail",
+  },
+  {
+    value: "ldap-ad",
+    title: "LDAP/AD",
+  },
+  {
+    value: "users",
+    title: "Users",
+  },
+  {
+    value: "clients",
+    title: "Clients",
+  },
+  {
+    value: "general",
+    title: "General",
+    children: [
+      {
+        value: "backups",
+        title: "Backups",
+      },
+      {
+        value: "client",
+        title: "Client",
+      },
+      {
+        value: "archive",
+        title: "Archive",
+      },
+      {
+        value: "alerts",
+        title: "Alerts",
+      },
+      {
+        value: "advanced",
+        title: "Advanced",
+      },
+    ],
+  },
+];

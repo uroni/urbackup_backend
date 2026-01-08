@@ -1287,7 +1287,7 @@ class UrBackupServer {
       "backup_dest_params",
       "backup_dest_secret_params",
       "backup_unlocked_window"
-    ];
+    ]  as const
   }
 
   // Get list of general server settings
@@ -1410,7 +1410,7 @@ class UrBackupServer {
       "vss_select_components",
       "local_compress",
       "local_encrypt"
-    ];
+    ] as const;
   }
 
   // Get client settings for client with id `clientid`

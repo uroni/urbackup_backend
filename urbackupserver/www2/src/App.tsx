@@ -213,10 +213,28 @@ export const router = createHashRouter([
               {
                 path: ":clientId",
                 lazy: async () => {
-                  const { Client } = await import(
-                    "./features/settings/Clients/Client"
+                  const { FileImageBackups } = await import(
+                    "./features/settings/Clients/FileImageBackups/FileImageBackups"
                   );
-                  return { Component: Client };
+                  return { Component: FileImageBackups };
+                },
+              },
+              {
+                path: ":clientId/backups",
+                lazy: async () => {
+                  const { FileImageBackups } = await import(
+                    "./features/settings/Clients/FileImageBackups/FileImageBackups"
+                  );
+                  return { Component: FileImageBackups };
+                },
+              },
+              {
+                path: ":clientId/permissions",
+                lazy: async () => {
+                  const { Permissions } = await import(
+                    "./features/settings/Clients/Permissions"
+                  );
+                  return { Component: Permissions };
                 },
               },
             ],

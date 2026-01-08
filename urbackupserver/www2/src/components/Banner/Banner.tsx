@@ -16,7 +16,7 @@ import {
   messageStore,
 } from "./messageStore";
 
-export function Banner() {
+export function Banner({ className }: { className?: string }) {
   const snap = useSnapshot(messageStore);
 
   useEffect(() => {
@@ -32,6 +32,7 @@ export function Banner() {
       key={message.id}
       message={message}
       onClick={() => dismissMessage(message.id)}
+      className={className}
     />
   ));
 }
@@ -39,15 +40,18 @@ export function Banner() {
 export function SingleBanner({
   message,
   onClick,
+  className,
 }: {
   message: Omit<Message, "id">;
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <MessageBar
       intent={message.intent}
       role={message.intent === "error" ? "alert" : "status"}
       layout="multiline"
+      className={className}
     >
       <MessageBarBody>
         <MessageBarTitle>{message.title}</MessageBarTitle>

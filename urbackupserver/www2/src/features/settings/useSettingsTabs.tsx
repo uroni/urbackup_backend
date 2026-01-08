@@ -3,92 +3,39 @@ import { SelectTabEvent, SelectTabData } from "@fluentui/react-components";
 
 import { router } from "../../App";
 
-export interface Tab {
+export interface TabItem {
   value: string;
   title: React.ReactNode;
-  children?: Tab[];
-  afterChildren?: React.ReactNode;
+  children?: TabItem[];
 }
 
 const BASE_SETTINGS_URL = "/settings";
 
-export function useSettingsTabs() {
-  const [selectedTab, setSelectedTab] = useState(() =>
-    getSelectedPage(BASE_SETTINGS_TABS),
-  );
+export function useSettingsTabs(tabs: TabItem[], baseURL = BASE_SETTINGS_URL) {
+  const [selectedTab, setSelectedTab] = useState(() => getSelectedPage(tabs));
 
   const onTabSelect = async (_: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as string);
 
-    const nt = `${BASE_SETTINGS_URL}/${data.value}`;
+    const nt = `${baseURL}/${data.value}`;
     await router.navigate(nt);
   };
 
-  const settingsTabs = BASE_SETTINGS_TABS;
-
   return {
-    settingsTabs,
     selectedTab,
     onTabSelect,
   };
 }
 
-function getSelectedPage(settingsTabs: Tab[]) {
+function getSelectedPage(settingsTabs: TabItem[]) {
   const page = window.location.hash;
   const settingsPage = page.replace(/#\/\w+\/?/, "");
 
-  if (!settingsPage) {
+  const pageInTabs = settingsTabs.find((st) => st.value === settingsPage);
+
+  if (!pageInTabs || !settingsPage) {
     return settingsTabs[0].value;
   }
 
   return settingsPage;
 }
-
-export const BASE_SETTINGS_TABS: Tab[] = [
-  {
-    value: "server",
-    title: "Server",
-  },
-  {
-    value: "mail",
-    title: "Mail",
-  },
-  {
-    value: "ldap-ad",
-    title: "LDAP/AD",
-  },
-  {
-    value: "users",
-    title: "Users",
-  },
-  {
-    value: "clients",
-    title: "Clients",
-  },
-  {
-    value: "general",
-    title: "General",
-    children: [
-      {
-        value: "backups",
-        title: "Backups",
-      },
-      {
-        value: "client",
-        title: "Client",
-      },
-      {
-        value: "archive",
-        title: "Archive",
-      },
-      {
-        value: "alerts",
-        title: "Alerts",
-      },
-      {
-        value: "advanced",
-        title: "Advanced",
-      },
-    ],
-  },
-];

@@ -1,13 +1,11 @@
-import { Body2 } from "@fluentui/react-components";
+import { Body2, Title3 } from "@fluentui/react-components";
 import { useParams } from "react-router-dom";
 
-import { FormCard, FormContainer } from "../Form/Form";
-import { FormSection } from "../Form/FormSection";
-import { mailFields, mailFormSchema } from "../Mail/mailForm";
+import { FormContainer } from "../Form/Form";
 import { useSettings } from "../useSettings";
 import styles from "./Clients.module.css";
 
-export function Client() {
+export function Permissions() {
   const { clientId = "" } = useParams();
 
   const { navitems } = useSettings();
@@ -22,17 +20,8 @@ export function Client() {
     <FormContainer>
       <h1>
         <Body2 className={styles["client-name"]}>{client?.name}</Body2>
-        <div>Backups</div>
+        <Title3>Permissions</Title3>
       </h1>
-
-      <FormCard>
-        <FormSection
-          fields={mailFields}
-          schema={mailFormSchema}
-          initialFormState={{}}
-          onSubmit={() => null}
-        />
-      </FormCard>
     </FormContainer>
   );
 }

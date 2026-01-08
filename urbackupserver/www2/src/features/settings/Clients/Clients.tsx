@@ -7,7 +7,7 @@ import {
   Tab,
   TabList,
 } from "@fluentui/react-components";
-import { Link, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useParams } from "react-router-dom";
 
 import { useSettings } from "../useSettings";
 import styles from "./Clients.module.css";
@@ -16,9 +16,17 @@ import {
   filterBySearch,
   useFilteredBySearch,
 } from "../../../components/SearchBox";
+import { useSettingsTabs } from "../useSettingsTabs";
 
 export function Clients() {
   const { navitems } = useSettings();
+
+  const { clientId = "" } = useParams();
+
+  const { selectedTab, onTabSelect } = useSettingsTabs(
+    CLIENT_TABS,
+    `/settings/clients/${clientId}`,
+  );
 
   const { setSearch, filteredItems } = useFilteredBySearch<SettingsClients>(
     navitems.clients,
@@ -41,13 +49,16 @@ export function Clients() {
           <div id="client-navigation" className="visually-hidden">
             Client menu
           </div>
-          <TabList defaultSelectedValue="backups">
-            <Tab value="backups">Backups</Tab>
-            <Tab value="permissions">Permissions</Tab>
-            <Tab value="client">Client</Tab>
-            <Tab value="archive">Archive</Tab>
-            <Tab value="alerts">Alerts</Tab>
-            <Tab value="advanced">Advanced</Tab>
+          <TabList
+            selectedValue={selectedTab}
+            onTabSelect={onTabSelect}
+            className={styles.tablist}
+          >
+            {CLIENT_TABS.map(({ value, title }) => (
+              <Tab key={value} value={value}>
+                {title}
+              </Tab>
+            ))}
           </TabList>
         </nav>
         <section className={styles["client-content"]}>
@@ -84,7 +95,7 @@ function ClientList({ clients }: { clients: SettingsClients[] }) {
       )}
       {clients.map((client) => (
         <li key={client.id} className={styles.client}>
-          <Link to={`./${client.id}`}>
+          <NavLink to={`./${client.id}/backups`}>
             <Body1>{client.name}</Body1>
             {client.override && (
               <div>
@@ -92,7 +103,7 @@ function ClientList({ clients }: { clients: SettingsClients[] }) {
                 <Badge shape="circular" size="tiny" />
               </div>
             )}
-          </Link>
+          </NavLink>
         </li>
       ))}
     </>
@@ -131,3 +142,38 @@ function filterClientData(item: SettingsClients, search: string) {
 
   return filterBySearch(search.toLowerCase(), searchableFields);
 }
+
+const CLIENT_TABS = [
+  {
+    value: "backups",
+    title: "Backups",
+  },
+  {
+    value: "permissions",
+    title: "Permissions",
+  },
+  {
+    value: "client",
+    title: "Client",
+  },
+  {
+    value: "archive",
+    title: "Archive",
+  },
+  {
+    value: "alerts",
+    title: "Alerts",
+  },
+  {
+    value: "local-passive",
+    title: "Local/Passive Client",
+  },
+  {
+    value: "internet-active",
+    title: "Internet/Active Client",
+  },
+  {
+    value: "advanced",
+    title: "Advanced",
+  },
+];

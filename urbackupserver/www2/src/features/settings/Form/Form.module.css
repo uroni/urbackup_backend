@@ -38,3 +38,14 @@
   display: block;
   margin-block-start: var(--spacingXL);
 }
+
+.form > :has([type="checkbox"]) {
+  --margin-inline-start: -8px;
+  /* Fix alignment with the text control labels */
+  margin-inline-start: var(--margin-inline-start);
+}
+
+input[readonly] {
+  background-color: var(--colorNeutralCardBackground);
+  color: var(--colorNeutralForeground2);
+}

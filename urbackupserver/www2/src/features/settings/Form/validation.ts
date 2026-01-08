@@ -11,7 +11,7 @@ export const VALIDATION_MESSAGES = {
 export const requiredStringValidation = (message?: string) =>
   z.string().check(z.minLength(1, message));
 
-const stringToInt = (message?: string, minLength = 0) =>
+export const stringToInt = (message?: string, minLength = 0) =>
   z.pipe(
     z.string().check(z.minLength(minLength, message)),
     z.transform(Number),

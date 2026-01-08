@@ -1,5 +1,5 @@
 .wrapper {
-  --size-sidebar: 48ch;
+  --size-sidebar: 32ch;
 
   display: flex;
   min-height: 100vh;
@@ -8,6 +8,7 @@
 
 .content {
   width: 100%;
+  max-height: 100vh;
 }
 
 .content nav {
@@ -19,7 +20,7 @@
   flex-grow: 999;
 
   padding-inline: 20pt;
-  padding-block: 20pt 40pt;
+  padding-block: 20pt 90pt;
   margin-inline: auto;
   width: 100%;
   overflow: auto;
@@ -32,6 +33,7 @@
 
   flex-basis: var(--size-sidebar);
   flex-grow: 0;
+  flex-shrink: 0;
 
   box-shadow: var(--shadow4);
   max-height: 100vh;
@@ -53,13 +55,16 @@
   padding: var(--spacingS) var(--spacingM);
   text-decoration: none;
   border-block-start: 1px solid var(--border-color);
+
+  text-decoration-skip-ink: auto;
+  color: currentColor;
 }
 
 .client a:nth-child(2) {
   flex-shrink: 0;
 }
 
-.client a:is(:hover, :focus) {
+.client a:is(:hover, :focus, [aria-current="page"]) {
   background-color: var(--colorNeutralBackground3);
 }
 
@@ -79,7 +84,27 @@
 }
 
 .client-name {
-  display: inline-flex;
+  display: block;
   color: var(--colorBrandForeground2);
   margin-block-end: var(--spacingS);
+}
+
+.subtitle {
+  display: block;
+}
+
+h1 + .subtitle {
+  --flow-space: 0.75em;
+
+  display: block;
+}
+
+.tablist {
+  flex-wrap: wrap;
+}
+
+.sticky-banner {
+  position: sticky;
+  top: 0;
+  z-index: 99;
 }

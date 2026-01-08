@@ -1,0 +1,12 @@
+.dropdown {
+  min-width: 0;
+  width: "10ch";
+}
+
+.listbox {
+  min-width: max-content;
+}
+
+.option :nth-child(2) {
+  color: var(--colorNeutralForeground3);
+}

@@ -39,6 +39,13 @@
   body {
     overflow: hidden;
   }
+
+  code {
+    padding: var(--spacingXXS) var(--spacingXS);
+    display: inline-block;
+    background-color: var(--colorNeutralBackgroundAlpha);
+    border-radius: var(--spacingXXS);
+  }
 }
 
 @layer composition {
@@ -97,7 +104,7 @@
   */
   .repel {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: var(--repel-wrap, wrap);
     justify-content: space-between;
     align-items: var(--repel-vertical-alignment, center);
     gap: var(--gutter);
@@ -147,6 +154,10 @@
   }
 
   /* Spacing */
+  .flow-s {
+    --flow-space: var(--spacingS);
+  }
+
   .flow-xs {
     --flow-space: var(--spacingXS);
   }
