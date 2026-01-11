@@ -1202,16 +1202,38 @@ namespace
 		SetThreadExecutionState(ES_CONTINUOUS);
 	}
 
+	typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+	bool IsWindows11()
+	{
+		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+		if (!hMod)
+			return false;
+
+		RtlGetVersionPtr pRtlGetVersion =
+			reinterpret_cast<RtlGetVersionPtr>(GetProcAddress(hMod, "RtlGetVersion"));
+
+		if (!pRtlGetVersion)
+			return false;
+
+		RTL_OSVERSIONINFOW info;
+		ZeroMemory(&info, sizeof(info));
+		info.dwOSVersionInfoSize = sizeof(info);
+
+		if (pRtlGetVersion(&info) != 0)
+			return false;
+
+		/* Windows 11 = major version 10, build >= 22000 */
+		return info.dwMajorVersion>10 || 
+			(info.dwMajorVersion==10 && info.dwMinorVersion>0) ||
+			(info.dwMajorVersion == 10 && info.dwBuildNumber >= 22000);
+	}
+
+
 	void preventSleep()
 	{
-		OSVERSIONINFO verinfo = {};
-		verinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-		//Check for Win11
-		if (GetVersionExW(&verinfo) &&
-			(verinfo.dwMajorVersion > 10 ||
-				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion > 0) ||
-				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion == 0 &&
-					verinfo.dwBuildNumber >= 22000)))
+		static bool isWin11 = IsWindows11();
+		if (isWin11)
 		{
 			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
 
@@ -1251,7 +1273,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 		return;
 	}
 
-	int pcdone_old = proc->pcdone;
+	const int pcdone_old = proc->pcdone;
 
 	if (pcdone_new.empty())
 		proc->pcdone = -1;
@@ -1267,7 +1289,8 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	proc->last_pingtime = Server->getTimeMS();	
 
 #ifdef _WIN32
-	preventSleep();
+	if (!IdleCheckerThread::getPause())
+		preventSleep();
 #endif
 }
 
@@ -1277,9 +1300,10 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	str_map params;
 	ParseParamStrHttp(params_str, &params);
 	str_map::iterator it_paused_fb = params.find("paused_fb");
+	const bool paused = IdleCheckerThread::getPause();
 	if (it_paused_fb != params.end()
 		&& it_paused_fb->second == "1"
-		&& IdleCheckerThread::getPause())
+		&& paused)
 	{
 		tcpstack.Send(pipe, "PAUSED");
 	}
@@ -1305,7 +1329,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 
 	std::string pcdone_new=params["pc_done"];
 
-	int pcdone_old = proc->pcdone;
+	const int pcdone_old = proc->pcdone;
 
 	if(pcdone_new.empty())
 		proc->pcdone =-1;
@@ -1325,7 +1349,8 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->done_bytes = watoi64(params["done_bytes"]);
 
 #ifdef _WIN32
-	preventSleep();
+	if(!paused)
+		preventSleep();
 #endif
 }
 
