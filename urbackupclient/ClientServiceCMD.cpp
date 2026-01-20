@@ -1239,6 +1239,9 @@ namespace
 
 			if (last_prevent_sleep_time == 0)
 			{
+				if (prevent_sleep_thread.joinable())
+					prevent_sleep_thread.join();
+
 				prevent_sleep_thread = std::thread(prevent_thread_func);
 			}
 
