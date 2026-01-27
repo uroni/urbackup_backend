@@ -531,7 +531,24 @@ then
 	else
 		echo "-dmsetup not present"
 	fi
-	
+
+	if [ $DMSETUP != no ]
+	then
+		GRUBF=/boot/grub/grub.cfg
+		if [ -e $GRUBF ]
+		then
+			if grep "root=UUID=" $GRUBF > /dev/null 2>&1 || grep "root=PARTUUID=" $GRUBF > /dev/null 2>&1
+			then
+				echo "+Grub is searching for boot device via UUID"
+			else
+				echo "-Grub not searching for boot device via UUID. Disabling dmsetup snapshot option"
+				DMSETUP=no
+			fi
+		else
+			echo "-grub.cfg not found in /boot/grub. Disabling dmsetup snapshot option"
+			DMSETUP=no
+		fi
+	fi	
 
     while true
     do
