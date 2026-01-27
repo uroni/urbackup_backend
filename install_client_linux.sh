@@ -468,34 +468,19 @@ then
 		then
 			if grep 'VERSION="' /etc/os-release | grep "LTS" > /dev/null 2>&1
 			then
-				echo "+Detected Ubuntu LTS. Dattobd supported"
+				echo "+Detected Ubuntu LTS"
 				UBUNTU=yes
-				DATTO=yes
 			fi
 		elif grep 'NAME="Debian' /etc/os-release > /dev/null 2>&1
 		then
 			if grep 'PRETTY_NAME="' /etc/os-release | grep "/sid" > /dev/null 2>&1
 			then
-				echo "+Detected Debian unstable/sid. Dattobd not supported"
+				echo "+Detected Debian unstable/sid"
 			else
-				echo "+Detected Debian stable. Dattobd supported"
-				DATTO=yes
+				echo "+Detected Debian stable"
 			fi
 		fi
 	fi
-
-
-    if [ $CENTOS != no ]
-    then
-        echo "+Detected EL/RH $CENTOS. Dattobd supported"
-        DATTO=yes
-    fi
-	
-	if [ $FEDORA != no ]
-	then
-		echo "+Detected Fedora. Dattobd supported"
-        DATTO=yes
-    fi
 
     if [ $DATTO = no ]
     then
