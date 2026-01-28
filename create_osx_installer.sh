@@ -30,11 +30,11 @@ rm -R osx-pkg_x86 || true
 function config() {
 	ARCH=$1
 	echo "Configuring for arch $ARCH..."
-	HOMEBREW="/opt/homebrew"
+	OPENSSL="$HOME/openssl"
 	WXWIDGETS="$HOME/wxWidgets/dest"
 	if [ $ARCH = "x86_64" ]
 	then
-		HOMEBREW="/usr/local"
+		OPENSSL="$HOME/openssl_x86"
 		WXWIDGETS="$HOME/wxWidgets_x86/dest"
 	fi
 
@@ -44,13 +44,13 @@ function config() {
 		exit 5
 	fi
 
-	if ! [ -e $HOMEBREW ]
+	if ! [ -e $OPENSSL ]
 	then
-		echo "Homebrew not found at $HOMEBREW"
+		echo "OpenSSL not found at $OPENSSL"
 		exit 5
 	fi
 
-	arch -$ARCH ./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=$HOMEBREW --with-wx-prefix=$WXWIDGETS CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CPPFLAGS="-mmacosx-version-min=10.10 -I$HOMEBREW/include -arch $ARCH" LDFLAGS="-mmacosx-version-min=10.10 -L$HOMEBREW/lib -arch $ARCH" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10 -arch $ARCH" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+	arch -$ARCH ./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=$OPENSSL --with-wx-prefix=$WXWIDGETS CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CPPFLAGS="-mmacosx-version-min=10.10 -I$OPENSSL/include -arch $ARCH -DWITH_OPENSSL" LDFLAGS="-L$OPENSSL -mmacosx-version-min=10.10 -arch $ARCH" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10 -arch $ARCH" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
 }
 
 mkdir -p osx-pkg/Library/LaunchDaemons
@@ -91,6 +91,12 @@ cp osx_installer/macOS_exclusion_overrides.txt "osx-pkg2/Applications/UrBackup C
 mv "osx-pkg2/Library/Application Support" "osx-pkg/Library"
 rm -R "osx-pkg2/Library"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
+
+echo "create_filesystem_snapshot=/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_create_snapshot" > osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/snapshot.cfg
+echo "remove_filesystem_snapshot=/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_remove_snapshot" >> osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/snapshot.cfg
+
+cp linux_snapshot/apfs_create_snapshot osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_create_snapshot
+cp linux_snapshot/apfs_remove_snapshot osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_remove_snapshot
 
 if !($development); then
 	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"

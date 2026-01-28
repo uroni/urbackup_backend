@@ -51,6 +51,9 @@
 #include <iostream>
 #include <sys/xattr.h>
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 #endif
 
 //For truncating files
@@ -405,7 +408,23 @@ namespace
 	std::string getFolderMount(const std::string& path)
 	{		
 #ifndef HAVE_MNTENT_H
+#ifdef __APPLE__
+		int count;
+		struct statfs *mntbuf;
+		count = getmntinfo(&mntbuf, MNT_NOWAIT);
+		std::string maxmount;
+		for (int i = 0; i < count; i++) {
+			std::string mountPoint = mntbuf[i].f_mntonname;
+			if(path.find(mountPoint)==0 &&
+				mountPoint.size()>maxmount.size())
+			{
+				maxmount = mountPoint;
+			}
+		}
+		return maxmount;
+#else
 		return std::string();
+#endif
 #else
 		FILE *aFile;
 
