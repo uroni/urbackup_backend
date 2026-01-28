@@ -593,7 +593,8 @@ std::string add_trailing_slash(const std::string &strDirName)
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
 	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
-	index_backup_dirs_optional(false), sc_refs_cleanup(false)
+	index_backup_dirs_optional(false), sc_refs_cleanup(false),
+	dataless_warning_logged(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -1634,6 +1635,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	last_tmp_update_time=Server->getTimeMS();
 	index_error=false;
+	dataless_warning_logged=false;
 
 	std::string filelist_dest_fn = "urbackup/data/filelist.ub";
 	if (index_group != c_group_default)
@@ -8715,21 +8717,34 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 void IndexThread::filterEncryptedFiles(const std::string & dir, const std::string& orig_dir, std::vector<SFile>& files)
 {
 	bool has_encrypted = false;
+	bool has_dataless = false;
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		if (files[i].isencrypted)
 		{
 			has_encrypted = true;
 		}
+		if (files[i].isdataless)
+		{
+			has_dataless = true;
+		}
 	}
 
-	if (has_encrypted)
+	if (has_encrypted || has_dataless)
 	{
 		std::vector<SFile> new_files;
 
 		for (size_t i = 0; i < files.size(); ++i)
 		{
-			if (files[i].isencrypted
+			if (files[i].isdataless)
+			{
+				if(!dataless_warning_logged)
+				{
+					dataless_warning_logged=true;
+					VSSLog("Not backing up cloud storage files (file \"" + orig_dir + os_file_sep() + files[i].name + "\" is e.g. on iCloud or OneDrive -- not informing about other files)", LL_INFO);
+				}
+			}
+			else if (files[i].isencrypted
 				&& files[i].isdir)
 			{
 				bool has_error = false;
