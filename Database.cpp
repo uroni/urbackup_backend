@@ -105,6 +105,9 @@ static void unlock_notify_cb(void **apArg, int nArg)
 
 CDatabase::~CDatabase()
 {
+#ifndef NDEBUG
+	db_thread_id = Server->getThreadID();
+#endif
 	destroyAllQueries();
 	for(std::map<int, IQuery*>::iterator iter=prepared_queries.begin();iter!=prepared_queries.end();++iter)
 	{
