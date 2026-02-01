@@ -428,9 +428,17 @@ fi
 
 if [ $SILENT = no ]
 then
-	if [ -e $PREFIX/etc/urbackup/snapshot.cfg ] || [ -e $PREFIX/etc/urbackup/no_filesystem_snapshot ]
+	if [ -e "$PREFIX/etc/urbackup/snapshot.cfg" ] || [ -e "$PREFIX/etc/urbackup/no_filesystem_snapshot" ]
 	then
-		exit 0
+		echo "Snapshots already configured. Keep configuration? [Y/n]"
+		read yn
+		if [ "x$yn" != "xn" ]
+		then
+			exit 0
+		else
+			! [ -e "$PREFIX/etc/urbackup/snapshot.cfg" ] || rm -f "$PREFIX/etc/urbackup/snapshot.cfg"
+			! [ -e "$PREFIX/etc/urbackup/no_filesystem_snapshot" ] || rm -f "$PREFIX/etc/urbackup/no_filesystem_snapshot"
+		fi
 	fi
 
     CENTOS=no
