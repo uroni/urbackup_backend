@@ -119,7 +119,7 @@ private:
 
 	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
 	void writePatch(_i64 pos, unsigned int length, char *buf, bool last);
-	void writePatchInt(_i64 pos, unsigned int length, char *buf);
+	void writePatchInt(_i64 pos, unsigned int length, char *buf, const bool last);
 	void writePatchSize(_i64 remote_fs);
 
 	void invalidateLastPatches(void);
