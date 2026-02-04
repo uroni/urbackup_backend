@@ -15,7 +15,7 @@ struct SFile
 		usn(0), created(0), accessed(0),
 		isdir(false), issym(false),
 		isspecialf(false), isencrypted(false),
-		nlinks(0)
+		isdataless(false), nlinks(0)
 	{
 
 	}
@@ -30,6 +30,7 @@ struct SFile
 	bool issym;
 	bool isspecialf;
 	bool isencrypted;
+	bool isdataless;
 	size_t nlinks;
 
 	bool operator<(const SFile &other) const

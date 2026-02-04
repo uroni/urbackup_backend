@@ -40,6 +40,7 @@
 #define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
 #define lremovexattr(path, name) removexattr(path, name, XATTR_NOFOLLOW)
 #define lsetxattr(path, name, value, size, flags) setxattr(path, name, value, size, 0, XATTR_NOFOLLOW|flags)
+#define stat64 stat
 #elif __FreeBSD__
 #define O_SYMLINK 0
 #define stat64 stat

@@ -1,0 +1,40 @@
+#!/bin/sh
+
+set -e
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_DEST=/Volumes/urbackup_snaps/$SNAP_ID
+
+if [ "x$SNAP_MOUNTPOINT" != "x/" ]
+then
+    echo "APFS snapshots can only be created for root mountpoint /"
+    exit 1
+fi
+
+# / seems to be the Data volume
+SNAP_SEARCH_MOUNTPOINT="/System/Volumes/Data"
+
+DEVICE=$(df -P | egrep " ${SNAP_SEARCH_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
+
+echo "Snapshotting device $DEVICE via apfs..."
+
+SNAP_DATE=$(tmutil localsnapshot | grep "date:" | sed 's/.*: //')
+if [ "x$SNAP_DATE" = "x" ]; then
+    echo "Failed to create snapshot"
+    exit 1
+fi
+
+FULL_SNAP_NAME=$(tmutil listlocalsnapshots $SNAP_MOUNTPOINT | grep "$SNAP_DATE" | tail -n 1)
+if [ "x$FULL_SNAP_NAME" = "x" ]; then
+    echo "Failed to get full snapshot name"
+    exit 1
+fi
+
+mkdir -p $SNAP_DEST
+echo "$SNAP_DATE" > "$SNAP_DEST-snap-date"
+mount_apfs -o rdonly,noatime,nobrowse -s "$FULL_SNAP_NAME" "$DEVICE" "$SNAP_DEST"
+
+echo "Snapshot mounted at $SNAP_DEST"
+
+echo "SNAPSHOT=$SNAP_DEST"

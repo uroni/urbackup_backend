@@ -891,6 +891,8 @@ private:
 	std::vector<char> phash_queue_buffer;
 	int64 file_id;
 
+	bool dataless_warning_logged;
+
 	struct SResult
 	{
 		ICondition* cond;

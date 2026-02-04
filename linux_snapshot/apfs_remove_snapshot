@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -e
+
+SNAP_MOUNTPOINT="$2"
+
+umount "$SNAP_MOUNTPOINT"
+rmdir "$SNAP_MOUNTPOINT"
+
+if [ -e "$SNAP_MOUNTPOINT-snap-date" ]
+then
+    SNAP_DATE=$(cat "$SNAP_MOUNTPOINT-snap-date")
+    tmutil deletelocalsnapshots "$SNAP_DATE"
+    rm "$SNAP_MOUNTPOINT-snap-date"
+fi
