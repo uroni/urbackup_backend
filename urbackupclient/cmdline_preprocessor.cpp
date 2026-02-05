@@ -31,6 +31,10 @@
 #define DATADIR ""
 #endif
 
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#endif
+
 const std::string cmdline_version = PACKAGE_VERSION;
 
 void show_version()
@@ -196,6 +200,24 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 	}
 }
 #endif
+
+void tune_glibc_malloc()
+{
+#if defined(HAVE_MALLOC_H) && defined(M_ARENA_MAX)
+	if(getenv("MALLOC_ARENA_MAX") != nullptr ||
+		getenv("GLIBC_TUNABLES") != nullptr ||
+		getenv("MALLOC_MMAP_THRESHOLD_") != nullptr)
+	{
+		return;
+	}
+
+	// Limits memory fragmentation at the cost of performance
+	mallopt(M_ARENA_MAX, 2);
+#if defined(M_MMAP_THRESHOLD)
+	mallopt(M_MMAP_THRESHOLD, 128*1024);
+#endif
+#endif
+}
 
 #ifndef _WIN32
 int restoreclient_main(int argc, char* argv[]);
@@ -456,6 +478,8 @@ int restoreclient_main(int argc, char* argv[])
 			return 0;
 		}
 	}
+
+	tune_glibc_malloc();
 
 	try
 	{
