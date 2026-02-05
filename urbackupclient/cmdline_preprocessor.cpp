@@ -249,6 +249,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	tune_glibc_malloc();
+
 	if (argc > 0 &&
 		std::string(argv[1]) == "--internal")
 	{
@@ -478,8 +480,6 @@ int restoreclient_main(int argc, char* argv[])
 			return 0;
 		}
 	}
-
-	tune_glibc_malloc();
 
 	try
 	{
