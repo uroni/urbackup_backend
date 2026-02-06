@@ -1183,7 +1183,6 @@ namespace
 {
 	std::mutex prevent_sleep_mutex;
 	int64 last_prevent_sleep_time = 0;
-	std::thread prevent_sleep_thread;
 
 	void prevent_thread_func()
 	{
@@ -1239,10 +1238,8 @@ namespace
 
 			if (last_prevent_sleep_time == 0)
 			{
-				if (prevent_sleep_thread.joinable())
-					prevent_sleep_thread.join();
-
-				prevent_sleep_thread = std::thread(prevent_thread_func);
+				std::thread prevent_sleep_thread = std::thread(prevent_thread_func);
+				prevent_sleep_thread.detach();
 			}
 
 			last_prevent_sleep_time = Server->getTimeMS();
