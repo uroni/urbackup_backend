@@ -3,5 +3,7 @@ Release
 Release Server 2003
 Release Service
 Release WinXP
+ARM64
 client\x64
 client\Release
+client\ARM64
