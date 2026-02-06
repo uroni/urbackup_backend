@@ -90,6 +90,10 @@
 #include "../urbackupcommon/android_popen.h"
 #endif
 
+#if defined(HAVE_SPAWN_H)
+#include <spawn.h>
+#endif
+
 
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
@@ -4183,26 +4187,33 @@ void IndexThread::execute_postbackup_hook(std::string scriptname, int group, con
 		CloseHandle(pi.hThread);
 	}
 #else
+	std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
+	std::string group_str = convert(group);
+	char* const argv[]={ const_cast<char*>(fullname.c_str()), 
+		const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
+
 	pid_t pid1;
 	pid1 = fork();
 	if( pid1==0 )
 	{
 		setsid();
+
+		int rc = 0;
+#ifdef HAVE_SPAWN_H		
+		const char* envp[] = {NULL};
+		pid_t child_pid;
+		rc = posix_spawn(&child_pid, fullname.c_str(), NULL, NULL, const_cast<char**>(argv), const_cast<char**>(envp));
+#else // HAVE_SPAWN_H
 		pid_t pid2;
 		pid2 = fork();
 		if(pid2==0)
 		{
-			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
-			std::string group_str = convert(group);
-			char* const argv[]={ const_cast<char*>(fullname.c_str()), 
-				const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
-			execv(const_cast<char*>(fullname.c_str()), argv);
-			exit(1);
-		}
-		else
-		{
-			exit(1);
-		}
+			rc = execv(const_cast<char*>(fullname.c_str()), argv);
+			if(rc==-1)
+				rc = errno;
+		}	
+#endif // HAVE_SPAWN_H
+		_exit(rc);
 	}
 	else
 	{
