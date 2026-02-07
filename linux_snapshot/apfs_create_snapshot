@@ -15,23 +15,23 @@ fi
 # / seems to be the Data volume
 SNAP_SEARCH_MOUNTPOINT="/System/Volumes/Data"
 
-DEVICE=$(df -P | egrep " ${SNAP_SEARCH_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
+DEVICE=$(df -P | grep -E " ${SNAP_SEARCH_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
 
 echo "Snapshotting device $DEVICE via apfs..."
 
 SNAP_DATE=$(tmutil localsnapshot | grep "date:" | sed 's/.*: //')
-if [ "x$SNAP_DATE" = "x" ]; then
+if [ "y$SNAP_DATE" = "y" ]; then
     echo "Failed to create snapshot"
     exit 1
 fi
 
-FULL_SNAP_NAME=$(tmutil listlocalsnapshots $SNAP_MOUNTPOINT | grep "$SNAP_DATE" | tail -n 1)
-if [ "x$FULL_SNAP_NAME" = "x" ]; then
+FULL_SNAP_NAME=$(tmutil listlocalsnapshots "$SNAP_MOUNTPOINT" | grep "$SNAP_DATE" | tail -n 1)
+if [ "y$FULL_SNAP_NAME" = "y" ]; then
     echo "Failed to get full snapshot name"
     exit 1
 fi
 
-mkdir -p $SNAP_DEST
+mkdir -p "$SNAP_DEST"
 echo "$SNAP_DATE" > "$SNAP_DEST-snap-date"
 mount_apfs -o rdonly,noatime,nobrowse -s "$FULL_SNAP_NAME" "$DEVICE" "$SNAP_DEST"
 

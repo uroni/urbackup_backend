@@ -4,12 +4,35 @@ set -e
 
 SNAP_MOUNTPOINT="$2"
 
-umount "$SNAP_MOUNTPOINT"
-rmdir "$SNAP_MOUNTPOINT"
+remove_snap() {
+    ! [ -e "$SNAP_MOUNTPOINT" ] || rmdir "$SNAP_MOUNTPOINT"
 
-if [ -e "$SNAP_MOUNTPOINT-snap-date" ]
+    if [ -e "$SNAP_MOUNTPOINT-snap-date" ]
+    then
+        SNAP_DATE=$(cat "$SNAP_MOUNTPOINT-snap-date")
+        tmutil deletelocalsnapshots "$SNAP_DATE" || true
+        rm "$SNAP_MOUNTPOINT-snap-date"
+    fi
+}
+
+if [ -e "$SNAP_MOUNTPOINT" ]
 then
-    SNAP_DATE=$(cat "$SNAP_MOUNTPOINT-snap-date")
-    tmutil deletelocalsnapshots "$SNAP_DATE"
-    rm "$SNAP_MOUNTPOINT-snap-date"
+    if ! err=$(umount "$SNAP_MOUNTPOINT" 2>&1)
+    then
+        echo "Failed to unmount snapshot at $SNAP_MOUNTPOINT: $err"
+
+        if echo "$err" | grep -q "not currently mounted"
+        then
+            echo "Snapshot already unmounted. Removing snapshot directory..."
+            remove_snap
+            exit 0
+        fi
+
+        lsof | grep "$SNAP_MOUNTPOINT" || true
+
+        sleep 10
+        umount "$SNAP_MOUNTPOINT"
+    fi
 fi
+
+remove_snap
