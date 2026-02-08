@@ -72,6 +72,8 @@ bool SambaService::Run(IRunOtherCallback* run_other)
 		if (!smbPipe)
 			return false;
 
+		smbPipe->setOption(IPipe::SocketOption_NoDelay);
+
 		state = State::Running;
 		readTicket = Server->getThreadPool()->execute(new StreamInput(pipe, smbPipe.get()), "smb read");
 	}
@@ -81,21 +83,28 @@ bool SambaService::Run(IRunOtherCallback* run_other)
 
 void SambaService::ReceivePackets(IRunOtherCallback* run_other)
 {
-	char buffer[32768];
-	const auto read = pipe->Read(buffer, sizeof(buffer));
-	if (read == 0)
+	while (true)
 	{
-		state = State::Shutdown;
-		pipe->shutdown();
-		smbPipe->shutdown();
-		return;
-	}
+		char buffer[32768];
+		const auto read = pipe->Read(buffer, sizeof(buffer));
+		if (read == 0)
+		{
+			state = State::Shutdown;
+			pipe->shutdown();
+			smbPipe->shutdown();
+			return;
+		}
 
-	if (!smbPipe->Write(buffer, read))
-	{
-		state = State::Shutdown;
-		pipe->shutdown();
-		smbPipe->shutdown();
-		return;
+		const bool flush = !pipe->isReadable();
+		if (!smbPipe->Write(buffer, read, -1, flush))
+		{
+			state = State::Shutdown;
+			pipe->shutdown();
+			smbPipe->shutdown();
+			return;
+		}
+
+		if (flush)
+			break;
 	}
 }
