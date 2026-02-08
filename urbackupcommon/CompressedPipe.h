@@ -57,6 +57,8 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	virtual bool setOption(const SocketOption opt);
+
 private:
 	void Process(const char *buffer, size_t bsize);
 	size_t ReadToBuffer(char *buffer, size_t bsize);

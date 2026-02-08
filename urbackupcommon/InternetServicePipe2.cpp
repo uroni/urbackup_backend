@@ -339,3 +339,8 @@ bool InternetServicePipe2::setCompressionSettings(const SCompressionSettings& pa
 	return false;
 }
 
+bool InternetServicePipe2::setOption(const SocketOption opt)
+{
+	return cs->setOption(opt);
+}
+

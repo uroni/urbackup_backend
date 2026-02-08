@@ -386,6 +386,18 @@ bool CStreamPipe::setCompressionSettings(const SCompressionSettings& params)
 	return false;
 }
 
+bool CStreamPipe::setOption(const SocketOption opt)
+{
+	switch (opt)
+	{
+	case SocketOption_NoDelay:
+		int flag;
+		flag = 1;
+		return setsockopt(s, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int)) == 0;
+	}
+	return false;
+}
+
 _i64 CStreamPipe::getTransferedBytes(void)
 {
 	return transfered_bytes;

@@ -65,6 +65,8 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	bool setOption(const SocketOption opt) override;
+
 private:
 	size_t ProcessToBuffer(char *buffer, size_t bsize, bool fromLast);
 	void ProcessToString(std::string* ret, bool fromLast);
@@ -86,5 +88,5 @@ private:
 	z_stream def_stream;
 
 	std::auto_ptr<IMutex> read_mutex;
-	std::auto_ptr<IMutex> write_mutex;
+	std::auto_ptr<IMutex> write_mutex;	
 };

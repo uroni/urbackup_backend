@@ -271,3 +271,8 @@ bool CMemoryPipe::setCompressionSettings(const SCompressionSettings& params)
 {
 	return false;
 }
+
+bool CMemoryPipe::setOption(const SocketOption opt)
+{
+	return false;
+}

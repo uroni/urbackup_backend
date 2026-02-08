@@ -248,6 +248,11 @@ void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 	} while (input_buffer_size!=0);
 }
 
+bool CompressedPipe2::setOption(const SocketOption opt)
+{
+	return cs->setOption(opt);
+}
+
 bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	IScopedLock lock(write_mutex.get());

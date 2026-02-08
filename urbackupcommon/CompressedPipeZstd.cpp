@@ -759,5 +759,10 @@ bool CompressedPipeZstd::setCompressionSettings(const SCompressionSettings& para
 	return true;
 }
 
+bool CompressedPipeZstd::setOption(const SocketOption opt)
+{
+	return cs->setOption(opt);
+}
+
 #endif //NO_ZSTD_COMPRESSION
 

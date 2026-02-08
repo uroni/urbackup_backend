@@ -69,6 +69,8 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	virtual bool setOption(const SocketOption opt);
+
 private:
 	IPipe *cs;
 

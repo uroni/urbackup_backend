@@ -206,6 +206,11 @@ bool InternetServicePipe::setCompressionSettings(const SCompressionSettings& par
 	return false;
 }
 
+bool InternetServicePipe::setOption(const SocketOption opt)
+{
+	return cs->setOption(opt);
+}
+
 bool InternetServicePipe::Flush(int timeoutms)
 {
 	return cs->Flush(timeoutms);

@@ -93,6 +93,11 @@ bool CompressedPipe::setCompressionSettings(const SCompressionSettings& params)
 	return false;
 }
 
+bool CompressedPipe::setOption(const SocketOption opt)
+{
+	return cs->setOption(opt);
+}
+
 size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	size_t rc=ReadToBuffer(buffer, bsize);

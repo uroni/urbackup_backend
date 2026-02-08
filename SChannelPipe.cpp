@@ -256,6 +256,11 @@ bool SChannelPipe::setCompressionSettings(const SCompressionSettings& params)
 	return false;
 }
 
+bool SChannelPipe::setOption(const SocketOption opt)
+{
+	return bpipe->setOption(opt);
+}
+
 
 void SChannelPipe::init()
 {

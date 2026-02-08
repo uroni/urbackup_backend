@@ -50,6 +50,8 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	virtual bool setOption(const SocketOption opt);
+
 private:
 	SOCKET s;
 
