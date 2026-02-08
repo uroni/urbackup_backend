@@ -591,6 +591,17 @@ bool CDatabase::Import(const std::string &pFile)
 	return true;
 }
 
+namespace
+{
+	void shell_state_init(ShellState& cd)
+	{
+		cd.openMode = 1;
+		cd.normalMode = cd.cMode = cd.mode = 2;
+		cd.autoExplain = 1;
+		cd.pAuxDb = &cd.aAuxDb[0];
+	}
+}
+
 bool CDatabase::Dump(const std::string &pFile)
 {
 	assert_thread_id();
@@ -600,7 +611,7 @@ bool CDatabase::Dump(const std::string &pFile)
 		return false;
 
 	ShellState cd = {};
-	cd.openMode = 1;
+	shell_state_init(cd);
 	cd.zDbFilename = db_fn;
 	cd.out=fopen(pFile.c_str(), "wb");
 	if(cd.out==0)
@@ -626,7 +637,7 @@ bool CDatabase::Recover(const std::string & pFile)
 		return false;
 
 	ShellState cd = {};
-	cd.openMode = 1;
+	shell_state_init(cd);
 	cd.zDbFilename = db_fn;
 	cd.out = fopen(pFile.c_str(), "wb");
 	if (cd.out == 0)
