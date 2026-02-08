@@ -593,12 +593,13 @@ bool CDatabase::Import(const std::string &pFile)
 
 namespace
 {
-	void shell_state_init(ShellState& cd)
+	void shell_state_init(ShellState& cd, const char* db_fn)
 	{
 		cd.openMode = 1;
 		cd.normalMode = cd.cMode = cd.mode = 2;
 		cd.autoExplain = 1;
 		cd.pAuxDb = &cd.aAuxDb[0];
+		cd.aAuxDb->zDbFilename = db_fn;
 	}
 }
 
@@ -611,8 +612,7 @@ bool CDatabase::Dump(const std::string &pFile)
 		return false;
 
 	ShellState cd = {};
-	shell_state_init(cd);
-	cd.zDbFilename = db_fn;
+	shell_state_init(cd, db_fn);
 	cd.out=fopen(pFile.c_str(), "wb");
 	if(cd.out==0)
 	{
@@ -637,8 +637,7 @@ bool CDatabase::Recover(const std::string & pFile)
 		return false;
 
 	ShellState cd = {};
-	shell_state_init(cd);
-	cd.zDbFilename = db_fn;
+	shell_state_init(cd, db_fn);
 	cd.out = fopen(pFile.c_str(), "wb");
 	if (cd.out == 0)
 	{
