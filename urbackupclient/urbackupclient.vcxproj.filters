@@ -195,6 +195,9 @@
     <ClCompile Include="..\urbackupcommon\WebSocketPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="SambaService.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -357,6 +360,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\CompressedPipeZStd.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="SambaService.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

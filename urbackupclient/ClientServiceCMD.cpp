@@ -1402,7 +1402,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
-			&make_fileserv, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
+			&make_conn, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();

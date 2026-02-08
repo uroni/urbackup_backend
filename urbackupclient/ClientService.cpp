@@ -95,7 +95,7 @@ std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::pair<std::string, std::string>, ClientConnector::SChallenge> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
-std::vector < ClientConnector::SFilesrvConnection > ClientConnector::fileserv_connections;
+std::vector < ClientConnector::SFilesrvConnection > ClientConnector::remote_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
@@ -302,7 +302,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
 	endpoint_name = pEndpointName;
-	make_fileserv=false;
+	make_conn.store(0, std::memory_order_relaxed);
 	local_backup_running_id = 0;
 	run_other = NULL;
 	idle_timeout = 10000;
@@ -542,7 +542,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				last_channel_ping=Server->getTimeMS();
 				chan->state = SChannel::EChannelState_Pinging;
 			}
-			if(make_fileserv
+			const auto make_conn_local = make_conn.load(std::memory_order_relaxed);
+			if(make_conn_local
 				&& chan->state == SChannel::EChannelState_Idle)
 			{
 				size_t idx=std::string::npos;
@@ -557,10 +558,21 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 				if(idx!=std::string::npos)
 				{
-					tcpstack.Send(pipe, "FILESERV");
-					state=CCSTATE_FILESERV;
-					fileserv_connections.push_back(SFilesrvConnection(channel_pipes[idx].token, pipe));
+					state = CCSTATE_FILESERV;
 
+					switch (make_conn_local)
+					{
+					case ConnectionTypeFileServ:
+						tcpstack.Send(pipe, "FILESERV");
+						break;
+					case ConnectionTypeSamba:
+						tcpstack.Send(pipe, "SAMBA");
+						break;
+					default:
+						assert(false);
+					}
+										
+					remote_connections.push_back(SFilesrvConnection(channel_pipes[idx].token, pipe));
 					channel_pipes.erase(channel_pipes.begin()+idx);
 				}				
 
@@ -3586,21 +3598,27 @@ void ClientConnector::exit_backup_immediate(int rc)
 	}
 }
 
-IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
+IPipe* ClientConnector::getRemoteConnection(const std::string& server_token, const unsigned int timeoutms, const int type)
 {
 	IScopedLock lock(backup_mutex);
 
-	int64 starttime = Server->getTimeMS();
+	const int64 starttime = Server->getTimeMS();
+
+	int64 last_conn_starttime = 0;
 
 	do 
 	{
-		for(size_t i=0;i<channel_pipes.size();++i)
+		if (last_conn_starttime == 0 || Server->getTimeMS() - last_conn_starttime > 1000)
 		{
-			if(channel_pipes[i].make_fileserv!=NULL &&
-				channel_pipes[i].token==server_token &&
-				!(*channel_pipes[i].make_fileserv))
+			for (size_t i = 0; i < channel_pipes.size(); ++i)
 			{
-				*channel_pipes[i].make_fileserv=true;
+				if (channel_pipes[i].make_conn != NULL &&
+					(server_token.empty() || channel_pipes[i].token == server_token) &&
+					!channel_pipes[i].make_conn->load(std::memory_order_relaxed))
+				{
+					channel_pipes[i].make_conn->store(type, std::memory_order_relaxed);
+					last_conn_starttime = Server->getTimeMS();
+				}
 			}
 		}
 
@@ -3608,12 +3626,12 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 		Server->wait(100);
 		lock.relock(backup_mutex);
 
-		for(size_t i=0;i<fileserv_connections.size();++i)
+		for(size_t i=0;i<remote_connections.size();++i)
 		{
-			if(fileserv_connections[i].token==server_token )
+			if(server_token.empty() || remote_connections[i].token==server_token )
 			{
-				IPipe* ret = fileserv_connections[i].pipe;
-				fileserv_connections.erase(fileserv_connections.begin()+i);
+				IPipe* ret = remote_connections[i].pipe;
+				remote_connections.erase(remote_connections.begin()+i);
 				return ret;
 			}
 		}
@@ -4325,12 +4343,12 @@ void ClientConnector::timeoutFilesrvConnections()
 {
 	IScopedLock lock(backup_mutex);
 
-	for (size_t i = 0; i < fileserv_connections.size();)
+	for (size_t i = 0; i < remote_connections.size();)
 	{
-		if (Server->getTimeMS() - fileserv_connections[i].starttime>60000)
+		if (Server->getTimeMS() - remote_connections[i].starttime>60000)
 		{
-			Server->destroy(fileserv_connections[i].pipe);
-			fileserv_connections.erase(fileserv_connections.begin() + i);
+			Server->destroy(remote_connections[i].pipe);
+			remote_connections.erase(remote_connections.begin() + i);
 		}
 		else
 		{

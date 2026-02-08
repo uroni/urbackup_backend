@@ -63,6 +63,7 @@ extern IServer* Server;
 #include "tokens.h"
 
 #include "ClientService.h"
+#include "SambaService.h"
 #include "client.h"
 #include "../stringtools.h"
 #include "ServerIdentityMgr.h"
@@ -108,6 +109,7 @@ std::string server_identity;
 std::string server_token;
 
 const unsigned short default_urbackup_serviceport=35623;
+const unsigned short default_sambaredir_port = 35624;
 
 void init_mutex1(void);
 bool testEscape(void);
@@ -528,6 +530,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, -1, serviceport_bind_target);
+
+	unsigned short sambaredir_port = default_sambaredir_port;
+	if (!Server->getServerParameter("smabaredir_port").empty())
+	{
+		sambaredir_port = static_cast<unsigned short>(atoi(Server->getServerParameter("sambaredir_port").c_str()));
+	}
+
+	Server->StartCustomStreamService(new SambaServiceFactory(), "sambaredir", sambaredir_port, -1, IServer::BindTarget_Localhost);
 
 	internetclient_ticket=InternetClient::start(do_leak_check);
 

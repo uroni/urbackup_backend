@@ -7,6 +7,7 @@
 
 #include <map>
 #include <deque>
+#include <atomic>
 
 class ClientService : public IService
 {
@@ -141,21 +142,21 @@ struct SRestoreToken
 struct SChannel
 {
 	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
-		std::string token, bool* make_fileserv, std::string server_identity,
+		std::string token, std::atomic<int>* make_conn, std::string server_identity,
 		int capa, int restore_version, std::string virtual_client)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
-		  token(token), make_fileserv(make_fileserv), server_identity(server_identity),
+		  token(token), make_conn(make_conn), server_identity(server_identity),
 		state(EChannelState_Idle), capa(capa), restore_version(restore_version),
 		virtual_client(virtual_client) {}
 	SChannel(void)
-		: pipe(NULL), internet_connection(false), make_fileserv(NULL),
+		: pipe(NULL), internet_connection(false), make_conn(NULL),
 		state(EChannelState_Idle), capa(0), restore_version(0) {}
 
 	IPipe *pipe;
 	bool internet_connection;
 	std::string endpoint_name;
 	std::string token;
-	bool* make_fileserv;
+	std::atomic<int>* make_conn;
 	std::string last_tokens;
 	std::string server_identity;
 	int restore_version;
@@ -184,6 +185,9 @@ struct SVolumesCache;
 class RestoreFiles;
 
 const unsigned int x_pingtimeout=180000;
+
+const int ConnectionTypeFileServ = 1;
+const int ConnectionTypeSamba = 2;
 
 class ClientConnector : public ICustomClient
 {
@@ -222,7 +226,7 @@ public:
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
-	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
+	static IPipe* getRemoteConnection(const std::string& server_token, const unsigned int timeoutms, const int type);
 
 	static void requestRestoreRestart();
 
@@ -436,7 +440,7 @@ private:
 		IPipe* pipe;
 	};
 
-	static std::vector<SFilesrvConnection> fileserv_connections;
+	static std::vector<SFilesrvConnection> remote_connections;
 	static RestoreOkStatus restore_ok_status;
 	static RestoreFiles* restore_files;
 	static bool status_updated;
@@ -462,7 +466,7 @@ private:
 
 	std::string endpoint_name;
 
-	bool make_fileserv;
+	std::atomic<int> make_conn;
 
 #ifdef _WIN32
 	static SVolumesCache* volumes_cache;
