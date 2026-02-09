@@ -583,6 +583,101 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	return true;
 }
 
+bool write_smb_pw(const std::string& fn, const std::string& accountname, const std::string& data)
+{
+	DWORD account_sid_size = sizeof(SID);
+	SID_NAME_USE sid_name_use;
+	std::wstring referenced_domain;
+	referenced_domain.resize(1);
+	DWORD referenced_domain_size = 1;
+	std::vector<char> sid_buffer;
+	sid_buffer.resize(sizeof(SID));
+
+	const auto local_username = Server->ConvertToWchar(accountname);
+
+	auto b = LookupAccountNameW(NULL,
+		local_username.c_str(),
+		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+		&referenced_domain_size, &sid_name_use);
+
+	if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	{
+		referenced_domain.resize(referenced_domain_size);
+		sid_buffer.resize(account_sid_size);
+		b = LookupAccountNameW(NULL,
+			local_username.c_str(),
+			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+			&referenced_domain_size, &sid_name_use);
+	}
+
+	if (referenced_domain.size() != referenced_domain_size)
+	{
+		referenced_domain.resize(referenced_domain_size);
+	}
+
+	SID* account_sid = reinterpret_cast<SID*>(&sid_buffer[0]);
+
+	LPWSTR str_account_sid;
+	b = ConvertSidToStringSidW(account_sid, &str_account_sid);
+	if (!b)
+	{
+		Server->Log("Error converting SID to string SID. Errorcode: " + convert((int)GetLastError()), LL_ERROR);
+		return false;
+	}
+
+	std::wstring dacl = std::wstring(L"D:(A;OICI;GA;;;") + str_account_sid + L")"
+		+ L"(A;OICI;GA;;;BA)";
+
+	std::string local_account_sid = Server->ConvertFromWchar(str_account_sid);
+
+	LocalFree(str_account_sid);
+
+	SECURITY_ATTRIBUTES  sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = FALSE;
+
+
+	b = ConvertStringSecurityDescriptorToSecurityDescriptor(
+		dacl.c_str(),
+		SDDL_REVISION_1,
+		&(sa.lpSecurityDescriptor),
+		NULL);
+
+	if (!b)
+	{
+		Server->Log("Error creating security descriptor. Errorcode: " + convert((int)GetLastError()), LL_ERROR);
+		return false;
+	}
+
+	HANDLE file = CreateFileW(Server->ConvertToWchar(fn).c_str(),
+		GENERIC_READ | GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, 0, NULL);
+
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Error opening smb pw file. Errorcode: " + convert((int)GetLastError()), LL_ERROR);
+		LocalFree(sa.lpSecurityDescriptor);
+		return false;
+	}
+
+	DWORD written = 0;
+	while (written < data.size())
+	{
+		b = WriteFile(file, data.data() + written, static_cast<DWORD>(data.size()) - written, &written, NULL);
+		if (!b)
+		{
+			Server->Log("Error writing to smb pw file.  Errorcode: " + convert((int)GetLastError()), LL_ERROR);
+			CloseHandle(file);
+			LocalFree(sa.lpSecurityDescriptor);
+			return true;
+		}
+	}
+
+	CloseHandle(file);
+	LocalFree(sa.lpSecurityDescriptor);
+
+	return true;
+}
+
 std::string permissions_allow_all()
 {
 	CWData token_info;

@@ -59,6 +59,8 @@ namespace tokens
 
 	bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token=std::string());
 
+	bool write_smb_pw(const std::string& fn, const std::string& accountname, const std::string& data);
+
 	std::string permissions_allow_all();
 
 	std::string accountname_normalize(const std::string& accountname);

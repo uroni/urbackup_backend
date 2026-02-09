@@ -1399,6 +1399,32 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));
 		}
 
+		bool create_smb_dir = true;
+
+		size_t idx = 0;
+		while (params.find("client_user_name_" + std::to_string(idx)) != params.end())
+		{
+			if (create_smb_dir)
+			{
+				create_smb_dir = false;
+				os_create_dir("smbpw");
+			}
+
+			std::string user_name = params["client_user_name_" + std::to_string(idx)];
+			std::string user_login = params["client_user_login_" + std::to_string(idx)];
+			std::string user_pw = params["client_user_pw_" + std::to_string(idx)];
+
+			std::string fn = bytesToHex(user_name) + ".dat";
+
+			const auto smb_pw_fn = "smbpw/" + fn;
+
+			if (!FileExists(smb_pw_fn))
+			{
+				tokens::write_smb_pw(smb_pw_fn, user_name, user_login + ":" + user_pw);
+			}
+			++idx;
+		}
+
 		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
@@ -2747,6 +2773,14 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str = get_windows_version();
 	std::string win_volumes;
 	std::string win_nonusb_volumes;
+	std::string users;
+
+	static const auto local_users = tokens::get_local_users();
+	for (const auto& user : local_users)
+	{
+		if (!users.empty()) users += "/";
+		users += user;
+	}
 
 	{
 		IScopedLock lock(backup_mutex);
@@ -2773,7 +2807,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
 #ifdef __APPLE__
