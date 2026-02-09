@@ -2778,7 +2778,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	static const auto local_users = tokens::get_local_users();
 	for (const auto& user : local_users)
 	{
-		if (!users.empty()) users += "/";
+		if (!users.empty()) users += ";";
 		users += user;
 	}
 
