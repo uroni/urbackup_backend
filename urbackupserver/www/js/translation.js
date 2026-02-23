@@ -1995,7 +1995,8 @@ translations.en = {
 "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Use SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS",
 "tLocal/passive client": "Local/passive client",
 "tInternet/Active client": "Internet/Active client",
-"tAllow new client": "Allow new client"
+"tAllow new client": "Allow new client",
+"no_users_text": "No admin user created yet. Your UrBackup server is currently not protected by a password. Please create an admin user now.",
 }
 translations.en_US = {
 "tInfos": "About"

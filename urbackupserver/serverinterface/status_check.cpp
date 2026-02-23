@@ -410,6 +410,16 @@ ACTION_IMPL(status_check)
 		ServerSettings settings(db);
 		access_dir_checks(db, settings, settings.getSettings()->backupfolder,
 			settings.getSettings()->backupfolder_uncompr, ret);
+		db_results res = db->Read("SELECT name FROM settings_db.si_users LIMIT 1");
+		if (res.empty())
+		{
+			ret.set("no_users", true);
+			ret.set("no_users_stop_show_key", "no_users_warning");
+			if (is_stop_show(db, "no_users_warning"))
+			{
+				ret.set("no_users_show", false);
+			}
+		}
 	}
 	else
 	{

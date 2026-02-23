@@ -1196,6 +1196,12 @@ function show_status_check2(data)
 	{
 		check_res+=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
 	}
+
+	if(data.no_users
+		&& (typeof data.no_users_show === "undefined" || data.no_users_show===true )  )
+	{
+		check_res+=dustRender("no_users", {no_users_text: trans("no_users_text"), stop_show_key: data.no_users_stop_show_key});
+	}
 	
 	var virus_error="";
 	if(data.virus_error
