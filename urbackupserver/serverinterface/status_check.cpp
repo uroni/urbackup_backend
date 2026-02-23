@@ -340,7 +340,9 @@ namespace
 				}
 				else
 				{
-					std::string teststring = base64_decode("WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=");
+					char eicar_str[] = "_DVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=";
+					eicar_str[0] = 'W';
+					const std::string teststring = base64_decode(eicar_str);
 					tmp_f->Write(teststring);
 					std::string tmp_fn = tmp_f->getFilename();
 					tmp_f.reset();
