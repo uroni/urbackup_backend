@@ -26,6 +26,12 @@
 					<label for="internet_client_name" class="control-label">{tName of new Internet/active client}</label>
 					<input class="form-control" value="" type="text" name="internet_client_name" id="internet_client_name"/><br/>
 				</div>
+				{no_internet_server}
+				<div class="form-group">
+					<label for="internet_server" class="control-label">{tServer URL clients connect to}</label>
+					<input class="form-control" value="" type="text" name="internet_server" id="internet_server" placeholder="{internet_server_url_placeholder}"/><br/>
+				</div>
+				{/no_internet_server}
 			</div>
 			<div class="radio">
 			  <label><input type="radio" name="new_client" value="ip_hint" id="choice_ip_hint">{tDiscover new local/passive client accross networks}</label>

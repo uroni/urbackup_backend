@@ -410,6 +410,10 @@ ACTION_IMPL(status_check)
 		ServerSettings settings(db);
 		access_dir_checks(db, settings, settings.getSettings()->backupfolder,
 			settings.getSettings()->backupfolder_uncompr, ret);
+
+		if (settings.getSettings()->internet_server.empty())
+			ret.set("no_internet_server", true);
+
 		db_results res = db->Read("SELECT name FROM settings_db.si_users LIMIT 1");
 		if (res.empty())
 		{

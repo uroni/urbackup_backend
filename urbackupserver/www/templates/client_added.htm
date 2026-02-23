@@ -1,6 +1,11 @@
 <div class="panel panel-default">
 	<div class="panel-heading">{tClient added successfully}</div>
 	<div class="panel-body">
+		{empty_internet_server_url}
+		<div class="alert alert-warning">
+			{tYou added an Internet/active client but did not specify a server URL. The client won't be able to connect to the server until you specify the server URL.}
+		</div>
+		{/empty_internet_server_url}
 		<p>
 			{tAdded new client with name:} {new_clientname|s}
 		</p>

@@ -1210,6 +1210,8 @@ function show_status_check2(data)
 		check_res+=dustRender("virus_error", {stop_show_key: data.virus_error_stop_show_key, virus_error_path: data.virus_error_path});
 	}	
 	I("delayed_status_errors").innerHTML = check_res;
+
+	g.no_internet_server = data.no_internet_server ? true : false;
 }
 
 function show_status2(data)
@@ -3650,6 +3652,7 @@ function show_settings2(data)
 			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			data.settings.client_settings=false;
+			data.settings.internet_server_url_placeholder = getServerUrlPlaceholder();
 			
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
 			ndata+=dustRender("settings_general", data.settings);
@@ -3779,6 +3782,7 @@ function show_settings2(data)
 			data.settings.vss_select_components = unescapeHTML(data.settings.vss_select_components);
 			
 			group_membership_selectpicker=true;
+			data.settings.internet_server_url_placeholder = getServerUrlPlaceholder();
 						
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
 			ndata+=dustRender(is_group ? "settings_group" : "settings_user", data.settings);
@@ -6090,12 +6094,26 @@ g.maximize_or_minimize = function(refresh)
 	}
 }
 
+function getServerUrlPlaceholder()
+{
+	var site_url = (location.protocol == "http:" ? "ws:" : "wss:") + "//" + location.host + location.pathname;
+	
+	if(site_url.substr(site_url.length-1)!="/")
+	{
+		site_url+="/";
+	}
+
+	site_url+="socket";
+
+	return site_url;
+}
+
 function addNewClient1()
 {
 	if(!startLoading()) return;
 	stopLoading();
 	
-	var ndata=dustRender("add_client", {server_identity: g.server_identity, server_pubkey: g.server_pubkey});
+	var ndata=dustRender("add_client", {server_identity: g.server_identity, server_pubkey: g.server_pubkey, no_internet_server: g.no_internet_server, internet_server_url_placeholder: getServerUrlPlaceholder()});
 	
 	if(g.data_f!=ndata)
 	{
@@ -6113,9 +6131,16 @@ function addNewClient2()
 		{
 			return;
 		}
+
+		var pars = "clientname="+encodeURIComponent(I("internet_client_name").value)
+
+		if(I("internet_server_url"))
+		{
+			pars += getInternetSettings();
+		}
 		
 		if(!startLoading()) return;
-		new getJSON("add_client", "clientname="+encodeURIComponent(I("internet_client_name").value), addNewClient3);
+		new getJSON("add_client", pars, addNewClient3);
 	}
 	else
 	{

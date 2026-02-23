@@ -609,6 +609,13 @@ void updateAllOnlineClientSettings(IDatabase *db)
 
 }
 
+void saveGeneralSettingsExternal(str_map& POST, IDatabase* db, bool& changed_backupfolder)
+{
+	ServerBackupDao backup_dao(db);
+	ServerSettings server_settings(db);
+	saveGeneralSettings(POST, db, backup_dao, server_settings, changed_backupfolder);
+}
+
 ACTION_IMPL(settings)
 {
 	Helper helper(tid, &POST, &PARAMS);
