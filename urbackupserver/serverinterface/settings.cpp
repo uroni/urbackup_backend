@@ -552,8 +552,9 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 	}
 }
 
-void updateArchiveSettings(int clientid, IDatabase *db)
+bool updateArchiveSettings(int clientid, IDatabase *db)
 {
+	bool ret = true;
 	IQuery* q = db->Prepare("INSERT INTO settings_db.settings(key, value, clientid) VALUES ('archive_update', '1', ?)");
 	if (clientid <= 0)
 	{
@@ -562,15 +563,16 @@ void updateArchiveSettings(int clientid, IDatabase *db)
 		for (size_t i = 0; i < res_ids.size(); ++i)
 		{
 			q->Bind(res_ids[i]["id"]);
-			q->Write();
+			ret &= q->Write();
 			q->Reset();
 		}
 	}
 	else
 	{
 		q->Bind(clientid);
-		q->Write();
+		ret &= q->Write();
 	}
+	return ret;
 }
 
 void updateOnlineClientSettings(IDatabase *db, int clientid)
@@ -614,6 +616,11 @@ void saveGeneralSettingsExternal(str_map& POST, IDatabase* db, bool& changed_bac
 	ServerBackupDao backup_dao(db);
 	ServerSettings server_settings(db);
 	saveGeneralSettings(POST, db, backup_dao, server_settings, changed_backupfolder);
+}
+
+bool updateArchiveSettingsExternal(int clientid, IDatabase* db)
+{
+	return updateArchiveSettings(clientid, db);
 }
 
 ACTION_IMPL(settings)

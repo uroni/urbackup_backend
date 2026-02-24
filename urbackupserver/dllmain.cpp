@@ -102,6 +102,7 @@ SStartupStatus startup_status;
 #include "../urbackupcommon/chunk_hasher.h"
 #include "LogReport.h"
 #include "WebSocketConnector.h"
+#include "serverinterface/settings.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -2518,6 +2519,13 @@ bool upgrade67_68()
 	return true;
 }
 
+bool upgrade68_69()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	return updateArchiveSettingsExternal(0, db);
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2539,7 +2547,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=68;
+	int max_v=69;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2954,6 +2962,13 @@ void upgrade(void)
 				break;
 			case 67:
 				if (!upgrade67_68())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 68:
+				if (!upgrade68_69())
 				{
 					has_error = true;
 				}
