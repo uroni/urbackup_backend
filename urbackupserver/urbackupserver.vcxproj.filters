@@ -710,5 +710,8 @@
     <ClInclude Include="ServerDownloadThreadGroup.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="serverinterface\settings.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
