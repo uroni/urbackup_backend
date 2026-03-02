@@ -74,7 +74,7 @@ add_executable(urbackupsrv
 	urbackupserver/serverinterface/restore_prepare_wait.cpp urbackupserver/copy_storage.cpp
 	urbackupserver/ImageMount.cpp urbackupserver/DataplanDb.cpp urbackupserver/PhashLoad.cpp
 	urbackupserver/serverinterface/scripts.cpp urbackupserver/Alerts.cpp urbackupserver/Mailer.cpp
-	urbackupserver/LogReport.cpp urbackupserver/serverinterface/status_check.cpp urbackupserver/apps/blockalign.cpp
+	urbackupserver/LogReport.cpp urbackupserver/serverinterface/status_check.cpp urbackupserver/serverinterface/logout.cpp urbackupserver/apps/blockalign.cpp
 	urbackupserver/serverinterface/restore_image.cpp urbackupserver/WebSocketConnector.cpp
 	luaplugin/dllmain.cpp luaplugin/LuaInterpreter.cpp luaplugin/pluginmgr.cpp)
 
