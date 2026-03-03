@@ -5806,10 +5806,10 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 		if(curr_settings->getValue("background_backups", &background_backups)
 			|| curr_settings->getValue("background_backups_def", &background_backups) )
 		{
-			return background_backups!="false";
+			return background_backups=="true";
 		}
 	}
-	return true;
+	return false;
 }
 
 void IndexThread::writeTokens()
