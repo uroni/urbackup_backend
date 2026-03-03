@@ -48,6 +48,8 @@ namespace
     std::string getEspVolumeCached(std::string& mpath)
     {
         mpath = getMountDevice("/boot/efi");
+		if(mpath.empty())
+			mpath = getMountDevice("/efi");
         return mpath;
     }    
 

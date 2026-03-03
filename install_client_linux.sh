@@ -241,6 +241,10 @@ install -c "dattobd_create_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_remove_snapshot" "$PREFIX/share/urbackup"
 install -c "dm_create_snapshot" "$PREFIX/share/urbackup"
 install -c "dm_remove_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_create_snapshot_common" "$PREFIX/share/urbackup"
+install -c "dm_cremove_snapshot_common" "$PREFIX/share/urbackup"
+install -c "dm_create_volume_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_remove_volume_snapshot" "$PREFIX/share/urbackup"
 install -c "filesystem_snapshot_common" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
@@ -647,8 +651,8 @@ then
 	then
 		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_create_snapshot"
 		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_remove_snapshot"
-		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_create_snapshot"
-		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_remove_snapshot"
+		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_create_volume_snapshot"
+		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_remove_volume_snapshot"
 		
 		if [ $DEBIAN = yes ] || [ $UBUNTU = yes ]
 		then
