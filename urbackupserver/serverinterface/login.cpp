@@ -219,24 +219,29 @@ ACTION_IMPL(login)
 		}
 		else
 		{
-			ret.set("success", JSON::Value(true) );
-			if(!has_session)
+			db_results res_users_c = db->Read("SELECT COUNT(*) AS c FROM settings_db.si_users");
+			if (!res_users_c.empty()
+				&& watoi(res_users_c[0]["c"]) == 0)
 			{
-				ses=helper.generateSession("anonymous");
-				POST["ses"]=ses;
-				ret.set("session", JSON::Value(ses));
-				helper.update(tid, &POST, &PARAMS);
-			}
-			SUser *session=helper.getSession();
-			if(session!=NULL)
-			{
-				logSuccessfulLogin(helper, PARAMS, "anonymous", LoginMethod_Webinterface);
-				session->mStr["login"]="ok";
-				session->id=SESSION_ID_ADMIN;
-			}
-			else
-			{
-				ret.set("error", JSON::Value(1));
+				ret.set("success", JSON::Value(true));
+				if (!has_session)
+				{
+					ses = helper.generateSession("anonymous");
+					POST["ses"] = ses;
+					ret.set("session", JSON::Value(ses));
+					helper.update(tid, &POST, &PARAMS);
+				}
+				SUser* session = helper.getSession();
+				if (session != NULL)
+				{
+					logSuccessfulLogin(helper, PARAMS, "anonymous", LoginMethod_Webinterface);
+					session->mStr["login"] = "ok";
+					session->id = SESSION_ID_ADMIN;
+				}
+				else
+				{
+					ret.set("error", JSON::Value(1));
+				}
 			}
 		}
 	}
