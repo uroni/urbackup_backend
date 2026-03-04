@@ -83,6 +83,11 @@ size_t CompressedPipe::ReadToString(std::string *ret)
 	return 0;
 }
 
+bool CompressedPipe::wakeupRead()
+{
+	return cs->wakeupRead();
+}
+
 void CompressedPipe::setUsageString(const std::string& str)
 {
 	cs->setUsageString(str);

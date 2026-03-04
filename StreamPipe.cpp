@@ -34,6 +34,12 @@ IMutex* CStreamPipe::active_pipes_mutex = NULL;
 CStreamPipe::CStreamPipe( SOCKET pSocket, const std::string& usage_str)
 	: transfered_bytes(0)
 {
+#ifdef _WIN32
+	socketEvt = WSA_INVALID_EVENT;
+#else
+	wakeup[0] = -1;
+#endif
+
 	s=pSocket;
 	has_error=false;
 	IScopedLock lock(active_pipes_mutex);
@@ -278,6 +284,9 @@ bool CStreamPipe::isReadable(int timeoutms)
 		return false;
 	}
 
+	if (hasWakeup())
+		return isReadableWithWakeup(timeoutms);
+
 	int rc = selectSocketRead(s, timeoutms);
 	if( rc>0 )
 		return true;
@@ -394,8 +403,22 @@ bool CStreamPipe::setOption(const SocketOption opt)
 		int flag;
 		flag = 1;
 		return setsockopt(s, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int)) == 0;
+	case SocketOption_CanWakeup:
+		return initWakeup();
 	}
 	return false;
+}
+
+bool CStreamPipe::wakeupRead()
+{
+	if (!hasWakeup())
+		return false;
+#ifdef _WIN32
+	return SetEvent(wakeupEvt) != FALSE;
+#else
+	char ch = 1;
+	return write(pipe[1], &ch, 1) == 1;
+#endif
 }
 
 _i64 CStreamPipe::getTransferedBytes(void)
@@ -436,4 +459,108 @@ void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
 bool CStreamPipe::Flush( int timeoutms/*=-1 */ )
 {
 	return true;
+}
+
+bool CStreamPipe::initWakeup()
+{
+#ifdef _WIN32
+	socketEvt = WSACreateEvent();
+	if (socketEvt == WSA_INVALID_EVENT)
+	{
+		Server->Log("Error creating WSA socket event: " + convert(WSAGetLastError()), LL_ERROR);
+		return false;
+	}
+
+	wakeupEvt = WSACreateEvent();
+	if (wakeupEvt == WSA_INVALID_EVENT)
+	{
+		Server->Log("Error creating WSA socket event: " + convert(WSAGetLastError()), LL_ERROR);
+		return false;
+	}
+
+	const int rc = WSAEventSelect(s, socketEvt, FD_READ | FD_CLOSE);
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log("Error setting event select: " + convert(WSAGetLastError()), LL_ERROR);
+		return false;
+	}
+#else
+	if (clopipe(wakeup) == -1)
+	{
+		Server->Log("Error creating wakeup pipe: " + convert(errno), LL_ERROR);
+		wakeup[0] = -1;
+		return false;
+	}
+#endif
+
+	return true;
+}
+
+bool CStreamPipe::hasWakeup() const
+{
+#ifdef _WIN32
+	return socketEvt != WSA_INVALID_EVENT;
+#else
+	return wakeup[0] != -1;
+#endif
+}
+
+bool CStreamPipe::isReadableWithWakeup(int timeoutms)
+{
+#ifdef _WIN32
+	WSAEVENT eventArray[2];
+	eventArray[0] = wakeupEvt;
+	eventArray[1] = socketEvt;
+
+	const DWORD rc = WSAWaitForMultipleEvents(2, eventArray, FALSE, timeoutms>=0 ? timeoutms : WSA_INFINITE, FALSE);
+
+	if (rc == WSA_WAIT_FAILED)
+	{
+		has_error = true;
+		return false;
+	}
+	else if (rc != WSA_WAIT_TIMEOUT)
+	{
+		if (rc == WSA_WAIT_EVENT_0)
+		{
+			ResetEvent(wakeupEvt);
+		}
+
+		WSANETWORKEVENTS networkEvents;
+		if (WSAEnumNetworkEvents(s, socketEvt, &networkEvents) == 0
+			&& networkEvents.lNetworkEvents > 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+#else
+	pollfd conn[2];
+
+	conn[0].fd = wakeup[0];
+	conn[0].events = POLLIN;
+	conn[0].revents = 0;
+
+	conn[1].fd = s;
+	conn[1].events = POLLIN;
+	conn[1].revents = 0;
+
+	int rc = poll(conn, 2, timeoutms);
+
+	if (rc < 0)
+	{
+		has_error = true;
+		return false;
+	}
+	else if(rc>0)
+	{
+		if (conn[1].revents != 0)
+			return true;
+
+		return false;
+	}
+
+	return false;
+#endif
 }

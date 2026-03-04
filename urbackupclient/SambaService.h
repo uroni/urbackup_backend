@@ -16,9 +16,9 @@ public:
 class SambaService : public ICustomClient
 {
 public:
-	void Init(THREAD_ID pTID, IPipe* pPipe, const std::string& pEndpointName) override;
-	bool Run(IRunOtherCallback* run_other) override;
-	void ReceivePackets(IRunOtherCallback* run_other) override;
+	void Init(THREAD_ID pTID, IPipe* pPipe, const std::string& pEndpointName, const IClientWakeup* wakeup) override;
+	int Run() override;
+	void ReceivePackets() override;
 	virtual bool wantReceive() override;
 
 private:

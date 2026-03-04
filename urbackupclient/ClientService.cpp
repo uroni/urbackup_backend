@@ -218,6 +218,10 @@ namespace
 		IPipe* pipe;
 		std::vector<char> extra_buffer;
 	};
+
+	const int CLIENT_WTIME_DEFAULT_MS = 100;
+	const int CLIENT_WTIME_STATUS_MS = 1000;
+	const int CLIENT_WTIME_LONG = 60000;
 }
 
 void ClientConnector::init_mutex(void)
@@ -283,7 +287,7 @@ bool ClientConnector::wantReceive(void)
 	return want_receive;
 }
 
-void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
+void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName, const IClientWakeup* wakeup)
 {
 	tid=pTID;
 	pipe=pPipe;
@@ -304,7 +308,6 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	endpoint_name = pEndpointName;
 	make_conn.store(0, std::memory_order_relaxed);
 	local_backup_running_id = 0;
-	run_other = NULL;
 	idle_timeout = 10000;
 	bitmapfile = NULL;
 	retrieved_has_components=false;
@@ -326,10 +329,8 @@ ClientConnector::~ClientConnector(void)
 	}
 }
 
-bool ClientConnector::Run(IRunOtherCallback* p_run_other)
+int ClientConnector::Run()
 {
-	run_other = p_run_other;
-
 	if(do_quit)
 	{
 		if(is_channel)
@@ -347,13 +348,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 		if(waitForThread())
 		{
 			want_receive = false;
-			return true;
+			return CLIENT_WTIME_LONG;
 		}
 		IndexThread::unrefResult(curr_result_id);
 		curr_result_id = 0;
 		delete image_inf.image_thread;
 		image_inf.image_thread=NULL;
-		return false;
+		return -1;
 	}
 
 	switch(state)
@@ -365,13 +366,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			if(waitForThread())
 			{
 				do_quit=true;
-				return true;
+				return CLIENT_WTIME_LONG;
 			}
 			IndexThread::unrefResult(curr_result_id);
 			curr_result_id = 0;
-			return false;
+			return -1;
 		}
-		return true;
+		return idle_timeout/10;
 	case CCSTATE_START_FILEBACKUP_ASYNC:
 	case CCSTATE_START_FILEBACKUP:
 		{
@@ -409,13 +410,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				if(waitForThread())
 				{
 					do_quit=true;
-					return true;
+					return CLIENT_WTIME_LONG;
 				}
 				IndexThread::unrefResult(curr_result_id);
 				curr_result_id = 0;
 				IScopedLock lock(backup_mutex);
 				removeRunningProcess(local_backup_running_id, false);
-				return false;
+				return -1;
 			}
 			else if(msg=="done")
 			{
@@ -455,11 +456,11 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					if (waitForThread())
 					{
 						do_quit = true;
-						return true;
+						return CLIENT_WTIME_LONG;
 					}
 					IndexThread::unrefResult(curr_result_id);
 					curr_result_id = 0;
-					return false;
+					return -1;
 				}
 				else if (msg.find("done") == 0)
 				{
@@ -490,7 +491,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 			if (chan->state == SChannel::EChannelState_Used)
 			{
-				return true;
+				return CLIENT_WTIME_LONG;
 			}
 			else
 			{
@@ -526,9 +527,9 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				if(waitForThread())
 				{
 					do_quit=true;
-					return true;
+					return CLIENT_WTIME_LONG;
 				}
-				return false;
+				return -1;
 			}
 			if(chan!=NULL && chan->state==SChannel::EChannelState_Exit)
 			{
@@ -576,7 +577,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					channel_pipes.erase(channel_pipes.begin()+idx);
 				}				
 
-				return false;
+				return -1;
 			}
 		}break;
 	case CCSTATE_IMAGE:
@@ -589,7 +590,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				image_inf.image_thread=NULL;
 				IndexThread::unrefResult(curr_result_id);
 				curr_result_id = 0;
-				return false;
+				return -1;
 			}
 		}break;
 	case CCSTATE_UPDATE_DATA:
@@ -601,9 +602,9 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				if(waitForThread())
 				{
 					do_quit=true;
-					return true;
+					return CLIENT_WTIME_LONG;
 				}
-				return false;
+				return -1;
 			}
 
 			if(state==CCSTATE_UPDATE_FINISH)
@@ -686,7 +687,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					do_quit=true;
 				}
 			}
-			return true;
+			return CLIENT_WTIME_DEFAULT_MS;
 		}break;
 	case CCSTATE_STATUS:
 		{
@@ -699,11 +700,11 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				state = CCSTATE_NORMAL;
 				status_updated=false;
 			}
-			return true;
+			return CLIENT_WTIME_STATUS_MS;
 		} break;
 
 	}
-	return true;
+	return CLIENT_WTIME_DEFAULT_MS;
 }
 
 std::string ClientConnector::getSha512Hash(IFile *fn)
@@ -833,11 +834,11 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 	return true;
 }
 
-void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
+void ClientConnector::ReceivePackets()
 {
 	do
 	{
-		ReceivePacketsInt(p_run_other);
+		ReceivePacketsInt();
 	} while (pipe != orig_pipe 
 		&& wantReceive()
 		&& state!= CCSTATE_UPDATE_FINISH
@@ -845,10 +846,8 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		&& pipe->isReadable());
 }
 
-void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
+void ClientConnector::ReceivePacketsInt()
 {
-	run_other = p_run_other;
-
 	if(state==CCSTATE_UPDATE_FINISH)
 	{
 		return;
@@ -3283,10 +3282,6 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 	{
 		lock->relock(NULL);
 		Server->wait(10);
-		if (run_other != NULL)
-		{
-			run_other->runOther();
-		}
 		lock->relock(backup_mutex);
 	}
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);

@@ -20,10 +20,10 @@ struct SShareProxy
 class CHTTPClient : public ICustomClient
 {
 public:
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint, const IClientWakeup* wakeup);
 
-	virtual void ReceivePackets(IRunOtherCallback* run_other);
-	virtual bool Run(IRunOtherCallback* run_other);
+	virtual void ReceivePackets();
+	virtual int Run();
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

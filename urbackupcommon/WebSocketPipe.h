@@ -83,6 +83,8 @@ public:
 		return pipe->setOption(opt);
 	}
 
+	bool wakeupRead();
+
 private:
 
 	bool has_read_mask()

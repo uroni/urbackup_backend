@@ -44,11 +44,13 @@ const int HTTP_STATE_WEBSOCKET = 7;
 
 const int HTTP_MAX_KEEPALIVE=15000;
 
+const int HTTP_RUN_WAIT_MS = 1000;
+
 IMutex *CHTTPClient::share_mutex=NULL;
 std::map<std::string, SShareProxy> CHTTPClient::shared_connections;
 extern std::vector<std::string> allowed_urls;
 
-void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint)
+void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint, const IClientWakeup* wakeup)
 {
 	pipe=pPipe;
 	do_quit=false;
@@ -80,7 +82,7 @@ bool CHTTPClient::closeSocket(void)
 	return http_g_state != HTTP_STATE_WEBSOCKET;
 }
 
-void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
+void CHTTPClient::ReceivePackets()
 {
 	std::string data;
 	size_t rc=pipe->Read(&data);
@@ -128,11 +130,11 @@ void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
 	}
 }
 
-bool CHTTPClient::Run(IRunOtherCallback* run_other)
+int CHTTPClient::Run()
 {
 	if (http_g_state == HTTP_STATE_WEBSOCKET)
 	{
-		return false;
+		return -1;
 	}
 
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
@@ -180,6 +182,8 @@ bool CHTTPClient::Run(IRunOtherCallback* run_other)
 				}
 			}
 		}
+
+		return HTTP_RUN_WAIT_MS;
 	}
 
 	if( do_quit==true || http_g_state==HTTP_STATE_DONE)
@@ -223,35 +227,37 @@ bool CHTTPClient::Run(IRunOtherCallback* run_other)
 
 					if(found)
 					{
-						return false;
+						return -1;
 					}
 					else
 					{
-						return true;
+						return 100;
 					}
 				}
 				else
 				{
-					return false;
+					return -1;
 				}
 			}
 			else
 			{
-				return false;
+				return -1;
 			}
 		}
-		return false;
+		return -1;
 	}
 
 	if( http_g_state==HTTP_STATE_KEEPALIVE )
 	{
 		if( Server->getTimeMS()-http_keepalive_start>=http_keepalive_count )
 		{
-			return false;
+			return -1;
 		}
+
+		return HTTP_RUN_WAIT_MS;
 	}
 
-	return true;
+	return HTTP_RUN_WAIT_MS;
 }
 
 void CHTTPClient::processCommand(char ch)

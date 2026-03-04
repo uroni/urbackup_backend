@@ -44,7 +44,7 @@ void SambaServiceFactory::destroyClient(ICustomClient* pClient)
 	delete static_cast<SambaService*>(pClient);
 }
 
-void SambaService::Init(THREAD_ID pTID, IPipe* pPipe, const std::string& pEndpointName)
+void SambaService::Init(THREAD_ID pTID, IPipe* pPipe, const std::string& pEndpointName, const IClientWakeup* wakeup)
 {
 	pipe = pPipe;
 	state = State::Init;
@@ -57,20 +57,20 @@ bool SambaService::wantReceive()
 	return state == State::Running;
 }
 
-bool SambaService::Run(IRunOtherCallback* run_other)
+int SambaService::Run()
 {
 	if (state == State::Shutdown)
 	{
 		if (!Server->getThreadPool()->isRunning(readTicket))
-			return false;
-		return true;
+			return -1;
+		return 10000;
 	}
 
 	if (state == State::Init)
 	{
 		smbPipe.reset(ClientConnector::getRemoteConnection(std::string(), 10000, ConnectionTypeSamba));
 		if (!smbPipe)
-			return false;
+			return -1;
 
 		smbPipe->setOption(IPipe::SocketOption_NoDelay);
 
@@ -78,10 +78,10 @@ bool SambaService::Run(IRunOtherCallback* run_other)
 		readTicket = Server->getThreadPool()->execute(new StreamInput(pipe, smbPipe.get()), "smb read");
 	}
 
-	return true;
+	return 1000;
 }
 
-void SambaService::ReceivePackets(IRunOtherCallback* run_other)
+void SambaService::ReceivePackets()
 {
 	while (true)
 	{

@@ -67,6 +67,8 @@ public:
 
 	bool setOption(const SocketOption opt) override;
 
+	bool wakeupRead();
+
 private:
 	size_t ProcessToBuffer(char *buffer, size_t bsize, bool fromLast);
 	void ProcessToString(std::string* ret, bool fromLast);

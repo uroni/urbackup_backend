@@ -265,6 +265,11 @@ void CompressedPipeZstd::ProcessToString(std::string* ret, bool fromLast )
 	} while (input_buffer_size!=0 && !has_error);
 }
 
+bool CompressedPipeZstd::wakeupRead()
+{
+	return cs->wakeupRead();
+}
+
 bool CompressedPipeZstd::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	return WriteInt(buffer, bsize, timeoutms, flush ? ZSTD_e_flush : ZSTD_e_continue);

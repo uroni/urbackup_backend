@@ -55,6 +55,10 @@ int64 InternetServiceConnector::last_token_remove=0;
 std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
 std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
 
+const int INTERNET_SERVICE_CONNECTNG_WTIME_MS = 1000;
+const int INTERNET_SERVICE_MAX_WTIME_MS = 60000;
+const int INTERNET_SERVICE_LONG_WTIME_MS = 10000;
+
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
@@ -101,10 +105,11 @@ InternetServiceConnector::~InternetServiceConnector(void)
 	}
 }
 
-void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
+void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName, const IClientWakeup* pWakeup)
 {
 	tid=pTID;
 	cs=pPipe;
+	wakeup = pWakeup;
 	comm_pipe=cs;
 	is_pipe=NULL;
 	conn_version=2;
@@ -192,32 +197,41 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 	}
 }
 
-bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
+int InternetServiceConnector::Run()
 {
-	if(stop_connecting)
+	bool local_do_connect;
+	bool local_stop_connecting;
+	{
+		IScopedLock lock(local_mutex);
+		local_do_connect = do_connect;
+		local_stop_connecting = stop_connecting;
+	}
+
+
+	if(local_stop_connecting)
 	{
 		IScopedLock lock(local_mutex);
 		cleanup_pipes(false);
-		return false;
+		return -1;
 	}
 
 	if(state==ISS_CONNECTING)
 	{
-		return true;
+		return INTERNET_SERVICE_CONNECTNG_WTIME_MS;
 	}
 
 	if(state==ISS_USED)
 	{
 		if(free_connection)
 		{
-			return false;
+			return -1;
 		}
-		return true;
+		return INTERNET_SERVICE_MAX_WTIME_MS;
 	}
 	
 	if( has_timeout )
 	{
-		return false;
+		return -1;
 	}
 
 	if (state == ISS_RECEIVE_ENDPOINT)
@@ -230,13 +244,13 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 			{
 				has_timeout = true;
 				cleanup_pipes(true);
-				return false;
+				return -1;
 			}
 		}
-		return true;
+		return ping_timeout/10;
 	}
 
-	if(do_connect && !pinging && state==ISS_AUTHED )
+	if(local_do_connect && !pinging && state==ISS_AUTHED )
 	{
 		CWData data;
 		{
@@ -268,14 +282,14 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 			{
 				has_timeout=true;
 				cleanup_pipes(true);
-				return false;
+				return -1;
 			}
 		}
 	}
-	return true;
+	return INTERNET_SERVICE_LONG_WTIME_MS;
 }
 
-void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
+void InternetServiceConnector::ReceivePackets()
 {
 	if(state==ISS_USED || has_timeout)
 	{
@@ -816,6 +830,8 @@ bool InternetServiceConnector::Connect(char service, int timems)
 	target_service=service;
 	do_connect=true;
 
+	wakeup->wakeup();
+
 	connection_done_cond->wait(&lock, timems);
 
 	if(!is_connected)
@@ -838,6 +854,7 @@ IPipe *InternetServiceConnector::getISPipe(void)
 
 void InternetServiceConnector::stopConnecting(void)
 {
+	IScopedLock lock(local_mutex);
 	stop_connecting=true;
 }
 

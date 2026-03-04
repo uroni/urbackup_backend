@@ -194,11 +194,11 @@ class ClientConnector : public ICustomClient
 	friend class ScopedRemoveRunningBackup;
 public:
 	ClientConnector(void);
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName, const IClientWakeup* wakeup);
 	~ClientConnector(void);
 
-	virtual bool Run(IRunOtherCallback* run_other);
-	virtual void ReceivePackets(IRunOtherCallback* run_other);
+	virtual int Run();
+	virtual void ReceivePackets();
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -245,7 +245,7 @@ public:
 	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
 
 private:
-	void ReceivePacketsInt(IRunOtherCallback* run_other);
+	void ReceivePacketsInt();
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
@@ -471,7 +471,6 @@ private:
 #ifdef _WIN32
 	static SVolumesCache* volumes_cache;
 #endif
-	IRunOtherCallback* run_other;
 
 	int64 idle_timeout;
 

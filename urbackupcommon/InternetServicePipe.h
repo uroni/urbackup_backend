@@ -71,6 +71,8 @@ public:
 
 	virtual bool setOption(const SocketOption opt);
 
+	bool wakeupRead();
+
 private:
 	IPipe *cs;
 

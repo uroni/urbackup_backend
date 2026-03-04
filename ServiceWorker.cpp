@@ -24,12 +24,18 @@
 #include "stringtools.h"
 #include <stdlib.h>
 
+#ifndef _WIN32
+#include "common/clopipe.h"
+#endif
+
+const int MAX_WORKER_WAIT_MS = 60000;
+const int MIN_WORKER_WAIT_MS = 10;
+
 CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread)
 	: exit(pExit), tid(0)
 {
 	mutex=Server->createMutex();
 	nc_mutex=Server->createMutex();
-	cond=Server->createCondition();
 	
 	name=pName;
 	service=pService;
@@ -52,6 +58,23 @@ CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pE
 			max_clients=MAX_CLIENTS;
 		}
 	}
+
+#ifdef _WIN32
+	wakeup_event = WSACreateEvent();
+	if (wakeup_event == WSA_INVALID_EVENT)
+	{
+		Server->Log("Error creating WSA wakeup event: " + convert(WSAGetLastError()));
+		throw std::runtime_error("Error creating WSA wakeup event");
+	}
+
+	max_clients = min(WSA_MAXIMUM_WAIT_EVENTS-1, max_clients);
+#else
+	if (clopipe(wakeup_event) == -1)
+	{
+		Server->Log("Error creating wakeup pipe: " + convert(errno), LL_ERROR);
+		throw std::runtime_error("Error creating wakeup pipe");
+	}
+#endif
 }
 
 CServiceWorker::~CServiceWorker()
@@ -60,133 +83,87 @@ CServiceWorker::~CServiceWorker()
 	{
 		service->destroyClient( clients[i].first );
 		delete clients[i].second;
+
+#ifdef _WIN32
+		WSACloseEvent(client_events[i]);
+#endif
 	}
 	clients.clear();
 
 	Server->destroy(mutex);
 	Server->destroy(nc_mutex);
-	Server->destroy(cond);
+
+#ifdef _WIN32
+	WSACloseEvent(wakeup_event);
+#else
+	close(wakeup_event[0]);
+	close(wakeup_event[1]);
+#endif
 }
 
 void CServiceWorker::stop(void)
 {
 	IScopedLock lock(mutex);
 	do_stop=true;
-	cond->notify_all();
+	wakeupInt();
 }
 
-
-namespace
+void CServiceWorker::work()
 {
-	class ScopedWorkStack
-	{
-	public:
-		ScopedWorkStack(std::stack<CServiceWorker::SCurrWork>& curr_work)
-			: curr_work(curr_work)
-		{
-
-		}
-
-		~ScopedWorkStack()
-		{
-			curr_work.pop();
-		}
-	private:
-		std::stack<CServiceWorker::SCurrWork>& curr_work;
-	};
-}
-
-void CServiceWorker::work(ICustomClient * skip_client)
-{
-	if (clients.empty())
-	{
-		IScopedLock lock(mutex);
-		if (new_clients.empty() && !do_stop)
-		{
-			//Server->Log(name+": Sleeping..."+convert(Server->getTimeMS()), LL_DEBUG);
-			cond->wait(&lock);
-			//Server->Log(name+": Waking up..."+convert(Server->getTimeMS()), LL_DEBUG);
-			return;
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	SCurrWork curr_work_c = { NULL, false };
-	curr_work.push(curr_work_c);
-	ScopedWorkStack work_stack(curr_work);
+	int curr_wtime = MAX_WORKER_WAIT_MS;
 
 	for (size_t i = 0; i<clients.size();)
 	{
-		if (clients[i].first == skip_client)
+		const int wtime = clients[i].first->Run();
+
+		if (wtime < 0)
 		{
-			++i;
-			continue;
-		}
-
-		curr_work.top().client = clients[i].first;
-
-		bool b = clients[i].first->Run(this);
-
-		if (b == false)
-		{
-			IScopedLock lock(mutex);
-			//Server->Log(name+": Removing user"+convert(Server->getTimeMS()), LL_DEBUG);
 			if (clients[i].first->closeSocket())
 			{
 				delete clients[i].second;
 			}
 			service->destroyClient(clients[i].first);
+			IScopedLock lock(mutex);
 			clients.erase(clients.begin() + i);
 			IScopedLock lock2(nc_mutex);
 			--nClients;
 		}
 		else
 		{
-			++i;
-		}
+			if (wtime == 0)
+				curr_wtime = MIN_WORKER_WAIT_MS;
+			else if (wtime < curr_wtime)
+				curr_wtime = wtime;
 
-		if (curr_work.top().did_other_work)
-		{
-			return;
+			++i;
 		}
 	}
 
 #ifdef _WIN32
-	fd_set fdset;
-	int max;
+	WSAEVENT eventArray[WSA_MAXIMUM_WAIT_EVENTS];
+	DWORD numEvents = 1;
+	eventArray[0] = wakeup_event;
+	std::vector<std::pair<ICustomClient*, SOCKET>> conn_clients;
 #else
-	std::vector<pollfd> conn;
 	std::vector<ICustomClient*> conn_clients;
+	std::vector<pollfd> conn;
+	pollfd nconn;
+	nconn.fd = wakeup_event[0];
+	nconn.events = POLLIN;
+	nconn.revents = 0;
+	conn.push_back(nconn);
 #endif
 
-
-#ifdef _WIN32
-	FD_ZERO(&fdset);
-	max = 0;
-#else
-	conn.clear();
-	conn_clients.clear();
-#endif
-
-	bool has_select_client = false;
 
 	for (size_t i = 0; i<clients.size(); ++i)
 	{
-		if (clients[i].first == skip_client)
-		{
-			continue;
-		}
-
 		if (clients[i].first->wantReceive())
 		{
 			SOCKET s = clients[i].second->getSocket();
 #ifdef _WIN32
-			if ((_i32)s>max)
-				max = (_i32)s;
-			FD_SET(s, &fdset);
+			eventArray[numEvents] = client_events[i];
+			++numEvents;
+			conn_clients.push_back(std::make_pair(clients[i].first, s));
 #else
 			pollfd nconn;
 			nconn.fd = s;
@@ -194,70 +171,64 @@ void CServiceWorker::work(ICustomClient * skip_client)
 			nconn.revents = 0;
 			conn.push_back(nconn);
 			conn_clients.push_back(clients[i].first);
-#endif
-			has_select_client = true;
+#endif			
 		}
 	}
 
 
-	if (has_select_client)
-	{
 #ifdef _WIN32
-		timeval lon;
-		lon.tv_sec = 0;
-		lon.tv_usec = 10000;
+	const DWORD rc = WSAWaitForMultipleEvents(numEvents, eventArray, FALSE, curr_wtime, FALSE);
 
-		_i32 rc = select(max + 1, &fdset, 0, 0, &lon);
-#else
-		int rc = poll(&conn[0], conn.size(), 10);
-#endif
-		if (rc>0)
+	if (rc == WSA_WAIT_FAILED)
+	{
+		Server->Log("Error waiting for network events: " + convert(WSAGetLastError()), LL_ERROR);
+		Server->wait(100);
+	}
+	else if (rc != WSA_WAIT_TIMEOUT)
+	{
+		if (rc == WSA_WAIT_EVENT_0)
 		{
-#ifdef _WIN32
-			for (size_t i = 0; i<clients.size(); ++i)
+			ResetEvent(wakeup_event);
+		}
+
+		WSANETWORKEVENTS networkEvents;
+		for (DWORD i = 1; i< numEvents;++i)
+		{
+			const SOCKET s = conn_clients[i-1].second;
+			if (WSAEnumNetworkEvents(s, eventArray[i], &networkEvents) == 0
+				&& networkEvents.lNetworkEvents>0)
 			{
-				if (clients[i].first == skip_client)
-				{
-					continue;
-				}
-
-				SOCKET s = clients[i].second->getSocket();
-				if (FD_ISSET(s, &fdset))
-				{
-					curr_work.top().client = clients[i].first;
-
-					//Server->Log("Incoming data for client..", LL_DEBUG);
-					clients[i].first->ReceivePackets(this);
-
-					if (curr_work.top().did_other_work)
-					{
-						return;
-					}
-				}
+				conn_clients[i - 1].first->ReceivePackets();
 			}
-#else
-			for (size_t i = 0; i<conn.size(); ++i)
-			{
-				if (conn[i].revents != 0)
-				{
-					curr_work.top().client = clients[i].first;
-
-					conn_clients[i]->ReceivePackets(this);
-
-					if (curr_work.top().did_other_work)
-					{
-						return;
-					}
-				}
-			}
-#endif
 		}
 	}
-	else if(skip_client==NULL)
+
+#else
+	const int rc = poll(&conn[0], conn.size(), curr_wtime);
+
+	if (rc > 0)
 	{
-		Server->wait(10);
+		if (conn[0].revents != 0)
+		{
+			char ch;
+			ssize_t r = read(wakeup_event[0], &ch, 1);
+			if (r != 0)
+			{
+				Server->Log("Error reading from pipe fd", LL_WARNING);
+			}
+		}
+
+		for (size_t i = 1; i < conn.size(); ++i)
+		{
+			if (conn[i].revents != 0)
+			{
+				conn_clients[i-1]->ReceivePackets();
+			}
+		}
 	}
+#endif
 }
+
 
 void CServiceWorker::addNewClients(void)
 {
@@ -265,30 +236,45 @@ void CServiceWorker::addNewClients(void)
     {
 		CStreamPipe *pipe=new CStreamPipe(new_clients[i].first, "ServiceWorker " + name);
 		ICustomClient *nc=service->createClient();
-		nc->Init(tid, pipe, new_clients[i].second);
+		nc->Init(tid, pipe, new_clients[i].second, this);
 		clients.push_back( std::pair<ICustomClient*, CStreamPipe*>(nc, pipe) );
+
+#ifdef _WIN32
+		const WSAEVENT socket_event = WSACreateEvent();
+		if (socket_event == WSA_INVALID_EVENT)
+		{
+			Server->Log("Error creating WSA socket event: " + convert(WSAGetLastError()), LL_ERROR);
+			throw std::runtime_error("Error creating WSA socket event");
+		}
+
+		client_events.push_back(socket_event);
+
+		const int rc = WSAEventSelect(pipe->getSocket(), socket_event, FD_READ | FD_CLOSE);
+		if (rc == SOCKET_ERROR)
+		{
+			Server->Log("Error setting event select: " + convert(WSAGetLastError()), LL_ERROR);
+			throw std::runtime_error("Error setting event select");
+		}
+#endif
+
     }
     new_clients.clear();
-}
-
-void CServiceWorker::runOther()
-{
-	curr_work.top().did_other_work = true;
-	work(curr_work.top().client);
 }
 
 void CServiceWorker::operator()(void)
 {
 	tid=Server->getThreadID();
 	
-	while(!do_stop)
+	while(true)
 	{
 		{
 			IScopedLock lock(mutex);
+			if (do_stop)
+				break;
 			addNewClients();
 		}
 
-		work(NULL);
+		work();
 	}
 	Server->Log("ServiceWorker finished", LL_DEBUG);
 	exit->Write("ok");
@@ -305,9 +291,33 @@ void CServiceWorker::AddClient(SOCKET pSocket, const std::string& endpoint)
 	IScopedLock lock(mutex);
 
 	new_clients.push_back( std::make_pair(pSocket, endpoint) );
-	
-	cond->notify_all();
-	
+
+	wakeupInt();
+
 	IScopedLock lock2(nc_mutex);
 	++nClients;
+}
+
+void CServiceWorker::wakeupInt() const
+{
+#ifdef _WIN32
+	const BOOL b = WSASetEvent(wakeup_event);
+	if (!b)
+	{
+		Server->Log("Error setting wakeup_event: " + convert(WSAGetLastError()), LL_ERROR);
+	}
+#else
+	char ch = 1;
+	ssize_t rc = write(wakeup_event[1], &ch, 1);
+	if (rc != 1)
+	{
+		Server->Log("Error writing to wakeup fd: " + convert(errno), LL_ERROR);
+	}
+#endif
+}
+
+void CServiceWorker::wakeup() const
+{
+	IScopedLock lock(mutex);
+	wakeupInt();
 }

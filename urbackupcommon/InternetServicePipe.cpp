@@ -211,6 +211,11 @@ bool InternetServicePipe::setOption(const SocketOption opt)
 	return cs->setOption(opt);
 }
 
+bool InternetServicePipe::wakeupRead()
+{
+	return cs->wakeupRead();
+}
+
 bool InternetServicePipe::Flush(int timeoutms)
 {
 	return cs->Flush(timeoutms);

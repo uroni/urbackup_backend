@@ -248,6 +248,11 @@ void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 	} while (input_buffer_size!=0);
 }
 
+bool CompressedPipe2::wakeupRead()
+{
+	return cs->wakeupRead();
+}
+
 bool CompressedPipe2::setOption(const SocketOption opt)
 {
 	return cs->setOption(opt);

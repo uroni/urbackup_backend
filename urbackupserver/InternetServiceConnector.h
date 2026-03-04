@@ -68,10 +68,10 @@ class InternetServiceConnector : public ICustomClient
 public:
 	InternetServiceConnector(BackupServer* backup_server);
 	~InternetServiceConnector(void);
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName, const IClientWakeup* pWakeup);
 
-	virtual bool Run(IRunOtherCallback* run_other);
-	virtual void ReceivePackets(IRunOtherCallback* run_other);
+	virtual int Run();
+	virtual void ReceivePackets();
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -129,8 +129,8 @@ private:
 	bool has_timeout;
 
 	bool connect_start;
-	volatile bool do_connect;
-	volatile bool stop_connecting;
+	bool do_connect;
+	bool stop_connecting;
 	bool is_connected;
 	volatile bool free_connection;
 
@@ -159,4 +159,5 @@ private:
 	unsigned int client_ping_interval;
 
 	BackupServer* backup_server;
+	const IClientWakeup* wakeup;
 };

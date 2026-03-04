@@ -274,5 +274,15 @@ bool CMemoryPipe::setCompressionSettings(const SCompressionSettings& params)
 
 bool CMemoryPipe::setOption(const SocketOption opt)
 {
+	if (opt == IPipe::SocketOption_CanWakeup)
+		return true;
+
 	return false;
+}
+
+bool CMemoryPipe::wakeupRead()
+{
+	IScopedLock lock(mutex);
+	cond->notify_all();	
+	return true;
 }

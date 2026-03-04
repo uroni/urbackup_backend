@@ -344,3 +344,8 @@ bool InternetServicePipe2::setOption(const SocketOption opt)
 	return cs->setOption(opt);
 }
 
+bool InternetServicePipe2::wakeupRead()
+{
+	return cs->wakeupRead();
+}
+

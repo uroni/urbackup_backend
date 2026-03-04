@@ -62,6 +62,8 @@ public:
 
 	virtual bool setOption(const SocketOption opt);
 
+	bool wakeupRead();
+
 private:
 	virtual bool WriteInt(const char *buffer, size_t bsize, int timeoutms = -1, ZSTD_EndDirective flush= ZSTD_e_continue);
 
