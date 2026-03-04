@@ -23,6 +23,7 @@
 #ifndef _WIN32
 #include <memory.h>
 #include <errno.h>
+#include "common/clopipe.h"
 #endif
 #include "Server.h"
 #include "Interface/PipeThrottler.h"
@@ -417,7 +418,7 @@ bool CStreamPipe::wakeupRead()
 	return SetEvent(wakeupEvt) != FALSE;
 #else
 	char ch = 1;
-	return write(pipe[1], &ch, 1) == 1;
+	return write(wakeup[1], &ch, 1) == 1;
 #endif
 }
 
