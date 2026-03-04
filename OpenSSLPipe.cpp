@@ -566,7 +566,12 @@ bool OpenSSLPipe::setCompressionSettings(const SCompressionSettings& params)
 
 bool OpenSSLPipe::setOption(const SocketOption opt)
 {
-	bpipe->setOption(opt);
+	return bpipe->setOption(opt);
+}
+
+bool OpenSSLPipe::wakeupRead()
+{
+	return bpipe->wakeupRead();
 }
 
 #endif //WITH_OPENSSL
