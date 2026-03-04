@@ -52,6 +52,9 @@
 #include <iostream>
 #include <sys/xattr.h>
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 #endif
 
 //For truncating files
@@ -86,6 +89,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include "../urbackupcommon/android_popen.h"
+#endif
+
+#if defined(HAVE_SPAWN_H)
+#include <spawn.h>
 #endif
 
 
@@ -406,7 +413,23 @@ namespace
 	std::string getFolderMount(const std::string& path)
 	{		
 #ifndef HAVE_MNTENT_H
+#ifdef __APPLE__
+		int count;
+		struct statfs *mntbuf;
+		count = getmntinfo(&mntbuf, MNT_NOWAIT);
+		std::string maxmount;
+		for (int i = 0; i < count; i++) {
+			std::string mountPoint = mntbuf[i].f_mntonname;
+			if(path.find(mountPoint)==0 &&
+				mountPoint.size()>maxmount.size())
+			{
+				maxmount = mountPoint;
+			}
+		}
+		return maxmount;
+#else
 		return std::string();
+#endif
 #else
 		FILE *aFile;
 
@@ -575,7 +598,8 @@ std::string add_trailing_slash(const std::string &strDirName)
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
 	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
-	index_backup_dirs_optional(false), sc_refs_cleanup(false)
+	index_backup_dirs_optional(false), sc_refs_cleanup(false),
+	dataless_warning_logged(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -1616,6 +1640,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	last_tmp_update_time=Server->getTimeMS();
 	index_error=false;
+	dataless_warning_logged=false;
 
 	std::string filelist_dest_fn = "urbackup/data/filelist.ub";
 	if (index_group != c_group_default)
@@ -1916,6 +1941,11 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 					SCDirs *scd=getSCDir(backup_dirs[k].tname, index_clientsubname, false);
 					release_shadowcopy(scd);
 				}
+
+				if (outfile.bad() || outfile.fail())
+				{
+					VSSLog("Error writing to file list at " + filelist_fn, LL_ERROR);
+				}
 				
 				outfile.close();
 				removeFile((filelist_fn));
@@ -1944,6 +1974,14 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		if (outfile.is_open())
 		{
 			addBackupScripts(outfile);
+		}
+
+		if (outfile.bad() || outfile.fail())
+		{
+			VSSLog("Error writing to file list at " + filelist_fn, LL_ERROR);
+			outfile.close();
+			removeFile(filelist_fn);
+			return IndexErrorInfo_FilelistWriteError;
 		}
 
 		std::streampos pos=outfile.tellp();
@@ -4150,26 +4188,33 @@ void IndexThread::execute_postbackup_hook(std::string scriptname, int group, con
 		CloseHandle(pi.hThread);
 	}
 #else
+	std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
+	std::string group_str = convert(group);
+	char* const argv[]={ const_cast<char*>(fullname.c_str()), 
+		const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
+
 	pid_t pid1;
 	pid1 = fork();
 	if( pid1==0 )
 	{
 		setsid();
+
+		int rc = 0;
+#ifdef HAVE_SPAWN_H		
+		const char* envp[] = {NULL};
+		pid_t child_pid;
+		rc = posix_spawn(&child_pid, fullname.c_str(), NULL, NULL, const_cast<char**>(argv), const_cast<char**>(envp));
+#else // HAVE_SPAWN_H
 		pid_t pid2;
 		pid2 = fork();
 		if(pid2==0)
 		{
-			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
-			std::string group_str = convert(group);
-			char* const argv[]={ const_cast<char*>(fullname.c_str()), 
-				const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
-			execv(const_cast<char*>(fullname.c_str()), argv);
-			exit(1);
-		}
-		else
-		{
-			exit(1);
-		}
+			rc = execv(const_cast<char*>(fullname.c_str()), argv);
+			if(rc==-1)
+				rc = errno;
+		}	
+#endif // HAVE_SPAWN_H
+		_exit(rc);
 	}
 	else
 	{
@@ -5762,10 +5807,10 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 		if(curr_settings->getValue("background_backups", &background_backups)
 			|| curr_settings->getValue("background_backups_def", &background_backups) )
 		{
-			return background_backups!="false";
+			return background_backups=="true";
 		}
 	}
-	return true;
+	return false;
 }
 
 void IndexThread::writeTokens()
@@ -8684,21 +8729,34 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 void IndexThread::filterEncryptedFiles(const std::string & dir, const std::string& orig_dir, std::vector<SFile>& files)
 {
 	bool has_encrypted = false;
+	bool has_dataless = false;
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		if (files[i].isencrypted)
 		{
 			has_encrypted = true;
 		}
+		if (files[i].isdataless)
+		{
+			has_dataless = true;
+		}
 	}
 
-	if (has_encrypted)
+	if (has_encrypted || has_dataless)
 	{
 		std::vector<SFile> new_files;
 
 		for (size_t i = 0; i < files.size(); ++i)
 		{
-			if (files[i].isencrypted
+			if (files[i].isdataless)
+			{
+				if(!dataless_warning_logged)
+				{
+					dataless_warning_logged=true;
+					VSSLog("Not backing up cloud storage files (file \"" + orig_dir + os_file_sep() + files[i].name + "\" is e.g. on iCloud or OneDrive -- not informing about other files)", LL_INFO);
+				}
+			}
+			else if (files[i].isencrypted
 				&& files[i].isdir)
 			{
 				bool has_error = false;

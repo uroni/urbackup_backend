@@ -450,7 +450,8 @@ private:
 	{
 		IndexErrorInfo_Ok = 0,
 		IndexErrorInfo_Error = 1,
-		IndexErrorInfo_NoBackupPaths = 2
+		IndexErrorInfo_NoBackupPaths = 2,
+		IndexErrorInfo_FilelistWriteError = 3
 	};
 
 	IndexErrorInfo indexDirs(bool full_backup, bool simultaneous_other);
@@ -889,6 +890,8 @@ private:
 	int64 phash_queue_write_pos;
 	std::vector<char> phash_queue_buffer;
 	int64 file_id;
+
+	bool dataless_warning_logged;
 
 	struct SResult
 	{

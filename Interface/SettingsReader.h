@@ -10,11 +10,13 @@ class ISettingsReader : public IObject
 public:
 	virtual bool getValue(std::string key, std::string *value)=0;
 	
-	virtual std::string getValue(std::string key, std::string def)=0;
+	virtual std::string getValue(const std::string& key, const char* def) = 0;
+	virtual std::string getValue(std::string key, const std::string& def)=0;	
 	virtual std::string getValue(std::string key)=0;
 	virtual int getValue(std::string key, int def)=0;
 	virtual float getValue(std::string key, float def)=0;
 	virtual int64 getValue(std::string key, int64 def)=0;
+	virtual bool getValue(const std::string& key, const bool def) = 0;
 	
 	virtual std::vector<std::string> getKeys() = 0;
 };

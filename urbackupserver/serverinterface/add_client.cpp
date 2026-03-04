@@ -1,5 +1,7 @@
 #include "action_header.h"
 #include "../ClientMain.h"
+#include "rights.h"
+#include "settings.h"
 
 ACTION_IMPL(add_client)
 {
@@ -13,6 +15,27 @@ ACTION_IMPL(add_client)
 		if (POST["clientname"].empty())
 		{
 			return;
+		}
+
+		bool empty_internet_server_url = false;
+		str_map::iterator it_internet_server = POST.find("internet_server");
+		str_map::iterator it_internet_server_port = POST.find("internet_server_port");
+		if (it_internet_server != POST.end() &&
+			it_internet_server_port != POST.end())
+		{
+			if (it_internet_server->second.empty())
+			{
+				empty_internet_server_url = true;
+			}
+			else if(helper.getRights("general_settings") == RIGHT_ALL)
+			{
+				str_map change_settings;
+				change_settings["internet_server"] = it_internet_server->second;
+				change_settings["internet_server_port"] = it_internet_server_port->second;
+				bool changed_backupfolder;
+				saveGeneralSettingsExternal(change_settings, helper.getDatabase(), changed_backupfolder);
+				ServerSettings::updateAll();
+			}
 		}
 
 		int p_group_id = -1;
@@ -90,6 +113,7 @@ ACTION_IMPL(add_client)
 			ret.set("server_url", server_url);
 			ret.set("internet_server", s->internet_server);
 			ret.set("internet_server_port", s->internet_server_port);
+			ret.set("empty_internet_server_url", empty_internet_server_url);
 			if (!s->internet_server_proxy.empty())
 			{
 				ret.set("internet_server_proxy", s->internet_server_proxy);

@@ -53,36 +53,40 @@ void WebSocketConnector::Execute(str_map& GET, THREAD_ID tid, str_map& PARAMS, I
 	str_map::iterator it_forwarded_for = PARAMS.find("X-FORWARDED-FOR");
 
 	WebSocketPipe* ws_pipe = new WebSocketPipe(pipe, false, true, std::string(), true);
+	PipeWakeupWrapper wakeupPipe(ws_pipe);
 
-	client->Init(tid, ws_pipe, it_forwarded_for != PARAMS.end() ? it_forwarded_for->second : endpoint_name);
+	client->Init(tid, ws_pipe, it_forwarded_for != PARAMS.end() ? it_forwarded_for->second : endpoint_name, &wakeupPipe);
 
 	while (true)
 	{
-		bool b = client->Run(NULL);
-		if (!b)
+		int wtime = client->Run();
+		if (wtime < 0)
 		{
 			break;
 		}
 
+		if (wtime < 10)
+			wtime = 10;
+
 		if (client->wantReceive())
 		{
-			if (ws_pipe->isReadable(10))
+			if (ws_pipe->isReadable(wtime))
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets();
 			}
 			else if (ws_pipe->hasError())
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets();
 				Server->wait(20);
 			}
 		}
 		else
 		{
-			Server->wait(20);
+			Server->wait(wtime);
 		}
 	}
 
-	bool want_destory_pipe = client->closeSocket();
+	const bool want_destory_pipe = client->closeSocket();
 
 	wrapped_service->destroyClient(client);
 

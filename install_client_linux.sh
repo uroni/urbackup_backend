@@ -241,6 +241,10 @@ install -c "dattobd_create_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_remove_snapshot" "$PREFIX/share/urbackup"
 install -c "dm_create_snapshot" "$PREFIX/share/urbackup"
 install -c "dm_remove_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_create_snapshot_common" "$PREFIX/share/urbackup"
+install -c "dm_cremove_snapshot_common" "$PREFIX/share/urbackup"
+install -c "dm_create_volume_snapshot" "$PREFIX/share/urbackup"
+install -c "dm_remove_volume_snapshot" "$PREFIX/share/urbackup"
 install -c "filesystem_snapshot_common" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
@@ -315,7 +319,7 @@ then
 	SYSTEMD_DIR=""
 	if command -v pkg-config >/dev/null 2>&1
 	then
-		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
+		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir || true`
 	fi
 	
 	if [ "x$SYSTEMD_DIR" = x ]
@@ -334,7 +338,7 @@ then
 		fi
 	fi
 	
-	install -c urbackupclientbackend.service $SYSTEMD_DIR
+	install -m 644 -c urbackupclientbackend.service $SYSTEMD_DIR
 	systemctl enable urbackupclientbackend.service
 	
 	SYSTEMD_DBUS=yes
@@ -428,9 +432,17 @@ fi
 
 if [ $SILENT = no ]
 then
-	if [ -e $PREFIX/etc/urbackup/snapshot.cfg ] || [ -e $PREFIX/etc/urbackup/no_filesystem_snapshot ]
+	if [ -e "$PREFIX/etc/urbackup/snapshot.cfg" ] || [ -e "$PREFIX/etc/urbackup/no_filesystem_snapshot" ]
 	then
-		exit 0
+		echo "Snapshots already configured. Keep configuration? [Y/n]"
+		read yn
+		if [ "x$yn" != "xn" ]
+		then
+			exit 0
+		else
+			! [ -e "$PREFIX/etc/urbackup/snapshot.cfg" ] || rm -f "$PREFIX/etc/urbackup/snapshot.cfg"
+			! [ -e "$PREFIX/etc/urbackup/no_filesystem_snapshot" ] || rm -f "$PREFIX/etc/urbackup/no_filesystem_snapshot"
+		fi
 	fi
 
     CENTOS=no
@@ -468,34 +480,19 @@ then
 		then
 			if grep 'VERSION="' /etc/os-release | grep "LTS" > /dev/null 2>&1
 			then
-				echo "+Detected Ubuntu LTS. Dattobd supported"
+				echo "+Detected Ubuntu LTS"
 				UBUNTU=yes
-				DATTO=yes
 			fi
 		elif grep 'NAME="Debian' /etc/os-release > /dev/null 2>&1
 		then
 			if grep 'PRETTY_NAME="' /etc/os-release | grep "/sid" > /dev/null 2>&1
 			then
-				echo "+Detected Debian unstable/sid. Dattobd not supported"
+				echo "+Detected Debian unstable/sid"
 			else
-				echo "+Detected Debian stable. Dattobd supported"
-				DATTO=yes
+				echo "+Detected Debian stable"
 			fi
 		fi
 	fi
-
-
-    if [ $CENTOS != no ]
-    then
-        echo "+Detected EL/RH $CENTOS. Dattobd supported"
-        DATTO=yes
-    fi
-	
-	if [ $FEDORA != no ]
-	then
-		echo "+Detected Fedora. Dattobd supported"
-        DATTO=yes
-    fi
 
     if [ $DATTO = no ]
     then
@@ -531,7 +528,24 @@ then
 	else
 		echo "-dmsetup not present"
 	fi
-	
+
+	if [ $DMSETUP != no ]
+	then
+		GRUBF=/boot/grub/grub.cfg
+		if [ -e $GRUBF ]
+		then
+			if grep "root=UUID=" $GRUBF > /dev/null 2>&1 || grep "root=PARTUUID=" $GRUBF > /dev/null 2>&1
+			then
+				echo "+Grub is searching for boot device via UUID"
+			else
+				echo "-Grub not searching for boot device via UUID. Disabling dmsetup snapshot option"
+				DMSETUP=no
+			fi
+		else
+			echo "-grub.cfg not found in /boot/grub. Disabling dmsetup snapshot option"
+			DMSETUP=no
+		fi
+	fi	
 
     while true
     do
@@ -637,8 +651,8 @@ then
 	then
 		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_create_snapshot"
 		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dm_remove_snapshot"
-		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_create_snapshot"
-		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_remove_snapshot"
+		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_create_volume_snapshot"
+		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dm_remove_volume_snapshot"
 		
 		if [ $DEBIAN = yes ] || [ $UBUNTU = yes ]
 		then

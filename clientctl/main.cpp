@@ -794,8 +794,8 @@ int action_start_restore(std::vector<std::string> args)
 	TCLAP::SwitchArg non_blocking_arg("l", "non-blocking",
 		"Do not show restore progress and block till the restore is finished but return immediately after starting it", cmd);
 
-	TCLAP::SwitchArg no_follow_symlinks("s", "no-follow-symlinks",
-		"Do not follow symlinks outside of restored path during restore", cmd);
+	TCLAP::SwitchArg follow_symlinks("f", "follow-symlinks",
+		"Follow symlinks outside of restored path during restore", cmd);
 
 	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
 		"Virtual client name",
@@ -852,7 +852,7 @@ int action_start_restore(std::vector<std::string> args)
 	Connector::EAccessError access_error;
 	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid, virtual_client_arg.getValue(),
 		path_map, access_error, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue(),
-		!no_follow_symlinks.getValue());
+		follow_symlinks.getValue());
 
 	if(!restore_info.empty())
 	{

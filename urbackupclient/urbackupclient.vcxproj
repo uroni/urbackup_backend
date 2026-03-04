@@ -75,6 +75,7 @@
     <ClCompile Include="PersistentOpenFiles.cpp" />
     <ClCompile Include="RestoreDownloadThread.cpp" />
     <ClCompile Include="RestoreFiles.cpp" />
+    <ClCompile Include="SambaService.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="TokenCallback.cpp" />
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
@@ -132,6 +133,7 @@
     <ClInclude Include="PersistentOpenFiles.h" />
     <ClInclude Include="RestoreDownloadThread.h" />
     <ClInclude Include="RestoreFiles.h" />
+    <ClInclude Include="SambaService.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
     <ClInclude Include="TokenCallback.h" />
     <ClInclude Include="tokens.h" />

@@ -709,4 +709,10 @@ std::string accountname_normalize(const std::string& accountname)
 	return accountname;
 }
 
+bool write_smb_pw(const std::string& fn, const std::string& accountname, const std::string& data)
+{
+	//Noop
+	return false;
+}
+
 } //namespace tokens

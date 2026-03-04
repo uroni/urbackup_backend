@@ -165,6 +165,10 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			{
 				continue;
 			}
+
+#ifdef __APPLE__
+			f.isdataless = (f_info.st_flags & SF_DATALESS) > 0;
+#endif
 			
 			if(S_ISLNK(f_info.st_mode))
 			{

@@ -88,6 +88,7 @@ SStartupStatus startup_status;
 #include "Mailer.h"
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/settings.h"
+#include "../urbackupcommon/filelist_utils.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -101,6 +102,7 @@ SStartupStatus startup_status;
 #include "../urbackupcommon/chunk_hasher.h"
 #include "LogReport.h"
 #include "WebSocketConnector.h"
+#include "serverinterface/settings.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -676,6 +678,60 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			Server->deleteFile("verification_result.txt");
 			exit(0);
 		}
+	}
+
+	std::string list_filelist = Server->getServerParameter("list_filelist");
+	if (!list_filelist.empty())
+	{
+		IFile* f = Server->openFile(list_filelist, MODE_READ);
+
+		if (!f)
+		{
+			Server->Log("Error opening filelist at " + list_filelist);
+			exit(2);
+		}
+
+		char buffer[4096];
+		_u32 read;
+
+		FileListParser list_parser;
+	
+		std::string path;
+		SFile cf;
+
+		while ((read = f->Read(buffer, 4096)) > 0)
+		{
+			for (size_t i = 0; i < read; ++i)
+			{				
+				bool b = list_parser.nextEntry(buffer[i], cf, NULL);
+				if (b)
+				{
+					if (cf.isdir)
+					{
+						if (cf.name == "..")
+						{
+							if (path.empty())
+							{
+								Server->Log("Path is empty");
+								exit(1);
+							}
+							path = ExtractFilePath(path);
+						}
+						else
+						{
+							path += os_file_sep() + cf.name;
+							Server->Log("Folder: " + path);
+						}
+					}
+					else
+					{
+						Server->Log("File: " + path + "/"+ cf.name+" Size: " + PrettyPrintBytes(cf.size));
+					}
+				}
+			}
+		}
+
+		exit(0);
 	}
 
 	Server->destroyAllDatabases();
@@ -2463,6 +2519,13 @@ bool upgrade67_68()
 	return true;
 }
 
+bool upgrade68_69()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	return updateArchiveSettingsExternal(0, db);
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2484,7 +2547,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=68;
+	int max_v=69;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2899,6 +2962,13 @@ void upgrade(void)
 				break;
 			case 67:
 				if (!upgrade67_68())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 68:
+				if (!upgrade68_69())
 				{
 					has_error = true;
 				}

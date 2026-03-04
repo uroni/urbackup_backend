@@ -196,6 +196,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="CachedFile.cpp">
+          <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="SambaService.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -363,6 +366,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="CachedFile.h">
+          <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="SambaService.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

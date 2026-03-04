@@ -1204,19 +1204,14 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 
 bool VHDXFile::setBackingFileSize(_i64 fsize)
 {
-	if (file != backing_file)
-	{
-		return false;
-	}
-
 	fsize += 1 * 1024 * 1024;
 	fsize += bat_region.Length;
 	fsize += curr_header.LogLength;
 	fsize += meta_table_region.Length;
 
-	if (fsize > backing_file->Size())
+	if (fsize > file->Size())
 	{
-		return backing_file->Resize(fsize, false);
+		return file->Resize(fsize, false);
 	}	
 
 	return false;
@@ -1252,7 +1247,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 {
 	if (spos> dst_size)
 	{
-		if (has_error != NULL)
+		Server->Log("Error reading from VHDX file. Trying to read beyond file size at " + convert(spos) + " size=" + convert(dst_size));
+		if (has_error != NULL)		
 			*has_error = true;
 
 		return 0;
@@ -1267,13 +1263,14 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 	{
 		_u32 block = getBatEntry(spos, block_size, sector_size);
 
-		VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
+		const VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
 
 		if (bat_entry->State == PAYLOAD_BLOCK_FULLY_PRESENT)
 		{
-			_u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
+			const _u32 toread = (std::min)(block_size - static_cast<_u32>(spos % block_size), bsize - read);
 
-			_u32 rc = file->Read(bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size,
+			const int64 fpos = bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size;
+			const _u32 rc = file->Read(fpos,
 				buffer + read, toread);
 
 			read += rc;
@@ -1281,6 +1278,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (rc < toread)
 			{
+				Server->Log("Error reading " + convert(toread) + " bytes from vhdx file at pos " + convert(fpos)
+					+ " read " + convert(rc) + " toread " + convert(toread) + " error: " + os_last_error_str());
 				if (has_error != NULL)
 					*has_error = true;
 
@@ -1296,7 +1295,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
 			{
-				if (has_error != NULL)
+				Server->Log("VHDX parent partially present though there is no parent pos=" + convert(spos), LL_WARNING);
+				if (has_error != NULL)				
 					*has_error = true;
 
 				return read;
@@ -1314,6 +1314,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
+				Server->Log("Unknown VHDX bat state " + convert(bat_entry->State) + " pos=" + convert(spos), LL_WARNING);
 				if (has_error != NULL)
 					*has_error = true;
 
@@ -1337,7 +1338,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 				bool set;
 				if (!isSectorSet(spos, set))
 				{
-					if (has_error != NULL)
+					Server->Log("Sector of partially present VHDX block not set pos=" + convert(spos), LL_WARNING);
+					if (has_error != NULL)					
 						*has_error = true;
 
 					return read;
@@ -1359,7 +1361,11 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 
 				if (rc < toread)
 				{
-					if (has_error != NULL)
+					Server->Log("Error reading " + convert(toread) + " bytes from vhdx file at pos "
+						+ convert(bat_entry->FileOffsetMB * 1024 * 1024 + spos % block_size) + " spos " + convert(spos) + " set " + convert(set)
+						+ " read " + convert(rc) + " toread " + convert(toread) + " error: " + os_last_error_str());
+
+					if (has_error != NULL)				
 						*has_error = true;
 
 					return read;
@@ -1375,7 +1381,7 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else if (bat_entry->State == PAYLOAD_BLOCK_NOT_PRESENT)
 			{
-				_u32 rc = parent->Read(spos, buffer + read, toread);
+				const _u32 rc = parent->Read(spos, buffer + read, toread, has_error);
 
 				read += rc;
 				spos += rc;
@@ -1390,6 +1396,8 @@ _u32 VHDXFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 			}
 			else
 			{
+				Server->Log("Unknown VHDX bat state (with parent) " + convert(bat_entry->State) + " pos=" + convert(spos), LL_WARNING);
+
 				if (has_error != NULL)
 					*has_error = true;
 
@@ -1693,6 +1701,8 @@ bool VHDXFile::syncInt(bool full)
 			}
 		}
 
+		check_bat_buf();
+
 		int64 b_idx = -1;
 		for (std::set<int64>::iterator it = pending_bat_entries.begin(); it != pending_bat_entries.end();)
 		{
@@ -1730,6 +1740,8 @@ bool VHDXFile::syncInt(bool full)
 
 		if(stop_idx==-1)
 			pending_bat_entries.clear();
+
+		check_bat_buf();
 
 		if (fast_mode)
 		{
@@ -1893,8 +1905,7 @@ bool VHDXFile::createNew()
 		return false;
 	}
 
-	if (file == backing_file &&
-		!backing_file->Resize(bat_region.FileOffset + bat_region.Length + allocate_size_add_size, false))
+	if (!file->Resize(bat_region.FileOffset + bat_region.Length + allocate_size_add_size, false))
 	{
 		Server->Log("Error writing new bat region. " + os_last_error_str(), LL_WARNING);
 		return false;
@@ -2006,10 +2017,9 @@ bool VHDXFile::replayLog()
 	}
 	
 	int64 new_fsize = -1;
-	if (file->Size() < head_entry.new_fsize &&
-		file == backing_file)
+	if (file->Size() < head_entry.new_fsize)
 	{
-		if (backing_file->Resize(head_entry.new_fsize, false))
+		if (file->Resize(head_entry.new_fsize, false))
 			new_fsize = head_entry.new_fsize;
 	}
 
@@ -2167,6 +2177,8 @@ bool VHDXFile::readBat()
 			return false;
 		}
 	}
+
+	check_bat_buf();
 
 	return true;
 }
@@ -2451,8 +2463,7 @@ bool VHDXFile::allocateBatBlockFull(int64 block)
 	{
 		allocated_size = new_pos + block_size + allocate_size_add_size;
 
-		if (file == backing_file &&
-			!backing_file->Resize(allocated_size, false))
+		if (!file->Resize(allocated_size, false))
 		{
 			Server->Log("Error resizing backing file to new allocated size " 
 				+ convert(allocated_size) + ". " + os_last_error_str(),
@@ -2925,4 +2936,16 @@ bool VHDXFile::has_block(bool use_parent)
 	}
 
 	return true;
+}
+
+void VHDXFile::check_bat_buf()
+{
+#ifndef NDEBUG
+	for (size_t i = 0; i < bat_buf.size(); i += sizeof(VhdxBatEntry))
+	{
+		const VhdxBatEntry* entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data() + i);
+		assert(entry->State != 5);
+		assert(entry->State != 4);
+	}
+#endif
 }

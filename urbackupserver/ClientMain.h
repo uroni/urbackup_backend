@@ -179,6 +179,7 @@ public:
 	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL, bool do_encrypt=true, bool allow_reauth=false, bool* require_reauth = NULL);
 
 	virtual IPipe * new_fileclient_connection(void);
+	virtual IPipe* new_fileclient_connection(ServerSettings* server_settings);
 
 	virtual bool handle_not_enough_space(const std::string &path);
 

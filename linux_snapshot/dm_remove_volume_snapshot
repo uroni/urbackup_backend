@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -e
+
+CDIR=`dirname $0`
+$CDIR/dm_remove_snapshot_common vol "$@"

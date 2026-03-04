@@ -2908,7 +2908,7 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 		_u32 ret;
 		if (protocol_versions.filesrvtunnel > 0)
 		{
-			IPipe* pipe = new_fileclient_connection();
+			IPipe* pipe = new_fileclient_connection(server_settings);
 			if (pipe == NULL)
 				return ERR_ERROR;
 
@@ -2971,7 +2971,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe* pipe;
 		if (protocol_versions.filesrvtunnel > 0)
 		{
-			pipe = new_fileclient_connection();
+			pipe = new_fileclient_connection(server_settings);
 			if (pipe == NULL)
 				return false;
 		}
@@ -3081,7 +3081,13 @@ void ClientMain::destroyTemporaryFile(IFile *tmp)
 	Server->deleteFile(fn);
 }
 
-IPipe * ClientMain::new_fileclient_connection(void)
+IPipe* ClientMain::new_fileclient_connection()
+{
+	ServerSettings server_settings(db, clientid);
+	return new_fileclient_connection(&server_settings);
+}
+
+IPipe * ClientMain::new_fileclient_connection(ServerSettings* server_settings)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
@@ -3098,7 +3104,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	{
 		if (protocol_versions.filesrvtunnel > 0)
 		{
-			rp = getClientCommandConnection(server_settings.get(), c_filesrv_connect_timeout);
+			rp = getClientCommandConnection(server_settings, c_filesrv_connect_timeout);
 			if (rp == NULL)
 			{
 				return NULL;
@@ -3713,7 +3719,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 	std::vector<std::string> groups;
 	Tokenize(image_snapshot_groups, groups, "|");
 
-	image_snapshot_groups = strlower(image_snapshot_groups);
+	image_snapshot_groups = strlower(trim(image_snapshot_groups));
 
 	std::string vol = normalizeVolumeUpper(letter);
 

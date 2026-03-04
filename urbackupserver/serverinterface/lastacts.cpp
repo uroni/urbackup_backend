@@ -143,7 +143,7 @@ ACTION_IMPL(lastacts)
 		}
 	}
 
-	if(session!=NULL && (rights=="all" || clientids.empty()) )
+	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
 		getLastActs(helper, ret, clientids);
 	}

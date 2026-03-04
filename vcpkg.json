@@ -20,8 +20,8 @@
         "default-features": false,
         "features": [
             "non-http",
-            "schannel",
-            "winldap"
+            "ssl",
+            "ldap"
         ]
       }
     ]

@@ -50,8 +50,23 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	virtual bool setOption(const SocketOption opt);
+
+	virtual bool wakeupRead();
+
 private:
+	bool initWakeup();
+	bool hasWakeup() const;
+	bool isReadableWithWakeup(int timeoutms);
+
+
 	SOCKET s;
+#ifdef _WIN32
+	WSAEVENT socketEvt;
+	WSAEVENT wakeupEvt;
+#else
+	SOCKET wakeup[2];
+#endif
 
 	_i64 transfered_bytes;
 

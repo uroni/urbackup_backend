@@ -13,40 +13,72 @@ fi
 
 
 if !($development); then
-	if [ "x$AC_USERNAME" = x ]; then
-		echo "Notarization username not set (AC_USERNAME)"
-		exit 1
-	fi
-
-	if [ "x$AC_PASSWORD" = x ]; then
-		echo "Notarization account password not set (AC_PASSWORD)"
-		exit 1
-	fi
-
 	git reset --hard
 	cd client
 	git reset --hard
 	cd ..
 	python3 build/replace_versions.py
+	echo foo
 fi
 
 rm -R osx-pkg || true
 rm -R osx-pkg2 || true
+rm -R osx-pkg_x86 || true
 
 ./download_cryptopp.sh
+
+function config() {
+	ARCH=$1
+	echo "Configuring for arch $ARCH..."
+	OPENSSL="$HOME/openssl"
+	WXWIDGETS="$HOME/wxWidgets/dest"
+	if [ $ARCH = "x86_64" ]
+	then
+		OPENSSL="$HOME/openssl_x86"
+		WXWIDGETS="$HOME/wxWidgets_x86/dest"
+	fi
+
+	if ! [ -e $WXWIDGETS ]
+	then
+		echo "wxWidgets not found at $WXWIDGETS"
+		exit 5
+	fi
+
+	if ! [ -e $OPENSSL ]
+	then
+		echo "OpenSSL not found at $OPENSSL"
+		exit 5
+	fi
+
+	arch -$ARCH ./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=$OPENSSL --with-wx-prefix=$WXWIDGETS CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CPPFLAGS="-mmacosx-version-min=10.10 -I$OPENSSL/include -arch $ARCH -DWITH_OPENSSL" LDFLAGS="-L$OPENSSL -mmacosx-version-min=10.10 -arch $ARCH" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10 -arch $ARCH" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+}
 
 mkdir -p osx-pkg/Library/LaunchDaemons
 cp osx_installer/daemon.plist osx-pkg/Library/LaunchDaemons/org.urbackup.client.plist
 mkdir -p osx-pkg/Library/LaunchAgents
 cp osx_installer/agent.plist osx-pkg/Library/LaunchAgents/org.urbackup.client.plist
 if !($development); then
-	./configure --enable-embedded-cryptopp --enable-clientupdate CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE" CFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE" LDFLAGS="-mmacosx-version-min=10.10" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+	config arm64
 else
-	./configure --enable-embedded-cryptopp --enable-clientupdate CXXFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" LDFLAGS="-mmacosx-version-min=10.10" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+	./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=/opt/homebrew CXXFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CPPFLAGS='-mmacosx-version-min=10.10 -I/opt/homebrew/include' LDFLAGS="-mmacosx-version-min=10.10 -L/opt/homebrew/lib" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
 fi
 make clean
-make -j5
+make -j10
 make install DESTDIR=$PWD/osx-pkg2
+
+if !($development); then
+	config x86_64
+	make clean
+	make -j10
+	make install DESTDIR=$PWD/osx-pkg_x86
+fi
+
+for i in $(ls "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/")
+do
+	lipo -create "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" -output "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new"
+	mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i"
+done
+
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS"
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
@@ -59,6 +91,12 @@ cp osx_installer/macOS_exclusion_overrides.txt "osx-pkg2/Applications/UrBackup C
 mv "osx-pkg2/Library/Application Support" "osx-pkg/Library"
 rm -R "osx-pkg2/Library"
 mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/urbackupclientgui" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
+
+echo "create_filesystem_snapshot=/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_create_snapshot" > osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/snapshot.cfg
+echo "remove_filesystem_snapshot=/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_remove_snapshot" >> osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/snapshot.cfg
+
+cp linux_snapshot/apfs_create_snapshot osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_create_snapshot
+cp linux_snapshot/apfs_remove_snapshot osx-pkg/Library/Application\ Support/UrBackup\ Client/etc/urbackup/apfs_remove_snapshot
 
 if !($development); then
 	strip "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui"
@@ -103,46 +141,14 @@ if ($development); then
 fi
 gsed  -i 's/\$git_rev\$/'"$GIT_REV"'/g' "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
 
-
-function notarization_info {
-	echo "$UPLOAD_INFO_PLIST" > tmp.plist
-	xcrun altool --notarization-info `/usr/libexec/PlistBuddy -c "Print :notarization-upload:RequestUUID" tmp.plist` -u "$AC_USERNAME" -p "@env:AC_PASSWORD" --output-format xml
-}
-
-function wait_for_notarization {
-	echo "Waiting for notarization to finish..."
-	sleep 30
-	while true; do
-		REQUEST_INFO_PLIST=$(notarization_info || true)
-		echo "$REQUEST_INFO_PLIST" > tmp.plist
-		if [ "x$(/usr/libexec/PlistBuddy -c 'Print :product-errors:0:code' tmp.plist)" = x1519 ]; then
-			sleep 30
-			continue
-		fi
-		if [ "x$(/usr/libexec/PlistBuddy -c 'Print :notarization-info:Status' tmp.plist)" != "xin progress" ]; then
-			echo "Notarization finished"
-			break
-		fi
-		sleep 60
-	done
-
-}
-
-function notarize_int {
-	xcrun altool --notarize-app --primary-bundle-id "org.urbackup.client.frontend" -u "$AC_USERNAME" -p "@env:AC_PASSWORD" -t osx -f "$1" --output-format xml
-}
-
 function notarize {
 	echo "Sending $1 to notarization..."
-	UPLOAD_INFO_PLIST=$(notarize_int $1)
-	echo $UPLOAD_INFO_PLIST
-	wait_for_notarization
+	xcrun notarytool submit "$1" --keychain-profile "notary-profile" --wait
 }
 
 if !($development); then
 	echo "Signing code..."
-	security unlock-keychain -p foobar /Users/martin/Library/Keychains/dev.keychain
-	codesign --deep --keychain dev.keychain --sign 3Y4WACCWC5 --timestamp --options runtime osx-pkg2/Applications/UrBackup\ Client.app
+	codesign --deep --sign 3Y4WACCWC5 --timestamp --options runtime osx-pkg2/Applications/UrBackup\ Client.app
 	ditto -c -k --keepParent "osx-pkg2/Applications" "urbackup-client.zip"
 	notarize "urbackup-client.zip"
 	xcrun stapler staple "osx-pkg2/Applications/UrBackup Client.app"
@@ -155,7 +161,7 @@ pkgbuild --root "osx-pkg2/Applications/UrBackup Client.app" --identifier "org.ur
 productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version "$VERSION_SHORT_NUM" final.pkg
 
 if !($development); then
-	productsign --keychain /Users/martin/Library/Keychains/dev.keychain --sign 3Y4WACCWC5 final.pkg final-signed.pkg
+	productsign --sign 3Y4WACCWC5 final.pkg final-signed.pkg
 	notarize final-signed.pkg
 	xcrun stapler staple final-signed.pkg
 

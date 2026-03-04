@@ -931,7 +931,8 @@ cleanup:
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
-	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].hostname);
+	PipeWakeupWrapper pipeWakeup(pipe);
+	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].hostname, &pipeWakeup);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
 	if(cc!=NULL)
 	{
@@ -939,28 +940,30 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 	}
 	while(true)
 	{
-		bool b=client->Run(NULL);
-		if(!b)
+		int wtime=client->Run();
+		if(wtime<0)
 		{
 			printInfo(pipe);
 			return;
 		}
+		if (wtime < 10)
+			wtime = 10;
 
 		if(client->wantReceive())
 		{
-			if(pipe->isReadable(10))
+			if(pipe->isReadable(wtime))
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets();
 			}
 			else if(pipe->hasError())
 			{
-				client->ReceivePackets(NULL);
+				client->ReceivePackets();
 				Server->wait(20);
 			}
 		}
 		else
 		{
-			Server->wait(20);
+			Server->wait(wtime);
 		}
 	}
 }

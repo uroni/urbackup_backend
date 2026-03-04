@@ -485,7 +485,7 @@ void RestoreFiles::operator()()
 
 IPipe * RestoreFiles::new_fileclient_connection( )
 {
-	return ClientConnector::getFileServConnection(server_token, 10000);
+	return ClientConnector::getRemoteConnection(server_token, 10000, ConnectionTypeFileServ);
 }
 
 bool RestoreFiles::connectFileClient( FileClient& fc )

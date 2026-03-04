@@ -876,7 +876,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else
 		{
 			IFile *out=Server->openFile(vhdcopy_out, MODE_RW);
-			if(out==NULL)
+			if(out==NULL && vhdcopy_out!="null")
 			{
 				Server->Log("Couldn't open output file", LL_ERROR);
 				exit(6);
@@ -884,10 +884,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			else
 			{
 				std::string skip_s=Server->getServerParameter("skip");
-				int skip=1024*512;
+				int64 skip=1024*512;
 				if(!skip_s.empty())
 				{
-					skip=atoi(skip_s.c_str());
+					skip=watoi64(skip_s);
 				}
 				else if (is_disk_mbr(vhdcopy_in + ".mbr"))
 				{
@@ -903,11 +903,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				uint64 currpos=skip;
 				bool is_ok=true;
 
-				out->Seek(0);
+				if(out)
+					out->Seek(0);
+
 				while(currpos%vhd_blocksize!=0)
 				{
 					is_ok=in->Read(buffer, 512, read);
-					if(read>0)
+					if(read>0 && out)
 					{
 						_u32 rc=out->Write(buffer, (_u32)read);
 						if(rc!=read)
@@ -929,7 +931,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					if(in->has_sector())
 					{
 						is_ok=in->Read(buffer, 4096, read);
-						if(read>0)
+						if(read>0 && out)
 						{
 							_u32 rc=out->Write(buffer, (_u32)read);
 							if(rc!=read)
@@ -938,6 +940,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 								exit(7);
 							}
 						}
+						if (!is_ok && currpos + read < in->getSize())
+						{
+							Server->Log("Error reading from input file. " + os_last_error_str(), LL_ERROR);
+						}
 						currpos+=read;
 					}
 					else
@@ -945,7 +951,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 						read=4096;
 						currpos+=read;
 						in->Seek(currpos);
-						out->Seek(currpos-skip);
+						if(out)
+							out->Seek(currpos-skip);
 					}
 					
 					++p_skip;

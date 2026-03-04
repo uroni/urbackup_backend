@@ -408,7 +408,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->internet_readd_file_entries = true;
 		settings->max_running_jobs_per_client = 1;
 		settings->create_linked_user_views = false;
-		settings->background_backups = true;
+		settings->background_backups = false;
 		settings->local_incr_image_style = incr_image_style_to_full;
 		settings->local_full_image_style = full_image_style_full;
 		settings->internet_incr_image_style = incr_image_style_to_last;

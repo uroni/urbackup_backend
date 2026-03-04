@@ -1185,7 +1185,6 @@ namespace
 {
 	std::mutex prevent_sleep_mutex;
 	int64 last_prevent_sleep_time = 0;
-	std::thread prevent_sleep_thread;
 
 	void prevent_thread_func()
 	{
@@ -1204,22 +1203,45 @@ namespace
 		SetThreadExecutionState(ES_CONTINUOUS);
 	}
 
+	typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+	bool IsWindows11()
+	{
+		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+		if (!hMod)
+			return false;
+
+		RtlGetVersionPtr pRtlGetVersion =
+			reinterpret_cast<RtlGetVersionPtr>(GetProcAddress(hMod, "RtlGetVersion"));
+
+		if (!pRtlGetVersion)
+			return false;
+
+		RTL_OSVERSIONINFOW info;
+		ZeroMemory(&info, sizeof(info));
+		info.dwOSVersionInfoSize = sizeof(info);
+
+		if (pRtlGetVersion(&info) != 0)
+			return false;
+
+		/* Windows 11 = major version 10, build >= 22000 */
+		return info.dwMajorVersion>10 || 
+			(info.dwMajorVersion==10 && info.dwMinorVersion>0) ||
+			(info.dwMajorVersion == 10 && info.dwBuildNumber >= 22000);
+	}
+
+
 	void preventSleep()
 	{
-		OSVERSIONINFO verinfo = {};
-		verinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-		//Check for Win11
-		if (GetVersionExW(&verinfo) &&
-			(verinfo.dwMajorVersion > 10 ||
-				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion > 0) ||
-				(verinfo.dwMajorVersion == 10 && verinfo.dwMinorVersion == 0 &&
-					verinfo.dwBuildNumber >= 22000)))
+		static bool isWin11 = IsWindows11();
+		if (isWin11)
 		{
 			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
 
 			if (last_prevent_sleep_time == 0)
 			{
-				prevent_sleep_thread = std::thread(prevent_thread_func);
+				std::thread prevent_sleep_thread = std::thread(prevent_thread_func);
+				prevent_sleep_thread.detach();
 			}
 
 			last_prevent_sleep_time = Server->getTimeMS();
@@ -1253,7 +1275,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 		return;
 	}
 
-	int pcdone_old = proc->pcdone;
+	const int pcdone_old = proc->pcdone;
 
 	if (pcdone_new.empty())
 		proc->pcdone = -1;
@@ -1269,7 +1291,8 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	proc->last_pingtime = Server->getTimeMS();	
 
 #ifdef _WIN32
-	preventSleep();
+	if (!IdleCheckerThread::getPause())
+		preventSleep();
 #endif
 }
 
@@ -1279,9 +1302,10 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	str_map params;
 	ParseParamStrHttp(params_str, &params);
 	str_map::iterator it_paused_fb = params.find("paused_fb");
+	const bool paused = IdleCheckerThread::getPause();
 	if (it_paused_fb != params.end()
 		&& it_paused_fb->second == "1"
-		&& IdleCheckerThread::getPause())
+		&& paused)
 	{
 		tcpstack.Send(pipe, "PAUSED");
 	}
@@ -1307,7 +1331,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 
 	std::string pcdone_new=params["pc_done"];
 
-	int pcdone_old = proc->pcdone;
+	const int pcdone_old = proc->pcdone;
 
 	if(pcdone_new.empty())
 		proc->pcdone =-1;
@@ -1327,7 +1351,8 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->done_bytes = watoi64(params["done_bytes"]);
 
 #ifdef _WIN32
-	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+	if(!paused)
+		preventSleep();
 #endif
 }
 
@@ -1404,10 +1429,36 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 			Server->Log("Settings update versions Server=" + convert(settings_update_version) + " Client=" + convert(curr_settings_update_version), LL_DEBUG);
 		}
 
+		bool create_smb_dir = true;
+
+		size_t idx = 0;
+		while (params.find("client_user_name_" + std::to_string(idx)) != params.end())
+		{
+			if (create_smb_dir)
+			{
+				create_smb_dir = false;
+				os_create_dir("smbpw");
+			}
+
+			std::string user_name = params["client_user_name_" + std::to_string(idx)];
+			std::string user_login = params["client_user_login_" + std::to_string(idx)];
+			std::string user_pw = params["client_user_pw_" + std::to_string(idx)];
+
+			std::string fn = bytesToHex(user_name) + ".dat";
+
+			const auto smb_pw_fn = "smbpw/" + fn;
+
+			if (!FileExists(smb_pw_fn))
+			{
+				tokens::write_smb_pw(smb_pw_fn, user_name, user_login + ":" + user_pw);
+			}
+			++idx;
+		}
+
 		g_lock->relock(backup_mutex);
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
-			&make_fileserv, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
+			&make_conn, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -2752,6 +2803,14 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str = get_windows_version();
 	std::string win_volumes;
 	std::string win_nonusb_volumes;
+	std::string users;
+
+	static const auto local_users = tokens::get_local_users();
+	for (const auto& user : local_users)
+	{
+		if (!users.empty()) users += ";";
+		users += user;
+	}
 
 	{
 		IScopedLock lock(backup_mutex);
@@ -2778,7 +2837,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
 #ifdef __APPLE__

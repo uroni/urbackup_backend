@@ -155,9 +155,9 @@ void Partclone::init()
 	Server->Log("Detected fs type "+fstype);
 
 	if(fstype!="ext2" && fstype!="ext3"
-		&& fstype!="ext4" && fstype!="xfs")
+		&& fstype!="ext4" && fstype!="xfs" && fstype!="btrfs")
 	{
-		Server->Log("Fs type not supported");
+		Server->Log("Fs type not supported: "+fstype);
 		has_error = true;
 		return;
 	}

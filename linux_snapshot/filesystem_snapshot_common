@@ -21,3 +21,13 @@ set_filesystem_type() {
 	TYPE=`df -T -P | egrep " ${1}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
 	export TYPE
 }
+
+add_to_updatedb_conf() {
+	if test -e /etc/updatedb.conf
+	then
+		if ! grep -q "$1" /etc/updatedb.conf
+		then
+			sed -i "s|^PRUNEPATHS=\"|PRUNEPATHS=\"$1 |" /etc/updatedb.conf
+		fi
+	fi
+}

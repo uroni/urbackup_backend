@@ -386,7 +386,7 @@ void ServerAutomaticArchive::updateArchiveSettings(int clientid)
 		std::string backup_type_str = params["backup_type_" + idx];
 		archive.backup_types = ServerAutomaticArchive::getBackupTypes(backup_type_str);
 		archive.window = params["window_" + idx];
-		archive.letters = params["window_" + idx];
+		archive.letters = params["letters_" + idx];
 		archive.every_unit = params["every_unit_" + idx];
 		archive.for_unit = params["for_unit_" + idx];
 		archive.uuid = hexToBytes(params["uuid_" + idx]);

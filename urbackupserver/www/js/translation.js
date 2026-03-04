@@ -1995,7 +1995,8 @@ translations.en = {
 "tUse SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS": "Use SSL encrypted SMTP (SMTPS) instead of SMTP with STARTTLS",
 "tLocal/passive client": "Local/passive client",
 "tInternet/Active client": "Internet/Active client",
-"tAllow new client": "Allow new client"
+"tAllow new client": "Allow new client",
+"no_users_text": "No admin user created yet. Your UrBackup server is currently not protected by a password. Please create an admin user now.",
 }
 translations.en_US = {
 "tInfos": "About"
@@ -4868,6 +4869,7 @@ translations.hr = {
 "hours": "sati",
 "days": "dani",
 "nav_item_6": "Status",
+"tErrors": "Greške",
 "tStatus": "Status",
 "tCancel": "Poništavanje",
 "tName:": "Naziv:",
@@ -4973,6 +4975,7 @@ translations.hu_HU = {
 "tSend reports to": "Jelentések küldése ide:",
 "tSend": "Küldés",
 "tBackup time": "Mentés ideje",
+"tErrors": "Hibák",
 "tStorage usage": "Tárhely használat",
 "tAll": "Összes",
 "tFilter": "Szűrő",
@@ -6087,6 +6090,7 @@ translations.lt = {
 "hours": "val.",
 "days": "dienų",
 "nav_item_6": "Statusas",
+"tErrors": "Klaidos",
 "tStatus": "Statusas",
 "interval_hours": "val.",
 "interval_days": "dienų"
@@ -12699,6 +12703,7 @@ translations.vi = {
 "hours": "giờ",
 "days": "ngày",
 "nav_item_6": "Trạng thái",
+"tErrors": "Lỗi",
 "tStatus": "Trạng thái",
 "tCancel": "Ngưng",
 "tName:": "Tên:",

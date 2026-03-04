@@ -54,6 +54,10 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	virtual bool setOption(const SocketOption opt);
+
+	virtual bool wakeupRead();
+
 private:
 	bool ssl_connect_negotiate(int timeoutms, bool do_read);
 

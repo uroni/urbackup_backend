@@ -109,7 +109,7 @@ public:
 
 	void watchDir(const std::string &dir);
 
-	void update(std::string vol_str="");
+	void update(std::string vol_str="", const bool allow_trans_start=true);
 	void update_longliving(void);
 
 	void set_freeze_open_write_files(bool b);

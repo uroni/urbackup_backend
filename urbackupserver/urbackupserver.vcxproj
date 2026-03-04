@@ -487,6 +487,7 @@
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\login.h" />
     <ClInclude Include="serverinterface\rights.h" />
+    <ClInclude Include="serverinterface\settings.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
     <ClInclude Include="server_cleanup.h" />

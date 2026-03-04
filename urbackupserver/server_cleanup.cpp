@@ -1304,6 +1304,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	}
 
 	int backupid;
+	int backupid_incr;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
 	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups "+ full_val_info +"="+convert(max_file_full), LL_DEBUG);
 	while(full_file_num>max_file_full
@@ -1311,7 +1312,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 		&& !(full_file_num==1
 			&& settings.getSettings()->max_file_incr>0
 			&& settings.getUpdateFreqFileIncr()>=0
-			&& getFilesIncrNum(clientid, backupid)==0) )
+			&& getFilesIncrNum(clientid, backupid_incr)==0) )
 	{
 		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);

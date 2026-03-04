@@ -78,6 +78,10 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	bool setOption(const SocketOption opt);
+
+	bool wakeupRead();
+
 private:
 	std::auto_ptr<IAESGCMDecryption> dec;
 	std::auto_ptr<IAESGCMEncryption> enc;
@@ -91,4 +95,5 @@ private:
 
 	std::auto_ptr<IMutex> read_mutex;
 	std::auto_ptr<IMutex> write_mutex;
+	
 };

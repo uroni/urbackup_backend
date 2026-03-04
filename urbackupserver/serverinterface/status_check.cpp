@@ -340,7 +340,9 @@ namespace
 				}
 				else
 				{
-					std::string teststring = base64_decode("WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=");
+					char eicar_str[] = "_DVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=";
+					eicar_str[0] = 'W';
+					const std::string teststring = base64_decode(eicar_str);
 					tmp_f->Write(teststring);
 					std::string tmp_fn = tmp_f->getFilename();
 					tmp_f.reset();
@@ -408,6 +410,20 @@ ACTION_IMPL(status_check)
 		ServerSettings settings(db);
 		access_dir_checks(db, settings, settings.getSettings()->backupfolder,
 			settings.getSettings()->backupfolder_uncompr, ret);
+
+		if (settings.getSettings()->internet_server.empty())
+			ret.set("no_internet_server", true);
+
+		db_results res = db->Read("SELECT name FROM settings_db.si_users LIMIT 1");
+		if (res.empty())
+		{
+			ret.set("no_users", true);
+			ret.set("no_users_stop_show_key", "no_users_warning");
+			if (is_stop_show(db, "no_users_warning"))
+			{
+				ret.set("no_users_show", false);
+			}
+		}
 	}
 	else
 	{

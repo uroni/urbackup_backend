@@ -75,6 +75,16 @@ public:
 	};
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params) = 0;
+
+	enum SocketOption
+	{ 
+		SocketOption_NoDelay = 1,
+		SocketOption_CanWakeup = 2
+	};
+
+	virtual bool setOption(const SocketOption opt) = 0;
+
+	virtual bool wakeupRead() = 0;
 };
 
 #endif //IPIPE_H

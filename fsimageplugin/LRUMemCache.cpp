@@ -77,6 +77,8 @@ bool LRUMemCache::put( __int64 offset, const char* buffer, size_t bsize )
 
 	SCacheItem newItem = createInt(offset);
 
+	memset(newItem.buffer, 0, buffersize);
+
 	size_t innerOffset = static_cast<size_t>(offset-newItem.offset);
 
 	if( buffersize - innerOffset < bsize)

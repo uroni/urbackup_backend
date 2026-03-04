@@ -64,6 +64,7 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	bool setOption(const SocketOption opt);
 private:
 
 	std::auto_ptr<CStreamPipe> bpipe;

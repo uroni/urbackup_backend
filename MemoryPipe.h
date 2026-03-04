@@ -41,6 +41,10 @@ public:
 
 	virtual bool setCompressionSettings(const SCompressionSettings& params);
 
+	bool setOption(const SocketOption opt);
+
+	bool wakeupRead();
+
 private:
 	std::deque<std::string> queue;
 	

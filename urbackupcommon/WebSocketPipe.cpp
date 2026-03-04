@@ -457,6 +457,11 @@ size_t WebSocketPipe::consume(char* buffer, size_t bsize, int write_timeoutms, s
 	return out_off;
 }
 
+bool WebSocketPipe::wakeupRead()
+{
+	return pipe->wakeupRead();
+}
+
 void WebSocketPipe::setUsageString(const std::string& str)
 {
 	return pipe->setUsageString(str);

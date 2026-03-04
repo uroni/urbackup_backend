@@ -1138,7 +1138,7 @@ You can also create a user for client(s), which allows the user to browse all ba
 
 Since UrBackup 2.0.x users can directly access the web interface from the client if a server URL is configured. Either they right-click on the UrBackup tray icon and then click ``Access/restore backups'' which opens the browser, or they can right click a file/directory in a backup path and then click on ``Access/restore backups'' to access all backups of a file/directory (only on Windows with Windows Explorer).\\
 
-When browsing backups the web interface will show a restore button if the client is online. The restore will ask for user confirmation. If the client includes a GUI component (tray icon), the user confirmation will popup for all active users on the client to be restored. If not acknowledged in time (timeout) or if declined the restore will fail. 
+When browsing backups the web interface will show a restore button if the client is online and the tray icon UI is running. The restore will ask for user confirmation. If the client includes a GUI component (tray icon), the user confirmation will popup for all active users on the client to be restored. If not acknowledged in time (timeout) or if declined the restore will fail. 
 You can change this behaviour in \textsl{C:\textbackslash Program files \textbackslash UrBackup \textbackslash args.txt} by changing ``default'' to ``server-confirms'' on Windows, or by changing the restore setting in \textsl{/etc/default/urbackupclient} or \textsl{/etc/sysconfig/urbackupclient} on Linux.
 
 UrBackup is setup this way because a theoretical data loss scenario is an attacker taking control of your backup server, deleting all backups and then deleting all files on the clients via restores.  
@@ -1592,3 +1592,4 @@ and ``incremental forever'' style image backups.
 
 
 \end{document}
+

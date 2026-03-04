@@ -31,6 +31,7 @@
 #define _fdopen fdopen
 #define _close close
 #include <unistd.h>
+#include <errno.h>
 #else
 #include <io.h>
 #include <fcntl.h>

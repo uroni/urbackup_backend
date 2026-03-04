@@ -78,6 +78,13 @@ public:
 	virtual void setUsageString(const std::string& str) override;
 	virtual bool setCompressionSettings(const SCompressionSettings& params) override;
 
+	virtual bool setOption(const SocketOption opt) override
+	{
+		return pipe->setOption(opt);
+	}
+
+	bool wakeupRead();
+
 private:
 
 	bool has_read_mask()

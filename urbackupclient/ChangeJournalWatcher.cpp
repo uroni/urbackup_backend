@@ -573,7 +573,7 @@ void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::string &root, uint
 	{
 		if(Server->getTimeMS()-last_index_update>10000)
 		{
-			update();
+			update(std::string(), false);
 			last_index_update=Server->getTimeMS();
 		}
 	}
@@ -789,7 +789,7 @@ std::string ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128 
 const int BUF_LEN=4096;
 
 
-void ChangeJournalWatcher::update(std::string vol_str)
+void ChangeJournalWatcher::update(std::string vol_str, const bool allow_trans_start)
 {
 	char buffer[BUF_LEN];
 
@@ -868,7 +868,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 								usn_record.Filename!="backup_client.db-wal" &&
 								usn_record.Filename != "backup_client.db-shm")
 							{
-								if(!started_transaction)
+								if(!started_transaction && allow_trans_start)
 								{
 									started_transaction=true;
 									db->BeginWriteTransaction();
@@ -882,7 +882,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 								usn_record.Filename!="backup_client.db-wal" &&
 								usn_record.Filename != "backup_client.db-shm" )
 							{
-							if(!started_transaction)
+							if(!started_transaction && allow_trans_start)
 								{
 									started_transaction=true;
 									db->BeginWriteTransaction();
@@ -979,7 +979,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 		if((startUsn!=it->second.last_record
 			&& started_transaction) || !vol_str.empty())
 		{
-			if(!started_transaction)
+			if(!started_transaction && allow_trans_start)
 			{
 				started_transaction=true;
 				db->BeginWriteTransaction();

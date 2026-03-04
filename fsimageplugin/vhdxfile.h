@@ -142,6 +142,8 @@ private:
 
 	bool has_block(bool use_parent);
 
+	void check_bat_buf();
+
 	VhdxHeader curr_header;
 	int64 curr_header_pos;
 
@@ -155,7 +157,7 @@ private:
 
 	IFsFile* backing_file;
 	std::auto_ptr<IFsFile> backing_file_holder;
-	IFile* file;
+	IFsFile* file;
 	std::auto_ptr<CompressedFile> compressed_file;
 	int64 allocated_size;
 	bool is_open;
