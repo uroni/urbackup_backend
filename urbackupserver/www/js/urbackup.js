@@ -6134,7 +6134,7 @@ function addNewClient2()
 
 		var pars = "clientname="+encodeURIComponent(I("internet_client_name").value)
 
-		if(I("internet_server_url"))
+		if(I("internet_server"))
 		{
 			pars += getInternetSettings();
 		}
