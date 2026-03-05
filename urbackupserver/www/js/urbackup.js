@@ -4559,7 +4559,10 @@ function getInternetSettings()
 	pars+="&internet_server="+encodeURIComponent(internet_server_par);
 	pars+="&internet_server_port="+encodeURIComponent(internet_server_port);
 
-	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	if(I("internet_server_proxy"))
+	{
+		if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	}
 	
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
@@ -6136,7 +6139,9 @@ function addNewClient2()
 
 		if(I("internet_server"))
 		{
-			pars += getInternetSettings();
+			var internet_pars = getInternetSettings();
+			if(internet_pars==null) return;
+			pars += internet_pars;
 		}
 		
 		if(!startLoading()) return;
