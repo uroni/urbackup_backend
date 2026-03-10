@@ -179,7 +179,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 			real_args.push_back("--http_port");
 			real_args.push_back(val);
 		}
-		if(get_setting_value_with_env(settings.get(), "LOGFILE", val))
+		if(get_setting_value_with_env(settings.get(), "LOGFILE", val, false))
 		{
 			if(val[0]!='/')
 			{
@@ -193,15 +193,15 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 			real_args.push_back("--loglevel");
 			real_args.push_back(unquote_value(val));
 		}
-		if(get_setting_value_with_env(settings.get(), "DAEMON_TMPDIR", val))
+		if(get_setting_value_with_env(settings.get(), "DAEMON_TMPDIR", val, false))
 		{
-			if(setenv("TMPDIR", tmpdir.c_str(), 1)!=0)
+			if(setenv("TMPDIR", val.c_str(), 1)!=0)
 			{
 				std::cout << "Error setting TMPDIR" << std::endl;
 				exit(1);
 			}
 		}
-		if(get_setting_value_with_env(settings.get(), "SQLITE_TMPDIR", val))
+		if(get_setting_value_with_env(settings.get(), "SQLITE_TMPDIR", val, false))
 		{
 			real_args.push_back("--sqlite_tmpdir");
 			real_args.push_back(val);
@@ -231,7 +231,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--fastcgi_localhost_only");
 				real_args.push_back("1");
