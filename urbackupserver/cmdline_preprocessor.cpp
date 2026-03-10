@@ -169,17 +169,17 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 	{
 		std::auto_ptr<ISettingsReader> settings(config_present ? Server->createFileSettingsReader(fn) : NULL);
 		std::string val;
-		if(get_setting_value_with_env(settings.get(), "FASTCGI_PORT", &val, true))
+		if(get_setting_value_with_env(settings.get(), "FASTCGI_PORT", val, true))
 		{
 			real_args.push_back("--port");
 			real_args.push_back(val);
 		}
-		if(get_setting_value_with_env(settings.get(), "HTTP_PORT", &val, true))
+		if(get_setting_value_with_env(settings.get(), "HTTP_PORT", val, true))
 		{
 			real_args.push_back("--http_port");
 			real_args.push_back(val);
 		}
-		if(get_setting_value_with_env(settings.get(), "LOGFILE", &val))
+		if(get_setting_value_with_env(settings.get(), "LOGFILE", val))
 		{
 			if(val[0]!='/')
 			{
@@ -188,12 +188,12 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 			real_args.push_back("--logfile");
 			real_args.push_back(val);
 		}
-		if(get_setting_value_with_env(settings.get(), "LOGLEVEL", &val, true))
+		if(get_setting_value_with_env(settings.get(), "LOGLEVEL", val, true))
 		{
 			real_args.push_back("--loglevel");
 			real_args.push_back(unquote_value(val));
 		}
-		if(get_setting_value_with_env(settings.get(), "DAEMON_TMPDIR", &val))
+		if(get_setting_value_with_env(settings.get(), "DAEMON_TMPDIR", val))
 		{
 			if(setenv("TMPDIR", tmpdir.c_str(), 1)!=0)
 			{
@@ -201,23 +201,23 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				exit(1);
 			}
 		}
-		if(get_setting_value_with_env(settings.get(), "SQLITE_TMPDIR", &val))
+		if(get_setting_value_with_env(settings.get(), "SQLITE_TMPDIR", val))
 		{
 			real_args.push_back("--sqlite_tmpdir");
 			real_args.push_back(val);
 		}
-		if(get_setting_value_with_env(settings.get(), "BROADCAST_INTERFACES", &val, true))
+		if(get_setting_value_with_env(settings.get(), "BROADCAST_INTERFACES", val, true))
 		{
 			real_args.push_back("--broadcast_interfaces");
 			real_args.push_back(val);
 		}
 
-		if(get_setting_value_with_env(settings.get(), "HTTP_SERVER", &val, true))
+		if(get_setting_value_with_env(settings.get(), "HTTP_SERVER", val, true))
 		{
 			real_args.push_back("--http_server");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "HTTP_LOCALHOST_ONLY", &val, true))
+		if (get_setting_value_with_env(settings.get(), "HTTP_LOCALHOST_ONLY", val, true))
 		{
 			if ( val=="1" || 
 					strlower(val)=="true" || 
@@ -227,7 +227,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "FASTCGI_LOCALHOST_ONLY", &val, true))
+		if (get_setting_value_with_env(settings.get(), "FASTCGI_LOCALHOST_ONLY", val, true))
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
@@ -237,54 +237,54 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_FILESIZE", &val, true))
+		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_FILESIZE", val, true))
 		{
 			real_args.push_back("--rotate-filesize");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_NUM", &val, true))
+		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_NUM", val, true))
 		{
 			real_args.push_back("--rotate-numfiles");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_HUGE", &val, true))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_HUGE", val, true))
 		{
 			real_args.push_back("--sqlite_mmap_huge");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_MEDIUM", &val, true))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_MEDIUM", val, true))
 		{
 			real_args.push_back("--sqlite_mmap_medium");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_SMALL", &val, true))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_SMALL", val, true))
 		{
 			real_args.push_back("--sqlite_mmap_small");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "HTTP_PROXY", &val, true))
+		if (get_setting_value_with_env(settings.get(), "HTTP_PROXY", val, true))
 		{
 			real_args.push_back("--http_proxy");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "USER", &val, true))
+		if (get_setting_value_with_env(settings.get(), "USER", val, true))
 		{
 			real_args.push_back("--user");
 			real_args.push_back(val);
 		}
-		if (get_setting_value_with_env(settings.get(), "INTERNET_ONLY", &val, true))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_ONLY", val, true))
 		{
 			if (val == "1") val = "true";
 			real_args.push_back("--internet_only_mode");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "LUA_SANDBOX", &val, true))
+		if (get_setting_value_with_env(settings.get(), "LUA_SANDBOX", val, true))
 		{
 			if (val == "1") val = "true";
 			real_args.push_back("--lua_sandbox");
 			real_args.push_back(strlower(val));
 		}
-		if (get_setting_value_with_env(settings.get(), "INTERNET_MODE_DISABLED", &val, true))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_MODE_DISABLED", val, true))
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
@@ -294,12 +294,12 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "INTERNET_PORT", &val, true))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_PORT", val, true))
 		{
 			real_args.push_back("--internet_port");
 			real_args.push_back(val);
 		}
-		if (get_setting_value_with_env(settings.get(), "INTERNET_LOCALHOST_ONLY", &val, true))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_LOCALHOST_ONLY", val, true))
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
@@ -309,7 +309,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "INTERNET_DISABLE_WEBSOCKET", &val, true))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_DISABLE_WEBSOCKET", val, true))
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
@@ -319,7 +319,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "FAILED_LOGIN_RATELIMIT", &val, true))
+		if (get_setting_value_with_env(settings.get(), "FAILED_LOGIN_RATELIMIT", val, true))
 		{
 			if (val == "0" ||
 					strlower(val) == "false" ||
@@ -329,7 +329,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("0");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "ALLOW_USER_ENUMERATION", &val, true))
+		if (get_setting_value_with_env(settings.get(), "ALLOW_USER_ENUMERATION", val, true))
 		{
 			if (val == "0" ||
 					strlower(val) == "false" ||
@@ -339,7 +339,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("0");
 			}
 		}
-		if (get_setting_value_with_env(settings.get(), "LOCK_SESSION_TO_IP_AND_USER_AGENT", &val, true))
+		if (get_setting_value_with_env(settings.get(), "LOCK_SESSION_TO_IP_AND_USER_AGENT", val, true))
 		{
 			if (val == "1" ||
 					strlower(val) == "true" ||
