@@ -125,12 +125,38 @@ std::string unquote_value(std::string val)
 }
 
 #ifndef _WIN32
+bool get_setting_value_with_env(ISettingsReader* settings, const std::string& key, std::string& value, const bool do_trim)
+{
+	if (settings && settings->getValue(key, &value))
+	{
+		value = unquote_value(value);
+		if (do_trim)
+		{
+			value = trim(value);
+		}
+		return !value.empty();
+	}
+
+	std::string env_key = "URBACKUP_" + key;
+	const char* env_value = getenv(env_key.c_str());
+	if (env_value != NULL)
+	{
+		value = unquote_value(env_value);
+		if (do_trim)
+		{
+			value = trim(value);
+		}
+		return !value.empty();
+	}
+	return false;
+}
+
 void read_config_file(std::string fn, std::vector<std::string>& real_args)
 {
-	if (!FileExists(fn))
+	const bool config_present = !fn.empty() && FileExists(fn);
+	if (!fn.empty() && !config_present)
 	{
 		std::cout << "Config file at " << fn << " does not exist. Ignoring." << std::endl;
-		return;
 	}
 
 	bool destroy_server=false;
@@ -141,296 +167,183 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 	}
 
 	{
-		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(fn));
+		std::auto_ptr<ISettingsReader> settings(config_present ? Server->createFileSettingsReader(fn) : NULL);
 		std::string val;
-		if(settings->getValue("FASTCGI_PORT", &val))
+		if(get_setting_value_with_env(settings.get(), "FASTCGI_PORT", val, true))
 		{
-			val = unquote_value(val);
-
-			if(!val.empty())
+			real_args.push_back("--port");
+			real_args.push_back(val);
+		}
+		if(get_setting_value_with_env(settings.get(), "HTTP_PORT", val, true))
+		{
+			real_args.push_back("--http_port");
+			real_args.push_back(val);
+		}
+		if(get_setting_value_with_env(settings.get(), "LOGFILE", val, false))
+		{
+			if(val[0]!='/')
 			{
-				real_args.push_back("--port");
-				real_args.push_back(val);
+				val = "/var/log/"+val;
+			}
+			real_args.push_back("--logfile");
+			real_args.push_back(val);
+		}
+		if(get_setting_value_with_env(settings.get(), "LOGLEVEL", val, true))
+		{
+			real_args.push_back("--loglevel");
+			real_args.push_back(unquote_value(val));
+		}
+		if(get_setting_value_with_env(settings.get(), "DAEMON_TMPDIR", val, false))
+		{
+			if(setenv("TMPDIR", val.c_str(), 1)!=0)
+			{
+				std::cout << "Error setting TMPDIR" << std::endl;
+				exit(1);
 			}
 		}
-		if(settings->getValue("HTTP_PORT", &val))
+		if(get_setting_value_with_env(settings.get(), "SQLITE_TMPDIR", val, false))
 		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				real_args.push_back("--http_port");
-				real_args.push_back(val);
-			}
+			real_args.push_back("--sqlite_tmpdir");
+			real_args.push_back(val);
 		}
-		if(settings->getValue("LOGFILE", &val))
+		if(get_setting_value_with_env(settings.get(), "BROADCAST_INTERFACES", val, true))
 		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				if(val[0]!='/')
-				{
-					val = "/var/log/"+val;
-				}
-				real_args.push_back("--logfile");
-				real_args.push_back(val);
-			}
-		}
-		if(settings->getValue("LOGLEVEL", &val))
-		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				real_args.push_back("--loglevel");
-				real_args.push_back(unquote_value(val));
-			}
-		}
-		if(settings->getValue("DAEMON_TMPDIR", &val))
-		{
-			std::string tmpdir = unquote_value(val);
-			if(!tmpdir.empty())
-			{
-				if(setenv("TMPDIR", tmpdir.c_str(), 1)!=0)
-				{
-					std::cout << "Error setting TMPDIR" << std::endl;
-					exit(1);
-				}
-			}
-		}
-		if(settings->getValue("SQLITE_TMPDIR", &val))
-		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				real_args.push_back("--sqlite_tmpdir");
-				real_args.push_back(val);
-			}
-		}
-		if(settings->getValue("BROADCAST_INTERFACES", &val))
-		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				real_args.push_back("--broadcast_interfaces");
-				real_args.push_back(val);
-			}
+			real_args.push_back("--broadcast_interfaces");
+			real_args.push_back(val);
 		}
 
-		if(settings->getValue("HTTP_SERVER", &val))
+		if(get_setting_value_with_env(settings.get(), "HTTP_SERVER", val, true))
 		{
-			val = unquote_value(val);
-
-			if(!val.empty())
-			{
-				real_args.push_back("--http_server");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--http_server");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("HTTP_LOCALHOST_ONLY", &val))
+		if (get_setting_value_with_env(settings.get(), "HTTP_LOCALHOST_ONLY", val, true))
 		{
-			val = unquote_value(val);
-
-			if (!val.empty()
-				&& ( val=="1" || 
+			if ( val=="1" || 
 					strlower(val)=="true" || 
-					strlower(val)=="yes") )
+					strlower(val)=="yes") 
 			{
 				real_args.push_back("--http_localhost_only");
 				real_args.push_back("1");
 			}
 		}
-		if (settings->getValue("FASTCGI_LOCALHOST_ONLY", &val))
+		if (get_setting_value_with_env(settings.get(), "FASTCGI_LOCALHOST_ONLY", val, true))
 		{
-			val = unquote_value(val);
-
-			if (!val.empty()
-				&& (val == "1" ||
+			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--fastcgi_localhost_only");
 				real_args.push_back("1");
 			}
 		}
-		if (settings->getValue("LOG_ROTATE_FILESIZE", &val))
+		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_FILESIZE", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--rotate-filesize");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--rotate-filesize");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("LOG_ROTATE_NUM", &val))
+		if (get_setting_value_with_env(settings.get(), "LOG_ROTATE_NUM", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--rotate-numfiles");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--rotate-numfiles");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("SQLITE_MMAP_HUGE", &val))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_HUGE", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--sqlite_mmap_huge");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--sqlite_mmap_huge");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("SQLITE_MMAP_MEDIUM", &val))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_MEDIUM", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--sqlite_mmap_medium");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--sqlite_mmap_medium");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("SQLITE_MMAP_SMALL", &val))
+		if (get_setting_value_with_env(settings.get(), "SQLITE_MMAP_SMALL", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--sqlite_mmap_small");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--sqlite_mmap_small");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("HTTP_PROXY", &val))
+		if (get_setting_value_with_env(settings.get(), "HTTP_PROXY", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--http_proxy");
-				real_args.push_back(strlower(val));
-			}
+			real_args.push_back("--http_proxy");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("USER", &val))
+		if (get_setting_value_with_env(settings.get(), "USER", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--user");
-				real_args.push_back(val);
-			}
+			real_args.push_back("--user");
+			real_args.push_back(val);
 		}
-		if (settings->getValue("INTERNET_ONLY", &val))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_ONLY", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				if (val == "1") val = "true";
-				real_args.push_back("--internet_only_mode");
-				real_args.push_back(strlower(val));
-			}
+			if (val == "1") val = "true";
+			real_args.push_back("--internet_only_mode");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("LUA_SANDBOX", &val))
+		if (get_setting_value_with_env(settings.get(), "LUA_SANDBOX", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				if (val == "1") val = "true";
-				real_args.push_back("--lua_sandbox");
-				real_args.push_back(strlower(val));
-			}
+			if (val == "1") val = "true";
+			real_args.push_back("--lua_sandbox");
+			real_args.push_back(strlower(val));
 		}
-		if (settings->getValue("INTERNET_MODE_DISABLED", &val))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_MODE_DISABLED", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				 (val == "1" ||
+			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--internet_mode_disabled");
 				real_args.push_back("1");
 			}
 		}
-		if (settings->getValue("INTERNET_PORT", &val))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_PORT", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty())
-			{
-				real_args.push_back("--internet_port");
-				real_args.push_back(val);
-			}
+			real_args.push_back("--internet_port");
+			real_args.push_back(val);
 		}
-		if (settings->getValue("INTERNET_LOCALHOST_ONLY", &val))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_LOCALHOST_ONLY", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				(val == "1" ||
+			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--internet_localhost_only");
 				real_args.push_back("1");
 			}
 		}
-		if (settings->getValue("INTERNET_DISABLE_WEBSOCKET", &val))
+		if (get_setting_value_with_env(settings.get(), "INTERNET_DISABLE_WEBSOCKET", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				(val == "1" ||
+			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--internet_disable_websocket");
 				real_args.push_back("1");
 			}
 		}
-		if (settings->getValue("FAILED_LOGIN_RATELIMIT", &val))
+		if (get_setting_value_with_env(settings.get(), "FAILED_LOGIN_RATELIMIT", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				(val == "0" ||
+			if (val == "0" ||
 					strlower(val) == "false" ||
-					strlower(val) == "no"))
+					strlower(val) == "no")
 			{
 				real_args.push_back("--failed_login_ratelimit");
 				real_args.push_back("0");
 			}
 		}
-		if (settings->getValue("ALLOW_USER_ENUMERATION", &val))
+		if (get_setting_value_with_env(settings.get(), "ALLOW_USER_ENUMERATION", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				(val == "0" ||
+			if (val == "0" ||
 					strlower(val) == "false" ||
-					strlower(val) == "no"))
+					strlower(val) == "no")
 			{
 				real_args.push_back("--allow_user_enumeration");
 				real_args.push_back("0");
 			}
 		}
-		if (settings->getValue("LOCK_SESSION_TO_IP_AND_USER_AGENT", &val))
+		if (get_setting_value_with_env(settings.get(), "LOCK_SESSION_TO_IP_AND_USER_AGENT", val, true))
 		{
-			val = trim(unquote_value(val));
-
-			if (!val.empty() &&
-				(val == "1" ||
+			if (val == "1" ||
 					strlower(val) == "true" ||
-					strlower(val) == "yes"))
+					strlower(val) == "yes")
 			{
 				real_args.push_back("--lock_session_to_ip_and_user_agent");
 				real_args.push_back("1");
@@ -520,6 +433,10 @@ int action_run(std::vector<std::string> args)
 	if(!config_arg.getValue().empty())
 	{
 		read_config_file(config_arg.getValue(), real_args);
+	}
+	else
+	{
+		read_config_file("", real_args);
 	}
 #endif
 
