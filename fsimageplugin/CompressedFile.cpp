@@ -757,7 +757,7 @@ std::vector<IFsFile::SFileExtent> CompressedFile::getFileExtents(int64 starting_
 
 IVdlVolCache* CompressedFile::createVdlVolCache()
 {
-	return nullptr;
+	return NULL;
 }
 
 int64 CompressedFile::getValidDataLength(IVdlVolCache* vol_cache)
