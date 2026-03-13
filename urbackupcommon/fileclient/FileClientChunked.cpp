@@ -312,7 +312,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 				}
 
 				while (curr_sparse_extent.offset!=-1
-					&& next_chunk*c_checkpoint_dist < curr_sparse_extent.offset)
+					&& (next_chunk + 1)*c_checkpoint_dist > curr_sparse_extent.offset + curr_sparse_extent.size )
 				{
 					curr_sparse_extent = extent_iterator->nextExtent();
 				}
