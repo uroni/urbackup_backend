@@ -109,14 +109,19 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	{
 		max_read -= UINT_MAX%unchanged_align;
 	}
+	if (sparse_blocksize != 0)
+	{
+		max_read -= max_read%sparse_blocksize;
+	}
 
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
 	next_header.patch_size = 0;
 	bool has_header=true;
+	bool has_sparse_at_end = false;
 	_i64 file_pos;
 	_i64 size;
-	for(file_pos=0,size=file->Size(); (file_pos<size && file_pos<filesize) || has_header;)
+	for(file_pos=0,size=file->Size(); (file_pos<size && file_pos<filesize) || has_header || has_sparse_at_end;)
 	{
 		if(has_header && next_header.patch_off==-1)
 		{
@@ -138,7 +143,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 		if(!has_header && (file_pos>=filesize || file_pos>=size) )
 		{
-			bool has_sparse = false;
+			has_sparse_at_end = false;
 			if(file_pos<filesize && extent_iterator)
 			{
 				while (curr_sparse_extent.offset != -1
@@ -151,11 +156,11 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					&& curr_sparse_extent.offset <= file_pos
 					&& curr_sparse_extent.offset + curr_sparse_extent.size > file_pos)
 				{
-					has_sparse = true;
+					has_sparse_at_end = true;
 				}
 			}
 				
-			if(!has_sparse)
+			if(!has_sparse_at_end)
 				break;
 		}
 
@@ -275,6 +280,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						file_pos += tr;
 					}
 					was_sparse = true;
+					if(!has_header && (file_pos>=size || file_pos>=filesize))
+                        has_sparse_at_end = true;
 				}
 				else
 				{
