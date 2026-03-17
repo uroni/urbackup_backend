@@ -426,7 +426,7 @@ To increase server performance you could then disable the build in Internet/acti
 
 \subsection{Disable user enumeration}
 
-Per default UrBackup allows connecting clients or users to discover if a client or user with a certain name exists on the server. This is required to allow for useful error messages if a client or user tries to connect with wrong credentials. However, if you want to disable this feature to prevent user enumeration attacks you can set configuration to give more generic error messages.
+Per default UrBackup allows connecting clients or users to discover if a client or user with a certain name exists on the server. This is required to allow for useful error messages if a client or user tries to connect with wrong credentials. However, if you want to disable this to prevent user enumeration attacks you can set configuration to give more generic error messages.
 
 On Linux this is done via a setting in the configuration file passed via the ``-c'' command line option. On e.g. Debian this file is present at ``/etc/default/urbackupsrv''. Add
 \begin{verbatim}
