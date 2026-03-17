@@ -349,7 +349,7 @@ E.g. by adding the following to your SSL virtual host configuration:
 ProxyPass "/urbackup/x" "fcgi://127.0.0.1:55413"
 \end{verbatim}
 The path (``/urbackup/x'') depends on where your web root of UrBackup is (``index.htm" should be in the same directory)
-and where you want the web interface to be. UrBackup should now be accessible via apache.
+and where you want the web interface to be. You could even use some random (secret) path to make it impossible for attackers to find the web interface as long as they do not know the secret path component. UrBackup should now be accessible via apache.
 
 \subsubsection{Lighttp configuration}
 
@@ -411,6 +411,61 @@ networks. Be aware that it is really easy to redirect traffic in local networks 
 The Internet mode uses strong authentication and encryption. The three way
 handshake is done using a shared key and PBKDF2-HMAC using SHA512 with 20000
 iterations. The data is encrypted and authenticated using AES-GCM. Additionally the local network server authentication via server identity key and ECDSA private/public key authentication is done.
+
+
+\subsection{Using secure websocket}
+
+Instead of using UrBackups encryption mechanism, it may be advised to use a secure websocket connection to the server for the communication between client and server. Per default the websocket is available as ``/socket'' endpoint on the server. If you already setup a SSL frontend as described in section \ref{sec_webinterface_ssl} you can proxy the websocket via HTTP to UrBackup. For example with apache2 like this:
+
+\begin{verbatim}
+ProxyPass "/socket"  "ws://127.0.0.1:55414/socket"
+\end{verbatim}
+
+You can then configure the URL client connect to in the server settings to be ``wss://backup.example.com/socket''. This will make the client connect to the server via secure websocket and thus all communication between client and server is encrypted and authenticated via SSL.
+To increase server performance you could then disable the build in Internet/active client encryption.
+
+\subsection{Disable user enumeration}
+
+Per default UrBackup allows connecting clients or users to discover if a client or user with a certain name exists on the server. This is required to allow for useful error messages if a client or user tries to connect with wrong credentials. However, if you want to disable this feature to prevent user enumeration attacks you can set configuration to give more generic error messages.
+
+On Linux this is done via a setting in the configuration file passed via the ``-c'' command line option. On e.g. Debian this file is present at ``/etc/default/urbackupsrv''. Add
+\begin{verbatim}
+ALLOW_USER_ENUMERATION=0
+\end{verbatim}
+to this file to disable user enumeration. On Windows add 
+\begin{verbatim}
+--allow_user_enumeration
+0
+\end{verbatim}
+to \textsl{C:\textbackslash Program files \textbackslash UrBackup \textbackslash args.txt}.
+
+\subsection{Failed login rate-limiting}
+
+There is a default rate limit of failed login attempts, that blocks IP that fail too often in a short amount of time. The IP is blocked if there are more than 10 failed login attempts withing 10 seconds from this IP. The IP is blocked for 10 minutes. Currently those values are not configurable.\\
+The mechnism depends on the IP being known to UrBackup, so make sure the proxy in front of UrBackup forwards the client IP in the X-Forwarded-For header.
+
+You can disable the failed login rate-limiting by adding
+\begin{verbatim}
+  FAILED_LOGIN_RATELIMIT=0
+\end{verbatim}
+to the Linux configuration file (e.g. ``/etc/default/urbackupsrv'') or by adding
+\begin{verbatim}
+  --failed_login_ratelimit
+  0
+\end{verbatim}
+to the Windows configuration file (``C:\textbackslash Program files \textbackslash UrBackup \textbackslash args.txt'').
+
+UrBackup also logs failed login attempts to the auth syslog. So you can use fail2ban or similar software to block IPs with too many failed login attempts.
+Following is a filter for fail2ban:
+
+\begin{verbatim}
+  [Definition]
+
+_daemon = urbackupsrv
+
+failregex =  ^%(__prefix_line)sAuthentication failure for .*? from <HOST> via .*?$
+             ^%(__prefix_line)sClient authentication failure for .*? from <HOST>$
+\end{verbatim}
 
 
 \section{Client discovery in local area networks}
