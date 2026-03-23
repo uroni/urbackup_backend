@@ -1147,6 +1147,7 @@ If checked UrBackup will periodically refresh hashes in its database such that b
 
 After a successful file backup UrBackup will create symbolically linked views for each used on the client machine on the backup server.
 Those views can then be made accessible e.g. via samba file sharing.
+This feature does not work with btrfs or ZFS cow backup storage.
 
 \subsection{Maximum number of simultaneous jobs per client}
 
