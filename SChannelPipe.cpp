@@ -454,6 +454,8 @@ bool SChannelPipe::Flush(int timeoutms)
 	if (has_error)
 		return false;
 
+	last_flush_time = Server->getTimeMS();
+
 	size_t sendbuf_off = 0;
 	while (sendbuf_pos- sendbuf_off> 0)
 	{
