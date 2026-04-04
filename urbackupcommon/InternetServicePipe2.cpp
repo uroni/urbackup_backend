@@ -190,6 +190,7 @@ bool InternetServicePipe2::Write( const char *buffer, size_t bsize, int timeoutm
 		enc->flush();
 		curr_write_chunk_size=0;
 		last_flush_time=Server->getTimeMS();
+		flush = true;
 	}
 
 	std::string tosend = enc->get();
