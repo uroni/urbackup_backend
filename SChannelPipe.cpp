@@ -332,7 +332,7 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 			size_t read = bpipe->Read(&encbuf[encbuf_pos], encbuf_size_incr, remaining_time);
 
 			if (read == 0)
-				return 0;
+				return orig_bsize - bsize;
 
 			encbuf_pos += read;
 		}
