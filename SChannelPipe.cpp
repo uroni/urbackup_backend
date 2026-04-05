@@ -12,7 +12,7 @@ SChannelPipe::SChannelPipe(CStreamPipe * bpipe)
 	: bpipe(bpipe), has_cred_handle(false),
 	has_ctxt_handle(false), decbuf_pos(0),
 	sendbuf_pos(0), last_flush_time(0),
-	has_error(false)
+	has_error(false), incomplete_message(false)
 {
 }
 
@@ -306,12 +306,15 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 		encbuf.resize(encbuf.size() + bsize);
 	}
 
-	size_t read = bpipe->Read(&encbuf[encbuf_pos], bsize, timeoutms);
+	if (encbuf_pos == 0)
+	{
+		size_t read = bpipe->Read(&encbuf[encbuf_pos], bsize, timeoutms);
 
-	if (read == 0)
-		return 0;
-
-	encbuf_pos += read;
+		if (read == 0)
+			return 0;
+		
+		encbuf_pos += read;
+	}
 
 	size_t orig_bsize = bsize;
 
@@ -351,6 +354,8 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 		inbuf_desc.pBuffers = inbuf;
 
 		res = sec->DecryptMessage(&ctxt_handle, &inbuf_desc, 0, NULL);
+
+		incomplete_message = res == SEC_E_INCOMPLETE_MESSAGE;
 
 		if (res == SEC_E_OK
 			|| res== SEC_I_RENEGOTIATE)
@@ -536,7 +541,8 @@ bool SChannelPipe::isReadable(int timeoutms)
 	if (decbuf_pos > 0)
 		return true;
 
-	return bpipe->isReadable(timeoutms);
+	if (encbuf_pos > 0 && !incomplete_message)
+		return true;
 }
 
 bool SChannelPipe::hasError(void)

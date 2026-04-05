@@ -79,6 +79,7 @@ private:
 	std::vector<char> header_buf;
 	std::vector<char> trailer_buf;
 	bool has_error;
+	bool incomplete_message;
 
 	SecPkgContext_StreamSizes stream_sizes;
 };
