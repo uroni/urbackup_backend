@@ -514,7 +514,7 @@ msgid "Show/hide columns"
 msgstr "Pokaż/ukryj kolumny"
 
 msgid "dir_error_text"
-msgstr "Folder w którym UrBackup chce zapisać kopię jest nie dostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
+msgstr "Folder w którym UrBackup chce zapisać kopię jest niedostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
 
 msgid "tmpdir_error_text"
 msgstr "Folder w którym UrBackup chce zapisać pliki tymczasowe jest niedostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
