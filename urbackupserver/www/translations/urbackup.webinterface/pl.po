@@ -445,7 +445,7 @@ msgid "tDelete"
 msgstr "Usuń"
 
 msgid "tDisable"
-msgstr "Zablokuj"
+msgstr "Wyłącz"
 
 msgid "tMB"
 msgstr "MB"
