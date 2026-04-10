@@ -1685,7 +1685,7 @@ msgstr "Zamontuj obraz"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
-mount the image. Only mount the image if you trust its source."
+"mount the image. Only mount the image if you trust its source."
 msgstr "UrBackup użyje funkcji systemu operacyjnego serwera do zamontowania obrazu. Zamontuj obraz tylko, jeśli ufasz jego źródłom."
 
 msgid "tMounting image failed. Please see server log file for details."
