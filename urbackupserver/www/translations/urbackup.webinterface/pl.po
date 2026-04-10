@@ -220,7 +220,7 @@ msgid "session_timeout"
 msgstr "Sesja wygasła. Zaloguj się ponownie, aby kontynuować."
 
 msgid "really_del_user"
-msgstr "Na pewno chcesz usunąć tego użytkownika ?"
+msgstr "Na pewno chcesz usunąć tego użytkownika?"
 
 msgid "user_add_done"
 msgstr "Nowy użytkownik został poprawnie dodany."
@@ -514,7 +514,7 @@ msgid "Show/hide columns"
 msgstr "Pokaż/ukryj kolumny"
 
 msgid "dir_error_text"
-msgstr "Folder w którym UrBackup chce zapisać kopię jest nie dostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
+msgstr "Folder w którym UrBackup chce zapisać kopię jest niedostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
 
 msgid "tmpdir_error_text"
 msgstr "Folder w którym UrBackup chce zapisać pliki tymczasowe jest niedostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu."
@@ -559,7 +559,7 @@ msgid "validate_name_backupfolder"
 msgstr "Ścieżka do magazynu kopii"
 
 msgid "really_remove_client"
-msgstr "Napewno usunąć Klienta?!  Usunięte zostaną również wszystkie jego kopie"
+msgstr "Na pewno usunąć Klienta?! Usunięte zostaną również wszystkie jego kopie"
 
 msgid "tImages"
 msgstr "Obrazy"
@@ -670,7 +670,7 @@ msgid "tIncluded files (with wildcards)"
 msgstr "Uwzględnij w kopii zapasowej (z wzorcami)"
 
 msgid "tDefault directories to backup"
-msgstr "Domyślne foldery  kopii"
+msgstr "Domyślne foldery kopii"
 
 msgid "tVolumes to backup"
 msgstr "Wolumeny do wykonywania obrazu dysku:"
@@ -685,7 +685,7 @@ msgid "tAllow client-side starting of image backups"
 msgstr "Zezwól klientowi na start kopiowania obrazu dysku"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr "Zezwól klientowi na przeglądanie logów  kopii"
+msgstr "Zezwól klientowi na przeglądanie logów kopii"
 
 msgid "tAllow client-side pausing of backups"
 msgstr "Pozwól na wstrzymanie wykonywania kopi zapasowej po stronie klienta"
@@ -709,7 +709,7 @@ msgid "tSender E-Mail Address"
 msgstr "Adres nadawcy"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr "Wyślij e-mail wyłącznie z użyciem  SSL/TLS"
+msgstr "Wyślij e-mail wyłącznie z użyciem SSL/TLS"
 
 msgid "tCheck SSL/TLS certificate"
 msgstr "Sprawdź certyfikat SSL/TLS"
@@ -717,7 +717,7 @@ msgstr "Sprawdź certyfikat SSL/TLS"
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr "Wyśli testowy e-mail na ten adres e-mail po zapisaniu ustawień (zostaw puste  aby nie wysyłać)"
+msgstr "Wyśli testowy e-mail na ten adres e-mail po zapisaniu ustawień (zostaw puste aby nie wysyłać)"
 
 msgid "tTest Mail sent successfully"
 msgstr "Testowy e-mail wysłany"
@@ -864,7 +864,7 @@ msgid "forever"
 msgstr "zawsze"
 
 msgid "really_remove_clients"
-msgstr "Napewno usunąć tych Klientów?!  Usunięte zostaną również wszystkie ich kopie"
+msgstr "Na pewno usunąć tych Klientów?! Usunięte zostaną również wszystkie ich kopie"
 
 msgid "no_client_selected"
 msgstr "Nie zaznaczono klienta"
@@ -1069,7 +1069,7 @@ msgid "tDownload client from update server"
 msgstr "Pobierz klienta z serwera aktualizacji"
 
 msgid "tGlobal soft filesystem quota"
-msgstr "Ograniczony globalny limit plików"
+msgstr "Globalny limit przestrzeni dyskowej dla systemu plików"
 
 msgid "tImage backup file format"
 msgstr "Status kopii obrazu plików"
@@ -1189,10 +1189,10 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrowane z _MAX_ wszystkich wpisów)"
 
 msgid "Minimize"
-msgstr "Zminimalizować"
+msgstr "Zminimalizuj"
 
 msgid "Maximize"
-msgstr "Rozszerzyć maksymalnie "
+msgstr "Maksymalizuj"
 
 msgid "ldap_settings"
 msgstr "LDAP/AD"
@@ -1246,7 +1246,7 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr "UrBackup automatycznie wykrywa klientów w sieci lokalnej. Jeśli serwer znajduje się w tej samej podsieci, co klient po prostu zainstaluje klienta i poczekaj, aż zostanie wykryty."
+msgstr "UrBackup automatycznie wykrywa klientów w sieci lokalnej. Jeśli serwer znajduje się w tej samej podsieci co klient, po prostu zainstaluj klienta i poczekaj na jego wykrycie."
 
 msgid "tDownload the client from:"
 msgstr "Pobierz klienta z:"
@@ -1504,7 +1504,7 @@ msgid "tLDAP/AD group rights map"
 msgstr "Mapa praw dostępu grup LDAP / AD"
 
 msgid "tLDAP/AD class rights map"
-msgstr "Mapa praw klasy  LDAP / AD"
+msgstr "Mapa praw klasy LDAP / AD"
 
 msgid "tTest login with this user"
 msgstr "Przetestuj logowanie tym użytkownikiem"
@@ -1537,7 +1537,7 @@ msgid "tClient discovery hints"
 msgstr "Wskazówki dotyczące wykrycia klienta"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr "Dodaj nazwę hosta / IP jako wskazówkę do wykrycia klienta"
+msgstr "Dodaj nazwę hosta/IP jako wskazówkę do wykrycia klienta"
 
 msgid "tBackup Statistics"
 msgstr "Statystyki kopii zapasowych"
@@ -1552,7 +1552,7 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Przygotowanie przywracania. Proszę o cierpliwość..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr "Nie porzucaj wykonywania  kopii zapasowych w przypadku niedopasowania haseł lub odczytu błędów"
+msgstr "Nie porzucaj wykonywania kopii zapasowych w przypadku niedopasowania haseł lub odczytu błędów"
 
 msgid "admin_create"
 msgstr "Administrator"
@@ -1685,7 +1685,7 @@ msgstr "Zamontuj obraz"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
-"mount the image. Only mount the image if you trust its source."
+mount the image. Only mount the image if you trust its source."
 msgstr "UrBackup użyje funkcji systemu operacyjnego serwera do zamontowania obrazu. Zamontuj obraz tylko, jeśli ufasz jego źródłom."
 
 msgid "tMounting image failed. Please see server log file for details."
@@ -1770,7 +1770,7 @@ msgid "tVolumes to snapshot in groups during file backups"
 msgstr "Wolumeny do migawki w grupach podczas tworzenia kopii zapasowych plików"
 
 msgid "tWindows components backup configuration"
-msgstr "Składowanie składników systemu Windows"
+msgstr "Konfiguracja kopii zapasowej składników systemu Windows"
 
 msgid "tGroup name"
 msgstr "Nazwa grupy"
@@ -1791,10 +1791,10 @@ msgid "confirm_alert_script_remove"
 msgstr "Na pewno usunąć ten skrypt alertu?"
 
 msgid "alert_file_mult"
-msgstr "Liczba prób zapisywanie kopii plików, aby system uznał status za niepoprawny"
+msgstr "Liczba prób zapisu kopii plików, po których status zostanie uznany za niepoprawny"
 
 msgid "alert_image_mult"
-msgstr "Liczba prób zapisywanie obrazu, aby system uznał status za niepoprawny"
+msgstr "Liczba prób zapisu kopii obrazów, po których status zostanie uznany za niepoprawny"
 
 msgid "alert_emails"
 msgstr "Adresy email (rozdzielone ';') do powiadomienia o niepoprawnym wykonaniu kopii zapasowej"
