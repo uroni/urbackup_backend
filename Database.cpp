@@ -556,6 +556,8 @@ bool CDatabase::Import(const std::string &pFile)
 	if(file==NULL)
 		return false;
 
+	Write("PRAGMA foreign_keys = OFF");
+
 	unsigned int r;
 	char buf[4096];
 	std::string query;
@@ -567,8 +569,20 @@ bool CDatabase::Import(const std::string &pFile)
 		{
 			if(buf[i]==';' && state==0)
 			{
-				if(!Write(query))
-					return false;
+				if (query.find(".dbconfig ") == 0)
+				{
+					size_t nl = query.find("\n");
+					if (nl != std::string::npos)
+						query = query.substr(nl + 1);
+
+					if (!query.empty() && !Write(query))
+						return false;
+				}
+				else
+				{
+					if (!Write(query))
+						return false;
+				}
 
 				query.clear();
 				continue;
@@ -591,18 +605,6 @@ bool CDatabase::Import(const std::string &pFile)
 	return true;
 }
 
-namespace
-{
-	void shell_state_init(ShellState& cd, const char* db_fn)
-	{
-		cd.openMode = 1;
-		cd.normalMode = cd.cMode = cd.mode = 2;
-		cd.autoExplain = 1;
-		cd.pAuxDb = &cd.aAuxDb[0];
-		cd.aAuxDb->zDbFilename = db_fn;
-	}
-}
-
 bool CDatabase::Dump(const std::string &pFile)
 {
 	assert_thread_id();
@@ -611,21 +613,18 @@ bool CDatabase::Dump(const std::string &pFile)
 	if (db_fn == NULL)
 		return false;
 
-	ShellState cd = {};
-	shell_state_init(cd, db_fn);
-	cd.out=fopen(pFile.c_str(), "wb");
-	if(cd.out==0)
-	{
+	FILE* out = fopen(pFile.c_str(), "wb");
+	if (!out)
 		return false;
-	}
+
+	ShellState* cd = shell_state_init(db_fn, out);
+	if (!cd)
+		return false;
 
 	std::string cmd = ".dump";
-	int rc = do_meta_command_r(&cmd[0], &cd);
+	int rc = do_meta_command_r(&cmd[0], cd);
 
-	fclose(cd.out);
-
-	if (cd.db != 0)
-		sqlite3_close(cd.db);
+	shell_state_free(cd);
 
 	return rc == SQLITE_OK;
 }
@@ -636,21 +635,18 @@ bool CDatabase::Recover(const std::string & pFile)
 	if (db_fn == NULL)
 		return false;
 
-	ShellState cd = {};
-	shell_state_init(cd, db_fn);
-	cd.out = fopen(pFile.c_str(), "wb");
-	if (cd.out == 0)
-	{
+	FILE* out = fopen(pFile.c_str(), "wb");
+	if (!out)
 		return false;
-	}
+
+	ShellState* cd = shell_state_init(db_fn, out);
+	if (!cd)
+		return false;
 
 	std::string cmd = ".recover";
-	int rc = do_meta_command_r(&cmd[0], &cd);
+	int rc = do_meta_command_r(&cmd[0], cd);
 
-	fclose(cd.out);
-
-	if (cd.db != 0)
-		sqlite3_close(cd.db);
+	shell_state_free(cd);
 
 	return rc==SQLITE_OK;
 }
