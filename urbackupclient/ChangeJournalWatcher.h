@@ -146,7 +146,8 @@ private:
 
 	uint128 getRootFRN( const std::string & root );
 
-	void updateWithUsn(const std::string &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::string, bool>& local_open_write_files);
+	void updateWithUsn(const std::string &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, 
+		std::map<std::string, bool>& local_open_write_files, const bool has_transaction);
 
 	void reindex(_i64 rid, std::string vol, SChangeJournal *sj);
 	void logEntry(const std::string &vol, const UsnInt *UsnRecord);
@@ -157,7 +158,7 @@ private:
 
 	void hardlinkDelete(const std::string& vol, uint128 frn);
 
-	void resetAll(const std::string& vol);
+	void resetAll(const std::string& vol, const bool has_transaction);
 
 	IDatabase *db;
 
@@ -202,7 +203,7 @@ public:
 	virtual void On_DirAdded(const std::string & strFileName, bool closed)=0;
     virtual void On_FileModified(const std::string & strFileName, bool closed)=0;
 	virtual void On_FileOpen(const std::string & strFileName)=0;
-	virtual void On_ResetAll(const std::string & vol)=0;
+	virtual void On_ResetAll(const std::string & vol, const bool has_transaction)=0;
 	virtual void On_DirRemoved(const std::string & strDirName, bool closed)=0;
 	
 	struct SSequence

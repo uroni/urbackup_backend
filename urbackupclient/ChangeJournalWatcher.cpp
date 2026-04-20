@@ -211,7 +211,7 @@ void ChangeJournalWatcher::applySavedJournalData(const std::string & vol, SChang
 				rec.NextUsn = watoi64(res["next_usn"]);
 				rec.attributes = watoi64(res["attributes"]);
 
-				updateWithUsn(vol, cj, &rec, true, local_open_write_files);
+				updateWithUsn(vol, cj, &rec, true, local_open_write_files, true);
 				cj.last_record = rec.NextUsn;
 			}
 		}
@@ -339,7 +339,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 	if(!ok)
 	{
 		Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in ChangeJournalWatcher::watchDir for dir "+dir, LL_ERROR);
-		resetAll(dir);
+		resetAll(dir, false);
 		has_error=true;
 		error_dirs.push_back(dir);
 		return;
@@ -367,7 +367,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 	_i64 rid=hasRoot(vol);
 	if(rid==-1)
 	{
-		resetAll(vol);
+		resetAll(vol, false);
 		do_index=true;
 		rid=addFrn(vol, c_frn_root, c_frn_root, -1);
 		setIndexDone(vol, 0);
@@ -377,7 +377,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("CreateFile of volume '"+vol+"' failed. - watchDir", LL_ERROR);
-		resetAll(vol);
+		resetAll(vol, false);
 		error_dirs.push_back(vol);
 		CloseHandle(hVolume);
 		has_error=true;
@@ -393,7 +393,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 		if(err==ERROR_INVALID_FUNCTION)
 		{
 			Server->Log("Change Journals not supported for Volume '"+vol+"'", LL_ERROR);
-			resetAll(vol);
+			resetAll(vol, false);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -402,7 +402,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 		else if(err==ERROR_JOURNAL_DELETE_IN_PROGRESS)
 		{
 			Server->Log("Change Journals for Volume '"+vol+"' is being deleted", LL_ERROR);
-			resetAll(vol);
+			resetAll(vol, false);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -418,7 +418,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 			if(r==0)
 			{
 				Server->Log("Error creating change journal for Volume '"+vol+"'", LL_ERROR);
-				resetAll(vol);
+				resetAll(vol, false);
 				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
@@ -428,7 +428,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 			if(b==0)
 			{
 				Server->Log("Unknown error for Volume '"+vol+"' after creation - watchDir", LL_ERROR);
-				resetAll(vol);
+				resetAll(vol, false);
 				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
@@ -438,7 +438,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 		else
 		{
 			Server->Log("Unknown error for Volume '"+vol+"' - watchDir ec: "+convert((int)err), LL_ERROR);
-			resetAll(vol);
+			resetAll(vol, false);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -453,7 +453,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 		if(info.journal_id!=data.UsnJournalID)
 		{
 			Server->Log("Journal id for '"+vol+"' wrong - reindexing", LL_WARNING);
-			resetAll(vol);
+			resetAll(vol, false);
 			do_index=true;
 			setIndexDone(vol, 0);
 			info.last_record=data.NextUsn;
@@ -480,7 +480,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 
 		if(needs_reindex)
 		{			
-			resetAll(vol);
+			resetAll(vol, false);
 			do_index=true;
 			setIndexDone(vol, 0);
 			info.last_record=data.NextUsn;
@@ -496,7 +496,7 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 	}
 	else
 	{
-		resetAll(vol);
+		resetAll(vol, false);
 		Server->Log("Info not found at '"+vol+"' - reindexing", LL_WARNING);
 		do_index=true;
 	}
@@ -556,7 +556,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::string vol, SChangeJournal *sj
 		Server->Log("Added "+convert(nDirFrns)+" directory FRNs via slow indexing method", LL_DEBUG);
 	}
 #endif
-	resetAll(vol);
+	resetAll(vol, false);
 	indexing_in_progress=false;
 	indexing_volume.clear();
 
@@ -851,7 +851,7 @@ void ChangeJournalWatcher::update(std::string vol_str, const bool allow_trans_st
 							Server->Log("USN record with major version "+convert(TUsnRecord->MajorVersion)+" not supported", LL_ERROR);
 							for(size_t j=0;j<listeners.size();++j)
 							{
-								listeners[j]->On_ResetAll(it->first);
+								listeners[j]->On_ResetAll(it->first, !allow_trans_start || started_transaction);
 							}
 							unsupported_usn_version_err=true;
 						}
@@ -873,7 +873,7 @@ void ChangeJournalWatcher::update(std::string vol_str, const bool allow_trans_st
 									started_transaction=true;
 									db->BeginWriteTransaction();
 								}
-								updateWithUsn(it->first, it->second, &usn_record, true, local_open_write_files);
+								updateWithUsn(it->first, it->second, &usn_record, true, local_open_write_files, true);
 							}
 						}
 						else
@@ -960,12 +960,12 @@ void ChangeJournalWatcher::update(std::string vol_str, const bool allow_trans_st
 							remove_it=true;
 						}
 					}
-					resetAll(it->first);
+					resetAll(it->first, !allow_trans_start || started_transaction);
 				}
 				else
 				{
 					Server->Log("Unknown error for Volume '"+it->first+"' - update err="+convert((int)err), LL_ERROR);
-					resetAll(it->first);
+					resetAll(it->first, !allow_trans_start || started_transaction);
 					deleteJournalId(it->first);
 					has_error=true;
 					CloseHandle(it->second.hVolume);
@@ -1049,7 +1049,7 @@ void ChangeJournalWatcher::update_longliving(void)
 
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
-		resetAll(error_dirs[i]);
+		resetAll(error_dirs[i], false);
 	}
 }
 
@@ -1144,7 +1144,8 @@ const DWORD watch_flags=\
 	USN_REASON_STREAM_CHANGE | \
 	USN_REASON_TRANSACTED_CHANGE;
 
-void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::string, bool>& local_open_write_files)
+void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, 
+	bool fallback_to_mft, std::map<std::string, bool>& local_open_write_files, const bool has_transaction)
 {
 	if(usn_logging_enabled)
 	{
@@ -1183,7 +1184,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 				else
 				{
 					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
-					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files);
+					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files, has_transaction);
 				}
 			}
 			else
@@ -1301,7 +1302,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 				else
 				{
 					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
-					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files);
+					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files, has_transaction);
 					fallback_update = true;
 				}
 			}
@@ -1463,7 +1464,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 
 	if(curr_has_error)
 	{
-		resetAll(cj.vol_str);
+		resetAll(cj.vol_str, has_transaction);
 	}
 }
 
@@ -1472,13 +1473,13 @@ void ChangeJournalWatcher::add_listener( IChangeJournalListener *pListener )
 	listeners.push_back(pListener);
 }
 
-void ChangeJournalWatcher::resetAll( const std::string& vol )
+void ChangeJournalWatcher::resetAll( const std::string& vol, const bool has_transaction)
 {
 	++num_changes;
 
 	for(size_t i=0;i<listeners.size();++i)
 	{
-		listeners[i]->On_ResetAll(vol);
+		listeners[i]->On_ResetAll(vol, has_transaction);
 	}
 }
 
