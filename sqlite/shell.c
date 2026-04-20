@@ -36352,6 +36352,8 @@ static int auto_ext_leak_tester(
 #  define main fiddle_main
 #endif
 
+#define main sqlite3_shell
+
 /* Use the wmain() entry point on Windows.  Translate arguments to
 ** UTF8, then invoke the traditional main() entry point which is
 ** renamed using a #define to utf8_main() .
