@@ -73,10 +73,19 @@ if !($development); then
 	make install DESTDIR=$PWD/osx-pkg_x86
 fi
 
+function merge() {
+	lipo -create "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/$1" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1" -output "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1.new"
+	mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1.new" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1"
+}
+
 for i in $(ls "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/")
 do
-	lipo -create "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" -output "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new"
-	mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i"
+	merge bin/$i
+done
+
+for i in $(ls "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/sbin/")
+do
+	merge sbin/$i
 done
 
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"
