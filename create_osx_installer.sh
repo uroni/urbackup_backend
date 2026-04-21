@@ -3,22 +3,30 @@
 set -e
 
 development=false
+already_reset=false
 
 # Check if using development switch
 if [ "$1" != "" ]; then
 	if [[ "$1" == "-d" ]] || [[ "$1" == "--development" ]]; then
 		development=true
+	elif [[ "$1" == "--already-reset" ]]; then
+		already_reset=true
 	fi
 fi
 
-
-if !($development); then
-	git reset --hard
-	cd client
-	git reset --hard
-	cd ..
-	python3 build/replace_versions.py
-	echo foo
+if $already_reset
+then
+	echo "Already reset, skipping git reset"
+else
+	if !($development); then
+		git reset --hard
+		cd client
+		git reset --hard
+		cd ..
+		python3 build/replace_versions.py
+		./create_osx_installer.sh --already-reset
+		exit 0
+	fi
 fi
 
 rm -R osx-pkg || true
