@@ -478,7 +478,7 @@ private:
 #ifdef _WIN32
 	bool start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction);
 	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref, bool* has_active_transaction);
-	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);
+	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix, const int timeoutms = -1);
 	std::string GetErrorHResErrStr(HRESULT res);
 	void printProviderInfo(HRESULT res);
 	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, 

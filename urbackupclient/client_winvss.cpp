@@ -35,6 +35,9 @@
 
 namespace
 {
+	const int vss_wait_timeout = 2 * 60 * 1000; // 2 min
+	const int vss_wait_timeout_long = 10 * 60 * 1000;
+
 	std::string sortHex(UINT i)
 	{
 		UINT bi = big_endian(i);
@@ -146,7 +149,7 @@ void IndexThread::clearContext(SShadowCopyContext& context)
 	}
 }
 
-bool IndexThread::wait_for(IVssAsync *vsasync, const std::string& error_prefix)
+bool IndexThread::wait_for(IVssAsync *vsasync, const std::string& error_prefix, const int timeoutms)
 {
 	if (vsasync == NULL)
 	{
@@ -154,14 +157,27 @@ bool IndexThread::wait_for(IVssAsync *vsasync, const std::string& error_prefix)
 		return false;
 	}
 
-	CHECK_COM_RESULT(vsasync->Wait());
+	const int64 starttime = Server->getTimeMS();
+
+	CHECK_COM_RESULT(vsasync->Wait(timeoutms <=0 ? INFINITE : 1000));
 
 	HRESULT res;
 	CHECK_COM_RESULT(vsasync->QueryStatus(&res, NULL));
 
 	while (res == VSS_S_ASYNC_PENDING)
 	{
-		CHECK_COM_RESULT(vsasync->Wait());
+		if (timeoutms > 0 && Server->getTimeMS() - starttime > timeoutms)
+		{
+			res = vsasync->Cancel();
+			if (res != VSS_S_ASYNC_FINISHED)
+			{
+				VSSLog(error_prefix + ". Timeout after " + PrettyPrintTime(Server->getTimeMS() - starttime), LL_ERROR);
+				vsasync->Release();
+				return false;
+			}
+		}
+
+		CHECK_COM_RESULT(vsasync->Wait(timeoutms <= 0 ? INFINITE : 1000));
 
 		CHECK_COM_RESULT(vsasync->QueryStatus(&res, NULL));
 	}
@@ -279,7 +295,7 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::stri
 	IVssAsync *pb_result;
 	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
 
-	if (!wait_for(pb_result, "Gathering writer status failed"))
+	if (!wait_for(pb_result, "Gathering writer status failed", vss_wait_timeout))
 	{
 		VSSLog("Error while waiting for result from GatherWriterStatus", LL_ERROR);
 		return false;
@@ -492,7 +508,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		IVssAsync *pb_result;
 
 		CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result));
-		if (!wait_for(pb_result, "Gathering writer status failed"))
+		if (!wait_for(pb_result, "Gathering writer status failed", vss_wait_timeout))
 		{
 			backupcom->AbortBackup();
 			backupcom->Release();
@@ -636,7 +652,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 
 
 		CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
-		if (!wait_for(pb_result, "Preparing backup failed"))
+		if (!wait_for(pb_result, "Preparing backup failed", vss_wait_timeout_long))
 		{
 			backupcom->AbortBackup();
 			backupcom->Release();
@@ -647,7 +663,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		check_writer_status(backupcom, errmsg, LL_WARNING, true, critical_writers, NULL, &retryable_error);
 
 		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
-		if (!wait_for(pb_result, "Starting snapshot set failed"))
+		if (!wait_for(pb_result, "Starting snapshot set failed", vss_wait_timeout_long))
 		{
 			backupcom->AbortBackup();
 			backupcom->Release();
@@ -711,7 +727,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
 			if (bcom_ok)
 			{
-				wait_for(pb_result, "Completing backup with error status failed");
+				wait_for(pb_result, "Completing backup with error status failed", vss_wait_timeout_long);
 			}
 
 #ifndef VSS_XP
@@ -966,7 +982,7 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 	CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
 	if (bcom_ok)
 	{
-		if (!wait_for(pb_result, "Completing backup failed"))
+		if (!wait_for(pb_result, "Completing backup failed", vss_wait_timeout_long))
 		{
 			ok = false;
 		}
