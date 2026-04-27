@@ -383,6 +383,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->allow_pause = true;
 		settings->allow_log_view = true;
 		settings->allow_tray_exit = true;
+		settings->allow_all_clients_restore = false;
 		settings->image_letters = "C";
 		settings->client_set_settings = false;
 		settings->internet_image_backups = false;
@@ -431,6 +432,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->hash_threads = 1;
 		settings->client_hash_threads = 1;
 		settings->image_compress_threads = 0;
+		settings->client_rename_detection = true;
 	}
 	
 	readStringClientSetting(q_get_client_setting, "update_freq_incr", std::string(), &settings->update_freq_incr, false);
@@ -490,6 +492,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readBoolClientSetting(q_get_client_setting, "allow_log_view", &settings->allow_log_view, false);
 
 	readBoolClientSetting(q_get_client_setting, "allow_tray_exit", &settings->allow_tray_exit, false);
+
+	readBoolClientSetting(q_get_client_setting, "allow_all_clients_restore", &settings->allow_all_clients_restore, false);
 
 	readStringClientSetting(q_get_client_setting, "image_letters", ";", &settings->image_letters, false);
 		
@@ -594,6 +598,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
+
+	readBoolClientSetting(q_get_client_setting, "client_rename_detection", &settings->client_rename_detection, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -683,6 +689,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "allow_pause", &settings->allow_pause);
 	readBoolClientSetting(q_get_client_setting, "allow_log_view", &settings->allow_log_view);
 	readBoolClientSetting(q_get_client_setting, "allow_tray_exit", &settings->allow_tray_exit);
+	readBoolClientSetting(q_get_client_setting, "allow_all_clients_restore", &settings->allow_all_clients_restore, false);
 	readBoolClientSetting(q_get_client_setting, "verify_using_client_hashes", &settings->verify_using_client_hashes);
 	readBoolClientSetting(q_get_client_setting, "internet_readd_file_entries", &settings->internet_readd_file_entries);
 	readBoolClientSetting(q_get_client_setting, "background_backups", &settings->background_backups);
@@ -719,6 +726,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
+
+	readBoolClientSetting(q_get_client_setting, "client_rename_detection", &settings->client_rename_detection, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
@@ -1491,6 +1500,7 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_BOOL(allow_pause);
 	SET_SETTING_BOOL(allow_log_view);
 	SET_SETTING_BOOL(allow_tray_exit);
+	SET_SETTING_BOOL(allow_all_clients_restore);
 	SET_SETTING_STR(image_letters);
 	SET_SETTING_STR(internet_authkey);
 	SET_SETTING_BOOL(client_set_settings);
@@ -1544,6 +1554,7 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_INT(hash_threads);
 	SET_SETTING_INT(client_hash_threads);
 	SET_SETTING_INT(image_compress_threads);
+	SET_SETTING_BOOL(client_rename_detection);
 #undef SET_SETTING
 	return ret;
 }

@@ -67,6 +67,7 @@
 #include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
+#include "urbackupcommon/os_functions.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -3928,6 +3929,7 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 void ClientMain::updateVirtualClients()
 {
 	std::string virtual_clients = server_settings->getVirtualClients();
+	if(!server_settings->getSettings()->allow_all_clients_restore)
 	{
 		IScopedLock lock(clientaddr_mutex);
 
@@ -3983,6 +3985,9 @@ bool ClientMain::checkClientName(bool& continue_start_backups)
 
 bool ClientMain::renameClient(const std::string & clientuid)
 {
+	if(!server_settings->getSettings()->client_rename_detection)
+		return false;
+
 	std::vector<int> uids = backup_dao->getClientsByUid(clientuid);
 
 	if (std::find(uids.begin(), uids.end(), clientid)
@@ -4032,7 +4037,8 @@ bool ClientMain::renameClient(const std::string & clientuid)
 
 	if (ServerStatus::getStatus(old_name.name).r_online)
 	{
-		//retry later once the old client is offline
+		ServerLogger::Log(logid, "Detected old client name at \"" + old_name.name + "\" is still online. "
+			"Cannot rename client \"" + clientname + "\". Retrying rename later once old client is offline...", LL_INFO);
 		return true;
 	}
 
@@ -4047,20 +4053,25 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	{
 		if (!ImageMount::unmount_images(images[i].id))
 		{
-			//retry later
+			ServerLogger::Log(logid, "Failed to unmount image with ID " + std::to_string(images[i].id) + " during client rename"
+				" of " + old_name.name + " to " + clientname + ". Retrying later...", LL_INFO);
 			return true;
 		}
 	}
 
 	if (!os_remove_dir(backupfolder + os_file_sep() + clientname))
 	{
+		ServerLogger::Log(logid, "Failed to remove directory for new client name \"" + clientname + "\" during"
+			" rename of " + old_name.name + " to " + clientname + ": "+ os_last_error_str()+". Giving up on renaming.", LL_INFO);
 		return true;
 	}
 
 	if (!os_rename_file(backupfolder + os_file_sep() + old_name.name,
 		backupfolder + os_file_sep() + clientname))
 	{
-		os_create_dir(backupfolder + os_file_sep() + clientname);
+		ServerLogger::Log(logid, "Failed to rename backup directory from \"" + old_name.name + "\" to \"" + clientname + "\" during"
+			" rename of " + old_name.name + " to " + clientname + ": "+ os_last_error_str()+". Giving up on renaming.", LL_INFO);
+		os_create_dir(backupfolder + os_file_sep() + clientname);		
 		return true;
 	}
 
@@ -4108,6 +4119,8 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	{
 		backup_dao->changeClientNameWithVirtualmain(clientname, clientmainname, rename_from);
 	}
+
+	ServerLogger::Log(logid, "Renamed client \"" + old_name.name + "\" to \"" + clientname + "\"", LL_INFO);
 
 	clientid = rename_from;
 
