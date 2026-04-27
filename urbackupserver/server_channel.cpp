@@ -58,11 +58,11 @@ namespace
 	bool needs_login(void)
 	{
 		db_results res=getDatabase()->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(watoi(res[0]["c"])>0)
+		if(res.empty() || watoi(res[0]["c"])>0)
 		{
 			return true;
 		}
-		else
+		else if(res[0]["c"] == "0")
 		{
 			return false;
 		}
