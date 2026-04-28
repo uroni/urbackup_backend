@@ -67,7 +67,7 @@
 #include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
-#include "urbackupcommon/os_functions.h"
+#include "../urbackupcommon/os_functions.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
