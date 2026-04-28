@@ -327,3 +327,7 @@ cryptoplugin/src/m4/libtool.m4
 /urbackupserver/ARM64
 /urlplugin/ARM64
 /SQLGen/SQLGen/x64
+compile_commands.json
+urbackup_mount_helper
+urbackup_snapshot_helper
+urbackupsrv

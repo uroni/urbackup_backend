@@ -4267,6 +4267,7 @@ g.settings_list=[
 "allow_file_restore",
 "allow_component_restore",
 "allow_component_config",
+"allow_all_clients_restore",
 "image_letters",
 "internet_authkey",
 "internet_speed",
@@ -4317,7 +4318,8 @@ g.settings_list=[
 "download_threads",
 "hash_threads",
 "client_hash_threads",
-"image_compress_threads"
+"image_compress_threads",
+"client_rename_detection"
 ];
 g.general_settings_list=[
 "backupfolder",
