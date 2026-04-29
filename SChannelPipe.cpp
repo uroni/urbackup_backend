@@ -543,6 +543,8 @@ bool SChannelPipe::isReadable(int timeoutms)
 
 	if (encbuf_pos > 0 && !incomplete_message)
 		return true;
+
+	return false;
 }
 
 bool SChannelPipe::hasError(void)
