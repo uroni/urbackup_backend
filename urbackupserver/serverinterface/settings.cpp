@@ -678,7 +678,6 @@ ACTION_IMPL(settings)
 					int mod_groupid = watoi(getafter("-", changes[i]));
 
 					updateClientGroup(mod_clientid, mod_groupid, db);
-					ServerSettings::updateClient(mod_clientid);
 				}
 			}
 		}
@@ -688,7 +687,6 @@ ACTION_IMPL(settings)
 			&& POST.find("memberof") != POST.end())
 		{
 			updateClientGroup(t_clientid, watoi(POST["memberof"]), db);
-			ServerSettings::updateClient(t_clientid);
 		}
 		else if (sa == "groupremove" && helper.getRights("groupmod") == RIGHT_ALL)
 		{
@@ -952,13 +950,13 @@ ACTION_IMPL(settings)
 					if (t_clientid > 0)
 					{
 						ServerSettings::updateClient(t_clientid);
+						updateOnlineClientSettings(db, t_clientid);
 					}
 					else
 					{
 						ServerSettings::updateAll();
-					}				
-
-					updateOnlineClientSettings(db, t_clientid);
+						updateAllOnlineClientSettings(db);
+					}
 				}
 				
 				ServerSettings settings(db, t_clientid);
