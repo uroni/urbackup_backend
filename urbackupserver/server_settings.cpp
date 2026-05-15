@@ -593,9 +593,11 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 
 	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
 	
-	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
+	//readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
+	settings->hash_threads = 1;
 	
-	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+	//readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+	settings->client_hash_threads = 1;
 	
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 
@@ -723,8 +725,12 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
 
 	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
-	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
-	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+
+	//readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
+	settings->hash_threads = 1;
+	//readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
+	settings->client_hash_threads = 1;
+	
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
 
 	readBoolClientSetting(q_get_client_setting, "client_rename_detection", &settings->client_rename_detection, false);
