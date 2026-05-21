@@ -537,9 +537,6 @@ bool SChannelPipe::isWritable(int timeoutms)
 
 bool SChannelPipe::isReadable(int timeoutms)
 {
-	if (has_error)
-		return false;
-
 	if (decbuf_pos > 0)
 		return true;
 
