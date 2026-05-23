@@ -127,7 +127,7 @@
     <VcpkgTriplet>x64-windows-static-md</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Vcpkg">
-    <VcpkgTriplet>x64-windows-static-md</VcpkgTriplet>
+    <VcpkgTriplet>arm64-windows-static-md</VcpkgTriplet>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <VcpkgTriplet>x86-windows-static-md</VcpkgTriplet>
