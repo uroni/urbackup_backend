@@ -112,6 +112,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("client_hash_threads");
 	ret.push_back("image_compress_threads");
 	ret.push_back("client_rename_detection");
+	ret.push_back("max_running_jobs_per_client_group");
 	return ret;
 }
 
@@ -202,6 +203,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("client_settings_tray_access_pw");
 	ret.push_back("client_rename_detection");
 	ret.push_back("allow_all_clients_restore");
+	ret.push_back("max_running_jobs_per_client_group");
 	return ret;
 }
 

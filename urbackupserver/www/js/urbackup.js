@@ -4319,7 +4319,8 @@ g.settings_list=[
 "hash_threads",
 "client_hash_threads",
 "image_compress_threads",
-"client_rename_detection"
+"client_rename_detection",
+"max_running_jobs_per_client_group"
 ];
 g.general_settings_list=[
 "backupfolder",

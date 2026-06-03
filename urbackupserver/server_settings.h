@@ -155,6 +155,8 @@ struct SSettings
 	int client_hash_threads;
 	int image_compress_threads;
 	bool client_rename_detection;
+	int max_running_jobs_per_client_group;
+	int group_id;
 };
 
 struct SLDAPSettings

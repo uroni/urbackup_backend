@@ -85,7 +85,7 @@ struct SRunningBackup
 {
 	SRunningBackup()
 		: backup(NULL), ticket(ILLEGAL_THREADPOOL_TICKET),
-		group(c_group_default)
+		group(c_group_default), client_group(-1)
 	{
 
 	}
@@ -95,6 +95,7 @@ struct SRunningBackup
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
+	int client_group;
 };
 
 struct SRunningRestore
@@ -331,6 +332,12 @@ private:
 	void startStartup();
 	void finishStartup();
 
+	int numRunningClientGroupJobs(const int group_id);
+
+	void addRunningClientGroupJob(const int group_id);
+
+	void subRunningClientGroupJob(const int group_id);
+
 	class ScopedStartStartup
 	{
 		ClientMain* cm;
@@ -487,4 +494,7 @@ private:
 	static IMutex* client_startup_mutex;
 	static ICondition* client_startup_cond;
 	static std::set<std::string> client_startup;
+
+	static IMutex* client_group_job_mutex;
+	static std::map<int, int> client_group_jobs;
 };

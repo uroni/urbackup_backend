@@ -16,6 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #include "ClientMain.h"
+#include "Interface/Mutex.h"
 #include "server_ping.h"
 #include "database.h"
 #include "../stringtools.h"
@@ -107,6 +108,9 @@ ICondition* ClientMain::client_uid_reset_cond = NULL;
 IMutex* ClientMain::client_startup_mutex = NULL;
 ICondition* ClientMain::client_startup_cond = NULL;
 std::set<std::string> ClientMain::client_startup;
+IMutex* ClientMain::client_group_job_mutex = NULL;
+std::map<int, int> ClientMain::client_group_jobs;
+
 
 ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName,
 	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
@@ -197,6 +201,7 @@ void ClientMain::init_mutex(void)
 	client_uid_reset_mutex = Server->createMutex();
 	client_startup_mutex = Server->createMutex();
 	client_startup_cond = Server->createCondition();
+	client_group_job_mutex = Server->createMutex();
 }
 
 void ClientMain::destroy_mutex(void)
@@ -209,6 +214,7 @@ void ClientMain::destroy_mutex(void)
 	Server->destroy(client_uid_reset_mutex);
 	Server->destroy(client_startup_mutex);
 	Server->destroy(client_startup_cond);
+	Server->destroy(client_group_job_mutex);
 }
 
 void ClientMain::wakeupClientUidReset()
@@ -562,6 +568,7 @@ void ClientMain::operator ()(void)
 							 || dynamic_cast<ImageBackup*>(backup_queue[i].backup)->getDependencies(false).empty()) )
 					{
 						ServerStatus::subRunningJob(clientmainname);
+						subRunningClientGroupJob(backup_queue[i].client_group);
 
 						if (!backup_queue[i].backup->getResult() &&
 							backup_queue[i].backup->shouldBackoff())
@@ -926,7 +933,9 @@ void ClientMain::operator ()(void)
 
 			if(can_start)
 			{
-				while(ServerStatus::numRunningJobs(clientmainname)<server_settings->getSettings()->max_running_jobs_per_client)
+				int group_id = server_settings->getSettings()->group_id;
+				while(ServerStatus::numRunningJobs(clientmainname)<server_settings->getSettings()->max_running_jobs_per_client
+						&& numRunningClientGroupJobs(group_id)<server_settings->getSettings()->max_running_jobs_per_client_group)
 				{
 					bool started_job=false;
 					for(size_t i=0;i<backup_queue.size();++i)
@@ -938,7 +947,9 @@ void ClientMain::operator ()(void)
 							&& (!filebackup || !isRunningFileBackup(backup_queue[i].group, false) ) )
 						{
 							ServerStatus::addRunningJob(clientmainname);
+							addRunningClientGroupJob(group_id);
 							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client
+								&& numRunningClientGroupJobs(group_id)<=server_settings->getSettings()->max_running_jobs_per_client_group
 								&& isBackupsRunningOkay(filebackup, true))
 							{
 								std::string tname = "backup main";
@@ -951,12 +962,14 @@ void ClientMain::operator ()(void)
 									tname = "ibackup main";
 								}
 
+								backup_queue[i].client_group = group_id;
 								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, tname);
 								started_job=true;
 							}
 							else
 							{
 								ServerStatus::subRunningJob(clientmainname);
+								subRunningClientGroupJob(group_id);
 							}							
 							break;
 						}
@@ -1106,6 +1119,7 @@ void ClientMain::operator ()(void)
 		{
 			Server->getThreadPool()->waitFor(backup_queue[i].ticket);
 			ServerStatus::subRunningJob(clientmainname);
+			subRunningClientGroupJob(backup_queue[i].client_group);
 		}
 
 		delete backup_queue[i].backup;
@@ -4358,4 +4372,48 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 	while(c);
 
 	return true;
+}
+
+int ClientMain::numRunningClientGroupJobs(const int group_id)
+{
+	IScopedLock lock(client_group_job_mutex);
+
+	std::map<int, int>::iterator it = client_group_jobs.find(group_id);
+	if (it != client_group_jobs.end())
+	{
+		return it->second;
+	}
+	return 0;
+}
+
+void ClientMain::addRunningClientGroupJob(const int group_id)
+{
+	assert(group_id >= 0);
+	IScopedLock lock(client_group_job_mutex);
+
+	std::map<int, int>::iterator it = client_group_jobs.find(group_id);
+	if (it != client_group_jobs.end())
+	{
+		it->second++;
+	}
+	else if(group_id>=0)
+	{
+		client_group_jobs[group_id] = 1;
+	}
+}
+
+void ClientMain::subRunningClientGroupJob(const int group_id)
+{
+	assert(group_id >= 0);
+	IScopedLock lock(client_group_job_mutex);
+
+	std::map<int, int>::iterator it = client_group_jobs.find(group_id);
+	if (it != client_group_jobs.end())
+	{
+		it->second--;
+		if (it->second == 0)
+		{
+			client_group_jobs.erase(it);
+		}
+	}
 }
