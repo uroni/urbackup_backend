@@ -1297,7 +1297,7 @@ void ServerSettings::readSettings()
 	clientid = settings_default_id;
 	readSettingsDefault(settings_default.get(),
 		settings_global_ptr, q_get_client_setting);
-	local_settings->group_id = settings_default_id;
+	local_settings->group_id = settings_default_id * -1;
 
 	clientid = clientid_backup;
 
