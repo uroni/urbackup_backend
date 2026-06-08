@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #include "ClientMain.h"
-#include "Interface/Mutex.h"
+#include "../Interface/Mutex.h"
 #include "server_ping.h"
 #include "database.h"
 #include "../stringtools.h"
