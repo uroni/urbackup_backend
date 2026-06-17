@@ -1367,7 +1367,8 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 }
 
 std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg,
-	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn, bool do_encrypt)
+	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn, bool do_encrypt,
+	const unsigned int connect_timeout)
 {
 	CTCPStack tcpstack(internet_connection);
 
@@ -1380,7 +1381,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(NULL, 10000, NULL, do_encrypt));
+		cc.reset(getClientCommandConnection(NULL, connect_timeout, NULL, do_encrypt));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
