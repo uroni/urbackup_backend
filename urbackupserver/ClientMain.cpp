@@ -1331,13 +1331,14 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 }
 
 std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout,
-	size_t retry, bool logerr, int max_loglevel, unsigned int timeout_after_first, bool do_encrypt)
+	size_t retry, bool logerr, int max_loglevel, unsigned int timeout_after_first, bool do_encrypt, const logid_t override_log_id)
 {
 	std::string res;
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, NULL, do_encrypt);
+		res = sendClientMessage(msg, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, 
+			NULL, do_encrypt, 10000, override_log_id);
 
 		if(res.empty())
 		{
@@ -1368,8 +1369,9 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 
 std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg,
 	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn, bool do_encrypt,
-	const unsigned int connect_timeout)
+	const unsigned int connect_timeout, const logid_t override_log_id)
 {
+	const logid_t curr_logid = override_log_id != logid_t() ? override_log_id : logid;
 	CTCPStack tcpstack(internet_connection);
 
 	std::auto_ptr<IPipe> cc;
@@ -1385,7 +1387,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 		if (cc.get() == NULL)
 		{
 			if (logerr)
-				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+				ServerLogger::Log(curr_logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
 			else
 				Server->Log("Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
 			return "";
@@ -1410,7 +1412,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 		if(rc==0)
 		{
 			if(logerr)
-				ServerLogger::Log(logid, errmsg, max_loglevel);
+				ServerLogger::Log(curr_logid, errmsg, max_loglevel);
 			else
 				Server->Log(errmsg, max_loglevel);
 
@@ -1431,7 +1433,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	}
 
 	if(logerr)
-		ServerLogger::Log(logid, "Timeout: "+errmsg, max_loglevel);
+		ServerLogger::Log(curr_logid, "Timeout: "+errmsg, max_loglevel);
 	else
 		Server->Log("Timeout: "+errmsg, max_loglevel);
 
@@ -1439,13 +1441,14 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 }
 
 bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, 
-	size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str, bool do_encrypt)
+	size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str, bool do_encrypt, const logid_t override_log_id)
 {
 	bool res;
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, retok_err, retok_str, NULL, do_encrypt);
+		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, 
+			retok_err, retok_str, NULL, do_encrypt, 10000, override_log_id);
 
 		if(!res)
 		{
@@ -1472,8 +1475,9 @@ bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::strin
 
 bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok,
 	const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err,
-	std::string* retok_str, SConnection* conn, bool do_encrypt)
+	std::string* retok_str, SConnection* conn, bool do_encrypt, const unsigned int connect_timeout, const logid_t override_log_id)
 {
+	const logid_t curr_logid = override_log_id != logid_t() ? override_log_id : logid;
 	CTCPStack tcpstack(internet_connection);
 
 	std::auto_ptr<IPipe> cc;
@@ -1485,11 +1489,11 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(NULL, 10000, NULL, do_encrypt));
+		cc.reset(getClientCommandConnection(NULL, connect_timeout, NULL, do_encrypt));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
-				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+				ServerLogger::Log(curr_logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
 			else
 				Server->Log("Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
 
@@ -1535,7 +1539,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 			{
 				herr=true;
 				if (logerr)
-					ServerLogger::Log(logid, errmsg, max_loglevel);
+					ServerLogger::Log(curr_logid, errmsg, max_loglevel);
 				else
 					Server->Log(errmsg, max_loglevel);
 
@@ -1560,7 +1564,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 		std::string reason = (broken ? "Connection broken: " : "Timeout: ");
 
 		if(logerr)
-			ServerLogger::Log(logid, reason+errmsg, max_loglevel);
+			ServerLogger::Log(curr_logid, reason+errmsg, max_loglevel);
 		else
 			Server->Log(reason +errmsg, max_loglevel);
 	}

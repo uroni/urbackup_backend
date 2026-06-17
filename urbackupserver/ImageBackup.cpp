@@ -2512,7 +2512,7 @@ std::string ImageBackup::getMBR(const std::string &dl, const std::string& disk_p
 	params += "&token=" + EscapeParamString(server_token);
 
 	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 60000, 
-		true, LL_ERROR, NULL, true, 60000);
+		true, LL_ERROR, NULL, true, 60000, logid);
 	CRData r(&ret);
 	char b;
 	if(r.getChar(&b) && b==1 )

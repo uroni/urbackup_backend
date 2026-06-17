@@ -103,7 +103,9 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 {
 	if(server_settings->getSettings()->end_to_end_file_backup_verification)
 	{
-		client_main->sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK", "Enabling end to end file backup verficiation on client failed.", 10000);
+		client_main->sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK",
+			 "Enabling end to end file backup verficiation on client failed.", 10000, true, LL_ERROR,
+			NULL, NULL, NULL, true, 10000, logid);
 	}
 
 	unsigned int timeout_time=full_backup_construct_timeout;
@@ -479,7 +481,8 @@ bool FileBackup::wait_for_async(const std::string& async_id, int64 timeout_time)
 
 bool FileBackup::request_client_write_tokens()
 {
-	std::string ret = client_main->sendClientMessage("WRITE TOKENS ", "Error requesting client to write tokens", 10000, true, LL_WARNING);
+	std::string ret = client_main->sendClientMessage("WRITE TOKENS ", "Error requesting client to write tokens", 
+		10000, true, LL_WARNING, NULL, true, 10000, logid);
 	if (ret == "OK")
 	{
 		return true;
@@ -506,7 +509,8 @@ bool FileBackup::hasEarlyError()
 
 void FileBackup::logVssLogdata(int64 vss_duration_s)
 {
-	std::string vsslogdata=client_main->sendClientMessageRetry("GET VSSLOG", "Getting index log data from client failed", 10000, 10, true, LL_WARNING);
+	std::string vsslogdata=client_main->sendClientMessageRetry("GET VSSLOG", "Getting index log data from client failed", 10000, 
+		10, true, LL_WARNING, 0, true, logid);
 
 	if(!vsslogdata.empty() && vsslogdata!="ERR")
 	{
