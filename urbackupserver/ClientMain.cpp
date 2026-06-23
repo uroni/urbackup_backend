@@ -1586,7 +1586,7 @@ void ClientMain::sendClientBackupIncrIntervall(void)
 	{
 		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqFileIncr()*settings->backup_ok_mod_file));
 	}
-	if(server_settings->getUpdateFreqImageIncr()>0)
+	if(!settings->no_images && server_settings->getUpdateFreqImageIncr()>0)
 	{
 		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqImageIncr()*settings->backup_ok_mod_image));
 	}
@@ -1594,7 +1594,7 @@ void ClientMain::sendClientBackupIncrIntervall(void)
 	{
 		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqFileFull()*settings->backup_ok_mod_file));
 	}
-	if(server_settings->getUpdateFreqImageFull()>0)
+	if(!settings->no_images && server_settings->getUpdateFreqImageFull()>0)
 	{
 		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqImageFull()*settings->backup_ok_mod_image));
 	}
