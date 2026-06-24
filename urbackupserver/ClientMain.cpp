@@ -3974,6 +3974,11 @@ void ClientMain::updateVirtualClients()
 			}
 		}
 	}
+	else
+	{
+		IScopedLock lock(clientaddr_mutex);
+		allow_restore_clients.clear();
+	}
 
 	BackupServer::setVirtualClients(clientname, virtual_clients);
 }
