@@ -18,6 +18,68 @@
 #include <sys/ioctl.h>
 extern char **environ;
 
+namespace
+{
+std::vector<std::string> get_child_env_store()
+{
+	std::vector<std::string> env;
+
+	const char* whitelist[] = {
+		"LIBGUESTFS_BACKEND",
+		"LIBGUESTFS_BACKEND_SETTINGS",
+		"LIBGUESTFS_PATH",
+		"LIBGUESTFS_CACHEDIR",
+		"LIBGUESTFS_TMPDIR",
+		"LIBGUESTFS_DEBUG",
+		"LIBGUESTFS_TRACE",
+		"TMPDIR",
+		NULL
+	};
+
+	for(size_t i=0; whitelist[i]!=NULL; ++i)
+	{
+		const char* val = getenv(whitelist[i]);
+		if(val!=NULL)
+		{
+			env.push_back(std::string(whitelist[i])+"="+val);
+		}
+	}
+
+	return env;
+}
+
+char** get_child_env(std::vector<std::string>& env_store, std::vector<char*>& env_ptrs)
+{
+	env_ptrs.clear();
+
+	for(size_t i=0; i<env_store.size(); ++i)
+	{
+		env_ptrs.push_back(const_cast<char*>(env_store[i].c_str()));
+	}
+
+	env_ptrs.push_back(NULL);
+	return env_ptrs.data();
+}
+
+bool elevate_child_to_root()
+{
+	if(geteuid()==0)
+	{
+		if(setgid(0)!=0)
+		{
+			return false;
+		}
+
+		if(setuid(0)!=0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+}
+
 #define DEF_Server
 #include "../Server.h"
 #include "../config.h"
@@ -82,8 +144,14 @@ int exec_wait(const std::string& path, bool keep_stdout, ...)
 	
 	if(child_pid==0)
 	{
-		environ = new char*[1];
-		*environ=NULL;
+		std::vector<std::string> env_store = get_child_env_store();
+		std::vector<char*> env_ptrs;
+		environ = get_child_env(env_store, env_ptrs);
+
+		if(!elevate_child_to_root())
+		{
+			exit(126);
+		}
 		
 		if(!keep_stdout)
 		{
@@ -153,8 +221,14 @@ int exec_wait(const std::string& path, std::string& stdout, ...)
 	
 	if(child_pid==0)
 	{
-		environ = new char*[1];
-		*environ=NULL;
+		std::vector<std::string> env_store = get_child_env_store();
+		std::vector<char*> env_ptrs;
+		environ = get_child_env(env_store, env_ptrs);
+
+		if(!elevate_child_to_root())
+		{
+			exit(126);
+		}
 		
 		close(pipefd[0]);
 		
@@ -197,6 +271,76 @@ int exec_wait(const std::string& path, std::string& stdout, ...)
 			return -1;
 		}
 	}
+}
+
+
+
+bool path_exists_lstat(const std::string& path)
+{
+	struct stat st;
+	return lstat(path.c_str(), &st)==0;
+}
+
+#ifdef __linux__
+void cleanup_fuse_mountpoint(const std::string& path, bool guestmount)
+{
+	if(guestmount)
+	{
+		exec_wait("guestunmount", true, path.c_str(), NULL);
+	}
+
+	exec_wait("fusermount", true, "-u", path.c_str(), NULL);
+	exec_wait("fusermount", true, "-u", "-z", path.c_str(), NULL);
+	exec_wait(umount_path, true, path.c_str(), NULL);
+	exec_wait(umount_path, true, "-l", path.c_str(), NULL);
+}
+#endif
+
+bool ensure_mount_dir(const std::string& path, const std::string& what)
+{
+	errno = 0;
+	if(os_directory_exists(path))
+	{
+		return true;
+	}
+
+	int exists_errno = errno;
+
+#ifdef __linux__
+	if(exists_errno==EACCES || exists_errno==ENOTCONN || path_exists_lstat(path))
+	{
+		cleanup_fuse_mountpoint(path, what=="mountpoint");
+
+		errno = 0;
+		if(os_directory_exists(path))
+		{
+			return true;
+		}
+
+		if(path_exists_lstat(path))
+		{
+			if(rmdir(path.c_str())!=0 && errno!=ENOENT)
+			{
+				std::cerr << "Error removing stale " << what << " at \"" << path << "\". Err: " << errno << std::endl;
+				return false;
+			}
+		}
+	}
+#endif
+
+	errno = 0;
+	if(os_create_dir(path))
+	{
+		return true;
+	}
+
+	if(errno==EEXIST)
+	{
+		return os_directory_exists(path) || path_exists_lstat(path);
+	}
+
+	std::cerr << "Error creating " << what << " at \"" << path << "\". Err: " << errno << std::endl;
+	return false;
 }
 
 std::string find_urbackupsrv_cmd()
@@ -583,10 +727,8 @@ bool mount_image(const std::string& imagepath, int partition, int64 offset, int6
 			exec_wait("guestunmount", true, mountpoint.c_str(), NULL);
 		}
 	
-		if(!os_directory_exists(mountpoint)
-			&& !os_create_dir(mountpoint))
+		if(!ensure_mount_dir(mountpoint, "mountpoint"))
 		{
-			std::cerr << "Error creating mountpoint at \"" << mountpoint << "\". Err: " << errno << std::endl;
 			return false;
 		}
 
@@ -599,36 +741,35 @@ bool mount_image(const std::string& imagepath, int partition, int64 offset, int6
 			devpoint+=convert(partition);
 		}
 
-		if(os_directory_exists(devpoint) || errno==EACCES || errno==ENOTCONN )
+#ifdef __linux__
+		if(os_directory_exists(devpoint) || errno==EACCES || errno==ENOTCONN)
 		{
-			if(exec_wait("fusermount", true, "-u", devpoint.c_str(), NULL))
-	                {
-        	                exec_wait("fusermount", true, "-u", "-z", devpoint.c_str(), NULL);
-                	}
+			cleanup_fuse_mountpoint(devpoint, false);
+			os_remove_dir(devpoint);
 		}
-		
-		if(!os_directory_exists(devpoint)
-			&& !os_create_dir(devpoint))
-		{
-			std::cerr << "Error creating devpoint at \"" << devpoint << "\". Err: " << errno << std::endl;
-			os_remove_dir(mountpoint);
-			return false;
-		}
-
-		chown_dir(devpoint);
+#endif
 		
 		std::string mount_options="";
 		passwd* user_info = getpwnam("urbackup");
 		if(user_info)
 		{
-			mount_options+="uid="+convert(user_info->pw_uid)+",gid="+convert(user_info->pw_gid)+",allow_root";
+			mount_options+="uid="+convert(user_info->pw_uid)+",gid="+convert(user_info->pw_gid)+",allow_other";
 		}
 		
 		ubuntu_guestmount_fix();
 		
-		if(exec_wait(find_urbackupsrv_cmd(), true, "mount-vhd", "-f", imagepath.c_str(), "-m", mountpoint.c_str(), "-t", devpoint.c_str(), "-o", mount_options.c_str(), "--guestmount", NULL))
+		std::cerr << "Mounting VHD without guestmount device export" << std::endl;
+		std::string mount_stdout;
+		int mount_rc = exec_wait(find_urbackupsrv_cmd(), mount_stdout, "mount-vhd", "-f", imagepath.c_str(), "-m", mountpoint.c_str(), "-o", mount_options.c_str(), NULL);
+		std::cout << mount_stdout;
+		
+		if(mount_rc)
 		{
 			std::cout << "UrBackup mount process returned non-zero return code" << std::endl;
+#ifdef __linux__
+			cleanup_fuse_mountpoint(mountpoint, true);
+			cleanup_fuse_mountpoint(devpoint, false);
+#endif
 			os_remove_dir(mountpoint);
 			os_remove_dir(devpoint);
 			return false;
