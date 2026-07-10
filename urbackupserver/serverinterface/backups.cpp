@@ -1369,6 +1369,53 @@ namespace
 	}
 } // unnamed namespace
 
+// HASERTI: picker de destino — relay que pergunta ao cliente as pastas de um caminho AO VIVO
+ACTION_IMPL(browse_dir)
+{
+	str_map& CURRP = GET.find("ses")==GET.end()? POST : GET;
+	Helper helper(tid, &CURRP, &PARAMS);
+	SUser *session=helper.getSession();
+	std::string rights = helper.getRights("browse_backups");
+
+	if(session==NULL || session->id==SESSION_ID_INVALID || rights.empty())
+	{
+		helper.Write("{\"error\":1}");
+		return;
+	}
+
+	int clientid = watoi(CURRP["clientid"]);
+	std::string clientname = getClientname(helper.getDatabase(), clientid);
+	if(clientname.empty())
+	{
+		helper.Write("{\"err\":\"no_client\"}");
+		return;
+	}
+
+	if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
+	{
+		helper.Write("{\"err\":\"client_not_online\"}");
+		return;
+	}
+
+	std::string path = UnescapeHTML(UnescapeSQLString(CURRP["path"]));
+	std::string reqid = ServerSettings::generateRandomAuthKey();
+
+	ServerStatus::sendToCommPipe(clientname, "BROWSE_DIR "+reqid+"|"+path);
+
+	std::string result;
+	int64 start = Server->getTimeMS();
+	while(Server->getTimeMS()-start < 15000)
+	{
+		if(ServerStatus::getBrowseResult(reqid, result))
+		{
+			helper.Write(result);
+			return;
+		}
+		Server->wait(200);
+	}
+	helper.Write("{\"err\":\"timeout\"}");
+}
+
 ACTION_IMPL(backups)
 {
 	str_map& CURRP = GET.find("ses")==GET.end()? POST : GET;

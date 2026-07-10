@@ -132,6 +132,9 @@ public:
 	static void setClientVersionString(const std::string &clientname, const std::string& client_version_string);
 	static void setOSVersionString(const std::string &clientname, const std::string& os_version_string);
 	static bool sendToCommPipe(const std::string &clientname, const std::string& msg);
+	// HASERTI: resultados do picker de destino (reqid -> JSON), preenchidos pelo ClientMain
+	static void setBrowseResult(const std::string& reqid, const std::string& result);
+	static bool getBrowseResult(const std::string& reqid, std::string& result);
 	static void setClientId(const std::string &clientname, int clientid);
 	static void setRestore(const std::string &clientname, ERestore restore);
 	static bool canRestore(const std::string &clientname, bool& server_confirms);

@@ -28,6 +28,25 @@
 
 IMutex *ServerStatus::mutex=NULL;
 std::map<std::string, SStatus> ServerStatus::status;
+
+// HASERTI: resultados do picker de destino (reqid -> JSON), preenchidos pelo ClientMain
+namespace { std::map<std::string, std::string> haserti_browse_results; }
+
+void ServerStatus::setBrowseResult(const std::string& reqid, const std::string& result)
+{
+	IScopedLock lock(mutex);
+	haserti_browse_results[reqid] = result;
+}
+
+bool ServerStatus::getBrowseResult(const std::string& reqid, std::string& result)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, std::string>::iterator it = haserti_browse_results.find(reqid);
+	if (it == haserti_browse_results.end()) return false;
+	result = it->second;
+	haserti_browse_results.erase(it);
+	return true;
+}
 int64 ServerStatus::last_status_update;
 size_t ServerStatus::curr_process_id = 0;
 

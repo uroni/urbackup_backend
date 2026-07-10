@@ -875,6 +875,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(users);
 	ADD_ACTION(status);
 	ADD_ACTION(backups);
+	ADD_ACTION(browse_dir); // HASERTI: picker de destino
 	ADD_ACTION(settings);
 	ADD_ACTION(logs);
 	ADD_ACTION(getimage);

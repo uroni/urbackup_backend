@@ -24,4 +24,5 @@ namespace Actions
 	ACTION(scripts);
 	ACTION(status_check);
 	ACTION(restore_image);
+	ACTION(browse_dir); // HASERTI: picker de destino
 }

@@ -992,7 +992,17 @@ void ClientMain::operator ()(void)
 		{
 
 		}
-		else if(next(msg, 0, "RESTORE"))
+		else if(next(msg, 0, "BROWSE_DIR "))
+			{
+				// HASERTI: relay do picker de destino — pergunta ao cliente as pastas ao vivo
+				std::string hbrest = msg.substr(11);
+				size_t hbpos = hbrest.find('|');
+				std::string hbreqid = (hbpos==std::string::npos) ? hbrest : hbrest.substr(0, hbpos);
+				std::string hbpath = (hbpos==std::string::npos) ? std::string() : hbrest.substr(hbpos+1);
+				std::string hbres = sendClientMessage("GET DISK DIRS "+hbpath, "browse dir failed", 15000);
+				ServerStatus::setBrowseResult(hbreqid, hbres);
+			}
+			else if(next(msg, 0, "RESTORE"))
 		{
 			std::string data_str = msg.substr(7);
 			CRData rdata(&data_str);
