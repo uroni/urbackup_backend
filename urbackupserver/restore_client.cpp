@@ -230,14 +230,14 @@ namespace
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
 			bool clean_other, bool ignore_other_fs, const std::string& share_path,
 			bool follow_symlinks, int64 restore_flags, const std::vector<std::string>& tokens, backupaccess::STokens access_tokens,
-			bool encrypt_identity)
+			bool encrypt_identity, const std::string& restore_dest) // HASERTI
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f),
 			skip_special_root(skip_special_root),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
 			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks), restore_flags(restore_flags),
-			tokens(tokens), access_tokens(access_tokens), encrypt_identity(encrypt_identity)
+			tokens(tokens), access_tokens(access_tokens), encrypt_identity(encrypt_identity), restore_dest(restore_dest) // HASERTI
 		{
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = foldername;
@@ -424,6 +424,18 @@ namespace
 					(depth==0 || metadata.orig_path.rfind(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
 					std::string alt_orig_path = metadata.orig_path;
+					// HASERTI: destino customizado — captura a pasta-base e remapeia o prefixo pro destino escolhido
+					if (!restore_dest.empty() && !metadata.orig_path.empty())
+					{
+						if (restore_base.empty() && depth == 0)
+						{
+							size_t haserti_sep = metadata.orig_path.find_last_of("/\\");
+							if (haserti_sep != std::string::npos)
+								restore_base = metadata.orig_path.substr(0, haserti_sep);
+						}
+						if (!restore_base.empty() && next(metadata.orig_path, 0, restore_base))
+							metadata.orig_path = restore_dest + metadata.orig_path.substr(restore_base.size());
+					}
 					for (size_t j = 0; j < map_paths.size(); ++j)
 					{
 						if (next(metadata.orig_path, 0, map_paths[j].first))
@@ -627,6 +639,8 @@ namespace
 		std::vector<std::string> tokens;
 		backupaccess::STokens access_tokens;
 		bool encrypt_identity;
+		std::string restore_dest; // HASERTI: destino customizado (vazio = local original)
+		std::string restore_base; // HASERTI: pasta-base capturada pra remapear o prefixo
 	};
 }
 
@@ -635,7 +649,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path,
 	bool follow_symlinks, int64 restore_flags, THREADPOOL_TICKET& ticket, const std::vector<std::string>& tokens, const backupaccess::STokens& access_tokens,
-	bool encrypt_identity)
+	bool encrypt_identity, const std::string& restore_dest) // HASERTI
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -680,7 +694,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	ticket = Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid,
 		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
 		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, 
-		restore_flags, tokens, access_tokens, encrypt_identity), "frestore preparation");
+		restore_flags, tokens, access_tokens, encrypt_identity, restore_dest), "frestore preparation"); // HASERTI: restore_dest
 
 	return true;
 }
