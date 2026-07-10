@@ -821,6 +821,68 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 	}			
 }
 
+// HASERTI: lista as pastas do disco AO VIVO do cliente (pro picker de destino de restore)
+void ClientConnector::CMD_GET_DISK_DIRS(const std::string &cmd)
+{
+	std::string path;
+	if (cmd.size() > 14) // depois de "GET DISK DIRS "
+	{
+		path = cmd.substr(14);
+	}
+
+	JSON::Object ret;
+	JSON::Array dirs;
+
+	if (path.empty())
+	{
+#ifdef _WIN32
+		// Raiz = lista as unidades (C:, D:, ...)
+		DWORD drives = GetLogicalDrives();
+		for (char c = 'A'; c <= 'Z'; ++c)
+		{
+			if (drives & (1 << (c - 'A')))
+			{
+				JSON::Object d;
+				std::string letter = std::string(1, c) + ":";
+				d.set("name", letter);
+				d.set("path", letter + "\\");
+				dirs.add(d);
+			}
+		}
+#else
+		path = "/";
+#endif
+	}
+
+	if (!path.empty())
+	{
+		bool has_error = false;
+		std::vector<SFile> files = getFiles(os_file_prefix(path), &has_error);
+		if (has_error)
+		{
+			ret.set("err", "cannot_read");
+		}
+		std::string sep = os_file_sep();
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			if (!files[i].isdir) continue;
+			if (files[i].name == "." || files[i].name == "..") continue;
+			JSON::Object d;
+			d.set("name", files[i].name);
+			std::string child = path;
+			if (!child.empty() && child[child.size() - 1] != sep[0]) child += sep;
+			child += files[i].name;
+			d.set("path", child);
+			dirs.add(d);
+		}
+	}
+
+	ret.set("dirs", dirs);
+	ret.set("path", path);
+	tcpstack.Send(pipe, ret.stringify(false));
+	lasttime = Server->getTimeMS();
+}
+
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

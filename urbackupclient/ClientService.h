@@ -298,6 +298,7 @@ private:
 	void CMD_START_SHADOWCOPY(const std::string &cmd);
 	void CMD_STOP_SHADOWCOPY(const std::string &cmd);
 	void CMD_SET_INCRINTERVAL(const std::string &cmd);
+	void CMD_GET_DISK_DIRS(const std::string &cmd); // HASERTI: navegador de disco pro picker de destino
 	void CMD_GET_BACKUPDIRS(const std::string &cmd);
 	void CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params);
 	void CMD_DID_BACKUP(const std::string &cmd);

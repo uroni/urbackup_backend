@@ -1279,6 +1279,10 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 				}
 			}
 			
+			if( next(cmd, 0, "GET DISK DIRS ") ) // HASERTI: lista pastas do disco pro picker de destino
+			{
+				CMD_GET_DISK_DIRS(cmd); continue;
+			}
 			if( cmd=="GET BACKUP DIRS" )
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
