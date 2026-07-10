@@ -1,0 +1,37 @@
+# HASERTI: build do UrBackup Server (fork Haserti) num container isolado.
+# A base deve casar com a versão do Ubuntu da VM, pra o binário rodar lá fora.
+# Ex.: docker build -f Dockerfile.haserti --build-arg UBUNTU_VERSION=24.04 -t haserti-urbackup .
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Dependências de build (baseado no .travis.yml do UrBackup + autotools).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      autoconf \
+      automake \
+      libtool \
+      pkg-config \
+      gettext \
+      ca-certificates \
+      libfuse-dev \
+      libcurl4-openssl-dev \
+      libcrypto++-dev \
+      libzstd-dev \
+      zlib1g-dev \
+      libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . /src
+
+# Mesma receita da CI do UrBackup, só o servidor.
+# Se a VM tiver pouca RAM e o make for morto (OOM), troque -j"$(nproc)" por -j2.
+RUN ./switch_build.sh server \
+ && autoreconf --install \
+ && ./configure --with-mountvhd \
+ && make -j"$(nproc)"
+
+# O binário compilado fica em /src/urbackupsrv
+CMD ["ls", "-la", "/src/urbackupsrv"]
