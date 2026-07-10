@@ -27,10 +27,12 @@ WORKDIR /src
 COPY . /src
 
 # Mesma receita da CI do UrBackup, só o servidor.
+# HASERTI: --prefix=/usr --localstatedir=/var pra casar com o pacote apt
+# (dados em /var/urbackup, arquivos de suporte em /usr/share/urbackup).
 # Se a VM tiver pouca RAM e o make for morto (OOM), troque -j"$(nproc)" por -j2.
 RUN ./switch_build.sh server \
  && autoreconf --install \
- && ./configure --with-mountvhd \
+ && ./configure --prefix=/usr --localstatedir=/var --with-mountvhd \
  && make -j"$(nproc)"
 
 # O binário compilado fica em /src/urbackupsrv
