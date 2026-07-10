@@ -1,28 +1,29 @@
 {
-    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
-    "name": "urbackup",
-    "version": "2.5.0",
-    "dependencies": [
-      {
-        "name": "cryptopp",
-        "default-features": true
-      },
-      {
-        "name": "zstd",
-        "default-features": true
-      },
-      {
-        "name": "zlib",
-        "default-features": true
-      },
-      {
-        "name": "curl",
-        "default-features": false,
-        "features": [
-            "non-http",
-            "ssl",
-            "ldap"
-        ]
-      }
-    ]
-  }
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "urbackup",
+  "version": "2.5.0",
+  "dependencies": [
+    {
+      "name": "cryptopp",
+      "default-features": true
+    },
+    {
+      "name": "zstd",
+      "default-features": true
+    },
+    {
+      "name": "zlib",
+      "default-features": true
+    },
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": [
+        "non-http",
+        "ssl",
+        "ldap"
+      ]
+    }
+  ],
+  "builtin-baseline": "97b19caab97ab0c8d36c93230046c8c45fcd41d0"
+}

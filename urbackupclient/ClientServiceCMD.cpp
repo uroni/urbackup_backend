@@ -3089,7 +3089,9 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs, restore_flags,
 		tgroup, clientsubname);
 
-	if(restore == "client-confirms" && !has_restore_token)
+	// HASERTI: pula a confirmação no cliente — restaura direto, sem perguntar
+	// (o "false &&" força o else, que inicia a restauração na hora)
+	if(false && restore == "client-confirms" && !has_restore_token)
 	{
 		IScopedLock lock(backup_mutex);
 		restore_ok_status = RestoreOk_Wait;
