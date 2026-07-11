@@ -1232,6 +1232,10 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 			{
 				CMD_FILE_RESTORE(cmd.substr(13)); continue;
 			}
+			else if( next(cmd, 0, "GET DISK DIRS ") ) // HASERTI: lista pastas do disco pro picker de destino (comando vem do servidor via identity)
+			{
+				CMD_GET_DISK_DIRS(cmd); continue;
+			}
 			else if (next(cmd, 0, "CLIENT ACCESS KEY "))
 			{
 				CMD_CLIENT_ACCESS_KEY(cmd.substr(18)); continue;
@@ -1279,10 +1283,6 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 				}
 			}
 			
-			if( next(cmd, 0, "GET DISK DIRS ") ) // HASERTI: lista pastas do disco pro picker de destino
-			{
-				CMD_GET_DISK_DIRS(cmd); continue;
-			}
 			if( cmd=="GET BACKUP DIRS" )
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
