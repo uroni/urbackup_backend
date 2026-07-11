@@ -424,17 +424,18 @@ namespace
 					(depth==0 || metadata.orig_path.rfind(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
 					std::string alt_orig_path = metadata.orig_path;
-					// HASERTI: destino customizado — captura a pasta-base e remapeia o prefixo pro destino escolhido
-					if (!restore_dest.empty() && !metadata.orig_path.empty())
+					// HASERTI: destino customizado — captura a pasta-base UMA vez e injeta em map_paths.
+					// Assim o remapeamento NATIVO (loop abaixo) trata o conteudo E o MetadataCallback
+					// (que tambem usa map_paths) trata os metadados, de forma consistente. Remapear so o
+					// conteudo deixava os metadados no caminho original -> restore corrompido no destino.
+					if (!restore_dest.empty() && restore_base.empty() && depth == 0 && !metadata.orig_path.empty())
 					{
-						if (restore_base.empty() && depth == 0)
+						size_t haserti_sep = metadata.orig_path.find_last_of("/\\");
+						if (haserti_sep != std::string::npos)
 						{
-							size_t haserti_sep = metadata.orig_path.find_last_of("/\\");
-							if (haserti_sep != std::string::npos)
-								restore_base = metadata.orig_path.substr(0, haserti_sep);
+							restore_base = metadata.orig_path.substr(0, haserti_sep);
+							map_paths.insert(map_paths.begin(), std::make_pair(restore_base, restore_dest));
 						}
-						if (!restore_base.empty() && next(metadata.orig_path, 0, restore_base))
-							metadata.orig_path = restore_dest + metadata.orig_path.substr(restore_base.size());
 					}
 					for (size_t j = 0; j < map_paths.size(); ++j)
 					{
