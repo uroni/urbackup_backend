@@ -792,7 +792,7 @@ void ClientMain::operator ()(void)
 					ServerLogger::Log(logid, "Cannot do image backup because no_images=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(false))
 					ServerLogger::Log(logid, "Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
-				if(!internet_no_images )
+				if(internet_no_images )
 					ServerLogger::Log(logid, "Cannot do image backup because internet_no_images=true", LL_DEBUG);
 			}
 
