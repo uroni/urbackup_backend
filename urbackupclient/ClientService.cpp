@@ -1236,6 +1236,10 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 			{
 				CMD_GET_DISK_DIRS(cmd); continue;
 			}
+			else if( next(cmd, 0, "HASERTI FLR PULL ") ) // HASERTI: restore-de-imagem — o agente puxa os arquivos do control-plane
+			{
+				CMD_FLR_PULL(cmd); continue;
+			}
 			else if (next(cmd, 0, "CLIENT ACCESS KEY "))
 			{
 				CMD_CLIENT_ACCESS_KEY(cmd.substr(18)); continue;

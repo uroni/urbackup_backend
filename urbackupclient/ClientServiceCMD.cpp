@@ -883,6 +883,174 @@ void ClientConnector::CMD_GET_DISK_DIRS(const std::string &cmd)
 	lasttime = Server->getTimeMS();
 }
 
+// HASERTI: restaurar-na-maquina a partir da imagem (FLR). O agente PUXA os arquivos
+// do control-plane publico (token de uso unico). Funciona por LAN E internet (o
+// agente nao precisa alcancar o orquestrador interno, so o control-plane publico).
+#ifdef _WIN32
+#include <windows.h>
+#include <winhttp.h>
+#pragma comment(lib, "winhttp.lib")
+
+namespace
+{
+	std::wstring flr_to_wide(const std::string& s)
+	{
+		if (s.empty()) return std::wstring();
+		int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), NULL, 0);
+		std::wstring w(n, 0);
+		MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), &w[0], n);
+		return w;
+	}
+
+	std::string flr_urlencode(const std::string& s)
+	{
+		static const char* hex = "0123456789ABCDEF";
+		std::string out;
+		for (size_t i = 0; i < s.size(); ++i)
+		{
+			unsigned char c = (unsigned char)s[i];
+			if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+				|| c == '-' || c == '_' || c == '.' || c == '~' || c == '/')
+				out += (char)c;
+			else { out += '%'; out += hex[c >> 4]; out += hex[c & 0xF]; }
+		}
+		return out;
+	}
+
+	bool flr_http_get(const std::string& url, std::string& out, std::string& err)
+	{
+		out.clear();
+		std::wstring wurl = flr_to_wide(url);
+		URL_COMPONENTS uc; ZeroMemory(&uc, sizeof(uc)); uc.dwStructSize = sizeof(uc);
+		wchar_t host[512] = { 0 }, upath[8192] = { 0 }, extra[8192] = { 0 };
+		uc.lpszHostName = host; uc.dwHostNameLength = 511;
+		uc.lpszUrlPath = upath; uc.dwUrlPathLength = 8191;
+		uc.lpszExtraInfo = extra; uc.dwExtraInfoLength = 8191;
+		if (!WinHttpCrackUrl(wurl.c_str(), 0, 0, &uc)) { err = "bad_url"; return false; }
+		HINTERNET hS = WinHttpOpen(L"HasertiFLR/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+			WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		if (!hS) { err = "open"; return false; }
+		bool ok = false;
+		HINTERNET hC = WinHttpConnect(hS, host, uc.nPort, 0);
+		if (hC)
+		{
+			std::wstring pathq = std::wstring(upath) + std::wstring(extra);
+			DWORD flags = (uc.nScheme == INTERNET_SCHEME_HTTPS) ? WINHTTP_FLAG_SECURE : 0;
+			HINTERNET hR = WinHttpOpenRequest(hC, L"GET", pathq.c_str(), NULL,
+				WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, flags);
+			if (hR)
+			{
+				if (WinHttpSendRequest(hR, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+						WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
+					&& WinHttpReceiveResponse(hR, NULL))
+				{
+					DWORD status = 0, sz = sizeof(status);
+					WinHttpQueryHeaders(hR, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+						WINHTTP_HEADER_NAME_BY_INDEX, &status, &sz, WINHTTP_NO_HEADER_INDEX);
+					if (status == 200)
+					{
+						ok = true;
+						DWORD avail = 0;
+						do {
+							avail = 0;
+							if (!WinHttpQueryDataAvailable(hR, &avail)) { ok = false; err = "avail"; break; }
+							if (avail == 0) break;
+							std::string buf; buf.resize(avail);
+							DWORD read = 0;
+							if (!WinHttpReadData(hR, &buf[0], avail, &read)) { ok = false; err = "read"; break; }
+							out.append(buf.data(), read);
+						} while (avail > 0);
+					}
+					else { err = "http_" + convert((int)status); }
+				}
+				else { err = "send"; }
+				WinHttpCloseHandle(hR);
+			}
+			else { err = "request"; }
+			WinHttpCloseHandle(hC);
+		}
+		else { err = "connect"; }
+		WinHttpCloseHandle(hS);
+		return ok;
+	}
+
+	class FlrPullThread : public IThread
+	{
+		std::string baseurl, token, dest;
+	public:
+		FlrPullThread(std::string b, std::string t, std::string d)
+			: baseurl(b), token(t), dest(d) {}
+		void operator()()
+		{
+			std::string manifest, err;
+			std::string murl = baseurl + "/manifest?token=" + flr_urlencode(token);
+			if (!flr_http_get(murl, manifest, err))
+			{
+				Server->Log("HASERTI FLR: manifesto falhou (" + err + ")", LL_ERROR);
+				delete this; return;
+			}
+			os_create_dir_recursive(dest);
+			std::vector<std::string> files;
+			Tokenize(manifest, files, "\n");
+			size_t okc = 0, failc = 0;
+			std::string sep = os_file_sep();
+			for (size_t i = 0; i < files.size(); ++i)
+			{
+				std::string rel = trim(files[i]);
+				if (rel.empty()) continue;
+				std::string furl = baseurl + "/fetch?token=" + flr_urlencode(token)
+					+ "&path=" + flr_urlencode(rel);
+				std::string data, ferr;
+				if (!flr_http_get(furl, data, ferr))
+				{
+					Server->Log("HASERTI FLR: arquivo falhou " + rel + " (" + ferr + ")", LL_WARNING);
+					++failc; continue;
+				}
+				std::string relwin = rel;
+				for (size_t k = 0; k < relwin.size(); ++k)
+					if (relwin[k] == '/') relwin[k] = sep[0];
+				std::string outpath = dest;
+				if (!outpath.empty() && outpath[outpath.size() - 1] != sep[0]) outpath += sep;
+				outpath += relwin;
+				size_t slash = outpath.find_last_of(sep[0]);
+				if (slash != std::string::npos) os_create_dir_recursive(outpath.substr(0, slash));
+				IFile* f = Server->openFile(os_file_prefix(outpath), MODE_WRITE);
+				if (f == NULL) { Server->Log("HASERTI FLR: nao criou " + outpath, LL_WARNING); ++failc; continue; }
+				f->Write(data);
+				Server->destroy(f);
+				++okc;
+			}
+			Server->Log("HASERTI FLR: restore em " + dest + " concluido (" + convert((int)okc)
+				+ " ok, " + convert((int)failc) + " falhas)", LL_INFO);
+			delete this;
+		}
+	};
+}
+#endif
+
+void ClientConnector::CMD_FLR_PULL(const std::string &cmd)
+{
+#ifdef _WIN32
+	str_map params;
+	ParseParamStrHttp(cmd.size() > 17 ? cmd.substr(17) : std::string(), &params); // depois de "HASERTI FLR PULL "
+	std::string baseurl = params["baseurl"];
+	std::string token = params["token"];
+	std::string dest = params["dest"];
+	if (baseurl.empty() || token.empty() || dest.empty())
+	{
+		tcpstack.Send(pipe, "ERR params");
+	}
+	else
+	{
+		Server->getThreadPool()->execute(new FlrPullThread(baseurl, token, dest), "flr pull");
+		tcpstack.Send(pipe, "OK");
+	}
+#else
+	tcpstack.Send(pipe, "ERR unsupported");
+#endif
+	lasttime = Server->getTimeMS();
+}
+
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

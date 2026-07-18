@@ -1002,6 +1002,16 @@ void ClientMain::operator ()(void)
 				std::string hbres = sendClientMessage("GET DISK DIRS "+hbpath, "browse dir failed", 15000);
 				ServerStatus::setBrowseResult(hbreqid, hbres);
 			}
+			else if(next(msg, 0, "FLR_PULL "))
+			{
+				// HASERTI: relay do restore-de-imagem (FLR) — manda o agente puxar os arquivos
+				std::string fprest = msg.substr(9);
+				size_t fppos = fprest.find('|');
+				std::string fpreqid = (fppos==std::string::npos) ? fprest : fprest.substr(0, fppos);
+				std::string fppayload = (fppos==std::string::npos) ? std::string() : fprest.substr(fppos+1);
+				std::string fpres = sendClientMessage("HASERTI FLR PULL "+fppayload, "flr pull failed", 20000);
+				ServerStatus::setBrowseResult(fpreqid, fpres);
+			}
 			else if(next(msg, 0, "RESTORE"))
 		{
 			std::string data_str = msg.substr(7);

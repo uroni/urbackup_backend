@@ -25,4 +25,5 @@ namespace Actions
 	ACTION(status_check);
 	ACTION(restore_image);
 	ACTION(browse_dir); // HASERTI: picker de destino
+	ACTION(flr_pull); // HASERTI: restaurar-na-maquina a partir da imagem (FLR)
 }

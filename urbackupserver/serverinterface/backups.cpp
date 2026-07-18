@@ -1416,6 +1416,57 @@ ACTION_IMPL(browse_dir)
 	helper.Write("{\"err\":\"timeout\"}");
 }
 
+// HASERTI: restaurar-na-maquina a partir da imagem (FLR) — manda o agente puxar
+// os arquivos do control-plane publico (funciona por LAN e internet).
+ACTION_IMPL(flr_pull)
+{
+	str_map& CURRP = GET.find("ses")==GET.end()? POST : GET;
+	Helper helper(tid, &CURRP, &PARAMS);
+	SUser *session=helper.getSession();
+	std::string rights = helper.getRights("browse_backups");
+
+	if(session==NULL || session->id==SESSION_ID_INVALID || rights.empty())
+	{
+		helper.Write("{\"error\":1}");
+		return;
+	}
+
+	int clientid = watoi(CURRP["clientid"]);
+	std::string clientname = getClientname(helper.getDatabase(), clientid);
+	if(clientname.empty())
+	{
+		helper.Write("{\"err\":\"no_client\"}");
+		return;
+	}
+
+	if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
+	{
+		helper.Write("{\"err\":\"client_not_online\"}");
+		return;
+	}
+
+	std::string payload = CURRP["payload"];
+	std::string reqid = ServerSettings::generateRandomAuthKey();
+
+	ServerStatus::sendToCommPipe(clientname, "FLR_PULL "+reqid+"|"+payload);
+
+	std::string result;
+	int64 start = Server->getTimeMS();
+	while(Server->getTimeMS()-start < 20000)
+	{
+		if(ServerStatus::getBrowseResult(reqid, result))
+		{
+			if(next(result, 0, "OK"))
+				helper.Write("{\"ok\":true}");
+			else
+				helper.Write("{\"err\":\"start_failed\"}");
+			return;
+		}
+		Server->wait(200);
+	}
+	helper.Write("{\"err\":\"timeout\"}");
+}
+
 ACTION_IMPL(backups)
 {
 	str_map& CURRP = GET.find("ses")==GET.end()? POST : GET;

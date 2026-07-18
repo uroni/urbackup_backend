@@ -876,6 +876,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(status);
 	ADD_ACTION(backups);
 	ADD_ACTION(browse_dir); // HASERTI: picker de destino
+	ADD_ACTION(flr_pull); // HASERTI: restaurar-na-maquina a partir da imagem (FLR)
 	ADD_ACTION(settings);
 	ADD_ACTION(logs);
 	ADD_ACTION(getimage);
