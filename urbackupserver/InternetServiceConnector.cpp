@@ -59,6 +59,7 @@ std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
+const unsigned int max_client_iterations = 10*pbkdf2_iterations;
 
 InternetService::InternetService(BackupServer * backup_server)
 	:backup_server(backup_server)
@@ -407,6 +408,8 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 							if(id!=ID_ISC_AUTH_TOKEN && id!=ID_ISC_AUTH_TOKEN2)
 							{
 								rd.getUInt(&client_iterations);
+								if(client_iterations>max_client_iterations)
+									errmsg = "Too many iterations requested by client";
 							}
 
 							if(errmsg.empty() && !authkey.empty())
