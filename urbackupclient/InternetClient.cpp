@@ -34,7 +34,7 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
-#include "../urbackupcommon/WebSocketPipe.h"
+#include "../urbackupcommon/ProofOfWork.h"
 
 #include "../stringtools.h"
 
@@ -603,6 +603,7 @@ void InternetClientThread::operator()(void)
 	std::string hmac_key;
 	std::string server_pubkey;
 	bool destroy_cs = true;
+	int64 proof_of_work_difficulty = 0;
 
 	struct SDelBuf {
 		SDelBuf(char* b) : b(b) {}
@@ -654,6 +655,17 @@ void InternetClientThread::operator()(void)
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
 				goto cleanup;
+			}
+
+			if(server_capa & IPC_PROOF_OF_WORK)
+			{
+				if(!rd.getVarInt(&proof_of_work_difficulty) || proof_of_work_difficulty<=0)
+				{
+					std::string error = "Missing proof of work difficulty";
+					Server->Log(error, LL_ERROR);
+					InternetClient::setStatusMsg("error:"+error);
+					goto cleanup;
+				}
 			}
 		}
 		else
@@ -710,6 +722,10 @@ void InternetClientThread::operator()(void)
 		
 		data.addString(client_challenge);
 		data.addUInt(pbkdf2_iterations);
+
+		if(!token.second.empty() && proof_of_work_difficulty)
+			data.addString2(perform_proof_of_work(challenge, static_cast<unsigned int>(proof_of_work_difficulty)));
+
 		tcpstack->Send(cs, data);
 
 		challenge_response=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);

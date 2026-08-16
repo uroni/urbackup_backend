@@ -349,6 +349,11 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back("1");
 			}
 		}
+		if (get_setting_value_with_env(settings.get(), "INTERNET_PROOF_OF_WORK_DIFFICULTY", val, true))
+		{
+			real_args.push_back("--internet_proof_of_work_difficulty");
+			real_args.push_back(val);
+		}
 	}	
 
 	if(destroy_server)

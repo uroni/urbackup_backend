@@ -33,6 +33,7 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "serverinterface/login.h"
+#include "../urbackupcommon/ProofOfWork.h"
 
 #include <memory.h>
 #include <algorithm>
@@ -55,6 +56,7 @@ unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
 std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
 std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
+unsigned int InternetServiceConnector::proof_of_work_difficulty=0;
 
 
 extern ICryptoFactory *crypto_fak;
@@ -169,6 +171,11 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 		}
 
 		data.addString(ecdh_key_exchange->getPublicKey());
+
+		if(proof_of_work_difficulty)
+		{
+			data.addVarInt(proof_of_work_difficulty);
+		}
 
 		tcpstack.Send(cs, data);
 	}
@@ -410,6 +417,13 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								rd.getUInt(&client_iterations);
 								if(client_iterations>max_client_iterations)
 									errmsg = "Too many iterations requested by client";
+
+								if(proof_of_work_difficulty)
+								{
+									std::string proof;
+									if(!rd.getStr2(&proof) || !verify_proof_of_work(challenge, proof, proof_of_work_difficulty))
+										errmsg = "Proof of work failed";
+								}
 							}
 
 							if(errmsg.empty() && !authkey.empty())
@@ -665,6 +679,19 @@ void InternetServiceConnector::init_mutex(void)
 			{
 				internet_expect_endpoint.insert(toks[i]);
 			}
+		}
+	}
+
+	const std::string proof_of_work_difficulty_str = Server->getServerParameter("internet_proof_of_work_difficulty");
+	if(!proof_of_work_difficulty_str.empty())
+	{
+		try
+		{
+			proof_of_work_difficulty = std::stoul(proof_of_work_difficulty_str);
+		}
+		catch(const std::exception&)
+		{
+			Server->Log("Invalid value for internet_proof_of_work_difficulty: "+proof_of_work_difficulty_str, LL_WARNING);
 		}
 	}
 }
