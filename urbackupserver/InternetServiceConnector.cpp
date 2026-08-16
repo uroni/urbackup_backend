@@ -41,6 +41,7 @@
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
+const unsigned int connect_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
 const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
@@ -219,19 +220,20 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 	{
 		return false;
 	}
-
-	if (state == ISS_RECEIVE_ENDPOINT)
+	
+	if (state == ISS_AUTH && Server->getTimeMS() - lastpingtime > connect_timeout)
+	{
+		Server->Log("ISS_AUTH timeout in InternetServiceConnector::Run", LL_DEBUG);
+		has_timeout = true;
+		return false;
+	}
+	else if (state == ISS_RECEIVE_ENDPOINT)
 	{
 		if (Server->getTimeMS() - lastpingtime > ping_timeout)
 		{
 			Server->Log("ISS_RECEIVE_ENDPOINT timeout in InternetServiceConnector::Run", LL_DEBUG);
-			IScopedLock lock(mutex);
-			if (!connect_start)
-			{
-				has_timeout = true;
-				cleanup_pipes(true);
-				return false;
-			}
+			has_timeout = true;
+			return false;
 		}
 		return true;
 	}
