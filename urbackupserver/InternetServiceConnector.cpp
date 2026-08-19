@@ -33,8 +33,6 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "serverinterface/login.h"
-#include "../urbackupcommon/ProofOfWork.h"
-
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
@@ -421,7 +419,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								if(proof_of_work_difficulty)
 								{
 									std::string proof;
-									if(!rd.getStr2(&proof) || !verify_proof_of_work(challenge, proof, proof_of_work_difficulty))
+									if(!rd.getStr2(&proof) || !crypto_fak->verifyProofOfWork(challenge, proof, proof_of_work_difficulty))
 										errmsg = "Proof of work failed";
 								}
 							}

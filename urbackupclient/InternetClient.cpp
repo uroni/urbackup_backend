@@ -34,7 +34,7 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipeZstd.h"
-#include "../urbackupcommon/ProofOfWork.h"
+#include "../urbackupcommon/WebSocketPipe.h"
 
 #include "../stringtools.h"
 
@@ -724,7 +724,7 @@ void InternetClientThread::operator()(void)
 		data.addUInt(pbkdf2_iterations);
 
 		if(!token.second.empty() && proof_of_work_difficulty)
-			data.addString2(perform_proof_of_work(challenge, static_cast<unsigned int>(proof_of_work_difficulty)));
+			data.addString2(crypto_fak->performProofOfWork(challenge, static_cast<unsigned int>(proof_of_work_difficulty)));
 
 		tcpstack->Send(cs, data);
 

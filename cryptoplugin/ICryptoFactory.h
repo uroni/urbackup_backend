@@ -45,5 +45,8 @@ public:
 	virtual std::string sha1Binary(const std::string& data) = 0;
 	virtual std::string sha256Binary(const std::string& data) = 0;
 
+	virtual std::string performProofOfWork(const std::string &challenge, unsigned int difficulty) = 0;
+	virtual bool verifyProofOfWork(const std::string &challenge, const std::string &proof, unsigned int difficulty) = 0;
+
 	virtual bool convertOpenSslSig(const std::string& pubkeyFn, const std::string& sigFn, const std::string& outFn) = 0;
 };
