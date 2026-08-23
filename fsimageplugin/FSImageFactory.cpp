@@ -80,15 +80,17 @@ namespace
 #ifndef HAVE_MNTENT_H
                 return std::string();
 #else
+				char buf[1024];
                 FILE *aFile;
 
                 aFile = setmntent("/proc/mounts", "r");
                 if (aFile == NULL) {
                         return std::string();
                 }
+				struct mntent entbuf;
                 struct mntent *ent;
                 std::string maxmount;
-                while (NULL != (ent = getmntent(aFile)))
+                while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
                 {
                         if(path.find(ent->mnt_dir)==0 &&
                                 std::string(ent->mnt_dir).size()>maxmount.size())

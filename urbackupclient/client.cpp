@@ -436,9 +436,11 @@ namespace
 		if (aFile == NULL) {
 			return std::string();
 		}
+		char buf[1024];
 		struct mntent *ent;
+		struct mntent entbuf;
 		std::string maxmount;
-		while (NULL != (ent = getmntent(aFile)))
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(path.find(ent->mnt_dir)==0 &&
 				std::string(ent->mnt_dir).size()>maxmount.size())
@@ -471,7 +473,9 @@ namespace
 			return std::string();
 		}
 		struct mntent *ent;
-		while (NULL != (ent = getmntent(aFile)))
+		struct mntent entbuf;
+		char buf[1024];
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(std::string(ent->mnt_dir)==path)
 			{
@@ -504,7 +508,9 @@ namespace
 			return std::string();
 		}
 		struct mntent *ent;
-		while (NULL != (ent = getmntent(aFile)))
+		struct mntent entbuf;
+		char buf[1024];
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(std::string(ent->mnt_fsname)==dev)
 			{
@@ -556,12 +562,17 @@ namespace
 			return std::vector<std::string>();
 		}
 		struct mntent *ent;
+		struct mntent entbuf;
+		char buf[1024];
 		std::vector<std::string> ret;
-		while (NULL != (ent = getmntent(aFile)))
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if (!std::binary_search(excl_fs.begin(), excl_fs.end(), std::string(ent->mnt_type))
 				&& !std::binary_search(usb_devs.begin(), usb_devs.end(), std::string(ent->mnt_fsname)) )
 			{
+				if(return_devs)
+					ret.push_back(ent->mnt_fsname);
+				else
 				ret.push_back(ent->mnt_dir);
 			}
 		}
@@ -570,6 +581,7 @@ namespace
 		return ret;
 #endif
 	}
+
 #endif
 }
 

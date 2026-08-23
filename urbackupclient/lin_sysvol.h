@@ -20,7 +20,9 @@ namespace
 			return std::string();
 		}
 		struct mntent *ent;
-		while (NULL != (ent = getmntent(aFile)))
+		struct mntent entbuf;
+		char buf[1024];
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(std::string(ent->mnt_dir)==path)
 			{
