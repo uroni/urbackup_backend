@@ -2818,6 +2818,14 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_simple = "unknown";
 #endif
 
+	std::string all_volumes;
+	std::string all_nonusb_volumes;
+
+#ifdef __linux__
+	all_volumes = get_all_volumes_list(false, volumes_cache);
+	all_nonusb_volumes = get_all_volumes_list(true, volumes_cache);
+#endif
+
 	std::string image_args = "&IMAGE=0";
 	if(!trim(IndexThread::get_snapshot_script_location("create_volume_snapshot", clientsubname)).empty())
 	{
@@ -2827,8 +2835,9 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
+		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
+		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
+		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }
