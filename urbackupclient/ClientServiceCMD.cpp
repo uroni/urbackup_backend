@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/SettingsReader.h"
 #include "ClientService.h"
+#include "ImageMultiPipe.h"
 #include "InternetClient.h"
 #include "ServerIdentityMgr.h"
 #include "../common/data.h"
@@ -1846,6 +1847,14 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		image_inf.image_letter=(params["letter"]);
 		image_inf.orig_image_letter = image_inf.image_letter;
 		image_inf.server_status_id = watoi(params["status_id"]);
+		image_inf.image_streams = (std::max)(1, (std::min)(image_multi::max_streams,
+			watoi(params["image_streams"])));
+		image_inf.image_stream_id = params["image_stream_id"];
+		if (image_inf.image_streams < 2 || image_inf.image_stream_id.empty())
+		{
+			image_inf.image_streams = 1;
+			image_inf.image_stream_id.clear();
+		}
 		image_inf.shadowdrive=(params["shadowdrive"]);
 		if(params.find("start")!=params.end())
 		{
@@ -1984,6 +1993,14 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.image_letter=(params["letter"]);
 			image_inf.shadowdrive=(params["shadowdrive"]);
 			image_inf.server_status_id = watoi(params["status_id"]);
+			image_inf.image_streams = (std::max)(1, (std::min)(image_multi::max_streams,
+				watoi(params["image_streams"])));
+			image_inf.image_stream_id = params["image_stream_id"];
+			if (image_inf.image_streams < 2 || image_inf.image_stream_id.empty())
+			{
+				image_inf.image_streams = 1;
+				image_inf.image_stream_id.clear();
+			}
 			if(params.find("start")!=params.end())
 			{
 				image_inf.startpos=watoi64(params["start"]);
@@ -2121,6 +2138,61 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 	{
 		ImageErr("Ident reset (2)");
 	}
+}
+
+void ClientConnector::CMD_IMAGE_MULTI_INIT(const std::string& cmd, bool ident_ok)
+{
+	if (!ident_ok)
+	{
+		tcpstack.Send(pipe, "ERR");
+		return;
+	}
+
+	str_map params;
+	ParseParamStrHttp(cmd.substr(17), &params);
+	const bool ok = image_multi::createSession(params["stream_id"], params["token"],
+		watoi(params["streams"]));
+	tcpstack.Send(pipe, ok ? "OK" : "ERR");
+}
+
+void ClientConnector::CMD_IMAGE_MULTI_JOIN(const std::string& cmd, bool ident_ok)
+{
+	if (!ident_ok)
+	{
+		tcpstack.Send(pipe, "ERR");
+		return;
+	}
+
+	str_map params;
+	ParseParamStrHttp(cmd.substr(17), &params);
+	const std::string stream_id = params["stream_id"];
+	const std::string token = params["token"];
+	const int lane = watoi(params["lane"]);
+
+	// FULL/INCR IMAGE is sent only after this ACK. No binary frame can be
+	// mixed with the negotiation response on this connection.
+	if (tcpstack.Send(pipe, "OK") == 0
+		|| !image_multi::addSessionPipe(stream_id, token, lane, pipe))
+	{
+		image_multi::cancelSession(stream_id, token);
+		do_quit = true;
+		return;
+	}
+	state = CCSTATE_IMAGE_MULTISTREAM;
+	do_quit = true;
+}
+
+void ClientConnector::CMD_IMAGE_MULTI_CANCEL(const std::string& cmd, bool ident_ok)
+{
+	if (!ident_ok)
+	{
+		tcpstack.Send(pipe, "ERR");
+		return;
+	}
+	str_map params;
+	ParseParamStrHttp(cmd.substr(19), &params);
+	image_multi::cancelSession(params["stream_id"], params["token"]);
+	tcpstack.Send(pipe, "OK");
 }
 
 void ClientConnector::CMD_MBR(const std::string &cmd)
@@ -3036,7 +3108,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&IMAGE_MULTI=1&OS_SIMPLE=windows"
 		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
@@ -3058,7 +3130,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&IMAGE_MULTI=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }

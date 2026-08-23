@@ -29,7 +29,8 @@ enum ClientConnectorState
 	CCSTATE_STATUS=9,
 	CCSTATE_FILESERV=10,
 	CCSTATE_IMAGE_BITMAP=11,
-	CCSTATE_START_FILEBACKUP_ASYNC=12
+	CCSTATE_START_FILEBACKUP_ASYNC=12,
+	CCSTATE_IMAGE_MULTISTREAM=13
 };
 
 enum ThreadAction
@@ -123,6 +124,8 @@ struct ImageInformation
 	ImageThread *image_thread;
 	bool with_checksum;
 	bool with_bitmap;
+	int image_streams;
+	std::string image_stream_id;
 	std::string clientsubname;
 	int64 running_process_id;
 	int64 server_status_id;
@@ -324,6 +327,9 @@ private:
 	void CMD_GET_LOGDATA(const std::string &cmd, str_map &params);
 	void CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok);
 	void CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok);
+	void CMD_IMAGE_MULTI_INIT(const std::string& cmd, bool ident_ok);
+	void CMD_IMAGE_MULTI_JOIN(const std::string& cmd, bool ident_ok);
+	void CMD_IMAGE_MULTI_CANCEL(const std::string& cmd, bool ident_ok);
 	void CMD_MBR(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);

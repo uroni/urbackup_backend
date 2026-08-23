@@ -1832,6 +1832,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			protocol_versions.filesrvtunnel = watoi(it->second);
 		}
+		it = params.find("IMAGE_MULTI");
+		if (it != params.end())
+		{
+			protocol_versions.image_multi_version = watoi(it->second);
+		}
 		it = params.find("BACKUP");
 		if (it != params.end())
 		{

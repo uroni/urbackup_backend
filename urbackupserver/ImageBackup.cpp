@@ -16,6 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #include "ImageBackup.h"
+#include "ImageMultiPipe.h"
 #include "../Interface/Server.h"
 #include "mbr_code.h"
 #include "server_log.h"
@@ -106,6 +107,104 @@ namespace
 		}
 
 		return ESendErr_Ok;
+	}
+
+	bool sendCommandAndExpectOk(IPipe* pipe, bool internet_connection,
+		const std::string& command, int timeout_ms)
+	{
+		CTCPStack command_stack(internet_connection);
+		if (command_stack.Send(pipe, command) == 0)
+		{
+			return false;
+		}
+
+		const int64 start = Server->getTimeMS();
+		while (Server->getTimeMS() - start < timeout_ms)
+		{
+			std::string data;
+			if (pipe->Read(&data, (std::min)(1000, timeout_ms)) == 0)
+			{
+				if (pipe->hasError()) return false;
+				continue;
+			}
+			command_stack.AddData(data.data(), data.size());
+			std::string response;
+			if (command_stack.getPacket(response))
+			{
+				return response == "OK";
+			}
+		}
+		return false;
+	}
+
+	void destroyImageMultiPipes(std::vector<IPipe*>& pipes)
+	{
+		for (size_t i = 0; i < pipes.size(); ++i)
+		{
+			pipes[i]->shutdown();
+			Server->destroy(pipes[i]);
+		}
+		pipes.clear();
+	}
+
+	bool setupImageMulti(ClientMain* client_main, ServerSettings* server_settings,
+		IPipe* primary, const std::string& identity, const std::string& server_token,
+		logid_t logid, std::string& stream_id, std::vector<IPipe*>& additional_pipes)
+	{
+		const int requested_streams = (std::max)(1, (std::min)(8,
+			server_settings->getSettings()->image_download_threads));
+		if (requested_streams < 2
+			|| client_main->getProtocolVersions().image_multi_version < 1)
+		{
+			return false;
+		}
+
+		std::string random_data(16, '\0');
+		Server->randomFill(&random_data[0], random_data.size());
+		stream_id = bytesToHex(random_data);
+		const bool internet = client_main->isOnInternetConnection();
+		const std::string common_params = " stream_id=" + EscapeParamString(stream_id)
+			+ "&token=" + EscapeParamString(server_token);
+		const std::string init_command = identity + "IMAGE MULTI INIT" + common_params
+			+ "&streams=" + convert(requested_streams);
+		if (!sendCommandAndExpectOk(primary, internet, init_command, 15000))
+		{
+			ServerLogger::Log(logid, "Image multi-stream negotiation failed. Falling back to one stream.", LL_WARNING);
+			stream_id.clear();
+			return false;
+		}
+
+		for (int lane = 1; lane < requested_streams; ++lane)
+		{
+			IPipe* pipe = client_main->getClientCommandConnection(server_settings, 30000);
+			if (pipe == NULL)
+			{
+				sendCommandAndExpectOk(primary, internet,
+					identity + "IMAGE MULTI CANCEL" + common_params, 5000);
+				destroyImageMultiPipes(additional_pipes);
+				stream_id.clear();
+				ServerLogger::Log(logid, "Could not open all image streams. Falling back to one stream.", LL_WARNING);
+				return false;
+			}
+
+			const std::string join_command = identity + "IMAGE MULTI JOIN" + common_params
+				+ "&lane=" + convert(lane);
+			if (!sendCommandAndExpectOk(pipe, internet, join_command, 15000))
+			{
+				Server->destroy(pipe);
+				sendCommandAndExpectOk(primary, internet,
+					identity + "IMAGE MULTI CANCEL" + common_params, 5000);
+				destroyImageMultiPipes(additional_pipes);
+				stream_id.clear();
+				ServerLogger::Log(logid, "Image stream join failed. Falling back to one stream.", LL_WARNING);
+				return false;
+			}
+			additional_pipes.push_back(pipe);
+		}
+
+		ServerLogger::Log(logid, "Using " + convert(requested_streams)
+			+ " parallel streams for image backup", LL_INFO);
+		return true;
 	}
 }
 
@@ -588,7 +687,32 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	if(pParentvhd.empty())
 	{
-		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
+		std::string image_stream_id;
+		std::vector<IPipe*> image_stream_pipes;
+		const bool image_multi_active = setupImageMulti(client_main, server_settings.get(), cc,
+			identity, server_token, logid, image_stream_id, image_stream_pipes);
+		std::string image_multi_params;
+		if (image_multi_active)
+		{
+			image_multi_params = "&image_streams=" + convert(image_stream_pipes.size() + 1)
+				+ "&image_stream_id=" + EscapeParamString(image_stream_id);
+		}
+		if (tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token
+			+chksum_str+image_multi_params) == 0)
+		{
+			destroyImageMultiPipes(image_stream_pipes);
+			Server->destroy(cc);
+			ServerLogger::Log(logid, "Sending 'FULL IMAGE' command failed", LL_ERROR);
+			return false;
+		}
+		if (image_multi_active)
+		{
+			std::vector<IPipe*> all_pipes;
+			all_pipes.push_back(cc);
+			all_pipes.insert(all_pipes.end(), image_stream_pipes.begin(), image_stream_pipes.end());
+			image_stream_pipes.clear();
+			cc = new ImageMultiPipeReader(all_pipes);
+		}
 	}
 	else
 	{
@@ -616,11 +740,23 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			}
 		}
 		
-		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str+ prevbitmap_str;
+		std::string image_stream_id;
+		std::vector<IPipe*> image_stream_pipes;
+		const bool image_multi_active = setupImageMulti(client_main, server_settings.get(), cc,
+			identity, server_token, logid, image_stream_id, image_stream_pipes);
+		std::string image_multi_params;
+		if (image_multi_active)
+		{
+			image_multi_params = "&image_streams=" + convert(image_stream_pipes.size() + 1)
+				+ "&image_stream_id=" + EscapeParamString(image_stream_id);
+		}
+
+		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str+ prevbitmap_str + image_multi_params;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
 			ServerLogger::Log(logid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
+			destroyImageMultiPipes(image_stream_pipes);
 			Server->destroy(cc);
 			return false;
 		}
@@ -636,6 +772,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			{
 				ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Server cannot read necessary data.", LL_ERROR);
 			}
+			destroyImageMultiPipes(image_stream_pipes);
 			Server->destroy(cc);
 			return false;
 		}
@@ -654,9 +791,19 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Server cannot read necessary data.", LL_ERROR);
 				}
+				destroyImageMultiPipes(image_stream_pipes);
 				Server->destroy(cc);
 				return false;
 			}
+		}
+
+		if (image_multi_active)
+		{
+			std::vector<IPipe*> all_pipes;
+			all_pipes.push_back(cc);
+			all_pipes.insert(all_pipes.end(), image_stream_pipes.begin(), image_stream_pipes.end());
+			image_stream_pipes.clear();
+			cc = new ImageMultiPipeReader(all_pipes);
 		}
 	}
 

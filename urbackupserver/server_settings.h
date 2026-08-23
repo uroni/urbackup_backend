@@ -151,6 +151,7 @@ struct SSettings
 	bool local_encrypt;
 	bool local_compress;
 	int download_threads;
+	int image_download_threads;
 	int hash_threads;
 	int client_hash_threads;
 	int image_compress_threads;

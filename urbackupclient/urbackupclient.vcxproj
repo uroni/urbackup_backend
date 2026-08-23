@@ -69,6 +69,7 @@
     <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="file_permissions.cpp" />
     <ClCompile Include="ImageThread.cpp" />
+    <ClCompile Include="ImageMultiPipe.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="ParallelHash.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
@@ -126,6 +127,7 @@
     <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
+    <ClInclude Include="ImageMultiPipe.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="ParallelHash.h" />
     <ClInclude Include="PersistentOpenFiles.h" />

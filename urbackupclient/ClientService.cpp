@@ -292,6 +292,8 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
 	image_inf.clientsubname.clear();
+	image_inf.image_streams=1;
+	image_inf.image_stream_id.clear();
 	lasttime=Server->getTimeMS();
 	do_quit=false;
 	is_channel=false;
@@ -1060,6 +1062,18 @@ void ClientConnector::ReceivePacketsInt(IRunOtherCallback* p_run_other)
 		else if(next(cmd, 0, "INCR IMAGE ") )
 		{
 			CMD_INCR_IMAGE(cmd, ident_ok); continue;
+		}
+		else if(next(cmd, 0, "IMAGE MULTI INIT ") )
+		{
+			CMD_IMAGE_MULTI_INIT(cmd, ident_ok); continue;
+		}
+		else if(next(cmd, 0, "IMAGE MULTI JOIN ") )
+		{
+			CMD_IMAGE_MULTI_JOIN(cmd, ident_ok); continue;
+		}
+		else if(next(cmd, 0, "IMAGE MULTI CANCEL ") )
+		{
+			CMD_IMAGE_MULTI_CANCEL(cmd, ident_ok); continue;
 		}
 
 		if(ident_ok) //Commands from Server
@@ -3653,7 +3667,7 @@ IPipe* ClientConnector::getRemoteConnection(const std::string& server_token, con
 
 bool ClientConnector::closeSocket( void )
 {
-	if(state!=CCSTATE_FILESERV)
+	if(state!=CCSTATE_FILESERV && state!=CCSTATE_IMAGE_MULTISTREAM)
 	{
 		if (pipe != orig_pipe)
 		{

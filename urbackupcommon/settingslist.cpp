@@ -108,6 +108,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("local_encrypt");
 	ret.push_back("local_compress");
 	ret.push_back("download_threads");
+	ret.push_back("image_download_threads");
 	ret.push_back("hash_threads");
 	ret.push_back("client_hash_threads");
 	ret.push_back("image_compress_threads");

@@ -429,6 +429,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->local_encrypt = true;
 		settings->local_compress = true;
 		settings->download_threads = 1;
+		settings->image_download_threads = 4;
 		settings->hash_threads = 1;
 		settings->client_hash_threads = 1;
 		settings->image_compress_threads = 0;
@@ -592,6 +593,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress, false);
 
 	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
+	readIntClientSetting(q_get_client_setting, "image_download_threads", &settings->image_download_threads, false);
 	
 	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
 	
@@ -723,6 +725,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
 
 	readIntClientSetting(q_get_client_setting, "download_threads", &settings->download_threads, false);
+	readIntClientSetting(q_get_client_setting, "image_download_threads", &settings->image_download_threads, false);
 	readIntClientSetting(q_get_client_setting, "hash_threads", &settings->hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "client_hash_threads", &settings->client_hash_threads, false);
 	readIntClientSetting(q_get_client_setting, "image_compress_threads", &settings->image_compress_threads, false);
@@ -1551,6 +1554,7 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_BOOL(local_encrypt);
 	SET_SETTING_BOOL(local_compress);
 	SET_SETTING_INT(download_threads);
+	SET_SETTING_INT(image_download_threads);
 	SET_SETTING_INT(hash_threads);
 	SET_SETTING_INT(client_hash_threads);
 	SET_SETTING_INT(image_compress_threads);

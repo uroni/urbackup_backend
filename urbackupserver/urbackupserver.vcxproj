@@ -346,6 +346,7 @@
     <ClCompile Include="FileIndex.cpp" />
     <ClCompile Include="filedownload.cpp" />
     <ClCompile Include="ImageBackup.cpp" />
+    <ClCompile Include="ImageMultiPipe.cpp" />
     <ClCompile Include="ImageMount.cpp" />
     <ClCompile Include="IncrFileBackup.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
@@ -469,6 +470,7 @@
     <ClInclude Include="FileIndex.h" />
     <ClInclude Include="filedownload.h" />
     <ClInclude Include="ImageBackup.h" />
+    <ClInclude Include="ImageMultiPipe.h" />
     <ClInclude Include="ImageMount.h" />
     <ClInclude Include="IncrFileBackup.h" />
     <ClInclude Include="InternetServiceConnector.h" />

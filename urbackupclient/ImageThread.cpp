@@ -29,6 +29,7 @@
 
 #include "ClientService.h"
 #include "ImageThread.h"
+#include "ImageMultiPipe.h"
 #include "ClientSend.h"
 #include "client.h"
 
@@ -1110,6 +1111,24 @@ void ImageThread::operator()(void)
 	}
 
 	bool success = false;
+	IPipe* primary_pipe = pipe;
+	std::unique_ptr<image_multi::Writer> multi_pipe;
+	if (image_inf->image_streams > 1)
+	{
+		std::vector<IPipe*> additional_pipes = image_multi::acquireSessionPipes(
+			image_inf->image_stream_id, server_token, image_inf->image_streams, 30000);
+		if (static_cast<int>(additional_pipes.size()) != image_inf->image_streams - 1)
+		{
+			Server->Log("Could not acquire all negotiated image streams. Reconnecting with the legacy image transport.", LL_WARNING);
+			primary_pipe->shutdown();
+			client->doQuitClient();
+			ClientConnector::removeRunningProcess(image_inf->running_process_id, false, true);
+			return;
+		}
+		multi_pipe.reset(new image_multi::Writer(primary_pipe, additional_pipes));
+		pipe = multi_pipe.get();
+		Server->Log("Image upload using " + convert(image_inf->image_streams) + " parallel streams", LL_INFO);
+	}
 
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{
@@ -1140,6 +1159,8 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
+	pipe = primary_pipe;
+	multi_pipe.reset();
 	ClientConnector::removeRunningProcess(image_inf->running_process_id, success, true);
 }
 

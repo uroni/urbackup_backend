@@ -52,7 +52,7 @@ struct SProtocolVersions
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
 				async_index_version(0), restore_version(0),
-				filesrvtunnel(0)
+				filesrvtunnel(0), image_multi_version(0)
 			{
 
 			}
@@ -79,6 +79,7 @@ struct SProtocolVersions
 	std::string os_simple;
 	int restore_version;
 	int filesrvtunnel;
+	int image_multi_version;
 };
 
 struct SRunningBackup
