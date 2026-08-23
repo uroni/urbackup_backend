@@ -943,7 +943,7 @@ namespace restore
 		return ret;
 	}
 	
-	std::string getPartitionPath(const std::string& dev, int partnum)
+	std::string getPartitionPath(const std::string& dev, int partnum, const bool linux_vol)
 	{
 		std::vector<SLsblk> parts = lsblk(dev);
 
@@ -956,6 +956,18 @@ namespace restore
 				int maj = watoi(getuntil(":", it.maj_min));
 				int min = watoi(getafter(":", it.maj_min));
 				parts_maj_min[maj*100000ULL + min] = it;
+
+				if(linux_vol)
+				{
+					if(it.path == dev + std::to_string(partnum))
+					{
+						return it.path;
+					}
+					else if(it.path == dev + "p" + std::to_string(partnum))
+					{
+						return it.path;
+					}
+				}
 			}
 		}
 
@@ -2557,6 +2569,8 @@ void restore_wizard(void)
 				bool fix_gpt = false;
 				std::vector<IFSImageFactory::SPartition> partitions;
 
+				const bool linux_vol = next(mbrdata.volume_name, 0, "LINUX:");
+
 				if(mbrdata.gpt_style)
 				{
 					std::string onlypart = ExtractFileName(seldrive);
@@ -2650,7 +2664,7 @@ void restore_wizard(void)
 				system("cat urbackup/restore/testing_partition");
 				system("echo");
 				dev=nullptr;
-				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number, linux_vol);
 				if(!partpath.empty())
 				{
 					dev=Server->openFile(partpath, MODE_RW);
@@ -2663,7 +2677,7 @@ void restore_wizard(void)
 					Server->wait(10000);
 					system("cat urbackup/restore/testing_partition");
 					system("echo");
-					partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+					partpath = getPartitionPath(seldrive, mbrdata.partition_number, linux_vol);
 					if(!partpath.empty())
 					{
 						dev=Server->openFile(partpath, MODE_RW);
