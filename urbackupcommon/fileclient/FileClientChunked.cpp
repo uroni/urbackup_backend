@@ -2333,28 +2333,38 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 
 		if(m_hashoutput!=NULL)
 		{
-			if(m_hashoutput->Seek(m_hashoutput->Size()) &&
-				m_chunkhashes->Seek(m_hashoutput->Size()))
+			const int64 max_hashoutput_size = get_hashdata_size(filesize_out, chunkhash_file_off, big_hash_size, chunkhash_single_size);
+
+			int64 cpos = m_hashoutput->Size();
+
+			if( cpos < max_hashoutput_size &&
+				m_chunkhashes->Size() > cpos &&
+				m_hashoutput->Seek(cpos) &&
+				m_chunkhashes->Seek(cpos))
 			{
 				std::vector<char> buffer;
-				buffer.resize(4096);
+				buffer.resize(32768);
 
 				_u32 read;
 				do 
 				{
 					bool has_error = false;
-					read = m_chunkhashes->Read(&buffer[0], 4096, &has_error);
+					size_t toread = (std::min)(static_cast<size_t>(max_hashoutput_size - cpos), buffer.size());
+					read = m_chunkhashes->Read(buffer.data(), toread, &has_error);
+
+					cpos+=read;
 
 					if(has_error)
 					{
 						Server->Log("Error reading from chunkhashes file. Copying hashdata failed. "+os_last_error_str(), LL_ERROR);
+						break;
 					}
 
 					writeFileRepeat(m_hashoutput, buffer.data(), read);	
 
-				} while (read==4096);
+				} while (read==buffer.size() && cpos<max_hashoutput_size);
 
-				assert(m_hashoutput->Size() == m_chunkhashes->Size());
+				assert(m_hashoutput->Size() == max_hashoutput_size);
 			}
 			else
 			{
