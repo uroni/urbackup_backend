@@ -1571,6 +1571,10 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		{
 			restore_flags = watoi64(restore_flags_it->second);
 		}
+
+		// Don't allow to ignore permissions when restoring files via tokens
+		restore_flags &= ~restore_flag_ignore_permissions;
+
 		THREADPOOL_TICKET ticket;
 
 		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, 
