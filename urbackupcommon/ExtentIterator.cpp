@@ -45,10 +45,9 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 		}
 	}
 
-	IFsFile::SSparseExtent ret;
-	while (next_sparse_extent_num < num_sparse_extents
-		&& ret.offset==-1)
+	while (next_sparse_extent_num < num_sparse_extents)
 	{
+		IFsFile::SSparseExtent ret;
 		if (sparse_extents_f->Read(reinterpret_cast<char*>(&ret), sizeof(IFsFile::SSparseExtent)) != sizeof(IFsFile::SSparseExtent))
 		{
 			num_sparse_extents = 0;
