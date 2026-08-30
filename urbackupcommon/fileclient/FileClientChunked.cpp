@@ -2333,7 +2333,7 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 
 		if(m_hashoutput!=NULL)
 		{
-			const int64 max_hashoutput_size = get_hashdata_size(filesize_out, chunkhash_file_off, big_hash_size, chunkhash_single_size);
+			const int64 max_hashoutput_size = get_hashdata_size(filesize_out);
 
 			int64 cpos = m_hashoutput->Size();
 
