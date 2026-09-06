@@ -93,6 +93,40 @@ ServerDownloadThreadGroup::~ServerDownloadThreadGroup()
 	}
 }
 
+int64 ServerDownloadThreadGroup::getTransferredBytes()
+{
+	int64 ret = 0;
+	for (size_t i = 0; i < dl_threads.size(); ++i)
+	{
+		if (dl_threads[i].fc != NULL)
+		{
+			ret += dl_threads[i].fc->getTransferredBytes();
+		}
+		if (dl_threads[i].fc_chunked != NULL)
+		{
+			ret += dl_threads[i].fc_chunked->getTransferredBytes();
+		}
+	}
+	return ret;
+}
+
+int64 ServerDownloadThreadGroup::getRealTransferredBytes()
+{
+	int64 ret = 0;
+	for (size_t i = 0; i < dl_threads.size(); ++i)
+	{
+		if (dl_threads[i].fc != NULL)
+		{
+			ret += dl_threads[i].fc->getRealTransferredBytes();
+		}
+		if (dl_threads[i].fc_chunked != NULL)
+		{
+			ret += dl_threads[i].fc_chunked->getRealTransferredBytes();
+		}
+	}
+	return ret;
+}
+
 void ServerDownloadThreadGroup::queueSkip()
 {
 	for (size_t i = 0; i < dl_threads.size(); ++i)
