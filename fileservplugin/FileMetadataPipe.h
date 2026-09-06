@@ -57,6 +57,7 @@ private:
 	LARGE_INTEGER curr_stream_size;
 	int64 curr_pos;
 	std::string stream_name;
+	bool skip_reparse_data;
 #else
 	enum BackupState
 	{

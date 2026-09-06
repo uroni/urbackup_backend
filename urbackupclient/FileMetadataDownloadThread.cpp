@@ -280,6 +280,10 @@ namespace
 	const size_t metadata_id_size = 4+4+8+4;
 	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
 
+#ifndef IO_REPARSE_TAG_DEDUP
+#define IO_REPARSE_TAG_DEDUP (0x80000013L)
+#endif
+
 	class HandleScope
 	{
 	public:
@@ -442,7 +446,33 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 			data_checksum = urb_adler32(data_checksum, stream_id.data() + metadata_id_size, static_cast<_u32>(curr_stream_id->dwStreamNameSize));
 		}	
 
-		if (hFile != INVALID_HANDLE_VALUE)
+		/* Backups made before the client skipped it may carry a Data Deduplication reparse
+		   point. Its data refers to the source volume's chunk store, so writing it back would
+		   leave the restored file unreadable. Read the stream first to look at its tag. */
+		bool skip_stream = false;
+		std::vector<char> stream_data;
+		if (curr_stream_id->dwStreamId == BACKUP_REPARSE_DATA
+			&& curr_stream_id->Size >= static_cast<int64>(sizeof(_u32))
+			&& curr_stream_id->Size <= 64 * 1024)
+		{
+			stream_data.resize(static_cast<size_t>(curr_stream_id->Size));
+
+			if (metadata_f->Read(stream_data.data(), static_cast<_u32>(stream_data.size())) != stream_data.size())
+			{
+				restore.log("Error reading  \"" + metadata_f->getFilename() + "\" -4", LL_ERROR);
+				has_error = true;
+				break;
+			}
+
+			data_checksum = urb_adler32(data_checksum, stream_data.data(), static_cast<_u32>(stream_data.size()));
+
+			_u32 reparse_tag;
+			memcpy(&reparse_tag, stream_data.data(), sizeof(reparse_tag));
+			skip_stream = (reparse_tag == IO_REPARSE_TAG_DEDUP);
+		}
+
+		if (hFile != INVALID_HANDLE_VALUE
+			&& !skip_stream)
 		{
 			DWORD written = 0;
 			BOOL b = BackupWrite(hFile, reinterpret_cast<LPBYTE>(stream_id.data()), static_cast<DWORD>(stream_id.size()), &written, FALSE, TRUE, &context);
@@ -456,6 +486,25 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		}
 
 		int64 curr_pos=0;
+
+		if (!stream_data.empty())
+		{
+			if (hFile != INVALID_HANDLE_VALUE
+				&& !skip_stream)
+			{
+				DWORD written = 0;
+				BOOL b = BackupWrite(hFile, reinterpret_cast<LPBYTE>(stream_data.data()), static_cast<DWORD>(stream_data.size()), &written, FALSE, TRUE, &context);
+
+				if (!b || written != stream_data.size())
+				{
+					restore.log("Error writting metadata to file \"" + output_fn + "\". "+os_last_error_str(), LL_ERROR);
+					has_error = true;
+					break;
+				}
+			}
+
+			curr_pos = static_cast<int64>(stream_data.size());
+		}
 
 		while(curr_pos<curr_stream_id->Size)
 		{
