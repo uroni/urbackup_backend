@@ -435,6 +435,27 @@ bool mount_linux_loop(const std::string& imagepath, int partition, int64 offset,
 		gid="gid="+convert(user_info->pw_gid);
 	}
 	
+	//ntfs-3g needs no libguestfs appliance, so it also works inside a container;
+	//the loop device already exposes the partition, so it is mounted directly
+	std::string ntfs_opts="ro";
+	if(!uid.empty())
+	{
+		ntfs_opts+=","+uid;
+	}
+	if(!gid.empty())
+	{
+		ntfs_opts+=","+gid;
+	}
+	//no allow_root: as root ntfs-3g enables allow_other itself and FUSE rejects both
+	std::cout << "Mounting with ntfs-3g..." << std::endl;
+	if(exec_wait("ntfs-3g", true, "-o", ntfs_opts.c_str(),
+				("/dev/loop"+convert(devnum)).c_str(),
+				mountpoint.c_str(), NULL)==0 )
+	{
+		close(loopd);
+		return true;
+	}
+	
 	ubuntu_guestmount_fix();
 	
 	std::cout << "Guestmount..." << std::endl;
@@ -664,7 +685,9 @@ bool unmount_image(const std::string& imagepath, int partition)
 	{
 #ifdef __linux__
 		std::cout << "Guestunmount..." << std::endl;
-		if(exec_wait("guestunmount", true, mountpoint.c_str(), NULL))
+		if(exec_wait("guestunmount", true, mountpoint.c_str(), NULL)
+			//an ntfs-3g mount is FUSE too, and guestunmount may not be installed
+			&& exec_wait("fusermount", true, "-u", mountpoint.c_str(), NULL))
 		{
 			std::cerr << "Unmounting \"" << mountpoint << "\" failed." << std::endl;
 			ret = false;
@@ -795,9 +818,10 @@ int main(int argc, char *argv[])
 		return 1;
 #endif
 #if defined(__linux__)
-		if(exec_wait("guestmount", false, "--version", NULL)!=0)
+		if(exec_wait("ntfs-3g", false, "--version", NULL)!=0
+			&& exec_wait("guestmount", false, "--version", NULL)!=0)
 		{
-			std::cerr << "TEST FAILED: guestmount is missing (libguestfs-tools)" << std::endl;
+			std::cerr << "TEST FAILED: neither ntfs-3g nor guestmount (libguestfs-tools) is available" << std::endl;
 			return 1;
 		}
 #elif defined(__FreeBSD__)
