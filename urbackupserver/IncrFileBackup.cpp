@@ -1838,8 +1838,10 @@ bool IncrFileBackup::doFileBackup()
 	running_updater->stop();
 	backup_dao->updateFileBackupRunning(backupid);
 
-	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
-	_i64 transferred_compressed=fc.getRealTransferredBytes()+(fc_chunked.get()?fc_chunked->getRealTransferredBytes():0);
+	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0)
+		+server_download->getTransferredBytes();
+	_i64 transferred_compressed=fc.getRealTransferredBytes()+(fc_chunked.get()?fc_chunked->getRealTransferredBytes():0)
+		+server_download->getRealTransferredBytes();
 	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 	if(transferred_compressed>0)
