@@ -27,11 +27,10 @@ public:
 	int nameCompare(const TreeNode& other);
 	bool dataEquals(const TreeNode& other);
 
-	size_t getNumChildren();
 	TreeNode* getFirstChild(void);
 	void setNextSibling(TreeNode *pNextSibling);
 	TreeNode *getNextSibling(void);
-	void incrementNumChildren(void);
+	void setHasChildren(void);
 	TreeNode* getChild(size_t n);
 	void setParent(TreeNode *pParent);
 	TreeNode *getParent(void);
@@ -42,8 +41,8 @@ public:
 	void setId(size_t pId);
 	size_t getId(void) const;
 
-	TreeNode *getMappedNode();
-	void setMappedNode(TreeNode *pMappedNode);
+	bool isMapped();
+	void setMapped(bool b);
 
 	void setSubtreeChanged(bool b);
 	bool getSubtreeChanged();
@@ -51,18 +50,19 @@ public:
 	size_t getDataSize();
 
 private:
-	char node_type;
-
 	const char* name;
 	const char* data;
 
 	TreeNode *nextSibling;
 	TreeNode *parent;
-	TreeNode *mapped_node;
-	size_t num_children;
-	bool subtree_changed;
 
 	size_t id;
+
+	/* byte-sized members last: keeps the node at 48 bytes on 64-bit */
+	char node_type;
+	bool has_children;
+	bool mapped;
+	bool subtree_changed;
 };
 
 

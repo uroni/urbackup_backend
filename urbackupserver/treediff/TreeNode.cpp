@@ -22,14 +22,14 @@
 #include <string.h>
 
 TreeNode::TreeNode(const char* name, const char* data, TreeNode *parent, char node_type)
-	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL),
-	  subtree_changed(false), node_type(node_type), id(0)
+	: name(name), data(data), nextSibling(NULL), parent(parent), id(0),
+	  node_type(node_type), has_children(false), mapped(false), subtree_changed(false)
 {
 }
 
 TreeNode::TreeNode(void)
-	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL),
-	name(NULL), data(NULL), node_type(0), id(0)
+	: name(NULL), data(NULL), nextSibling(NULL), parent(NULL), id(0),
+	  node_type(0), has_children(false), mapped(false), subtree_changed(false)
 {
 }
 
@@ -72,14 +72,9 @@ void TreeNode::setData(const char* pData)
 	data=pData;
 }
 
-size_t TreeNode::getNumChildren()
-{
-	return num_children;
-}
-
 TreeNode* TreeNode::getFirstChild(void)
 {
-	if(num_children>0)
+	if(has_children)
 	{
 		return this+1;
 	}
@@ -94,9 +89,9 @@ void TreeNode::setNextSibling(TreeNode *pNextSibling)
 	nextSibling=pNextSibling;
 }
 
-void TreeNode::incrementNumChildren(void)
+void TreeNode::setHasChildren(void)
 {
-	++num_children;
+	has_children=true;
 }
 
 void TreeNode::setId(size_t pId)
@@ -143,14 +138,14 @@ TreeNode *TreeNode::getParent(void)
 	return parent;
 }
 
-TreeNode *TreeNode::getMappedNode()
+bool TreeNode::isMapped()
 {
-	return mapped_node;
+	return mapped;
 }
 
-void TreeNode::setMappedNode(TreeNode *pMappedNode)
+void TreeNode::setMapped(bool b)
 {
-	mapped_node=pMappedNode;
+	mapped=b;
 }
 
 void TreeNode::setSubtreeChanged( bool b )
