@@ -468,9 +468,7 @@ private:
 
 	std::atomic<int> make_conn;
 
-#ifdef _WIN32
 	static SVolumesCache* volumes_cache;
-#endif
 	IRunOtherCallback* run_other;
 
 	int64 idle_timeout;

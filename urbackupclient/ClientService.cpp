@@ -109,9 +109,7 @@ bool ClientConnector::last_metered = false;
 int64 ClientConnector::startup_timestamp = 0;
 
 
-#ifdef _WIN32
 SVolumesCache* ClientConnector::volumes_cache;
-#endif
 
 
 #ifdef _WIN32
