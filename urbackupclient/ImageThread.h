@@ -39,6 +39,8 @@ private:
 	bool sendFullImageThread(void);
 	bool sendIncrImageThread(void);
 
+	void excludeFiles(IFilesystem* fs);
+
 	void removeShadowCopyThread(int save_id);
 	void updateShadowCopyStarttime(int save_id);
 
