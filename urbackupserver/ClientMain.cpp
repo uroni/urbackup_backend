@@ -1729,6 +1729,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			protocol_versions.require_previous_cbitmap = watoi(it->second);
 		}
+		it = params.find("IMAGE_PAGE_DELTA");
+		if (it != params.end())
+		{
+			protocol_versions.image_page_delta = watoi(it->second);
+		}
 		it = params.find("CMD");
 		if (it != params.end())
 		{

@@ -1639,6 +1639,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			if(params["checksum"]=="1")
 				image_inf.with_checksum=true;
 		}
+		image_inf.page_delta=false;
 		image_inf.with_bitmap=false;
 		if(params.find("bitmap")!=params.end())
 		{
@@ -1776,6 +1777,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				if(params["checksum"]=="1")
 					image_inf.with_checksum=true;
 			}
+			image_inf.page_delta = params["page_delta"]=="1";
 			image_inf.with_bitmap=false;
 			if(params.find("bitmap")!=params.end())
 			{
@@ -2807,7 +2809,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
+		"&IMAGE_PAGE_DELTA=1&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
 #ifdef __APPLE__
@@ -2838,7 +2840,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
 		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
 		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
+		+"&IMAGE_PAGE_DELTA=1&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }
 

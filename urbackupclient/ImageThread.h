@@ -23,6 +23,9 @@ public:
 	static std::string hdatFn(std::string volume);
 	static IFsFile* openHdatF(std::string volume, bool share);
 
+	static std::string pageStoreFn(std::string volume);
+	static IFsFile* openPageStore(std::string volume, unsigned int sub_blocksize);
+
 	int64 nextBlock(int64 curr_block);
 
 	virtual void slowReadWarning(int64 passed_time_ms, int64 curr_block);

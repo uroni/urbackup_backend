@@ -7609,6 +7609,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	{
 		Server->deleteFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat");
 		Server->deleteFile("urbackup/hdat_img_" + conv_filename(fs_dev) + ".dat");
+		Server->deleteFile(ImageThread::pageStoreFn(fs_dev));
 	}
 
 	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
@@ -8328,6 +8329,7 @@ bool IndexThread::disableCbt(std::string volume)
 		Server->deleteFile(rndfn);
 	}
 	Server->deleteFile(ImageThread::hdatFn(volume));
+	Server->deleteFile(ImageThread::pageStoreFn(volume));
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ | GENERIC_WRITE,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
