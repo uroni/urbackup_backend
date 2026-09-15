@@ -1603,6 +1603,36 @@ void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
 	tcpstack.Send(pipe, ret);
 }
 
+bool ClientConnector::mapSystemVolume()
+{
+	std::string mpath;
+	std::string sysvol;
+	if(image_inf.image_letter=="SYSVOL")
+	{
+		sysvol=getSysVolumeCached(mpath);
+	}
+	else
+	{
+		sysvol=getEspVolumeCached(mpath);
+	}
+
+	if(!mpath.empty())
+	{
+		image_inf.image_letter=mpath;
+	}
+	else if(!sysvol.empty())
+	{
+		image_inf.image_letter=sysvol;
+		image_inf.no_shadowcopy=true;
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
 void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 {
 	if(ident_ok)
@@ -1653,27 +1683,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		if(image_inf.image_letter=="SYSVOL"
 			|| image_inf.image_letter=="ESP")
 		{
-			std::string mpath;
-			std::string sysvol;
-			if(image_inf.image_letter=="SYSVOL")
-			{
-				sysvol=getSysVolumeCached(mpath);
-			}
-			else
-			{
-				sysvol=getEspVolumeCached(mpath);
-			}
-			
-			if(!mpath.empty())
-			{
-				image_inf.image_letter=mpath;
-			}
-			else if(!sysvol.empty())
-			{
-				image_inf.image_letter=sysvol;
-				image_inf.no_shadowcopy=true;
-			}
-			else
+			if(!mapSystemVolume())
 			{
 				ImageErr("Not found");
 				return;
@@ -1786,8 +1796,21 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.no_shadowcopy=false;
 			image_inf.clientsubname = params["clientsubname"];
 
+			if(image_inf.image_letter=="SYSVOL"
+				|| image_inf.image_letter=="ESP")
+			{
+				if(!mapSystemVolume())
+				{
+					ImageErr("Not found");
+					do_quit=true;
+					return;
+				}
+			}
 #ifndef _WIN32
-			image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
+			else
+			{
+				image_inf.image_letter = mapLinuxDev(image_inf.image_letter);
+			}
 #endif
 
 			str_map::iterator f_cbitmapsize = params.find("cbitmapsize");
@@ -1837,6 +1860,15 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addString(image_inf.clientsubname);
 				data.addInt(running_jobs);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+			}
+
+			if(image_inf.no_shadowcopy)
+			{
+				image_inf.shadowdrive=image_inf.image_letter;
+				if(!image_inf.shadowdrive.empty() && image_inf.shadowdrive[0]!='\\')
+				{
+					image_inf.shadowdrive="\\\\.\\"+image_inf.image_letter;
+				}
 			}
 
 			hashdatafile=Server->openTemporaryFile();
@@ -2807,7 +2839,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
+		"&INCR_SYSVOL=1&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
 #ifdef __APPLE__

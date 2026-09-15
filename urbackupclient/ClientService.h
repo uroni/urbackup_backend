@@ -269,6 +269,7 @@ private:
 	bool checkVersion(IFile* updatef);
 	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
 	void ImageErr(const std::string &msg);
+	bool mapSystemVolume();
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
 	void sendStatus();

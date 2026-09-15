@@ -52,7 +52,7 @@ struct SProtocolVersions
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
 				async_index_version(0), restore_version(0),
-				filesrvtunnel(0)
+				filesrvtunnel(0), incr_sysvol_version(0)
 			{
 
 			}
@@ -70,6 +70,7 @@ struct SProtocolVersions
 	int client_bitmap_version;
 	int cmd_version;
 	int require_previous_cbitmap;
+	int incr_sysvol_version;
 	int async_index_version;
 	int symbit_version;
 	int phash_version;
