@@ -41,6 +41,7 @@ private:
 	bool saveBitmap();
 	bool loadBitmap(const std::string& bitmap_fn);
 	void resizeBitmap();
+	bool sameAsParent(const char* buffer, _u32 bsize);
 
 #ifndef _WIN32
 	int fd;
@@ -59,7 +60,9 @@ private:
 
 	bool finished;
 	bool trim_warned;
+	bool has_parent;
 	std::vector<char> zero_buf;
+	std::vector<char> cmp_buf;
 };
 
 #endif //__APPLE__
