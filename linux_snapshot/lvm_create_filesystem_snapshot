@@ -64,6 +64,7 @@ fi
 lvcreate $SNAP_SIZE -s -n urbackup_snap_$SNAP_ID "$VOLNAME"
 
 mkdir -p /mnt/urbackup_snaps/$SNAP_ID
+echo "/dev/$VGNAME/urbackup_snap_$SNAP_ID" > /mnt/urbackup_snaps/$SNAP_ID-dev
 
 MOUNTOPTS="ro"
 
