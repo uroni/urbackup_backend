@@ -3,10 +3,12 @@
 #include "../Interface/Types.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include "server_status.h"
+#include <map>
 
 class IMutex;
 class ServerVHDWriter;
 class IFile;
+class IVHDFile;
 class ServerPingThread;
 class ScopedLockImageFromCleanup;
 class ServerRunningUpdater;
@@ -57,6 +59,8 @@ protected:
 		bool parent_fn, IFile* hashfile, IFile* parenthashfile, unsigned int blocksize,
 		int64 mbr_offset, int64 vhd_blocksize, bool &warned_about_parenthashfile_error, int64 empty_vhdblock_start,
 		ServerVHDWriter* vhdfile, int64 trim_add);
+	bool verifyPageDeltaChunks(IVHDFile* vhd, const std::map<int64, std::string>& chunks, int64 mbr_offset,
+		unsigned int blocksize, int64 vhd_blocksize, int64 blocks);
 	SBackup getLastImage(const std::string &letter, bool incr);
 	std::string constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd);
 	std::string getMBR(const std::string &dl, const std::string& disk_path, bool image_full, int64 snapshot_id, bool& fatal_error, std::string& loadfn);

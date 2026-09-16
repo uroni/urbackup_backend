@@ -586,6 +586,15 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	chksum_str += "&zero_skipped=1";
 
+	//cowraw only for now: verifyPageDeltaChunks re-reads the finished image, which has only been exercised without a parent chain
+	bool page_delta = with_checksum && !pParentvhd.empty()
+		&& image_file_format == image_file_format_cowraw
+		&& client_main->getProtocolVersions().image_page_delta > 0;
+	if (page_delta)
+	{
+		chksum_str += "&page_delta=1";
+	}
+
 	if(pParentvhd.empty())
 	{
 		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
@@ -691,6 +700,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater, "backup active update");
 	unsigned char verify_checksum[sha_size];
+	bool in_delta_chunk=false;
+	std::map<int64, std::string> delta_chunks;
 	bool warned_about_parenthashfile_error=false;
 	bool internet_connection = client_main->isOnInternetConnection();
 
@@ -745,6 +756,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			ServerStatus::setProcessEta(clientname, status_id, -1);
 			if(persistent && nextblock!=0)
 			{
+				in_delta_chunk=false;
 				int64 continue_block=nextblock;
 				if(continue_block%vhd_blocksize!=0 )
 				{
@@ -865,6 +877,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					if(with_checksum)
 					{
 						ts+="&checksum=1";
+					}
+					if (page_delta)
+					{
+						ts+="&page_delta=1";
 					}
 					if (!clientsubname.empty())
 					{
@@ -1474,7 +1490,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata.data(),
 								has_parent, hashfile, parenthashfile,
 								blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-								-1, vhdfile, 0);
+								-1, in_delta_chunk ? NULL : vhdfile, 0);
 
 							sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
 
@@ -1579,6 +1595,23 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								vhdfile_err=vhdfile->hasError();
 								delete vhdfile;
 								vhdfile=NULL;
+
+								if(!vhdfile_err && !delta_chunks.empty())
+								{
+									//The writer thread destroyed the image object; re-open the finished image (cowraw, see page_delta)
+									IVHDFile* verify_vhd = image_fak->createVHDFile(os_file_prefix(imagefn), true, 0,
+										2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_RawCowFile);
+									if(verify_vhd==NULL || !verify_vhd->isOpen()
+										|| !verifyPageDeltaChunks(verify_vhd, delta_chunks, mbr_offset, blocksize, vhd_blocksize, blocks))
+									{
+										ServerLogger::Log(logid, "Verifying the page delta image blocks failed", LL_ERROR);
+										vhdfile_err=true;
+									}
+									if(verify_vhd!=NULL)
+									{
+										image_fak->destroyVHDFile(verify_vhd);
+									}
+								}
 							}
 
 							if(hashfile!=NULL) Server->destroy(hashfile);
@@ -1728,8 +1761,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									{
 										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata.data(), has_parent,
 											hashfile, parenthashfile, blocksize, mbr_offset,
-											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile, 1);
-										sha256_update(&shactx, zeroblockdata.data(), blocksize);						
+											vhd_blocksize, warned_about_parenthashfile_error, -1, in_delta_chunk ? NULL : vhdfile, 1);
+										sha256_update(&shactx, zeroblockdata.data(), blocksize);
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
 									{
@@ -1739,7 +1772,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									}
 								}
 
-								if( memcmp(verify_checksum, dig, sha_size)!=0)
+								if(in_delta_chunk)
+								{
+									//The unsent blocks keep the parent's data, so the hash of what was received means nothing.
+									//The client hashed the whole block; it is checked against the image once the writer is done.
+									int64 hidx = (hblock-1)/vhd_blocksize;
+									hashfile->Seek(hidx*sha_size);
+									hashfile->Write((char*)dig, sha_size);
+									delta_chunks[hidx].assign(reinterpret_cast<char*>(dig), sha_size);
+									in_delta_chunk=false;
+								}
+								else if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
 									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock), LL_DEBUG);
 									if(num_hash_errors<max_num_hash_errors)
@@ -1759,19 +1802,30 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 										goto do_image_cleanup;
 									}
 								}
+
+								if(hblock>=vhd_blocksize)
+								{
+									last_verified_block=hblock-vhd_blocksize;
+								}
 								else
 								{
-									if(hblock>=vhd_blocksize)
-									{
-										last_verified_block=hblock-vhd_blocksize;
-									}
-									else
-									{
-										last_verified_block=hblock;
-									}
+									last_verified_block=hblock;
 								}
 
-								off+=2*sizeof(int64)+sha_size;								
+								off+=2*sizeof(int64)+sha_size;
+							}
+							else
+							{
+								accum=true;
+							}
+							currblock=-1;
+						}
+						else if(currblock==-129) //Page delta: blocks not sent up to the next checksum record are unchanged
+						{
+							if(r-off>=2*sizeof(int64))
+							{
+								in_delta_chunk=true;
+								off+=2*sizeof(int64);
 							}
 							else
 							{
@@ -2248,6 +2302,48 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 	}
 
 	return nextblock+1;
+}
+
+bool ImageBackup::verifyPageDeltaChunks(IVHDFile* vhd, const std::map<int64, std::string>& chunks, int64 mbr_offset,
+	unsigned int blocksize, int64 vhd_blocksize, int64 blocks)
+{
+	std::vector<char> buf(static_cast<size_t>(vhd_blocksize*blocksize));
+	for(std::map<int64, std::string>::const_iterator it=chunks.begin();it!=chunks.end();++it)
+	{
+		int64 startblock = it->first*vhd_blocksize;
+		size_t toread = static_cast<size_t>((std::min)(vhd_blocksize, blocks-startblock)*blocksize);
+		if(!vhd->Seek(mbr_offset+startblock*blocksize))
+		{
+			ServerLogger::Log(logid, "Error seeking to image block "+convert(startblock)+" for verification", LL_ERROR);
+			return false;
+		}
+		size_t read=0;
+		while(read<toread)
+		{
+			size_t r=0;
+			if(!vhd->Read(buf.data()+read, toread-read, r) || r==0)
+			{
+				ServerLogger::Log(logid, "Error reading image block "+convert(startblock)+" for verification", LL_ERROR);
+				return false;
+			}
+			read+=r;
+		}
+
+		sha256_ctx shactx;
+		unsigned char dig[sha_size];
+		sha256_init(&shactx);
+		sha256_update(&shactx, reinterpret_cast<unsigned char*>(buf.data()), static_cast<unsigned int>(toread));
+		sha256_final(&shactx, dig);
+
+		if(memcmp(dig, it->second.data(), sha_size)!=0)
+		{
+			ServerLogger::Log(logid, "Checksum of image block "+convert(startblock)+" wrong after page delta transfer. Stopping image backup.", LL_ERROR);
+			return false;
+		}
+	}
+
+	ServerLogger::Log(logid, "Verified "+convert(chunks.size())+" image blocks after page delta transfer", LL_DEBUG);
+	return true;
 }
 
 std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd)

@@ -444,6 +444,9 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 		{
 			fs->excludeFiles(pDev + "\\System Volume Information", "{3808876b-c176-4e48-b7ae-04046e6cc752}");
 		}
+
+		//Client-side cache of image block hashes (ImageThread::openPageStore), rebuilt after a restore
+		fs->excludeFile(pDev + "\\System Volume Information\\urbhdat_pages.dat");
 #endif
 		
 		/*

@@ -123,6 +123,7 @@ struct ImageInformation
 	ImageThread *image_thread;
 	bool with_checksum;
 	bool with_bitmap;
+	bool page_delta;
 	std::string clientsubname;
 	int64 running_process_id;
 	int64 server_status_id;

@@ -36,6 +36,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <memory>
+#ifdef _WIN32
+#include <winioctl.h>
+#endif
 
 extern IFSImageFactory *image_fak;
 
@@ -123,6 +126,15 @@ void ImageThread::createShadowData(str_map & other_vols, CWData & shadow_data)
 
 const unsigned int c_vhdblocksize=(1024*1024/2);
 const unsigned int c_hashsize=32;
+
+//Page delta: per c_vhdblocksize block the store holds the block's hash followed by the hash of each sub-block.
+//Sub-blocks are 16 KiB; on volumes where that would let the store exceed c_pagestore_maxsize they double until it fits
+const unsigned int c_pagedelta_bs=16*1024;
+const unsigned int c_pagedelta_subs=c_vhdblocksize/c_pagedelta_bs;
+const size_t c_pagestore_entrysize=c_hashsize*(1+c_pagedelta_subs);
+const int64 c_pagestore_maxsize=1024LL*1024*1024;
+const char c_pagestore_magic[8]={'U','R','B','P','G','D','S','T'};
+const size_t c_pagestore_hdrsize=sizeof(c_pagestore_magic)+sizeof(unsigned int);
 
 bool ImageThread::sendFullImageThread(void)
 {
@@ -523,6 +535,8 @@ bool ImageThread::sendIncrImageThread(void)
 
 	bool has_error=true;
 	bool with_checksum=image_inf->with_checksum;
+	std::auto_ptr<IFsFile> page_store;
+	unsigned int page_delta_bs=0;
 
 	int save_id=-1;
 	int update_cnt=0;
@@ -743,6 +757,25 @@ bool ImageThread::sendIncrImageThread(void)
 
 			logImageChanges(image_inf->shadowdrive);
 
+			if (image_inf->page_delta && with_checksum)
+			{
+				page_delta_bs = (std::max)(c_pagedelta_bs, (unsigned int)fs->getBlocksize());
+				while (page_delta_bs < c_vhdblocksize
+					&& (fs->getSize() / page_delta_bs)*c_hashsize > c_pagestore_maxsize)
+				{
+					page_delta_bs *= 2;
+				}
+				if (page_delta_bs%fs->getBlocksize() == 0
+					&& c_vhdblocksize%page_delta_bs == 0)
+				{
+					page_store.reset(openPageStore(image_inf->image_letter, page_delta_bs));
+				}
+				if (page_store.get() == NULL)
+				{
+					Server->Log("Page delta store not available. Sending whole blocks.", LL_INFO);
+				}
+			}
+
 			sha256_ctx shactx;
 
 			unsigned int blocksize=(unsigned int)fs->getBlocksize();
@@ -947,20 +980,84 @@ bool ImageThread::sendIncrImageThread(void)
 					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize) != 0)
 					{
 						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
+
+						std::vector<char> old_entry;
+						std::vector<char> new_entry;
+						int64 entry_pos = 0;
+						int64 blocks_per_sub = 0;
+						bool delta = false;
+						if (page_store.get() != NULL)
+						{
+							entry_pos = c_pagestore_hdrsize + currvhdblock*c_pagestore_entrysize;
+							blocks_per_sub = page_delta_bs / blocksize;
+							old_entry.resize(c_pagestore_entrysize);
+							if (page_store->Read(entry_pos, old_entry.data(), static_cast<_u32>(old_entry.size())) != old_entry.size())
+							{
+								old_entry.assign(c_pagestore_entrysize, 0);
+							}
+							//Only if the server holds exactly the data the stored sub-block hashes describe
+							delta = has_hashdata && memcmp(old_entry.data(), hashdata_buf, c_hashsize) == 0;
+
+							new_entry.assign(c_pagestore_entrysize, 0);
+							memcpy(new_entry.data(), digest, c_hashsize);
+							for (unsigned int s = 0; s*blocks_per_sub < blocks_per_vhdblock && i + s*blocks_per_sub < blocks; ++s)
+							{
+								sha256_init(&shactx);
+								for (int64 j = i + s*blocks_per_sub; j < blocks && j < i + (s + 1)*blocks_per_sub; ++j)
+								{
+									sha256_update(&shactx, (unsigned char*)(blockbufs[j - i] != NULL ? blockbufs[j - i]->getBuf() : zeroblockbuf), blocksize);
+								}
+								sha256_final(&shactx, (unsigned char*)&new_entry[c_hashsize*(1 + s)]);
+							}
+						}
+
 						bool notify_cs=false;
+						if (delta)
+						{
+							char* cb=clientSend->getBuffer();
+							int64 bs=-129;
+							memcpy(cb, &bs, sizeof(int64) );
+							memcpy(cb+sizeof(int64), &i, sizeof(int64));
+							clientSend->sendBuffer(cb, 2*sizeof(int64), false);
+							notify_cs=true;
+						}
 						for(int64 j=i;j<blocks && j<i+ blocks_per_vhdblock;++j)
 						{
-							if(blockbufs[j-i]!=NULL)
+							if (delta)
+							{
+								size_t s = static_cast<size_t>((j - i) / blocks_per_sub);
+								if (memcmp(&old_entry[c_hashsize*(1 + s)], &new_entry[c_hashsize*(1 + s)], c_hashsize) == 0)
+								{
+									if (blockbufs[j - i] != NULL)
+									{
+										fs->releaseBuffer(blockbufs[j - i]);
+										blockbufs[j - i] = NULL;
+									}
+									continue;
+								}
+							}
+							//A changed sub-block is sent completely, unused blocks as zeros, so the server never has to guess
+							if(blockbufs[j-i]!=NULL || delta)
 							{
 								char* cb=clientSend->getBuffer();
 								memcpy(cb, &j, sizeof(int64) );
-								memcpy(&cb[sizeof(int64)], blockbufs[j-i]->getBuf(), blocksize);
+								memcpy(&cb[sizeof(int64)], blockbufs[j-i]!=NULL ? blockbufs[j-i]->getBuf() : zeroblockbuf, blocksize);
 								clientSend->sendBuffer(cb, sizeof(int64)+blocksize, false);
 								notify_cs=true;
 								lastsendtime=Server->getTimeMS();
-								fs->releaseBuffer(blockbufs[j-i]);
-								blockbufs[j-i]=NULL;
+								if (blockbufs[j - i] != NULL)
+								{
+									fs->releaseBuffer(blockbufs[j-i]);
+									blockbufs[j-i]=NULL;
+								}
 							}
+						}
+
+						if (page_store.get() != NULL
+							&& page_store->Write(entry_pos, new_entry.data(), static_cast<_u32>(new_entry.size())) != new_entry.size())
+						{
+							Server->Log("Writing page delta store failed. " + os_last_error_str(), LL_WARNING);
+							page_store.reset();
 						}
 
 						if(notify_cs)
@@ -1336,6 +1433,70 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 #else
 	return Server->openFile("urbackup/hdat_img_"+conv_filename(volume)+".dat", MODE_RW_CREATE);
 #endif
+}
+
+std::string ImageThread::pageStoreFn(std::string volume)
+{
+#ifdef _WIN32
+	if (!IndexThread::normalizeVolume(volume))
+	{
+		return std::string();
+	}
+
+	return volume + os_file_sep() + "System Volume Information\\urbhdat_pages.dat";
+#else
+	return "urbackup/hdat_pages_" + conv_filename(volume) + ".dat";
+#endif
+}
+
+IFsFile* ImageThread::openPageStore(std::string volume, unsigned int sub_blocksize)
+{
+	std::string fn = pageStoreFn(volume);
+	if (fn.empty())
+	{
+		return NULL;
+	}
+
+#ifdef _WIN32
+	HANDLE hfile = CreateFileA(fn.c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
+		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (hfile == INVALID_HANDLE_VALUE)
+	{
+		return NULL;
+	}
+
+	//Entries are written only for blocks that were sent, so the file is mostly holes
+	DWORD ret_bytes;
+	DeviceIoControl(hfile, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &ret_bytes, NULL);
+
+	IFsFile* store = Server->openFileFromHandle(hfile, fn);
+#else
+	IFsFile* store = Server->openFile(fn, MODE_RW_CREATE);
+#endif
+
+	if (store == NULL)
+	{
+		return NULL;
+	}
+
+	char hdr[c_pagestore_hdrsize];
+	memcpy(hdr, c_pagestore_magic, sizeof(c_pagestore_magic));
+	memcpy(hdr + sizeof(c_pagestore_magic), &sub_blocksize, sizeof(sub_blocksize));
+
+	char curr_hdr[c_pagestore_hdrsize];
+	if (store->Read(0LL, curr_hdr, sizeof(curr_hdr)) != sizeof(curr_hdr)
+		|| memcmp(curr_hdr, hdr, sizeof(hdr)) != 0)
+	{
+		if (!store->Resize(0)
+			|| store->Write(0LL, hdr, sizeof(hdr)) != sizeof(hdr))
+		{
+			Server->destroy(store);
+			return NULL;
+		}
+	}
+
+	return store;
 }
 
 int64 ImageThread::nextBlock(int64 curr_block)
