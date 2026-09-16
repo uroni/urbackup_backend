@@ -33,6 +33,7 @@ if ! df -T -P | egrep "${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1
 then
 	echo "Snapshot is not mounted. Already removed"
 	rmdir "${SNAP_MOUNTPOINT}"
+	rm "${SNAP_MOUNTPOINT}-dev"
 	VOLNAME=`ls /dev/mapper/* | grep "urbackup_snap_${SNAP_ID}" | grep -v "\-cow"`
 	if [ -e "$VOLNAME" ]
 	then
@@ -74,6 +75,7 @@ then
 fi
 
 rmdir "${SNAP_MOUNTPOINT}"
+rm "${SNAP_MOUNTPOINT}-dev"
 
 echo "Destroying LVM snapshot $VOLNAME..."
 
