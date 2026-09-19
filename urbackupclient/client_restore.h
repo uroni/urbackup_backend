@@ -98,7 +98,7 @@ namespace restore
 
 	std::vector<SLsblk> lsblk(const std::string& dev);
 
-	std::string getPartitionPath(const std::string& dev, int partnum);
+	std::string getPartitionPath(const std::string& dev, int partnum, const bool linux_vol);
 
 	bool do_restore_write_mbr(const std::string& mbr_filename, const std::string& out_device,
 		bool fix_gpt, std::string& errmsg);

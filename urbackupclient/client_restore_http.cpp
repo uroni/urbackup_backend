@@ -467,7 +467,7 @@ ACTION_IMPL(get_partition)
 	std::string seldrive = POST["out_device"];
 
 	Server->Log("Selected device: "+seldrive+" Partition: "+convert(mbrdata.partition_number));
-	std::string partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number);
+	std::string partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number, next(mbrdata.volume_name, 0, "LINUX:"));
 	Server->Log("Partition path: "+partpath);
 	std::unique_ptr<IFsFile> dev;
 	if(!partpath.empty())
@@ -482,7 +482,7 @@ ACTION_IMPL(get_partition)
 	{
 		system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 		Server->wait(10000);
-		partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number);
+		partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number, next(mbrdata.volume_name, 0, "LINUX:"));
 		if(!partpath.empty())
 		{
 			dev.reset(Server->openFile(partpath, MODE_RW));
