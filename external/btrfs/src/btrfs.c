@@ -22,10 +22,12 @@
 #include "btrfs_drv.h"
 #include "xxhash.h"
 #include "crc32c.h"
+#if defined(_X86_) || defined(_AMD64_)
 #ifndef _MSC_VER
 #include <cpuid.h>
 #else
 #include <intrin.h>
+#endif
 #endif
 #include <ntddscsi.h>
 #include "btrfs.h"
