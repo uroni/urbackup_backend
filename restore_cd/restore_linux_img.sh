@@ -65,8 +65,8 @@ case "$arch" in
     x86_64) TARGET=x86_64-linux-glibc ;;
     armv6*) TARGET=arm-linux-androideabi ;;
     armv7*) TARGET=arm-linux-androideabi ;;
-    armv8*) TARGET=aarch64-linux-android ;;
-    aarch64) TARGET=aarch64-linux-android ;;
+    armv8*) TARGET=aarch64-linux-glibc ;;
+    aarch64) TARGET=aarch64-linux-glibc ;;
 esac
 
 if [ $TARGET = no ]
@@ -82,12 +82,12 @@ install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin/urbackuprestoreclient"
 install -c "$TARGET/urbackupclientctl" "$PREFIX/sbin/urbackuprestoreclientctl"
 ORIG_TARGET=$TARGET
 
-if [ $TARGET = x86_64-linux-glibc ]
+if [ "$TARGET" = x86_64-linux-glibc ] || [ "$TARGET" = aarch64-linux-glibc ]
 then
     if ! "$PREFIX/sbin/urbackuprestoreclient" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
     then
         echo "(Glibc not installed or too old (2). Falling back to Android NDK build...)"
-        TARGET=x86_64-linux-android
+        TARGET=${TARGET%-glibc}-android
     fi
 fi
 
