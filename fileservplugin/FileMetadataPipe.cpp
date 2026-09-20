@@ -955,9 +955,9 @@ bool FileMetadataPipe::openFileHandle()
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		/* Data Deduplication keeps an optimized file's content in the volume's chunk store
-		   and marks the file with a reparse point. The file data is transferred rehydrated,
-		   so the reparse point must not be stored: restoring it would turn the file into a
-		   stub referring to a chunk store that does not exist on the restore target. */
+		   and marks the file with a reparse point. The file data is transferred normally,
+		   so the dedup data can be omitted: restoring it would also turn the file into a
+		   stub referring to chunks that may not exist. */
 		FILE_ATTRIBUTE_TAG_INFO tag_info;
 		if (GetFileInformationByHandleEx(hFile, FileAttributeTagInfo, &tag_info, sizeof(tag_info))
 			&& (tag_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
