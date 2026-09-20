@@ -540,6 +540,23 @@ bool FSImageFactory::isNTFS(char *buffer)
 	}
 }
 
+IFSImageFactory::ImageFormat FSImageFactory::detectImageFormat(const std::string &fn)
+{
+	const std::string ext = strlower(findextension(fn));
+	if(ext == "vhd" || ext == "avhd")
+		return ImageFormat_VHD;
+	else if(ext == "vhdx" || ext == "avhdx")
+		return ImageFormat_VHDX;
+	else if(ext == "vhdz")
+		return ImageFormat_CompressedVHD;
+	else if(ext == "vhdxz")
+		return ImageFormat_CompressedVHDX;
+	else if(ext == "raw")
+		return ImageFormat_RawCowFile;
+	else
+		return ImageFormat_Unknown; // default fallback
+}
+
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
 	unsigned int pBlocksize, bool fast_mode, ImageFormat format, size_t n_compress_threads)
 {

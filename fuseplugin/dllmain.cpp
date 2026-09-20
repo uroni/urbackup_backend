@@ -165,21 +165,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(2);
 	}
 
-	std::string extension = findextension(vhd_filename);
-
-	if (extension == "vhdx"
-		|| extension == "vhdxz")
-	{
-		vhdfile = image_fak->createVHDFile(vhd_filename, true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX);
-	}
-	else if(extension=="raw")
-	{
-		vhdfile = image_fak->createVHDFile(vhd_filename, true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_RawCowFile);
-	}
-	else
-	{
-		vhdfile = image_fak->createVHDFile(vhd_filename, true, 0);	
-	}
+	vhdfile = image_fak->createVHDFile(vhd_filename, true, 0,
+		 2 * 1024 * 1024, false, image_fak->detectImageFormat(vhd_filename));
 	
 	if(vhdfile==NULL || !vhdfile->isOpen())
 	{
