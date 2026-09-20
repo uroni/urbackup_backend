@@ -1170,19 +1170,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 		std::string file_extension = strlower(findextension(res[0]["path"]));
 
-		IVHDFile *vhdfile;
-		if (file_extension == "raw")
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_RawCowFile); 
-		}
-		else if (file_extension == "vhdx" || file_extension == "vhdxz")
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX);
-		}
-		else
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0);
-		}
+		IVHDFile *vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0,
+			 2 * 1024 * 1024, false, image_fak->detectImageFormat(res[0]["path"])); 
 
 		ScopedDestroyVhdfile destroy_vhdfile(vhdfile);
 

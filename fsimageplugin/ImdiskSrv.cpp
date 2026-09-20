@@ -8,6 +8,7 @@
 #include <Subauth.h>
 #include "../external/imdisk/imdproxy.h"
 #include "../external/imdisk/imdisk.h"
+#include "FSImageFactory.h"
 #include <string>
 #include <algorithm>
 #include <memory>
@@ -226,14 +227,15 @@ namespace
 
 			std::auto_ptr<IFile> imgf;
 
-			std::auto_ptr<VHDFile> vhdfile;
+			std::auto_ptr<IVHDFile> vhdfile;
 			if (ext == "raw")
 			{
 				imgf.reset(Server->openFile(img_fn, MODE_READ));
 			}
 			else
 			{
-				vhdfile.reset(new VHDFile(img_fn, true, 0));
+				FSImageFactory img_fak;
+				vhdfile.reset(img_fak.createVHDFile(img_fn, true, 0, 2 * 1024 * 1024, false, img_fak.detectImageFormat(img_fn), 0));
 				if (vhdfile->isOpen())
 				{
 					imgf.reset(new FileWrapper(vhdfile.get(), 0));
