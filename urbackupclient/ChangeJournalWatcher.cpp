@@ -147,7 +147,10 @@ namespace usn
 	}
 }
 
-const DWORDLONG usn_reindex_num=1000000; // one million
+const DWORDLONG usn_reindex_num=1000000; // one million records
+// USN values are byte offsets into the journal, so NextUsn-last_record is a byte count.
+// Dividing by the smallest possible record gives an upper bound on the pending record count.
+const DWORDLONG usn_min_record_size=sizeof(USN_RECORD);
 
 //#define MFT_ON_DEMAND_LOOKUP
 
@@ -472,9 +475,9 @@ void ChangeJournalWatcher::watchDir(const std::string &dir)
 			needs_reindex=true;
 		}
 
-		if( do_index==false && data.NextUsn-info.last_record>usn_reindex_num )
+		if( do_index==false && (data.NextUsn-info.last_record)/usn_min_record_size>usn_reindex_num )
 		{
-			Server->Log("There are "+convert(data.NextUsn-info.last_record)+" new USN entries at '"+vol+"' - reindexing", LL_WARNING);
+			Server->Log("There are up to "+convert((data.NextUsn-info.last_record)/usn_min_record_size)+" new USN entries at '"+vol+"' - reindexing", LL_WARNING);
 			needs_reindex=true;
 		}
 
