@@ -19,6 +19,8 @@
  */
 #define _CRT_SECURE_NO_WARNINGS
 
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+
 /* for _may_i_use_cpu_feature */
 #include <immintrin.h>
 
@@ -89,3 +91,13 @@ bool aws_common_private_has_avx2(void) {
 
     return available;
 }
+
+#else
+
+#include <aws/common/common.h>
+
+bool aws_common_private_has_avx2(void) {
+    return false;
+}
+
+#endif

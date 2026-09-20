@@ -14,10 +14,11 @@
  */
 
 #include <aws/checksums/private/cpuid.h>
-#include <intrin.h>
 #include <inttypes.h>
 
 #if defined(_M_X64) || defined(_M_IX86)
+
+#include <intrin.h>
 
 static int s_cpuid_check_ran = 0;
 static int32_t s_cpuid_output = 0;

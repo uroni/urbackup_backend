@@ -14,9 +14,10 @@
  */
 
 #include <aws/checksums/private/crc_priv.h>
-#include <intrin.h>
 
 #if defined(_M_X64) || defined(_M_IX86)
+
+#include <intrin.h>
 
 #    if defined(_M_X64)
 typedef uint64_t *slice_ptr_type;
