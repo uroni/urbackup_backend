@@ -164,8 +164,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Error loading fsimageplugin", LL_ERROR);
 		exit(2);
 	}
-	
-	vhdfile = image_fak->createVHDFile(vhd_filename, true, 0);
+
+	vhdfile = image_fak->createVHDFile(vhd_filename, true, 0,
+		 2 * 1024 * 1024, false, image_fak->detectImageFormat(vhd_filename));
 	
 	if(vhdfile==NULL || !vhdfile->isOpen())
 	{
