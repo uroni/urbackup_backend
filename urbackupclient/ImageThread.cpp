@@ -231,6 +231,8 @@ bool ImageThread::sendFullImageThread(void)
 				break;
 			}
 
+			excludeFiles(fs.get());
+
 			curr_fs = fs.get();
 
 			unsigned int blocksize=(unsigned int)fs->getBlocksize();
@@ -487,6 +489,46 @@ bool ImageThread::sendFullImageThread(void)
 	return success;
 }
 
+void ImageThread::excludeFiles(IFilesystem* fs)
+{
+	class ExcludeCallback : public IFsExcludeCallback
+	{
+	public:
+		ExcludeCallback(const std::vector<std::string>& patterns) : patterns(patterns) {}
+		virtual bool isExcluded(const std::string& path)
+		{
+			return IndexThread::isExcluded(patterns, path);
+		}
+		const std::vector<std::string>& patterns;
+	};
+
+	std::vector<std::string> patterns=IndexThread::readExcludePatterns(image_inf->clientsubname);
+	if(patterns.empty())
+	{
+		Server->Log("No exclusion patterns for the image of "+image_inf->image_letter, LL_DEBUG);
+		return;
+	}
+
+	std::string volume_root=image_inf->image_letter;
+	if(!volume_root.empty() && volume_root[volume_root.size()-1]==os_file_sep()[0])
+		volume_root.erase(volume_root.size()-1);
+#ifdef _WIN32
+	if(volume_root.size()==1)
+		volume_root+=":";
+#endif
+
+	ExcludeCallback callback(patterns);
+	int64 excluded=fs->excludeMatchingFiles(volume_root, &callback);
+	if(excluded<0)
+	{
+		Server->Log("Exclusion list not applied to the image of "+volume_root+": not supported on this file system", LL_INFO);
+	}
+	else
+	{
+		Server->Log("Excluded "+PrettyPrintBytes(excluded)+" of files matching the exclusion list ("+convert(patterns.size())+" patterns) from the image of "+volume_root, LL_INFO);
+	}
+}
+
 void ImageThread::removeShadowCopyThread(int save_id)
 {
 	if(!image_inf->no_shadowcopy)
@@ -619,6 +661,8 @@ bool ImageThread::sendIncrImageThread(void)
 				run = false;
 				break;
 			}
+
+			excludeFiles(fs.get());
 
 			int64 changed_blocks = 0;
 			int64 unchanged_blocks = 0;

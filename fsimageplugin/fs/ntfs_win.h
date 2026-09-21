@@ -16,6 +16,8 @@ public:
 
 	virtual std::string getType();
 
+	virtual int64 excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback);
+
 private:
 	void logFileChangesInt(const std::string& volpath, int64 min_size, char* fc_bitmap, int64& total_files, int64& total_changed_sectors);
 

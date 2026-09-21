@@ -99,6 +99,7 @@ public:
 	bool excludeFile(const std::string& path);
 	bool excludeSectors(int64 start, int64 count);
 	bool excludeBlock(int64 block);
+	virtual int64 excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback) { return -1; }
 
 protected:
 	bool readFromDev(char *buf, _u32 bsize);

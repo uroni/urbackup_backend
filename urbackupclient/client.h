@@ -386,6 +386,7 @@ public:
 
 	static std::vector<std::string> buildExcludeList(const std::string& val);
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
+	static std::vector<std::string> readExcludePatterns(const std::string& clientsubname);
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
 	static bool isExcluded(const std::vector<std::string>& exclude_dirs, const std::string &path);

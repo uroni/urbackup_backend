@@ -19,7 +19,9 @@
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
 #include "ntfs.h"
+#include "../../urbackupcommon/os_functions.h"
 #include <math.h>
+#include <set>
 #include <memory.h>
 
 #ifndef _WIN32
@@ -166,6 +168,10 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 	}
 
 	Runlist mftrunlist(mftrecord+currpos+datastream.run_offset );
+
+	this->mftrecordsize=mftrecordsize;
+	mftsize=datastream.real_size;
+	mftrunlist_data.assign(mftrecord+currpos+datastream.run_offset, mftrecord+currpos+attr.length);
 
 	unsigned int bitmap_vcn=(6*mftrecordsize)/clustersize;
 	uint64 bitmap_lcn=mftrunlist.getLCN(bitmap_vcn);
@@ -366,6 +372,303 @@ void FSNTFS::logFileChanges(std::string volpath, int64 min_size, char * fc_bitma
 std::string FSNTFS::getType()
 {
 	return "ntfs";
+}
+
+namespace
+{
+	const unsigned int mft_attr_attribute_list=0x20;
+	const unsigned int mft_attr_filename=0x30;
+	const unsigned int mft_attr_data=0x80;
+	const unsigned int mft_attr_end=0xFFFFFFFF;
+	const unsigned short mft_record_in_use=1;
+	const unsigned short mft_record_directory=2;
+	const unsigned char mft_filename_dos=2;
+	const uint64 mft_ref_mask=0xFFFFFFFFFFFFULL;
+	const uint64 mft_root_record=5;
+
+	bool nextAttribute(const char* record, unsigned int recordsize, unsigned int& pos, MFTAttribute& attr)
+	{
+		if(pos+sizeof(MFTAttribute)>recordsize)
+			return false;
+		memcpy(&attr, record+pos, sizeof(MFTAttribute));
+		return attr.type!=mft_attr_end && attr.length>=sizeof(MFTAttribute) && pos+attr.length<=recordsize;
+	}
+
+	struct SMftName
+	{
+		uint64 parent_ref;
+		std::string name;
+	};
+
+	//Win32/POSIX names; the 8.3 aliases only when there is nothing else
+	void fileNames(const char* record, unsigned int recordsize, std::vector<SMftName>& names)
+	{
+		std::vector<SMftName> dos_names;
+		unsigned int pos=reinterpret_cast<const NTFSFileRecord*>(record)->attribute_offset;
+		MFTAttribute attr;
+		for(;nextAttribute(record, recordsize, pos, attr);pos+=attr.length)
+		{
+			if(attr.type!=mft_attr_filename || attr.nonresident!=0
+				|| pos+attr.attribute_offset+sizeof(MFTAttributeFilename)>recordsize)
+				continue;
+
+			MFTAttributeFilename fn;
+			memcpy(&fn, record+pos+attr.attribute_offset, sizeof(MFTAttributeFilename));
+			size_t name_pos=pos+attr.attribute_offset+sizeof(MFTAttributeFilename);
+			if(name_pos+fn.filename_length*2>recordsize)
+				continue;
+
+			SMftName name;
+			name.parent_ref=fn.parent_ref;
+			name.name=Server->ConvertFromUTF16(std::string(record+name_pos, fn.filename_length*2));
+			(fn.filename_namespace==mft_filename_dos ? dos_names : names).push_back(name);
+		}
+		if(names.empty())
+			names=dos_names;
+	}
+
+	struct SDirEntry
+	{
+		uint64 parent_ref;
+		unsigned short sequence_number;
+		std::string name;
+	};
+}
+
+class FSNTFS::IMftRecordVisitor
+{
+public:
+	virtual void record(uint64 recno, const char* data, const NTFSFileRecord& header) = 0;
+};
+
+bool FSNTFS::readMftClusters(uint64 vcn, uint64 count, char* buf)
+{
+	Runlist runlist(mftrunlist_data.data());
+	for(uint64 i=0;i<count;)
+	{
+		uint64 lcn=runlist.getLCN(vcn+i);
+		if(lcn==UD_UINT64)
+			return false;
+		uint64 n=1;
+		while(i+n<count && runlist.getLCN(vcn+i+n)==lcn+n)
+			++n;
+		dev->Seek(lcn*clustersize);
+		if(dev->Read(buf+i*clustersize, static_cast<_u32>(n*clustersize))!=n*clustersize)
+			return false;
+		i+=n;
+	}
+	return true;
+}
+
+bool FSNTFS::walkMft(IMftRecordVisitor& visitor)
+{
+	const uint64 chunk_clusters=(1024*1024)/clustersize;
+	std::vector<char> buf(static_cast<size_t>(chunk_clusters*clustersize));
+	uint64 nrecords=mftsize/mftrecordsize;
+	for(uint64 vcn=0, recno=0;recno<nrecords;vcn+=chunk_clusters)
+	{
+		uint64 count=(std::min)(chunk_clusters, (mftsize-vcn*clustersize+clustersize-1)/clustersize);
+		if(!readMftClusters(vcn, count, buf.data()))
+		{
+			Server->Log("Error reading MFT cluster "+convert(vcn), LL_ERROR);
+			return false;
+		}
+		for(size_t off=0;off+mftrecordsize<=count*clustersize && recno<nrecords;off+=mftrecordsize, ++recno)
+		{
+			char* record=buf.data()+off;
+			NTFSFileRecord header;
+			memcpy(&header, record, sizeof(NTFSFileRecord));
+			if(memcmp(header.magic, "FILE", 4)!=0
+				|| !(header.flags & mft_record_in_use)
+				|| header.sequence_offset+header.sequence_size*2>mftrecordsize
+				|| !applyFixups(record, mftrecordsize, record+header.sequence_offset, header.sequence_size*2))
+				continue;
+			visitor.record(recno, record, header);
+		}
+	}
+	return true;
+}
+
+int64 FSNTFS::excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback)
+{
+	return excludeMatchingFilesInto(volume_root, callback, this);
+}
+
+int64 FSNTFS::excludeMatchingFilesInto(const std::string& volume_root, IFsExcludeCallback* callback, Filesystem* target)
+{
+	//Pass 1: the directory tree, so that every file name can be resolved to a full path
+	class DirVisitor : public IMftRecordVisitor
+	{
+	public:
+		std::map<uint64, SDirEntry> dirs;
+
+		virtual void record(uint64 recno, const char* data, const NTFSFileRecord& header)
+		{
+			if(!(header.flags & mft_record_directory) || header.base_record!=0)
+				return;
+			std::vector<SMftName> names;
+			fileNames(data, header.real_size, names);
+			if(names.empty())
+				return;
+			SDirEntry& e=dirs[recno];
+			e.parent_ref=names[0].parent_ref;
+			e.sequence_number=header.squence_number;
+			e.name=names[0].name;
+		}
+	} dir_visitor;
+
+	if(!walkMft(dir_visitor))
+		return -1;
+
+	//Pass 2: match every file with all its names (hard links share the data) and drop the data runs of the matches
+	class FileVisitor : public IMftRecordVisitor
+	{
+	public:
+		FileVisitor(Filesystem* fs, const std::string& root, const std::map<uint64, SDirEntry>& dirs, IFsExcludeCallback* callback)
+			: fs(fs), root(root), dirs(dirs), callback(callback), total_clusters(fs->getSize()/fs->getBlocksize()),
+			  excluded_bytes(0), n_excluded(0) {}
+
+		bool path(uint64 dir_ref, std::string& out, size_t depth=0)
+		{
+			uint64 recno=dir_ref & mft_ref_mask;
+			if(recno==mft_root_record)
+			{
+				out=root;
+				return true;
+			}
+			std::map<uint64, std::string>::iterator it_cached=paths.find(recno);
+			if(it_cached!=paths.end())
+			{
+				out=it_cached->second;
+				return true;
+			}
+			std::map<uint64, SDirEntry>::const_iterator it=dirs.find(recno);
+			if(depth>255 || it==dirs.end() || it->second.sequence_number!=(dir_ref>>48))
+				return false;
+			if(!path(it->second.parent_ref, out, depth+1))
+				return false;
+			out+=os_file_sep()+it->second.name;
+			paths[recno]=out;
+			return true;
+		}
+
+		bool isExcluded(const char* data, const NTFSFileRecord& header)
+		{
+			std::vector<SMftName> names;
+			fileNames(data, header.real_size, names);
+			if(names.empty())
+				return false;
+			for(size_t i=0;i<names.size();++i)
+			{
+				std::string p;
+				if(!path(names[i].parent_ref, p) || !callback->isExcluded(p+os_file_sep()+names[i].name))
+					return false;
+			}
+			return true;
+		}
+
+		void excludeData(const char* data, const NTFSFileRecord& header)
+		{
+			unsigned int pos=header.attribute_offset;
+			MFTAttribute attr;
+			for(;nextAttribute(data, header.real_size, pos, attr);pos+=attr.length)
+			{
+				if(attr.type!=mft_attr_data || attr.nonresident!=1)
+					continue;
+				MFTAttributeNonResident nr;
+				memcpy(&nr, data+pos, sizeof(MFTAttributeNonResident));
+				const char* p=data+pos+nr.run_offset;
+				const char* end=data+pos+attr.length;
+				int64 lcn=0;
+				while(p<end && *p!=0)
+				{
+					unsigned char length_size=*p & 0x0F;
+					unsigned char offset_size=*p >> 4;
+					if(p+1+length_size+offset_size>end || length_size>8 || offset_size>8)
+						break;
+					uint64 length=0;
+					memcpy(&length, p+1, length_size);
+					if(offset_size>0) //otherwise a sparse run without clusters
+					{
+						int64 offset=0;
+						memcpy(&offset, p+1+length_size, offset_size);
+						if(offset_size<8 && (offset>>(offset_size*8-1))&1)
+							offset-=(int64)1<<(offset_size*8);
+						lcn+=offset;
+						if(lcn>=0 && static_cast<int64>(length)>=0 && static_cast<int64>(length)<=total_clusters-lcn)
+						{
+							fs->excludeSectors(lcn, length);
+							excluded_bytes+=length*fs->getBlocksize();
+						}
+					}
+					p+=1+length_size+offset_size;
+				}
+			}
+		}
+
+		virtual void record(uint64 recno, const char* data, const NTFSFileRecord& header)
+		{
+			if(header.flags & mft_record_directory)
+				return;
+			if(header.base_record!=0)
+			{
+				//Extension record of a file with an attribute list: its data belongs to the base record
+				uint64 base=header.base_record & mft_ref_mask;
+				if(excluded_bases.find(base)!=excluded_bases.end())
+					excludeData(data, header);
+				else if(base>recno)
+					pending_extensions.push_back(recno);
+				return;
+			}
+			if(!isExcluded(data, header))
+				return;
+			++n_excluded;
+			excludeData(data, header);
+			unsigned int pos=header.attribute_offset;
+			MFTAttribute attr;
+			for(;nextAttribute(data, header.real_size, pos, attr);pos+=attr.length)
+			{
+				if(attr.type==mft_attr_attribute_list)
+					excluded_bases.insert(recno);
+			}
+		}
+
+		Filesystem* fs;
+		std::string root;
+		const std::map<uint64, SDirEntry>& dirs;
+		IFsExcludeCallback* callback;
+		int64 total_clusters;
+		std::map<uint64, std::string> paths;
+		std::set<uint64> excluded_bases;
+		std::vector<uint64> pending_extensions;
+		int64 excluded_bytes;
+		size_t n_excluded;
+	} file_visitor(target, volume_root, dir_visitor.dirs, callback);
+
+	if(!walkMft(file_visitor))
+		return -1;
+
+	//Extension records that came before their base record
+	uint64 mftclusters=(mftsize+clustersize-1)/clustersize;
+	std::vector<char> buf(static_cast<size_t>((mftrecordsize/clustersize+2)*clustersize));
+	for(size_t i=0;i<file_visitor.pending_extensions.size();++i)
+	{
+		uint64 recno=file_visitor.pending_extensions[i];
+		uint64 vcn=(recno*mftrecordsize)/clustersize;
+		if(!readMftClusters(vcn, (std::min)(static_cast<uint64>(buf.size()/clustersize), mftclusters-vcn), buf.data()))
+			continue;
+		char* rec=buf.data()+(recno*mftrecordsize)%clustersize;
+		NTFSFileRecord header;
+		memcpy(&header, rec, sizeof(NTFSFileRecord));
+		if(file_visitor.excluded_bases.find(header.base_record & mft_ref_mask)!=file_visitor.excluded_bases.end()
+			&& applyFixups(rec, mftrecordsize, rec+header.sequence_offset, header.sequence_size*2))
+		{
+			file_visitor.excludeData(rec, header);
+		}
+	}
+
+	Server->Log("Excluded "+convert(file_visitor.n_excluded)+" files from the image of "+volume_root, LL_DEBUG);
+	return file_visitor.excluded_bytes;
 }
 
 bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTFSFileRecord &mft, bool fix)
