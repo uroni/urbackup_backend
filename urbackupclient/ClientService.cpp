@@ -1975,12 +1975,58 @@ void ClientConnector::updateSettings(const std::string &pData, const std::string
 		saveBackupDirs(args, true, group_offset, facet_id);
 	}
 
+	std::string data_to_write = pData;
+	std::string keep_old_settings_val;
+	if (new_settings->getValue("keep_old_settings", &keep_old_settings_val)
+		&& keep_old_settings_val == "true"
+		&& curr_settings.get() != nullptr)
+	{
+		// Partial update (e.g. from `set-settings`/clientctl, which only sends
+		// the keys being changed): merge onto the existing settings.cfg instead
+		// of replacing it wholesale, which previously silently dropped every
+		// other setting (this flag was never actually read).
+		std::vector<std::string> old_keys = curr_settings->getKeys();
+		std::vector<std::string> new_keys = new_settings->getKeys();
+
+		std::string merged_data;
+		std::vector<std::string> written_keys;
+
+		for (size_t i = 0; i < old_keys.size(); ++i)
+		{
+			if (old_keys[i] == "keep_old_settings")
+				continue;
+
+			std::string val;
+			if (!new_settings->getValue(old_keys[i], &val))
+			{
+				curr_settings->getValue(old_keys[i], &val);
+			}
+
+			merged_data += old_keys[i] + "=" + val + "\n";
+			written_keys.push_back(old_keys[i]);
+		}
+
+		for (size_t i = 0; i < new_keys.size(); ++i)
+		{
+			if (new_keys[i] == "keep_old_settings"
+				|| std::find(written_keys.begin(), written_keys.end(), new_keys[i]) != written_keys.end())
+				continue;
+
+			std::string val;
+			new_settings->getValue(new_keys[i], &val);
+			merged_data += new_keys[i] + "=" + val + "\n";
+		}
+
+		data_to_write = merged_data;
+		mod = true;
+	}
+
 	if(mod
-		|| getFile(settings_fn)!= pData)
+		|| getFile(settings_fn)!= data_to_write)
 	{
 		std::unique_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != nullptr
-			&& newf->Write(pData+ settings_add) == pData.size()+settings_add.size()
+			&& newf->Write(data_to_write+ settings_add) == data_to_write.size()+settings_add.size()
 			&& newf->Sync())
 		{
 			newf.reset();
