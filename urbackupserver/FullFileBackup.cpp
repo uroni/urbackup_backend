@@ -986,8 +986,8 @@ bool FullFileBackup::doFileBackup()
 		}
 	}
 
-	_i64 transferred_bytes=fc.getTransferredBytes();
-	_i64 transferred_compressed=fc.getRealTransferredBytes();
+	_i64 transferred_bytes=fc.getTransferredBytes()+server_download->getTransferredBytes();
+	_i64 transferred_compressed=fc.getRealTransferredBytes()+server_download->getRealTransferredBytes();
 	int64 passed_time=transfer_stop_time-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 

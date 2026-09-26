@@ -53,6 +53,14 @@ public:
 
 	bool join(int waitms);
 
+	//Bytes transferred by the FileClients this group created for the additional
+	//download threads. The first thread uses the FileClient handed to the
+	//constructor, which the caller accounts for itself, so its entry is NULL here
+	//and contributes nothing.
+	int64 getTransferredBytes();
+
+	int64 getRealTransferredBytes();
+
 private:
 	ServerDownloadThread* getMinQueued();
 
