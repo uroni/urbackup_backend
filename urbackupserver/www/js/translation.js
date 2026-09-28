@@ -1519,6 +1519,7 @@ translations.en = {
 "no_client_selected": "No client has been selected",
 "starting_backup_failed": "Starting backup failed",
 "trying_to_stop_backup": "Trying to stop backup. This might take a while.",
+"really_stop_backup": "Are you sure you want to stop this backup?",
 "unarchived_in": "Will stop being archived in",
 "validate_err_notregexp_archive_window": "Format for archive window wrong",
 "wait_for_archive_window": "Waiting for window/next run",

@@ -5902,6 +5902,8 @@ function backups_started(data)
 }
 function stopBackup(clientid, id)
 {
+	if(!confirm(trans("really_stop_backup"))) return;
+	
 	if(!startLoading()) return;
 	
 	alert(trans("trying_to_stop_backup"));
