@@ -123,6 +123,7 @@ private:
 
 	void do_cleanup(void);
 	bool do_cleanup(int64 minspace, bool do_cleanup_other=false);
+	void saveCleanupLog(void);
 
 	void do_remove_unknown(void);
 

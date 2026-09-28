@@ -2,6 +2,7 @@
 
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
+#include <set>
 
 struct SLogEntry
 {
@@ -59,6 +60,8 @@ public:
 
 	static void reset(logid_t id);
 
+	static void enableMemoryLog(logid_t id);
+
 	static void reset(int clientid);
 
 	static std::vector<SCircularLogEntry> getCircularLogdata(int clientid, size_t minid, logid_t logid);
@@ -78,6 +81,7 @@ private:
 	static std::map<logid_t, SLogData> logdata;
 	static std::map<int, SCircularData> circular_logdata;
 	static std::map<logid_t, int> logid_client;
+	static std::set<logid_t> memory_logids;
 	static IMutex *mutex;
 	static logid_t logid_gen;
 };
