@@ -126,10 +126,12 @@ void ServerCleanupThread::operator()(void)
 		}	break;
 		case ECleanupAction_FreeMinspace:
 			{
+				ServerLogger::enableMemoryLog(logid);
 				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.cleanup_other);
+				saveCleanupLog();
 				if(cleanup_action.result!=NULL)
 				{
 					*(cleanup_action.result)=b;
@@ -214,10 +216,12 @@ void ServerCleanupThread::operator()(void)
 
 			{
 				logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ServerLogger::enableMemoryLog(logid);
 				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				do_cleanup();
+				saveCleanupLog();
 			}
 			
 			cleanupdao.reset();
@@ -353,12 +357,15 @@ void ServerCleanupThread::operator()(void)
 
 				{
 					logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+					ServerLogger::enableMemoryLog(logid);
 					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 					deletePendingClients();
 					do_cleanup();
 
 					enforce_quotas();
+
+					saveCleanupLog();
 				}
 
 				cleanupdao.reset();
@@ -527,6 +534,22 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool do_cleanup_other)
 	FileIndex::flush();
 
 	return success;
+}
+
+void ServerCleanupThread::saveCleanupLog(void)
+{
+	int errors = 0;
+	int warnings = 0;
+	int infos = 0;
+	std::string logdata = ServerLogger::getLogdata(logid, errors, warnings, infos);
+
+	if (!logdata.empty())
+	{
+		cleanupdao->saveCleanupLog(errors, warnings, infos);
+		backupdao->saveBackupLogData(db->getLastInsertID(), logdata);
+	}
+
+	ServerLogger::reset(logid);
 }
 
 void ServerCleanupThread::do_remove_unknown(void)

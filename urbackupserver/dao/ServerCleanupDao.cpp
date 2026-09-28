@@ -1239,6 +1239,26 @@ void ServerCleanupDao::cleanupBackupLogs(void)
 
 /**
 * @-SQLGenAccess
+* @func void ServerCleanupDao::saveCleanupLog
+* @sql
+*     INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed, restore)
+*             VALUES (NULL, :errors(int), :warnings(int), :infos(int), 0, 0, 0, 0)
+*/
+void ServerCleanupDao::saveCleanupLog(int errors, int warnings, int infos)
+{
+	if(q_saveCleanupLog==NULL)
+	{
+		q_saveCleanupLog=db->Prepare("INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed, restore) VALUES (NULL, ?, ?, ?, 0, 0, 0, 0)", false);
+	}
+	q_saveCleanupLog->Bind(errors);
+	q_saveCleanupLog->Bind(warnings);
+	q_saveCleanupLog->Bind(infos);
+	q_saveCleanupLog->Write();
+	q_saveCleanupLog->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerCleanupDao::cleanupAuthLog
 * @sql
 *     DELETE FROM settings_db.login_access_log WHERE date(logintime, '+182 days')<date('now')
@@ -1519,6 +1539,7 @@ void ServerCleanupDao::createQueries(void)
 	q_findFileBackup=NULL;
 	q_getUsedStorage=NULL;
 	q_cleanupBackupLogs=NULL;
+	q_saveCleanupLog=NULL;
 	q_cleanupAuthLog=NULL;
 	q_getIncompleteFileBackups=NULL;
 	q_getDeletePendingFileBackups=NULL;
@@ -1581,6 +1602,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_findFileBackup);
 	db->destroyQuery(q_getUsedStorage);
 	db->destroyQuery(q_cleanupBackupLogs);
+	db->destroyQuery(q_saveCleanupLog);
 	db->destroyQuery(q_cleanupAuthLog);
 	db->destroyQuery(q_getIncompleteFileBackups);
 	db->destroyQuery(q_getDeletePendingFileBackups);
