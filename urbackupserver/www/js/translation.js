@@ -1740,6 +1740,8 @@ translations.en = {
 "image_backup": "Image backup",
 "action_14": "Nightly clean-up",
 "action_15": "Emergency clean-up",
+"action_cleanup": "Clean-up",
+"server_cleanup": "Server clean-up",
 "action_16": "Storage migration",
 "default_group": "Default",
 "filter_group": "Groups",
