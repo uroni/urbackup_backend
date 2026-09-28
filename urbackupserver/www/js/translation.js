@@ -1384,6 +1384,7 @@ translations.en = {
 "tIP": "IP",
 "tClient version": "Client version",
 "tOperating System": "Operating System",
+"tClient ID": "Client ID",
 "tShow all clients": "Show all clients",
 "tThis client is going to be removed. ": "This client is going to be removed. ",
 "First": "First",
