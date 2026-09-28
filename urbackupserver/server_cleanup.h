@@ -126,6 +126,8 @@ private:
 
 	void do_remove_unknown(void);
 
+	void runStartupCleanup(void);
+
 	bool correct_target(const std::string& backupfolder, std::string& target);
 
 	bool correct_poolname(const std::string& backupfolder, const std::string& clientname, const std::string& pool_name, std::string& pool_path);
@@ -139,6 +141,9 @@ private:
 	bool cleanup_one_imagebackup_client(int clientid, int64 minspace, int& imagebid);
 
 	void cleanup_images(int64 minspace=-1);
+
+	void delete_incomplete_image_backups(void);
+	void delete_pending_image_backups(void);
 
 	void cleanup_files(int64 minspace=-1);
 

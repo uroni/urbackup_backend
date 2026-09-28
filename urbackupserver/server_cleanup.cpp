@@ -167,6 +167,12 @@ void ServerCleanupThread::operator()(void)
 	}
 #endif
 
+	{
+		ScopedActiveThread sat;
+		IScopedLock lock(a_mutex);
+		runStartupCleanup();
+	}
+
 	if (FileExists("urbackup/migrate_storage_to"))
 	{
 		std::string migrate_storage_to = trim(getFile("urbackup/migrate_storage_to"));
@@ -421,6 +427,40 @@ void ServerCleanupThread::enableUpdateStats()
 {
 	IScopedLock lock(mutex);
 	update_stats_disabled = false;
+}
+
+void ServerCleanupThread::runStartupCleanup(void)
+{
+	ServerSettings settings(db);
+	if (!os_directory_exists(settings.getSettings()->backupfolder))
+	{
+		Server->Log("Backupfolder \"" + settings.getSettings()->backupfolder + "\" does not exist. Not running startup cleanup of incomplete backups.", LL_WARNING);
+		return;
+	}
+
+	cleanupdao.reset(new ServerCleanupDao(db));
+	backupdao.reset(new ServerBackupDao(db));
+	filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
+	fileindex.reset(create_lmdb_files_index());
+
+	logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+	{
+		ScopedProcess startup_cleanup(std::string(), sa_startup_recovery, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
+
+		//Incomplete/aborted backups (e.g. from a server crash or restart mid-backup) are normally
+		//only reclaimed during the once-nightly cleanup window. If the server keeps restarting
+		//before that window is ever reached, partial backups (which can be many GB for images)
+		//never get cleaned up. Run the same, already-safe incomplete-backup sweep once at startup too.
+		delete_incomplete_file_backups();
+		delete_pending_file_backups();
+		delete_incomplete_image_backups();
+		delete_pending_image_backups();
+	}
+
+	cleanupdao.reset();
+	backupdao.reset();
+	filesdao.reset();
+	fileindex.reset();
 }
 
 void ServerCleanupThread::do_cleanup(void)
@@ -1026,7 +1066,7 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 	return false;
 }
 
-void ServerCleanupThread::cleanup_images(int64 minspace)
+void ServerCleanupThread::delete_incomplete_image_backups(void)
 {
 	std::vector<ServerCleanupDao::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
 	for(size_t i=0;i<incomplete_images.size();++i)
@@ -1042,7 +1082,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			cleanupdao->removeImage(incomplete_images[i].id);
 		}
 	}
+}
 
+void ServerCleanupThread::delete_pending_image_backups(void)
+{
 	std::vector<ServerCleanupDao::SIncompleteImages> delete_pending_images = cleanupdao->getDeletePendingImages();
 
 	if (!delete_pending_images.empty())
@@ -1065,6 +1108,12 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			}
 		}
 	}
+}
+
+void ServerCleanupThread::cleanup_images(int64 minspace)
+{
+	delete_incomplete_image_backups();
+	delete_pending_image_backups();
 
 	ServerSettings settings(db);
 	cleanup_all_system_images(settings);
