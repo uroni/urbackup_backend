@@ -352,8 +352,8 @@ namespace
 
 		for(size_t i=0;i<fn.size();++i)
 		{
-			VHDFile* in(new VHDFile(fn[i], true, 0));
-			if(!in->isOpen())
+			IVHDFile* in = open_device_file(fn[i]);
+			if(in==NULL || !in->isOpen())
 			{
 				Server->Log("Error opening VHD-File \""+fn[i]+"\"", LL_ERROR);
 				return false;
