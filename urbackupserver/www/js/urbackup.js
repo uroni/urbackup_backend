@@ -5142,7 +5142,7 @@ function show_logs2(data)
 				c="selected=\"selected\"";
 			}
 			np+="<option value=\""+obj.id+"\" "+c+">";
-			np+=obj.name;
+			np+=obj.cleanup ? trans("server_cleanup") : obj.name;
 			np+="</option>";
 		}
 		np+="</span>";
@@ -5226,6 +5226,12 @@ function show_logs2(data)
 			
 			obj.action=trans(a);
 			
+			if(obj.cleanup)
+			{
+				obj.name=trans("server_cleanup");
+				obj.action=trans("action_cleanup");
+			}
+			
 			obj.time = format_unix_timestamp(obj.time);
 			
 			rows+=dustRender("logs_row", obj);
@@ -5265,7 +5271,7 @@ function show_logs2(data)
 		var rows=createLog(g.logdata,ll);
 		if(rows=="")
 			rows=dustRender("log_single_none");
-		g.logclientname=data.log.clientname;
+		g.logclientname=data.log.cleanup ? trans("server_cleanup") : data.log.clientname;
 		var params="";
 		if(g.has_logsfilter)
 			params+="ll="+g.logsfilter;
@@ -5274,7 +5280,7 @@ function show_logs2(data)
 			if(params.length>0) params+="&";
 			params+="filter="+g.logclients;
 		}
-		ndata+=dustRender("log_single", {rows:rows, name: data.log.clientname, params: params});
+		ndata+=dustRender("log_single", {rows:rows, name: g.logclientname, params: params});
 	}
 	
 	if(data.saved_ok)
