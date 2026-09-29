@@ -8,6 +8,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"
 #include "server_cleanup.h"
+#include <memory>
 #include <assert.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -428,10 +429,12 @@ namespace
 	class MountImageThread : public IThread
 	{
 		int backupid;
-		std::string& errmsg;
+		// Shared with the caller, because the caller stops waiting after its
+		// timeout while the mount keeps running
+		std::shared_ptr<std::string> errmsg;
 		int partition;
 	public:
-		MountImageThread(int backupid, int partition, std::string& errmsg)
+		MountImageThread(int backupid, int partition, std::shared_ptr<std::string> errmsg)
 			: backupid(backupid), partition(partition), errmsg(errmsg)
 		{
 
@@ -439,7 +442,7 @@ namespace
 
 		void operator()()
 		{
-			ImageMount::mount_image_thread(backupid, partition, errmsg);
+			ImageMount::mount_image_thread(backupid, partition, *errmsg);
 			delete this;
 		}
 	};
@@ -451,6 +454,7 @@ bool ImageMount::mount_image_int(int backupid, int partition, ScopedMountedImage
 	IScopedLock lock(mount_processes_mutex);
 	std::map<SMountId, THREADPOOL_TICKET>::iterator it = mount_processes.find(SMountId(backupid, partition));
 	THREADPOOL_TICKET ticket;
+	std::shared_ptr<std::string> thread_errmsg;
 	if (it != mount_processes.end())
 	{
 		ticket = it->second;
@@ -458,13 +462,19 @@ bool ImageMount::mount_image_int(int backupid, int partition, ScopedMountedImage
 	}
 	else
 	{
-		ticket = Server->getThreadPool()->execute(new MountImageThread(backupid, partition, errmsg), "mnt image");
+		thread_errmsg = std::make_shared<std::string>();
+		ticket = Server->getThreadPool()->execute(new MountImageThread(backupid, partition, thread_errmsg), "mnt image");
 		mount_processes.insert(std::make_pair(SMountId(backupid, partition), ticket));
 		lock.relock(NULL);
 	}
 
 	if (Server->getThreadPool()->waitFor(ticket, static_cast<int>(timeoutms)))
 	{
+		if (thread_errmsg)
+		{
+			errmsg = *thread_errmsg;
+		}
+
 		IScopedLock lock(mount_processes_mutex);
 		std::map<SMountId, THREADPOOL_TICKET>::iterator it = mount_processes.find(SMountId(backupid, partition) );
 		if (it != mount_processes.end()
