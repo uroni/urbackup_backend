@@ -13,7 +13,7 @@ import styles from "./FileImageBackups.module.css";
 
 type Use = 1 | 2;
 
-interface InitialFormState {
+export interface InitialFormState {
   use: Use;
   value_group: boolean;
   value?: boolean;
