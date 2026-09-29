@@ -640,7 +640,7 @@ class UrBackupServer {
 
   // Generic function to fetch data from server
   fetchData = async (params: Record<string, string>, action: string) => {
-    const useTestoutput = true;
+    const useTestoutput = import.meta.env.VITE_USE_TEST_PROGRESS === "true";
 
     if (useTestoutput && action == "progress") return testoutputProgress;
 
