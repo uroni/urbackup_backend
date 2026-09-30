@@ -480,9 +480,14 @@ namespace backupaccess
 			if(!res[i]["archive_timeout"].empty())
 			{
 				archive_timeout=watoi64(res[i]["archive_timeout"]);
-				if(archive_timeout!=0)
+				if(archive_timeout>0)
 				{
 					archive_timeout-=Server->getTimeSeconds();
+				}
+				else
+				{
+					//Manual or archived forever (-1)
+					archive_timeout=0;
 				}
 			}
             if(archived!=0)
@@ -896,9 +901,14 @@ namespace backupaccess
 			if (!res[i]["archive_timeout"].empty())
 			{
 				archive_timeout = watoi64(res[i]["archive_timeout"]);
-				if (archive_timeout != 0)
+				if (archive_timeout > 0)
 				{
 					archive_timeout -= Server->getTimeSeconds();
+				}
+				else
+				{
+					//Manual or archived forever (-1)
+					archive_timeout = 0;
 				}
 			}
 			if (archived != 0)
@@ -936,9 +946,14 @@ namespace backupaccess
 			if (!res[0]["archive_timeout"].empty())
 			{
 				archive_timeout = watoi64(res[0]["archive_timeout"]);
-				if (archive_timeout != 0)
+				if (archive_timeout > 0)
 				{
 					archive_timeout -= Server->getTimeSeconds();
+				}
+				else
+				{
+					//Manual or archived forever (-1)
+					archive_timeout = 0;
 				}
 			}
 			if (archived != 0)

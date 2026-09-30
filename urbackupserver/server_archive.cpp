@@ -53,7 +53,7 @@ void ServerAutomaticArchive::operator()(void)
 
 void ServerAutomaticArchive::archiveTimeoutFileBackups()
 {
-	IQuery *q_timeout=db->Prepare("SELECT id FROM backups WHERE archived=1 AND archive_timeout<>0 AND archive_timeout<?");
+	IQuery *q_timeout=db->Prepare("SELECT id FROM backups WHERE archived=1 AND archive_timeout>0 AND archive_timeout<?");
 	if(q_timeout==NULL) return;
 
 	q_timeout->Bind(Server->getTimeSeconds());
@@ -71,7 +71,7 @@ void ServerAutomaticArchive::archiveTimeoutFileBackups()
 
 void ServerAutomaticArchive::archiveTimeoutImageBackups()
 {
-	IQuery *q_timeout = db->Prepare("SELECT id FROM backup_images WHERE archived=1 AND archive_timeout<>0 AND archive_timeout<?");
+	IQuery *q_timeout = db->Prepare("SELECT id FROM backup_images WHERE archived=1 AND archive_timeout>0 AND archive_timeout<?");
 	if (q_timeout == NULL) return;
 
 	q_timeout->Bind(Server->getTimeSeconds());
