@@ -81,6 +81,8 @@ public:
 
 	static void init_mutex();
 
+	static IMutex* access_dir_checks_mutex;
+
 	static bool allowUserEnumeration();
 private:
 
