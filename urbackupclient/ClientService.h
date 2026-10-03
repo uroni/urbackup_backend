@@ -268,6 +268,8 @@ private:
 	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
+	bool isPrimaryServer(const std::string& settings_fn);
+	void updateInternetSettings(const std::string& settings_fn, ISettingsReader* new_settings);
 	void replaceSettings(const std::string &pData);
 	void saveLogdata(const std::string &created, const std::string &pData);
 	std::string getLogpoints(void);
@@ -487,6 +489,8 @@ private:
 	ImageInformation image_inf;
 
 	std::string server_token;
+	//Permanent identity of the server sending the current command (empty if unknown)
+	std::string server_ident;
 
 	bool want_receive;
 

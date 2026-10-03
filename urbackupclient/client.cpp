@@ -1607,7 +1607,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 {
 	readPatterns(index_group, index_clientsubname,
 		index_exclude_dirs, index_include_dirs,
-		index_backup_dirs_optional);
+		index_backup_dirs_optional, ServerIdentityMgr::getServerTokenIdentity(starttoken));
 	file_id = 0;
 
 	updateDirs();
@@ -4329,9 +4329,22 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
+std::string IndexThread::getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident)
+{
+	if (!server_ident.empty())
+	{
+		std::string srv_settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, server_ident);
+		if (FileExists(srv_settings_fn))
+		{
+			return srv_settings_fn;
+		}
+	}
+	return settings_fn;
+}
+
 void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
-	bool& backup_dirs_optional)
+	bool& backup_dirs_optional, const std::string& server_ident)
 {
 	backup_dirs_optional = false;
 
@@ -4349,6 +4362,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	{
 		settings_fn = "urbackup/data/settings_"+conv_filename(index_clientsubname)+".cfg";
 	}
+	settings_fn = getServerSettingsFn(settings_fn, server_ident);
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 	exclude_dirs.clear();
@@ -9778,6 +9792,7 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 	{
 		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
 	}
+	settings_fn = getServerSettingsFn(settings_fn, ServerIdentityMgr::getServerTokenIdentity(starttoken));
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	size_t client_hash_threads = 1;

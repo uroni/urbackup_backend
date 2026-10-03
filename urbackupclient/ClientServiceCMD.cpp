@@ -283,7 +283,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 			}
 
 			ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name,
-				secret_session_key_decrypted);
+				secret_session_key_decrypted, identity);
 			
 			tcpstack.Send(pipe, "ok");
 			Server->destroy(challenge_it->second.shared_key_exchange);

@@ -1,5 +1,6 @@
 #include "../Interface/Mutex.h"
 #include "../fileservplugin/IFileServFactory.h"
+#include <map>
 
 struct SSessionIdentity
 {
@@ -9,8 +10,8 @@ struct SSessionIdentity
 
 	}
 
-	SSessionIdentity(std::string ident, std::string endpoint, int64 onlinetime, std::string secret_key)
-		: ident(ident), endpoint(endpoint), onlinetime(onlinetime), secret_key(secret_key)
+	SSessionIdentity(std::string ident, std::string endpoint, int64 onlinetime, std::string secret_key, std::string server_ident)
+		: ident(ident), endpoint(endpoint), onlinetime(onlinetime), secret_key(secret_key), server_ident(server_ident)
 	{
 
 	}
@@ -19,6 +20,7 @@ struct SSessionIdentity
 	std::string endpoint;
 	int64 onlinetime;
 	std::string secret_key;
+	std::string server_ident;
 
 	bool operator==(const SSessionIdentity& other) const
 	{
@@ -85,7 +87,17 @@ public:
 	static bool setPublicKeys(const std::string &pIdentity, const SPublicKeys &pPublicKeys);
 	static void loadServerIdentities(void);
 	static size_t numServerIdentities(void);
-	static void addSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string secret_key);
+	static void addSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string secret_key,
+		const std::string& server_ident);
+
+	//Returns the permanent identity of the server using pIdentity (a session or server identity)
+	//or an empty string if unknown
+	static std::string getServerIdentity(const std::string &pIdentity);
+	static void setServerTokenIdentity(const std::string& server_token, const std::string& server_ident);
+	static std::string getServerTokenIdentity(const std::string& server_token);
+
+	//Settings file holding the settings of one server (e.g. urbackup/data/settings_srv_<ident>.cfg)
+	static std::string getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -107,6 +119,7 @@ private:
 	static std::vector<SIdentity> identities;
 	static std::vector<std::string> new_identities;
 	static std::vector<SSessionIdentity> session_identities;
+	static std::map<std::string, std::string> server_token_identities;
 
 	static IMutex *mutex;
 

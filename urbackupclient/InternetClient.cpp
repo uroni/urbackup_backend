@@ -55,7 +55,14 @@ IMutex *InternetClient::mutex=NULL;
 bool InternetClient::connected=false;
 size_t InternetClient::n_connections=0;
 int64 InternetClient::last_lan_connection=0;
+std::string InternetClient::internet_server_ident;
+bool InternetClient::internet_server_ident_loaded=false;
 bool InternetClient::update_settings=false;
+
+namespace
+{
+	const char* internet_server_ident_fn = "urbackup/data/internet_server_ident.txt";
+}
 SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
 int InternetClient::auth_err=0;
@@ -112,10 +119,61 @@ std::string InternetClientThread::generateRandomBinaryAuthKey(void)
 	return key;
 }
 
-void InternetClient::hasLANConnection(void)
+void InternetClient::hasLANConnection(const std::string& server_ident)
 {
 	IScopedLock lock(mutex);
+
+	if(!internet_server_ident_loaded)
+	{
+		internet_server_ident = trim(getFile(internet_server_ident_fn));
+		internet_server_ident_loaded = true;
+	}
+
+	if(server_ident.empty()
+		|| server_ident!=internet_server_ident)
+	{
+		//Only a LAN connection to the internet server itself makes the internet connection
+		//unnecessary. Other (or not yet identified) servers need their own connection
+		return;
+	}
+
 	last_lan_connection=Server->getTimeMS();
+}
+
+void InternetClient::setInternetServerIdentity(const std::string& server_ident)
+{
+	if(server_ident.empty())
+	{
+		return;
+	}
+
+	IScopedLock lock(mutex);
+
+	if(!internet_server_ident_loaded)
+	{
+		internet_server_ident = trim(getFile(internet_server_ident_fn));
+		internet_server_ident_loaded = true;
+	}
+
+	if(internet_server_ident!=server_ident)
+	{
+		Server->Log("Internet server identity is " + server_ident, LL_INFO);
+		internet_server_ident = server_ident;
+		writestring(server_ident, internet_server_ident_fn);
+	}
+}
+
+std::string InternetClient::getInternetServerIdentity()
+{
+	IScopedLock lock(mutex);
+
+	if(!internet_server_ident_loaded)
+	{
+		internet_server_ident = trim(getFile(internet_server_ident_fn));
+		internet_server_ident_loaded = true;
+	}
+
+	return internet_server_ident;
 }
 
 int64 InternetClient::timeSinceLastLanConnection()

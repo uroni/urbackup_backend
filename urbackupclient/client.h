@@ -403,7 +403,10 @@ public:
 
 	static void readPatterns(int index_group, std::string index_clientsubname,
 		std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
-		bool& backup_dirs_optional);
+		bool& backup_dirs_optional, const std::string& server_ident = std::string());
+
+	//Settings file of the server with identity server_ident if there is one, otherwise settings_fn
+	static std::string getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 

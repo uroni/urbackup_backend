@@ -36,7 +36,9 @@ class InternetClient : public IThread
 public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
-	static void hasLANConnection(void);
+	static void hasLANConnection(const std::string& server_ident);
+	static void setInternetServerIdentity(const std::string& server_ident);
+	static std::string getInternetServerIdentity();
 	static bool isConnected(void);
 	static void setHasConnection(bool b);
 	static int64 timeSinceLastLanConnection();
@@ -74,6 +76,8 @@ private:
 	static bool connected;
 	static size_t n_connections;
 	static int64 last_lan_connection;
+	static std::string internet_server_ident;
+	static bool internet_server_ident_loaded;
 	static bool update_settings;
 	static SServerSettings server_settings;
 	static ICondition *wakeup_cond;

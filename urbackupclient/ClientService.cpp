@@ -1033,9 +1033,24 @@ void ClientConnector::ReceivePacketsInt()
 			}
 		}
 
+		if(ident_ok || is_channel)
+		{
+			server_ident = ServerIdentityMgr::getServerIdentity(identity);
+		}
+
+		if(ident_ok)
+		{
+			ServerIdentityMgr::setServerTokenIdentity(server_token, server_ident);
+
+			if(internet_conn)
+			{
+				InternetClient::setInternetServerIdentity(server_ident);
+			}
+		}
+
 		if( (ident_ok || is_channel) && !internet_conn )
 		{
-			InternetClient::hasLANConnection();
+			InternetClient::hasLANConnection(server_ident);
 		}
 
 		if(cmd=="ADD IDENTITY" )
@@ -1882,6 +1897,33 @@ void ClientConnector::updateSettings(const std::string &pData)
 		settings_update_versions[clientsubname] = (std::max)(settings_update_version, settings_update_versions[clientsubname]);
 	}
 
+	if (!server_ident.empty())
+	{
+		//Keep each server's settings separately, so backups for that server use them
+		std::string srv_settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, server_ident);
+		if (getFile(srv_settings_fn) != pData)
+		{
+			std::auto_ptr<IFile> newf(Server->openFile(srv_settings_fn + ".new", MODE_WRITE));
+			if (newf.get() != NULL
+				&& newf->Write(pData) == pData.size()
+				&& newf->Sync())
+			{
+				newf.reset();
+				os_rename_file(srv_settings_fn + ".new", srv_settings_fn);
+			}
+		}
+	}
+
+	if (!isPrimaryServer(settings_fn))
+	{
+		Server->Log("Settings of server " + server_ident + " (not the primary server) are only used for its own backups", LL_DEBUG);
+		if (internet_conn)
+		{
+			updateInternetSettings(settings_fn, new_settings.get());
+		}
+		return;
+	}
+
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> critical_settings;
@@ -1910,6 +1952,29 @@ void ClientConnector::updateSettings(const std::string &pData)
 		{
 			settings_add += critical_settings[i] + "=" + curr_v + "\n";
 			mod = true;
+		}
+	}
+
+	std::string internet_server_ident = InternetClient::getInternetServerIdentity();
+	std::string new_internet_server;
+	if (!server_ident.empty()
+		&& !internet_conn
+		&& ( (!internet_server_ident.empty() && internet_server_ident != server_ident)
+			|| !new_settings->getValue("internet_server", &new_internet_server)
+			|| new_internet_server.empty() ) )
+	{
+		//The internet connection belongs to another server, or this server has no internet
+		//server address (its internet_authkey etc. are of no use). Keep the current settings
+		std::vector<std::string> curr_keys = curr_settings->getKeys();
+		for (size_t i = 0; i < curr_keys.size(); ++i)
+		{
+			std::string curr_v;
+			if (next(curr_keys[i], 0, "internet_")
+				&& curr_settings->getValue(curr_keys[i], &curr_v))
+			{
+				settings_add += curr_keys[i] + "=" + curr_v + "\n";
+				mod = true;
+			}
 		}
 	}
 
@@ -1985,6 +2050,134 @@ void ClientConnector::updateSettings(const std::string &pData)
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	}
+}
+
+bool ClientConnector::isPrimaryServer(const std::string& settings_fn)
+{
+	if (server_ident.empty())
+	{
+		return true;
+	}
+
+	std::string primary_fn = settings_fn;
+	if (primary_fn.size() > 4 && primary_fn.substr(primary_fn.size() - 4) == ".cfg")
+	{
+		primary_fn.erase(primary_fn.size() - 4);
+	}
+	primary_fn += "_primary_server.txt";
+
+	IScopedLock lock(ident_mutex);
+
+	std::string data = getFile(primary_fn);
+	std::string primary_ident = trim(getline(0, data));
+	bool primary_internet = trim(getline(1, data)) == "internet";
+
+	if (primary_ident == server_ident
+		&& (internet_conn || !primary_internet))
+	{
+		return true;
+	}
+
+	if (!primary_ident.empty()
+		&& primary_ident != server_ident
+		&& !(primary_internet && !internet_conn)
+		&& ServerIdentityMgr::checkServerIdentity(primary_ident))
+	{
+		return false;
+	}
+
+	//No primary server yet, a LAN server takes over from a server only seen via internet,
+	//or the previous primary server is no longer a trusted server
+	if (primary_ident != server_ident)
+	{
+		Server->Log("Server " + server_ident + " is now the primary server (settings in " + settings_fn + ")"
+			+ (primary_ident.empty() ? "" : ". Previous primary server: " + primary_ident), LL_INFO);
+	}
+
+	writestring(server_ident + "\n" + (internet_conn ? "internet" : "lan") + "\n", primary_fn);
+	return true;
+}
+
+void ClientConnector::updateInternetSettings(const std::string& settings_fn, ISettingsReader* new_settings)
+{
+	//The internet connection settings belong to the server connected via internet,
+	//even if it is not the primary server
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+
+	std::vector<std::string> new_keys = new_settings->getKeys();
+	std::vector<std::string> changed_keys;
+	std::string settings_add;
+	for (size_t i = 0; i < new_keys.size(); ++i)
+	{
+		const std::string& key = new_keys[i];
+		if (!next(key, 0, "internet_"))
+		{
+			continue;
+		}
+
+		std::string new_v;
+		if (!new_settings->getValue(key, &new_v))
+		{
+			continue;
+		}
+
+		if (new_v.empty()
+			&& (key == "internet_mode_enabled"
+				|| key == "internet_server"
+				|| key == "internet_server_port"
+				|| key == "internet_authkey"))
+		{
+			continue;
+		}
+
+		std::string curr_v;
+		if (curr_settings.get() != NULL
+			&& curr_settings->getValue(key, &curr_v)
+			&& curr_v == new_v)
+		{
+			continue;
+		}
+
+		changed_keys.push_back(key);
+		settings_add += key + "=" + new_v + "\n";
+	}
+
+	if (changed_keys.empty())
+	{
+		return;
+	}
+
+	std::sort(changed_keys.begin(), changed_keys.end());
+
+	std::string curr_data = getFile(settings_fn);
+	std::string new_data;
+	int numl = linecount(curr_data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = getline(i, curr_data);
+		std::string key = trim(getuntil("=", l));
+		if (!key.empty()
+			&& std::binary_search(changed_keys.begin(), changed_keys.end(), key))
+		{
+			continue;
+		}
+		l = trim(l);
+		if (!l.empty())
+		{
+			new_data += l + "\n";
+		}
+	}
+	new_data += settings_add;
+
+	std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
+	if (newf.get() != NULL
+		&& newf->Write(new_data) == new_data.size()
+		&& newf->Sync())
+	{
+		newf.reset();
+		os_rename_file(settings_fn + ".new", settings_fn);
+		InternetClient::updateSettings();
 	}
 }
 

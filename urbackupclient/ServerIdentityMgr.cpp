@@ -34,6 +34,7 @@ IMutex *ServerIdentityMgr::mutex=NULL;
 IFileServ *ServerIdentityMgr::filesrv=NULL;
 std::vector<std::string> ServerIdentityMgr::new_identities;
 std::vector<SSessionIdentity> ServerIdentityMgr::session_identities;
+std::map<std::string, std::string> ServerIdentityMgr::server_token_identities;
 
 #ifdef _WIN32
 const std::string server_ident_file="server_idents.txt";
@@ -94,6 +95,63 @@ bool ServerIdentityMgr::checkServerIdentity(const std::string &pIdentity)
 	IScopedLock lock(mutex);
 
 	return std::find(identities.begin(), identities.end(), SIdentity(pIdentity))!=identities.end();
+}
+
+std::string ServerIdentityMgr::getServerIdentity(const std::string &pIdentity)
+{
+	if(pIdentity.empty())
+	{
+		return std::string();
+	}
+
+	IScopedLock lock(mutex);
+
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		if(session_identities[i].ident==pIdentity)
+		{
+			return session_identities[i].server_ident;
+		}
+	}
+
+	if(std::find(identities.begin(), identities.end(), SIdentity(pIdentity))!=identities.end())
+	{
+		return pIdentity;
+	}
+
+	return std::string();
+}
+
+void ServerIdentityMgr::setServerTokenIdentity(const std::string& server_token, const std::string& server_ident)
+{
+	if(server_token.empty() || server_ident.empty())
+	{
+		return;
+	}
+
+	IScopedLock lock(mutex);
+	server_token_identities[server_token] = server_ident;
+}
+
+std::string ServerIdentityMgr::getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident)
+{
+	std::string base = settings_fn;
+	if(base.size()>4 && base.substr(base.size()-4)==".cfg")
+	{
+		base.erase(base.size()-4);
+	}
+	return base + "_srv_" + conv_filename(server_ident) + ".cfg";
+}
+
+std::string ServerIdentityMgr::getServerTokenIdentity(const std::string& server_token)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, std::string>::iterator it = server_token_identities.find(server_token);
+	if(it!=server_token_identities.end())
+	{
+		return it->second;
+	}
+	return std::string();
 }
 
 void ServerIdentityMgr::loadServerIdentities(void)
@@ -176,8 +234,15 @@ void ServerIdentityMgr::loadServerIdentities(void)
 
 			l = l.substr(0, hashpos);
 
+			if(params["server_ident"].empty())
+			{
+				//Session from a client version that did not record the server. Let the server
+				//authenticate again, so its settings can be kept separately from other servers
+				continue;
+			}
+
 			std::string secret_key = base64_decode_dash(params["secret_key"]);
-			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key);
+			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key, params["server_ident"]);
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
@@ -335,10 +400,11 @@ bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity, bool count_f
 	return false;
 }
 
-void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key)
+void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key,
+	const std::string& server_ident)
 {
 	IScopedLock lock(mutex);
-	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key);
+	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key, server_ident);
 	session_identities.push_back(session_ident);
 	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
 	writeSessionIdentities();
@@ -369,6 +435,10 @@ void ServerIdentityMgr::writeSessionIdentities()
 			idents+=session_identities[i].ident;
 			idents+="#endpoint="+session_identities[i].endpoint;
 			idents += "&secret_key=" + base64_encode_dash(session_identities[i].secret_key);
+			if(!session_identities[i].server_ident.empty())
+			{
+				idents += "&server_ident=" + session_identities[i].server_ident;
+			}
 
 			++written;
 			if(written>=max_session_identities)
