@@ -30,6 +30,8 @@
 
 #include "ClientService.h"
 #include "ImageThread.h"
+#include "ServerList.h"
+#include "ServerIdentityMgr.h"
 #include "ClientSend.h"
 #include "client.h"
 
@@ -470,6 +472,7 @@ bool ImageThread::sendFullImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
+		ServerList::setLastBackup(ServerIdentityMgr::getServerTokenIdentity(server_token), Server->getTimeSeconds());
 		IndexThread::execute_postbackup_hook("postimagebackup", 0, std::string());
 	}
 
@@ -1083,6 +1086,7 @@ bool ImageThread::sendIncrImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
+		ServerList::setLastBackup(ServerIdentityMgr::getServerTokenIdentity(server_token), Server->getTimeSeconds());
 		IndexThread::execute_postbackup_hook("postimagebackup", 0, std::string());
 	}
 

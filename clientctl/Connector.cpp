@@ -431,7 +431,7 @@ bool Connector::updateSettings(const std::string &ndata, bool& no_perm)
 
 	std::string data=ndata;
 	escapeClientMessage(data);
-	std::string d=getResponse("UPDATE SETTINGS "+data,"", true);
+	std::string d=getResponse("UPDATE SETTINGS "+data, server_filter.empty() ? std::string() : "server="+EscapeParamString(server_filter), true);
 
 	if (d != "OK" && d != "NOSERVER")
 	{

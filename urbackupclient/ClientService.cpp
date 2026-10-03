@@ -2500,6 +2500,13 @@ void ClientConnector::replaceSettings(const std::string &pData, const std::strin
 						new_data += new_key + ".use_lm=" + convert(new_use_lm) + "\n";
 						add_new_keys.push_back(new_key + ".use_lm");
 					}
+
+					if (val != old_client_val)
+					{
+						//The new value is the client's value of the setting (the server takes it from there)
+						new_data += new_key + ".client=" + val + "\n";
+						add_new_keys.push_back(new_key + ".client");
+					}
 				}
 			}
 		}
@@ -4020,6 +4027,30 @@ int ClientConnector::getCapabilities(IDatabase* db)
 	}
 
 	return capa;
+}
+
+std::string ClientConnector::getServerUrl(const std::string& server_ident)
+{
+	std::string server_url;
+	std::string settings_fn = ServerIdentityMgr::getServerSettingsFn("urbackup/data/settings.cfg", server_ident);
+	if (!FileExists(settings_fn)
+		&& trim(getline(0, getFile("urbackup/data/settings_primary_server.txt"))) == server_ident)
+	{
+		settings_fn = "urbackup/data/settings.cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(settings_fn));
+	if (settings.get() != NULL)
+	{
+		if (!settings->getValue("server_url", &server_url))
+			settings->getValue("server_url_def", &server_url);
+	}
+	return server_url;
+}
+
+int64 ClientConnector::getServerLastBackup(const std::string& server_ident)
+{
+	return ServerList::getLastBackup(server_ident);
 }
 
 bool ClientConnector::channelMatchesServer(const SChannel& channel, const std::string& server)

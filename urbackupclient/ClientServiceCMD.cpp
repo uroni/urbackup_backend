@@ -952,6 +952,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 {
 	updateLastBackup();
+	ServerList::setLastBackup(server_ident, Server->getTimeSeconds());
 	tcpstack.Send(pipe, "OK");
 
 	{
@@ -981,6 +982,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	ParseParamStrHttp(params_str, &params);
 
 	updateLastBackup();
+	ServerList::setLastBackup(server_ident, Server->getTimeSeconds());
 	tcpstack.Send(pipe, "OK");
 
 	std::string server_token = params["server_token"];
@@ -1591,11 +1593,16 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_
 {
 	//Optional: the settings are for this server only
 	std::string target_server = params["server"];
-	if (!target_server.empty()
-		&& !ServerIdentityMgr::checkServerIdentity(target_server))
+	if (!target_server.empty())
 	{
-		tcpstack.Send(pipe, "UNKNOWN SERVER");
-		return;
+		//Server given as identity, server list id or name
+		target_server = ServerList::resolveServer(target_server);
+		if (target_server.empty()
+			|| !ServerIdentityMgr::checkServerIdentity(target_server))
+		{
+			tcpstack.Send(pipe, "UNKNOWN SERVER");
+			return;
+		}
 	}
 
 	std::string s_settings = cmd.substr(16);
@@ -3624,6 +3631,12 @@ void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd)
 		{
 			data += convert(i) + ".internet_status=" + InternetClient::getStatusMsg(entries[i].id) + "\n";
 		}
+		if (!entries[i].ident.empty())
+		{
+			//Web interface of the server (for "Access/restore backups")
+			data += convert(i) + ".server_url=" + getServerUrl(entries[i].ident) + "\n";
+			data += convert(i) + ".last_backup=" + convert(getServerLastBackup(entries[i].ident)) + "\n";
+		}
 	}
 
 	{
@@ -3740,13 +3753,25 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 
 	std::string tokens=params["tokens"];
 
-	std::auto_ptr<ISettingsReader> settings(
-		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
-
 	std::string server_url;
-	if( (!settings->getValue("server_url", &server_url)
-		&& !settings->getValue("server_url_def", &server_url) ) 
-		|| server_url.empty())
+	if (!params["server"].empty())
+	{
+		//Web interface of the selected server
+		std::string server_ident = ServerList::resolveServer(params["server"]);
+		if (!server_ident.empty())
+		{
+			server_url = getServerUrl(server_ident);
+		}
+	}
+	else
+	{
+		std::auto_ptr<ISettingsReader> settings(
+			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+		if (!settings->getValue("server_url", &server_url))
+			settings->getValue("server_url_def", &server_url);
+	}
+
+	if(server_url.empty())
 	{
 		Server->Log("Server url empty", LL_ERROR);
 		tcpstack.Send(pipe, "");

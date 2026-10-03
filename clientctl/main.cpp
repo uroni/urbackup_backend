@@ -1140,6 +1140,10 @@ int action_set_settings(std::vector<std::string> args)
 		"Server authentication key for client",
 		false, "", "string", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Change the settings of this server only (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	TCLAP::ValueArg<std::string> proxy_arg("", "proxy",
 		"HTTP CONNECT proxy to use to connect to server",
 		false, "", "url", cmd);
@@ -1241,6 +1245,7 @@ int action_set_settings(std::vector<std::string> args)
 	}
 
 	bool no_perm;
+	Connector::server_filter = server_arg.getValue();
 	bool b = Connector::updateSettings(s_settings, no_perm);
 
 	if (!b)

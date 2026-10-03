@@ -311,6 +311,72 @@ bool ServerList::getEntryByIdent(const std::string& ident, SServerEntry& entry)
 	return true;
 }
 
+namespace
+{
+	const char* server_last_backup_fn = "urbackup/data/server_last_backup.cfg";
+}
+
+void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
+{
+	if (ident.empty())
+	{
+		return;
+	}
+
+	IScopedLock lock(mutex);
+	std::string data = getFile(server_last_backup_fn);
+	std::string new_data;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = trim(getline(i, data));
+		if (!l.empty() && getuntil("=", l) != ident)
+		{
+			new_data += l + "\n";
+		}
+	}
+	new_data += ident + "=" + convert(backup_time) + "\n";
+	writestring(new_data, server_last_backup_fn);
+}
+
+int64 ServerList::getLastBackup(const std::string& ident)
+{
+	IScopedLock lock(mutex);
+	std::string data = getFile(server_last_backup_fn);
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = trim(getline(i, data));
+		if (!l.empty() && getuntil("=", l) == ident)
+		{
+			return watoi64(getafter("=", l));
+		}
+	}
+	return 0;
+}
+
+std::string ServerList::resolveServer(const std::string& server)
+{
+	if (server.empty())
+	{
+		return std::string();
+	}
+
+	IScopedLock lock(mutex);
+	load();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (!entries[i].ident.empty()
+			&& (entries[i].ident == server
+				|| convert(entries[i].id) == server
+				|| (!entries[i].name.empty() && strlower(entries[i].name) == strlower(server))))
+		{
+			return entries[i].ident;
+		}
+	}
+	return std::string();
+}
+
 bool ServerList::getEntryById(int id, SServerEntry& entry)
 {
 	IScopedLock lock(mutex);

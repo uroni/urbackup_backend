@@ -48,6 +48,12 @@ public:
 	static bool setEntries(const std::vector<SServerEntry>& entries);
 
 	static bool getEntryByIdent(const std::string& ident, SServerEntry& entry);
+	//Identity of the server given as identity, server list id or name (empty if unknown)
+	static std::string resolveServer(const std::string& server);
+
+	//Time (unix seconds) of the last successful backup a server did of this client (0: none yet)
+	static void setLastBackup(const std::string& ident, int64 backup_time);
+	static int64 getLastBackup(const std::string& ident);
 	static bool getEntryById(int id, SServerEntry& entry);
 
 	//Entry 0, whose internet settings are mirrored in settings.cfg

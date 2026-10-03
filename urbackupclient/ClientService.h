@@ -395,6 +395,9 @@ private:
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
+	//Web interface URL of a server (from its settings; the primary server's also from settings.cfg)
+	static std::string getServerUrl(const std::string& server_ident);
+	static int64 getServerLastBackup(const std::string& server_ident);
 	//True if the channel is to the server selected by the "server" parameter (server list id,
 	//name or identity) or no server was selected
 	static bool channelMatchesServer(const SChannel& channel, const std::string& server);
