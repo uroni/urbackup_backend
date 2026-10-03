@@ -38,8 +38,16 @@ ServerDownloadThreadGroup::ServerDownloadThreadGroup(FileClient& fc, FileClientC
 				curr_fc->setProgressLogCallback(client_main);
 			}
 
-			if (incremental_num > 0 &&
-				intra_file_diffs)
+			//Whether a chunked download gets queued is decided by intra_file_diffs
+			//alone (IncrFileBackup::doFileBackup), and the first thread uses the
+			//FileClientChunked the backup itself created on the same condition. Only
+			//these additional threads also consulted incremental_num, which is a
+			//stand-in for "this is a full backup, so nothing chunked will be queued".
+			//That holds for FullFileBackup, which never queues one, but not for
+			//IncrFileBackup with incremental_num==0 -- a resumed full backup. There
+			//the extra threads got no chunked client while chunked downloads were
+			//still handed to them, and the patch file came out empty.
+			if (intra_file_diffs)
 			{
 				std::auto_ptr<FileClientChunked> new_fc;
 				if (client_main->getClientChunkedFilesrvConnection(new_fc, server_settings, client_main, 60000))
@@ -91,6 +99,40 @@ ServerDownloadThreadGroup::~ServerDownloadThreadGroup()
 		}
 		delete dl_thread.dl_thread;
 	}
+}
+
+int64 ServerDownloadThreadGroup::getTransferredBytes()
+{
+	int64 ret = 0;
+	for (size_t i = 0; i < dl_threads.size(); ++i)
+	{
+		if (dl_threads[i].fc != NULL)
+		{
+			ret += dl_threads[i].fc->getTransferredBytes();
+		}
+		if (dl_threads[i].fc_chunked != NULL)
+		{
+			ret += dl_threads[i].fc_chunked->getTransferredBytes();
+		}
+	}
+	return ret;
+}
+
+int64 ServerDownloadThreadGroup::getRealTransferredBytes()
+{
+	int64 ret = 0;
+	for (size_t i = 0; i < dl_threads.size(); ++i)
+	{
+		if (dl_threads[i].fc != NULL)
+		{
+			ret += dl_threads[i].fc->getRealTransferredBytes();
+		}
+		if (dl_threads[i].fc_chunked != NULL)
+		{
+			ret += dl_threads[i].fc_chunked->getRealTransferredBytes();
+		}
+	}
+	return ret;
 }
 
 void ServerDownloadThreadGroup::queueSkip()

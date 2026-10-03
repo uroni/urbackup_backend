@@ -1162,7 +1162,8 @@ IFsFile * ServerDownloadThread::getTempFile()
 	{
 		size_t num = tmpfile_num++;
 			
-		std::string fn = backuppath + os_file_sep() + tmpfile_dirname + os_file_sep() + convert(num);
+		std::string fn = backuppath + os_file_sep() + tmpfile_dirname + os_file_sep()
+			+ convert(thread_idx) + "_" + convert(num);
 		pfd = Server->openFile(os_file_prefix(fn), MODE_RW_CREATE);
 
 		if (pfd == NULL)
@@ -1174,7 +1175,8 @@ IFsFile * ServerDownloadThread::getTempFile()
 					ServerLogger::Log(logid, "Temporary file path did not exist. Creating it. (ServerDownloadThread)", LL_DEBUG);
 				}
 
-				if (!os_create_dir_recursive(os_file_prefix(backuppath + os_file_sep() + tmpfile_dirname)))
+				if (!os_create_dir_recursive(os_file_prefix(backuppath + os_file_sep() + tmpfile_dirname))
+					&& !os_directory_exists(os_file_prefix(backuppath + os_file_sep() + tmpfile_dirname)))
 				{
 					ServerLogger::Log(logid, "Error creating temporary file path at \""
 						+ backuppath + os_file_sep() + tmpfile_dirname+"\". " + os_last_error_str(), LL_WARNING);
