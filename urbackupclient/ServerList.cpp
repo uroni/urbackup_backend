@@ -36,6 +36,79 @@ namespace
 	}
 }
 
+namespace
+{
+	const char* backupdir_servers_fn = "urbackup/data/backupdir_servers.cfg";
+}
+
+std::string ServerList::backupDirKey(int tgroup, std::string path)
+{
+	//Same normalization as ClientConnector::saveBackupDirs
+	if (!path.empty()
+		&& (path[path.size() - 1] == '\\' || path[path.size() - 1] == '/'))
+	{
+		path.erase(path.size() - 1, 1);
+#ifndef _WIN32
+		if (path.empty())
+			path = "/";
+#endif
+	}
+#ifdef _WIN32
+	path = strlower(path);
+#endif
+	return convert(tgroup) + "\t" + path;
+}
+
+ServerList::BackupDirServers ServerList::getBackupDirServers()
+{
+	IScopedLock lock(mutex);
+	BackupDirServers ret;
+	std::string data = getFile(backupdir_servers_fn);
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = getline(i, data);
+		if (!l.empty() && l[l.size() - 1] == '\r')
+			l.erase(l.size() - 1);
+		size_t last_tab = l.find_last_of('\t');
+		if (last_tab == std::string::npos || l.find('\t') == last_tab)
+			continue;
+		std::vector<std::string> idents;
+		Tokenize(l.substr(last_tab + 1), idents, ",");
+		ret[l.substr(0, last_tab)] = idents;
+	}
+	return ret;
+}
+
+void ServerList::setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
+{
+	IScopedLock lock(mutex);
+	std::string data = getFile(backupdir_servers_fn);
+	std::string new_data;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = trim(getline(i, data));
+		if (l.empty())
+			continue;
+		int tgroup = watoi(getuntil("\t", l));
+		if (tgroup >= tgroup_min && tgroup <= tgroup_max)
+			continue;
+		new_data += l + "\n";
+	}
+	for (BackupDirServers::const_iterator it = dir_servers.begin(); it != dir_servers.end(); ++it)
+	{
+		std::string idents;
+		for (size_t i = 0; i < it->second.size(); ++i)
+		{
+			if (!idents.empty()) idents += ",";
+			idents += it->second[i];
+		}
+		new_data += it->first + "\t" + idents + "\n";
+	}
+	write_file_only_admin(new_data, backupdir_servers_fn);
+}
+
 void ServerList::init_mutex()
 {
 	mutex = Server->createMutex();

@@ -49,6 +49,7 @@
 #include <limits.h>
 #include <memory>
 #include <algorithm>
+#include <set>
 #include <assert.h>
 
 
@@ -1889,6 +1890,172 @@ void ClientConnector::updateLastBackup(void)
 
 std::vector<std::string> getSettingsList(void);
 
+std::vector<ClientConnector::SDefaultDir> ClientConnector::parseDefaultDirs(ISettingsReader* settings)
+{
+	int default_dirs_use = settings->getValue("default_dirs.use", 0);
+	std::vector<std::string> default_dirs_toks;
+	size_t default_dirs_client_off = std::string::npos;
+
+	if (default_dirs_use & c_use_group)
+	{
+		Tokenize(settings->getValue("default_dirs.group", ""), default_dirs_toks, ";");
+	}
+	if (default_dirs_use & c_use_value)
+	{
+		std::vector<std::string> toks;
+		Tokenize(settings->getValue("default_dirs.home", ""), toks, ";");
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+	}
+	if (default_dirs_use & c_use_value_client)
+	{
+		std::vector<std::string> toks;
+		Tokenize(settings->getValue("default_dirs.client", ""), toks, ";");
+		default_dirs_client_off = default_dirs_toks.size();
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+	}
+
+	std::vector<SDefaultDir> ret;
+	for (size_t i = 0; i < default_dirs_toks.size(); ++i)
+	{
+		SDefaultDir dir;
+		dir.path = UnescapeParamString(trim(default_dirs_toks[i]));
+		dir.group = c_group_default;
+		if (dir.path.find("|") != std::string::npos)
+		{
+			std::vector<std::string> toks;
+			Tokenize(dir.path, toks, "|");
+			dir.path = toks[0];
+			dir.name = toks[1];
+			if (toks.size() > 2)
+			{
+				dir.group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
+			}
+		}
+		dir.client = i >= default_dirs_client_off;
+		if (!dir.path.empty())
+		{
+			ret.push_back(dir);
+		}
+	}
+	return ret;
+}
+
+bool ClientConnector::updateBackupDirsFromServers(const std::string& settings_fn, int group_offset)
+{
+	//Each server's default directories are in its settings file. The backup directories are the
+	//union of them; ServerList::getBackupDirServers() says which server configured which directory
+	std::string base = ExtractFileName(settings_fn, "/");
+	if (base.size() > 4 && base.substr(base.size() - 4) == ".cfg")
+	{
+		base.erase(base.size() - 4);
+	}
+	std::string prefix = base + "_srv_";
+
+	std::string primary_ident = trim(getline(0, getFile("urbackup/data/" + base + "_primary_server.txt")));
+
+	std::vector<SFile> files = getFiles(os_file_prefix("urbackup/data"));
+	std::vector<std::string> idents;
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		const std::string& name = files[i].name;
+		if (files[i].isdir
+			|| !next(name, 0, prefix)
+			|| name.size() <= prefix.size() + 4
+			|| name.substr(name.size() - 4) != ".cfg")
+		{
+			continue;
+		}
+		std::string ident = name.substr(prefix.size(), name.size() - prefix.size() - 4);
+		if (!ServerIdentityMgr::checkServerIdentity(ident))
+		{
+			continue;
+		}
+		if (ident == primary_ident)
+		{
+			idents.insert(idents.begin(), ident);
+		}
+		else
+		{
+			idents.push_back(ident);
+		}
+	}
+
+	std::vector<SDefaultDir> all_dirs;
+	std::set<std::string> all_keys;
+	std::set<std::string> client_keys;
+	ServerList::BackupDirServers dir_servers;
+	std::vector<std::string> idents_without_dirs;
+	for (size_t i = 0; i < idents.size(); ++i)
+	{
+		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(
+			"urbackup/data/" + prefix + idents[i] + ".cfg"));
+		if (settings.get() == NULL)
+		{
+			continue;
+		}
+
+		std::vector<SDefaultDir> dirs = parseDefaultDirs(settings.get());
+		if (dirs.empty())
+		{
+			idents_without_dirs.push_back(idents[i]);
+			continue;
+		}
+
+		for (size_t j = 0; j < dirs.size(); ++j)
+		{
+			std::string key = ServerList::backupDirKey(group_offset + dirs[j].group, dirs[j].path);
+			if (dirs[j].client)
+			{
+				client_keys.insert(key);
+			}
+			else
+			{
+				std::vector<std::string>& servers = dir_servers[key];
+				if (std::find(servers.begin(), servers.end(), idents[i]) == servers.end())
+				{
+					servers.push_back(idents[i]);
+				}
+			}
+
+			if (all_keys.insert(key).second)
+			{
+				all_dirs.push_back(dirs[j]);
+			}
+		}
+	}
+
+	if (all_dirs.empty())
+	{
+		return false;
+	}
+
+	//Directories added on the client are backed up by all servers, servers without
+	//default directories back up all directories
+	for (std::set<std::string>::iterator it = client_keys.begin(); it != client_keys.end(); ++it)
+	{
+		dir_servers.erase(*it);
+	}
+	for (ServerList::BackupDirServers::iterator it = dir_servers.begin(); it != dir_servers.end(); ++it)
+	{
+		it->second.insert(it->second.end(), idents_without_dirs.begin(), idents_without_dirs.end());
+	}
+
+	str_map args;
+	for (size_t i = 0; i < all_dirs.size(); ++i)
+	{
+		std::string key = ServerList::backupDirKey(group_offset + all_dirs[i].group, all_dirs[i].path);
+		args["dir_" + convert(i)] = all_dirs[i].path;
+		if (!all_dirs[i].name.empty())
+			args["dir_" + convert(i) + "_name"] = all_dirs[i].name;
+		args["dir_" + convert(i) + "_group"] = convert(all_dirs[i].group);
+		args["dir_" + convert(i) + "_server_default"] = convert(client_keys.count(key) > 0 ? 0 : 1);
+	}
+
+	saveBackupDirs(args, true, group_offset);
+	ServerList::setBackupDirServers(group_offset, group_offset + c_group_max, dir_servers);
+	return true;
+}
+
 void ClientConnector::updateSettings(const std::string &pData)
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -1941,6 +2108,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 				os_rename_file(srv_settings_fn + ".new", srv_settings_fn);
 			}
 		}
+
+		updateBackupDirsFromServers(settings_fn, group_offset);
 
 		//Internet settings of servers other than the default internet server live in the server list
 		SServerEntry entry;
@@ -2020,59 +2189,24 @@ void ClientConnector::updateSettings(const std::string &pData)
 	}
 
 
-	int default_dirs_use = new_settings->getValue("default_dirs.use", 0);
-	std::vector<std::string> default_dirs_toks;
-	size_t default_dirs_client_off = std::string::npos;
-
-	if (default_dirs_use & c_use_group)
+	if (server_ident.empty())
 	{
-		std::string val;
-		Tokenize(new_settings->getValue("default_dirs.group", ""), default_dirs_toks, ";");
-	}
-	if (default_dirs_use & c_use_value)
-	{
-		std::string val;
-		std::vector<std::string> toks;
-		Tokenize(new_settings->getValue("default_dirs.home", ""), toks, ";");
-		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
-	}
-	if (default_dirs_use & c_use_value_client)
-	{
-		std::string val;
-		std::vector<std::string> toks;
-		Tokenize(new_settings->getValue("default_dirs.client", ""), toks, ";");
-		default_dirs_client_off = default_dirs_toks.size();
-		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
-	}
-
-	if(!default_dirs_toks.empty())
-	{
-		str_map args;
-		for(size_t i=0;i<default_dirs_toks.size();++i)
+		//Server not identified: its default directories replace the current ones
+		std::vector<SDefaultDir> default_dirs = parseDefaultDirs(new_settings.get());
+		if (!default_dirs.empty())
 		{
-			std::string path = UnescapeParamString(trim(default_dirs_toks[i]));
-			std::string name;
-			int group = c_group_default;
-			if(path.find("|")!=std::string::npos)
+			str_map args;
+			for (size_t i = 0; i < default_dirs.size(); ++i)
 			{
-				std::vector<std::string> toks;
-				Tokenize(path, toks, "|");
-				path = toks[0];
-				name = toks[1];
-				if(toks.size()>2)
-				{
-					group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
-				}
+				args["dir_" + convert(i)] = default_dirs[i].path;
+				if (!default_dirs[i].name.empty())
+					args["dir_" + convert(i) + "_name"] = default_dirs[i].name;
+				args["dir_" + convert(i) + "_group"] = convert(default_dirs[i].group);
+				args["dir_" + convert(i) + "_server_default"] = convert(default_dirs[i].client ? 0 : 1);
 			}
-			args["dir_"+convert(i)]=path;
-			if(!name.empty())
-				args["dir_"+convert(i)+"_name"]=name;
 
-			args["dir_"+convert(i)+"_group"]=convert(group);
-			args["dir_" + convert(i) + "_server_default"] = convert(i>= default_dirs_client_off ? 0 : 1);
+			saveBackupDirs(args, true, group_offset);
 		}
-
-		saveBackupDirs(args, true, group_offset);
 	}
 
 	if(mod

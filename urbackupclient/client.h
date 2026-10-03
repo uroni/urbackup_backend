@@ -430,7 +430,12 @@ private:
 	static void addResult(unsigned int id, const std::string& res);
 	static void setResultFinished(unsigned int id);
 
-	bool readBackupDirs(void);
+	//filter_server: only the directories of the server the current backup is for
+	bool readBackupDirs(bool filter_server=true);
+	//Removes the default directories of other servers from backup_dirs
+	void filterBackupDirsForServer();
+	//settings.cfg (or settings_<clientsubname>.cfg) and the settings files of all servers
+	static std::vector<std::string> getAllSettingsFns(const std::string& clientsubname);
 	bool readBackupScripts(bool full_backup);
 
 	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, 

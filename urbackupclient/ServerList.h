@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "../Interface/Types.h"
 
 class IMutex;
@@ -67,6 +68,14 @@ public:
 
 	//settings.cfg was changed locally (old tray UI, urbackupclientctl set-settings): update entry 0
 	static void updateFromLocalSettings(ISettingsReader* settings);
+
+	//Which servers configured a default backup directory (tgroup, path). Directories without an
+	//entry (e.g. added on the client) are backed up by all servers
+	typedef std::map<std::string, std::vector<std::string> > BackupDirServers;
+	static std::string backupDirKey(int tgroup, std::string path);
+	static BackupDirServers getBackupDirServers();
+	//Replace the entries with tgroup in [tgroup_min, tgroup_max]
+	static void setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
 
 	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>"), used for
 	//server_list.cfg and for the tray UI (with_status adds read-only status fields)

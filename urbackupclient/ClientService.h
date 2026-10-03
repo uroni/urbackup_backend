@@ -268,6 +268,16 @@ private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
 	std::string replaceChars(std::string in);
+	struct SDefaultDir
+	{
+		std::string path;
+		std::string name;
+		int group;
+		//Added on the client (part of the client's value of the setting)
+		bool client;
+	};
+	static std::vector<SDefaultDir> parseDefaultDirs(ISettingsReader* settings);
+	bool updateBackupDirsFromServers(const std::string& settings_fn, int group_offset);
 	void updateSettings(const std::string &pData);
 	bool isPrimaryServer(const std::string& settings_fn);
 	void updateInternetSettings(const std::string& settings_fn, ISettingsReader* new_settings);

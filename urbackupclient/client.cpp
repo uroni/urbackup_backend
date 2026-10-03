@@ -32,6 +32,7 @@
 #include "../md5.h"
 #include "database.h"
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "ClientService.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include <algorithm>
@@ -745,7 +746,7 @@ IMutex* IndexThread::getFilelistMutex(void)
 
 void IndexThread::updateDirs(void)
 {
-	readBackupDirs();
+	readBackupDirs(false);
 	readSnapshotGroups();
 
 #ifdef _WIN32
@@ -1516,7 +1517,7 @@ void IndexThread::operator()(void)
 			IScopedLock lock(filesrv_mutex);
 			filesrv->stopServer();
 			start_filesrv();
-			readBackupDirs();
+			readBackupDirs(false);
 		}
 		else if(action==IndexThreadAction_Stop) //stop
 		{
@@ -1610,7 +1611,10 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		index_backup_dirs_optional, ServerIdentityMgr::getServerTokenIdentity(starttoken));
 	file_id = 0;
 
+	//Watches all directories (of all servers)...
 	updateDirs();
+	//...but this backup only indexes those of its server
+	filterBackupDirsForServer();
 
 	writeTokens();
 
@@ -3002,9 +3006,71 @@ void IndexThread::setResultFinished(unsigned int id)
 	}
 }
 
-bool IndexThread::readBackupDirs(void)
+std::vector<std::string> IndexThread::getAllSettingsFns(const std::string& clientsubname)
+{
+	std::string base = "settings";
+	if (!clientsubname.empty())
+	{
+		base = "settings_" + conv_filename(clientsubname);
+	}
+
+	std::vector<std::string> ret;
+	ret.push_back("urbackup/data/" + base + ".cfg");
+
+	std::string prefix = base + "_srv_";
+	std::vector<SFile> files = getFiles(os_file_prefix("urbackup/data"));
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		const std::string& name = files[i].name;
+		if (!files[i].isdir
+			&& next(name, 0, prefix)
+			&& name.size() > prefix.size() + 4
+			&& name.substr(name.size() - 4) == ".cfg"
+			&& ServerIdentityMgr::checkServerIdentity(name.substr(prefix.size(), name.size() - prefix.size() - 4)))
+		{
+			ret.push_back("urbackup/data/" + name);
+		}
+	}
+	return ret;
+}
+
+void IndexThread::filterBackupDirsForServer()
+{
+	std::string server_ident = ServerIdentityMgr::getServerTokenIdentity(starttoken);
+	if (server_ident.empty())
+	{
+		return;
+	}
+
+	//Only the default directories of the server this backup is for (and the ones added on the client)
+	ServerList::BackupDirServers dir_servers = ServerList::getBackupDirServers();
+	for (size_t i = 0; i < backup_dirs.size();)
+	{
+		ServerList::BackupDirServers::iterator it = dir_servers.find(
+			ServerList::backupDirKey(backup_dirs[i].group, backup_dirs[i].path));
+		if (!backup_dirs[i].symlinked
+			&& it != dir_servers.end()
+			&& std::find(it->second.begin(), it->second.end(), server_ident) == it->second.end())
+		{
+			Server->Log("Not backing up \"" + backup_dirs[i].path + "\" for server " + server_ident
+				+ " (default directory of another server)", LL_DEBUG);
+			backup_dirs.erase(backup_dirs.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
+bool IndexThread::readBackupDirs(bool filter_server)
 {
 	backup_dirs=cd->getBackupDirs();
+
+	if (filter_server)
+	{
+		filterBackupDirsForServer();
+	}
 
 	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
@@ -6390,43 +6456,44 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 
 bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-
-	if (!clientsubname.empty())
+	//Change block tracking is needed if any of the servers wants it for the volume
+	std::vector<std::string> settings_fns = getAllSettingsFns(clientsubname);
+	bool has_setting = false;
+	for (size_t i = 0; i < settings_fns.size(); ++i)
 	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
-	}
-
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if (curr_settings.get() != NULL)
-	{
-		std::string cbt_volumes;
-		if (curr_settings->getValue("cbt_volumes", &cbt_volumes)
-			|| curr_settings->getValue("cbt_volumes_def", &cbt_volumes))
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fns[i]));
+		if (curr_settings.get() != NULL)
 		{
-			return volIsEnabled(cbt_volumes, volume);
+			std::string cbt_volumes;
+			if (curr_settings->getValue("cbt_volumes", &cbt_volumes)
+				|| curr_settings->getValue("cbt_volumes_def", &cbt_volumes))
+			{
+				has_setting = true;
+				if (volIsEnabled(cbt_volumes, volume))
+				{
+					return true;
+				}
+			}
 		}
 	}
-	return true;
+	return !has_setting;
 }
 
 bool IndexThread::crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-
-	if (!clientsubname.empty())
+	std::vector<std::string> settings_fns = getAllSettingsFns(clientsubname);
+	for (size_t i = 0; i < settings_fns.size(); ++i)
 	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
-	}
-
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	if (curr_settings.get() != NULL)
-	{
-		std::string cbt_crash_persistent_volumes;
-		if (curr_settings->getValue("cbt_crash_persistent_volumes", &cbt_crash_persistent_volumes)
-			|| curr_settings->getValue("cbt_crash_persistent_volumes_def", &cbt_crash_persistent_volumes))
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fns[i]));
+		if (curr_settings.get() != NULL)
 		{
-			return volIsEnabled(cbt_crash_persistent_volumes, volume);
+			std::string cbt_crash_persistent_volumes;
+			if ( (curr_settings->getValue("cbt_crash_persistent_volumes", &cbt_crash_persistent_volumes)
+				|| curr_settings->getValue("cbt_crash_persistent_volumes_def", &cbt_crash_persistent_volumes))
+				&& volIsEnabled(cbt_crash_persistent_volumes, volume) )
+			{
+				return true;
+			}
 		}
 	}
 	return false;
@@ -8520,42 +8587,53 @@ void IndexThread::updateCbt()
 
 	std::set<std::string> vols;
 
-	std::string settings_fn = "urbackup/data/settings.cfg";
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-	std::string volumes;
-	if (curr_settings.get() != NULL)
+	//Image backups of all servers need change block tracking
+	std::vector<std::string> settings_fns = getAllSettingsFns(std::string());
+	bool has_image_volumes = false;
+	for (size_t f = 0; f < settings_fns.size(); ++f)
 	{
-		if (curr_settings->getValue("image_letters", &volumes)
-			|| curr_settings->getValue("image_letters_def", &volumes))
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fns[f]));
+		std::string volumes;
+		if (curr_settings.get() != NULL)
 		{
-			if (strlower(volumes) == "all")
+			if (curr_settings->getValue("image_letters", &volumes)
+				|| curr_settings->getValue("image_letters_def", &volumes))
 			{
-				volumes = get_all_volumes_list(false, volumes_cache);
-			}
-			else if (strlower(volumes) == "all_nonusb")
-			{
-				volumes = get_all_volumes_list(true, volumes_cache);
-			}
-			
-			std::vector<std::string> ret;
-			Tokenize(volumes, ret, ";,");
-			for (size_t i = 0; i<ret.size(); ++i)
-			{
-				std::string cvol = trim(ret[i]);
-				if (!normalizeVolume(cvol))
-					continue;
-				cvol = strlower(cvol);
-
-				if (vols.find(cvol) == vols.end())
+				if (!volumes.empty())
 				{
-					enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
-					vols.insert(cvol);
+					has_image_volumes = true;
+				}
+
+				if (strlower(volumes) == "all")
+				{
+					volumes = get_all_volumes_list(false, volumes_cache);
+				}
+				else if (strlower(volumes) == "all_nonusb")
+				{
+					volumes = get_all_volumes_list(true, volumes_cache);
+				}
+
+				std::vector<std::string> ret;
+				Tokenize(volumes, ret, ";,");
+				for (size_t i = 0; i<ret.size(); ++i)
+				{
+					std::string cvol = trim(ret[i]);
+					if (!normalizeVolume(cvol))
+						continue;
+					cvol = strlower(cvol);
+
+					if (vols.find(cvol) == vols.end())
+					{
+						enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
+						vols.insert(cvol);
+					}
 				}
 			}
 		}
 	}
 
-	readBackupDirs();
+	//Volumes of the backup directories of all servers
+	readBackupDirs(false);
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
@@ -8573,10 +8651,10 @@ void IndexThread::updateCbt()
 		}
 	}
 
-	const bool enable_all = (curr_settings.get() == NULL || volumes.empty())
+	const bool enable_all = !has_image_volumes
 		&& backup_dirs.empty();
 
-	volumes = get_all_volumes_list(true, volumes_cache);
+	std::string volumes = get_all_volumes_list(true, volumes_cache);
 
 	std::vector<std::string> ret;
 	Tokenize(volumes, ret, ";,");
