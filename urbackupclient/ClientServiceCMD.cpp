@@ -1451,6 +1451,26 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		int capa = watoi(params["capa"]);
 		token = params["token"];
 
+		if (capa & SERVER_SEND_SETTINGS)
+		{
+			//Ask for the server's settings if this client has none of this server yet.
+			//Older servers close the channel on unknown messages, so only if the server supports it
+			std::string channel_server_ident = ServerIdentityMgr::getServerIdentity(identity);
+			if (!channel_server_ident.empty())
+			{
+				std::string settings_fn = "urbackup/data/settings.cfg";
+				if (!params["virtual_client"].empty())
+				{
+					settings_fn = "urbackup/data/settings_" + conv_filename(params["virtual_client"]) + ".cfg";
+				}
+				if (!FileExists(ServerIdentityMgr::getServerSettingsFn(settings_fn, channel_server_ident)))
+				{
+					Server->Log("Asking server " + channel_server_ident + " for its settings", LL_INFO);
+					tcpstack.Send(pipe, "SEND SETTINGS");
+				}
+			}
+		}
+
 		if (params["startup"] == "1")
 		{
 			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));

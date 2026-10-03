@@ -406,6 +406,10 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		client_main->sendToPipe("UPDATE SETTINGS");
 	}
+	else if(msg=="SEND SETTINGS")
+	{
+		client_main->sendToPipe("SEND SETTINGS");
+	}
 	else if(msg=="START IMAGE FULL")
 	{
 		return START_BACKUP("full_image");
@@ -680,6 +684,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa |= DONT_ALLOW_COMPONENT_CONFIG;
 	if (!cs->allow_config_max_backups)
 		capa |= DONT_ALLOW_CONFIG_MAX_BACKUPS;
+
+	capa |= SERVER_SEND_SETTINGS;
 
 	return capa;
 }

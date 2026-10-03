@@ -135,6 +135,7 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	do_full_image_now=false;
 	do_incr_image_now=false;
 	do_update_access_key = false;
+	do_send_settings = false;
 	cdp_needs_sync=true;
 	do_load_backup_queue=true;
 	full_backup_start_id=0;
@@ -730,6 +731,12 @@ void ClientMain::operator ()(void)
 				{
 					sendSettings();
 				}
+				else if (do_send_settings)
+				{
+					//The client asked for the settings (e.g. it has no copy of this server's settings)
+					sendSettings();
+				}
+				do_send_settings = false;
 
 				if(settings_updated)
 				{
@@ -1049,6 +1056,7 @@ void ClientMain::operator ()(void)
 		else if(msg=="START QUEUED") do_load_backup_queue=true;
 		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
 		else if (msg == "UPDATE ACCESS KEY") do_update_access_key = true;
+		else if (msg == "SEND SETTINGS") do_send_settings = true;
 		else if(next(msg, 0, "address"))
 		{
 			updateClientAddress(msg.substr(7));
