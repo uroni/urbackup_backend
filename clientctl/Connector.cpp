@@ -517,6 +517,16 @@ void Connector::setClient(const std::string &pClient)
 	client=pClient;
 }
 
+std::string Connector::server_filter;
+
+namespace
+{
+	std::string serverParam()
+	{
+		return Connector::server_filter.empty() ? std::string() : "&server=" + EscapeParamString(Connector::server_filter);
+	}
+}
+
 std::string Connector::getFileBackupsList(const std::string& virtual_client, EAccessError& access_error)
 {
 	access_error = EAccessError_Ok;
@@ -528,7 +538,7 @@ std::string Connector::getFileBackupsList(const std::string& virtual_client, EAc
 	}
 
 	std::string list = getResponse("GET FILE BACKUPS TOKENS", "tokens="+
-		tokens+(virtual_client.empty() ? "" : "&virtual_client="+EscapeParamString(virtual_client)), false);
+		tokens+(virtual_client.empty() ? "" : "&virtual_client="+EscapeParamString(virtual_client))+serverParam(), false);
 
 	if(!list.empty())
 	{
@@ -606,7 +616,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, cons
 	}
 
 	std::string list = getResponse("GET FILE LIST TOKENS",
-		params, false);
+		params+serverParam(), false);
 
 	if(!list.empty())
 	{
@@ -662,7 +672,7 @@ std::string Connector::startRestore( const std::string& path, int backupid, cons
 	params += std::string("&follow_symlinks=") + (follow_symlinks ? "1" : "0");
 
 	std::string res = getResponse("DOWNLOAD FILES TOKENS",
-		params, false);
+		params+serverParam(), false);
 
 	if(!res.empty())
 	{

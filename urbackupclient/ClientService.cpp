@@ -4022,6 +4022,93 @@ int ClientConnector::getCapabilities(IDatabase* db)
 	return capa;
 }
 
+bool ClientConnector::channelMatchesServer(const SChannel& channel, const std::string& server)
+{
+	if (server.empty())
+	{
+		return true;
+	}
+
+	std::string server_ident = ServerIdentityMgr::getServerIdentity(channel.server_identity);
+	if (server_ident.empty())
+	{
+		return false;
+	}
+	if (server_ident == server)
+	{
+		return true;
+	}
+
+	SServerEntry entry;
+	if (!ServerList::getEntryByIdent(server_ident, entry))
+	{
+		return false;
+	}
+	return convert(entry.id) == server
+		|| (!entry.name.empty() && strlower(entry.name) == strlower(server));
+}
+
+std::string ClientConnector::addServerToJsonArray(const std::string& json, const SChannel& channel)
+{
+	std::string server_ident = ServerIdentityMgr::getServerIdentity(channel.server_identity);
+	if (server_ident.empty())
+	{
+		return json;
+	}
+
+	SServerEntry entry;
+	std::string server_name;
+	if (ServerList::getEntryByIdent(server_ident, entry))
+	{
+		server_name = !entry.name.empty() ? entry.name
+			: (!entry.endpoint.empty() ? entry.endpoint : entry.internet_server);
+	}
+
+	std::string fields = "\"server\": \"" + server_ident + "\", \"server_name\": \""
+		+ greplace("\"", "\\\"", greplace("\\", "\\\\", server_name)) + "\"";
+
+	//Insert after the "{" of each object in the top level array
+	std::string ret;
+	int depth = 0;
+	bool in_string = false;
+	for (size_t i = 0; i < json.size(); ++i)
+	{
+		char ch = json[i];
+		ret += ch;
+		if (in_string)
+		{
+			if (ch == '\\' && i + 1 < json.size())
+			{
+				ret += json[++i];
+			}
+			else if (ch == '"')
+			{
+				in_string = false;
+			}
+			continue;
+		}
+		if (ch == '"')
+		{
+			in_string = true;
+		}
+		else if (ch == '[' || ch == '{')
+		{
+			++depth;
+			if (ch == '{' && depth == 2)
+			{
+				size_t next_ch = json.find_first_not_of(" \t\r\n", i + 1);
+				bool empty_object = next_ch != std::string::npos && json[next_ch] == '}';
+				ret += fields + (empty_object ? "" : ", ");
+			}
+		}
+		else if (ch == ']' || ch == '}')
+		{
+			--depth;
+		}
+	}
+	return ret;
+}
+
 bool ClientConnector::multipleChannelServers()
 {
 	if (channel_pipes.size() <= 1)

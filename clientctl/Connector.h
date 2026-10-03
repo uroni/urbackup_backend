@@ -204,6 +204,9 @@ public:
 		ENbdImageResult_NotFound = 5
 	};
 
+	//Restrict browsing/restoring to one server (server list id, name or identity)
+	static std::string server_filter;
+
 	static std::string getFileBackupsList(const std::string& virtual_client, EAccessError& access_error);
 	static std::string getFileList(const std::string& path, int* backupid, const std::string& virtual_client, EAccessError& access_error);
 	static std::string startRestore( const std::string& path, int backupid, const std::string& virtual_client,

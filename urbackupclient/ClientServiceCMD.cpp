@@ -2262,7 +2262,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if (channel_pipes[i].virtual_client != virtual_client)
+			if (channel_pipes[i].virtual_client != virtual_client
+				|| !channelMatchesServer(channel_pipes[i], params["server"]))
 			{
 				continue;
 			}
@@ -2301,6 +2302,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				if(!nc.empty() && nc!="err")
 				{
 					channel_pipes[i].last_tokens = utf8_tokens;
+
+					nc = addServerToJsonArray(nc, channel_pipes[i]);
 
 					if(!filebackups.empty())
 					{
@@ -2378,7 +2381,8 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if (channel_pipes[i].virtual_client != virtual_client)
+			if (channel_pipes[i].virtual_client != virtual_client
+				|| !channelMatchesServer(channel_pipes[i], params["server"]))
 			{
 				continue;
 			}
@@ -2494,10 +2498,16 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	}
 	
 	accessparams+="&backupid="+EscapeParamString(it_backupid->second);
-	
+
+	//The backup ids in the backup list have the server's id offset if there are several servers.
+	//The server applies the offset for restores only if asked to (unlike for listing files)
 	if(!multipleChannelServers())
 	{
 		accessparams+="&with_id_offset=false";
+	}
+	else
+	{
+		accessparams+="&with_id_offset=true";
 	}
 
 	std::string restore_token_binary;
@@ -2552,9 +2562,11 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	std::string virtual_client = params["virtual_client"];
 	bool has_token_params=false;
 	std::string last_err;
+	std::string restore_err;
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		if (channel_pipes[i].virtual_client != virtual_client)
+		if (channel_pipes[i].virtual_client != virtual_client
+			|| !channelMatchesServer(channel_pipes[i], params["server"]))
 		{
 			continue;
 		}
@@ -2590,12 +2602,26 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 			sendChannelPacket(channel_pipes[i], cmd+accessparams);
 
 			last_err=receivePacket(channel_pipes[i]);
-			if(!last_err.empty() && last_err!="err")
+			bool restore_error = last_err.find("\"err\"") != std::string::npos
+				&& last_err.find("\"ok\"") == std::string::npos;
+			if(!last_err.empty() && last_err!="err" && !restore_error)
 			{
 				channel_pipes[i].last_tokens = utf8_tokens;
 
 				tcpstack.Send(pipe, "0" + last_err);
 				return;
+			}
+			else if(restore_error)
+			{
+				//With several servers, the backup is on one of them. The others cannot access it
+				//(error 4). Try the next server, but report another error if there is one
+				channel_pipes[i].last_tokens = utf8_tokens;
+				if (restore_err.empty()
+					|| last_err.find("\"err\": 4") == std::string::npos)
+				{
+					restore_err = last_err;
+				}
+				break;
 			}
 			else if(!has_token_params)
 			{
@@ -2604,8 +2630,14 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 			else
 			{
 				break;
-			}		
+			}
 		}
+	}
+
+	if (!restore_err.empty())
+	{
+		tcpstack.Send(pipe, "0" + restore_err);
+		return;
 	}
 
 	tcpstack.Send(pipe, last_err);

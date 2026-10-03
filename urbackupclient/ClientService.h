@@ -395,6 +395,11 @@ private:
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
+	//True if the channel is to the server selected by the "server" parameter (server list id,
+	//name or identity) or no server was selected
+	static bool channelMatchesServer(const SChannel& channel, const std::string& server);
+	//Adds "server" and "server_name" of the channel's server to the objects of a JSON array
+	static std::string addServerToJsonArray(const std::string& json, const SChannel& channel);
 	void exit_backup_immediate(int rc);
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
