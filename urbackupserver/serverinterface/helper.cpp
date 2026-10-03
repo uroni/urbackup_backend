@@ -37,6 +37,7 @@ Helper::rate_limit_map Helper::rates_per_bucket;
 std::map<std::string, int64> Helper::banned_ips;
 ICondition* Helper::login_wait_cond;
 IMutex* Helper::login_wait_mutex;
+IMutex* Helper::access_dir_checks_mutex;
 std::set<std::string> Helper::logging_in;
 
 Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
@@ -243,6 +244,7 @@ void Helper::init_mutex()
 	rate_limit_mutex = Server->createSharedMutex();
 	login_wait_cond = Server->createCondition();
 	login_wait_mutex = Server->createMutex();
+	access_dir_checks_mutex = Server->createMutex();
 
 	if (failedLoginRateLimit())
 		Server->createThread(new RateLimitTimeout, "rate limit timeout");
