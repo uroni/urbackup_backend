@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <stdlib.h>
 #include <stdio.h>
@@ -155,6 +156,12 @@ void action_help(std::string cmd)
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " image-nbd-stop" << std::endl;
 	std::cout << "\t\t" "Stop serving an image backup via NBD" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " list-servers" << std::endl;
+	std::cout << "\t\t" "List the servers this client is backed up by" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " set-servers" << std::endl;
+	std::cout << "\t\t" "Replace the server list" << std::endl;
 	std::cout << std::endl;
 }
 
@@ -1692,6 +1699,150 @@ int action_list_backupdirs(std::vector<std::string> args)
 	return 0;
 }
 
+int action_list_servers(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List the servers this client is backed up by", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::SwitchArg raw_arg("r", "raw",
+		"Return the raw server list (input format of set-servers)", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string data = Connector::getServerList();
+	if (data.empty() || Connector::hasError())
+	{
+		std::cerr << "Error retrieving server list from backend" << std::endl;
+		return 1;
+	}
+
+	if (raw_arg.getValue())
+	{
+		std::cout << data;
+		std::cout.flush();
+		return 0;
+	}
+
+	std::map<std::string, std::string> values;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = getline(i, data);
+		size_t eq = l.find('=');
+		if (eq != std::string::npos)
+		{
+			values[l.substr(0, eq)] = trim(l.substr(eq + 1));
+		}
+	}
+
+	std::vector<std::vector<std::string> > tab;
+	std::vector<std::string> tab_header;
+	tab_header.push_back("ID");
+	tab_header.push_back("NAME");
+	tab_header.push_back("LOCAL");
+	tab_header.push_back("INTERNET");
+	tab_header.push_back("INTERNET SERVER");
+	tab_header.push_back("STATUS");
+	tab_header.push_back("FINGERPRINT");
+	tab.push_back(tab_header);
+
+	int count = atoi(values["count"].c_str());
+	for (int i = 0; i < count; ++i)
+	{
+		std::string p = convert(i) + ".";
+		std::vector<std::string> row;
+		row.push_back(values[p + "id"]);
+		std::string name = values[p + "name"];
+		if (name.empty()) name = values[p + "endpoint"];
+		if (name.empty()) name = values[p + "internet_server"];
+		row.push_back(name.empty() ? "-" : name);
+		row.push_back(values[p + "local"] == "true" ? "Yes" : "No");
+		row.push_back(values[p + "internet"] == "true" ? "Yes" : "No");
+		std::string internet_server = values[p + "internet_server"];
+		if (!internet_server.empty() && !values[p + "internet_server_port"].empty())
+			internet_server += ":" + values[p + "internet_server_port"];
+		row.push_back(internet_server.empty() ? "-" : internet_server);
+		std::string status;
+		std::string internet_status = values[p + "internet_status"];
+		if (values[p + "local"] != "true" && values[p + "internet"] != "true") status = "disabled";
+		else if (values[p + "local"] == "true" && values[p + "online"] == "true" && internet_status != "connected") status = "connected (LAN)";
+		if (!internet_status.empty())
+		{
+			if (!status.empty()) status += ", ";
+			status += "internet " + internet_status;
+		}
+		row.push_back(status.empty() ? "-" : status);
+		std::string fingerprint = values[p + "fingerprint"];
+		if (fingerprint.empty()) fingerprint = values[p + "ident"].empty() ? "(not connected yet)" : values[p + "ident"];
+		row.push_back(fingerprint);
+		tab.push_back(row);
+	}
+
+	display_table(tab);
+
+	int pending_count = atoi(values["pending_count"].c_str());
+	for (int i = 0; i < pending_count; ++i)
+	{
+		std::cout << "Untrusted server tried to connect: " << values["pending." + convert(i)] << std::endl;
+	}
+
+	return 0;
+}
+
+int action_set_servers(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Replace the server list (format as printed by list-servers --raw). "
+		"Servers removed from the list are no longer trusted.", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::ValueArg<std::string> file_arg("f", "file",
+		"File with the new server list (- for stdin)",
+		true, "", "path", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string data;
+	if (file_arg.getValue() == "-")
+	{
+		std::string line;
+		while (std::getline(std::cin, line))
+		{
+			data += line + "\n";
+		}
+	}
+	else
+	{
+		data = getFile(file_arg.getValue());
+	}
+
+	if (data.empty())
+	{
+		std::cerr << "Server list is empty" << std::endl;
+		return 2;
+	}
+
+	std::string ret = Connector::setServerList(data);
+	if (ret != "OK")
+	{
+		std::cerr << "Setting server list failed: " << (ret.empty() ? "no response from backend" : ret) << std::endl;
+		return 1;
+	}
+
+	return 0;
+}
+
 int action_remove_backupdir(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Remove directory from backup set", ' ', cmdline_version);
@@ -2188,6 +2339,10 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_list_backupdirs);
 	actions.push_back("remove-backupdir");
 	action_funs.push_back(action_remove_backupdir);
+	actions.push_back("list-servers");
+	action_funs.push_back(action_list_servers);
+	actions.push_back("set-servers");
+	action_funs.push_back(action_set_servers);
 	actions.push_back("wait-for-backend");
 	action_funs.push_back(action_wait_for_backend);
 	actions.push_back("image-list");

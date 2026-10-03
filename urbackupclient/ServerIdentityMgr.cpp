@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include <algorithm>
@@ -26,6 +27,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
+const unsigned int recent_online_timeout=5*60*1000; //Session used in the last 5min
 
 extern ICryptoFactory* crypto_fak;
 
@@ -58,14 +60,73 @@ void ServerIdentityMgr::destroy_mutex(void)
 
 void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SPublicKeys& pPublicKey)
 {
+	{
+		IScopedLock lock(mutex);
+		loadServerIdentities();
+		identities.push_back(SIdentity(pIdentity, pPublicKey));
+		if(pPublicKey.empty())
+		{
+			filesrv->addIdentity("#I"+pIdentity+"#", false);
+		}
+		writeServerIdentities();
+	}
+	ServerList::addTrustedIdent(pIdentity);
+}
+
+std::vector<std::string> ServerIdentityMgr::getServerIdentities()
+{
+	IScopedLock lock(mutex);
+	std::vector<std::string> ret;
+	for(size_t i=0;i<identities.size();++i)
+	{
+		ret.push_back(identities[i].ident);
+	}
+	return ret;
+}
+
+bool ServerIdentityMgr::isServerOnline(const std::string& server_ident)
+{
+	IScopedLock lock(mutex);
+	int64 ctime=Server->getTimeMS();
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		if(session_identities[i].server_ident==server_ident
+			&& session_identities[i].onlinetime>0
+			&& ctime-session_identities[i].onlinetime<recent_online_timeout)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void ServerIdentityMgr::removeServerIdentity(const std::string& server_ident)
+{
 	IScopedLock lock(mutex);
 	loadServerIdentities();
-	identities.push_back(SIdentity(pIdentity, pPublicKey));
-	if(pPublicKey.empty())
+	std::vector<SIdentity>::iterator it=std::find(identities.begin(), identities.end(), SIdentity(server_ident));
+	if(it==identities.end())
 	{
-		filesrv->addIdentity("#I"+pIdentity+"#", false);
+		return;
 	}
+	identities.erase(it);
+	filesrv->removeIdentity("#I" + server_ident + "#");
+
+	for(size_t i=0;i<session_identities.size();)
+	{
+		if(session_identities[i].server_ident==server_ident)
+		{
+			filesrv->removeIdentity("#I" + session_identities[i].ident + "#");
+			session_identities.erase(session_identities.begin()+i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+
 	writeServerIdentities();
+	writeSessionIdentities();
 }
 
 bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string& secret_key)

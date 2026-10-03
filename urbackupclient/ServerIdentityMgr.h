@@ -96,6 +96,11 @@ public:
 	static void setServerTokenIdentity(const std::string& server_token, const std::string& server_ident);
 	static std::string getServerTokenIdentity(const std::string& server_token);
 
+	static std::vector<std::string> getServerIdentities();
+	//True if a session of the server (LAN or internet) was used in the last minutes
+	static bool isServerOnline(const std::string& server_ident);
+	static void removeServerIdentity(const std::string& server_ident);
+
 	//Settings file holding the settings of one server (e.g. urbackup/data/settings_srv_<ident>.cfg)
 	static std::string getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident);
 

@@ -64,7 +64,7 @@ add_executable(urbackupclientbackend
 	${URBACKUP_FILESERVPLUGIN_SOURCES}
 	urbackupclient/dllmain.cpp urbackupclient/clientdao.cpp urbackupclient/client.cpp
 	urbackupclient/ClientService.cpp urbackupclient/ClientSend.cpp urbackupclient/client_restore.cpp urbackupclient/client_restore_http.cpp
-	urbackupclient/ServerIdentityMgr.cpp urbackupclient/ClientServiceCMD.cpp urbackupclient/ImageReadFile.cpp urbackupclient/ImageThread.cpp
+	urbackupclient/ServerIdentityMgr.cpp urbackupclient/ServerList.cpp urbackupclient/ClientServiceCMD.cpp urbackupclient/ImageReadFile.cpp urbackupclient/ImageThread.cpp
 	urbackupclient/InternetClient.cpp urbackupclient/file_permissions.cpp urbackupclient/lin_ver.cpp
 	urbackupclient/lin_tokens.cpp urbackupclient/common_tokens.cpp urbackupclient/FileMetadataDownloadThread.cpp
 	urbackupclient/RestoreFiles.cpp urbackupclient/RestoreDownloadThread.cpp urbackupclient/TokenCallback.cpp
@@ -145,6 +145,10 @@ if(NOT URBACKUP_CLIENT_HEADLESS)
 		${_gui}/stringtools.cpp ${_gui}/TaskBarBaloon.cpp ${_gui}/tcpstack.cpp ${_gui}/TrayIcon.cpp
 		${_gui}/Status.cpp ${_gui}/jsoncpp.cpp ${_gui}/TranslationHelper.cpp ${_gui}/gui/GUISetupWizard.cpp
 		${_gui}/SetupWizard.cpp ${_gui}/CbtStatus.cpp)
+	# The server list of the multi-server client (only in frontends that have it)
+	if(EXISTS ${_gui}/ServerListUI.cpp)
+		target_sources(urbackupclientgui PRIVATE ${_gui}/ServerListUI.cpp)
+	endif()
 	# The frontend sources include "../config.h", resolve it relative to a directory below config.h
 	file(MAKE_DIRECTORY ${URBACKUP_CLIENT_CONFIG_DIR}/frontend)
 	target_include_directories(urbackupclientgui PRIVATE ${URBACKUP_CLIENT_CONFIG_DIR}/frontend)

@@ -67,6 +67,7 @@ extern IServer* Server;
 #include "client.h"
 #include "../stringtools.h"
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../urbackupcommon/os_functions.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
@@ -402,6 +403,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_chunk_hasher();
 
 	ServerIdentityMgr::init_mutex();
+	ServerList::init_mutex();
 #ifdef _WIN32
 	DirectoryWatcherThread::init_mutex();
 #endif

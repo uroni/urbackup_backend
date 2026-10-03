@@ -1,0 +1,89 @@
+#pragma once
+
+#include <string>
+#include <vector>
+#include "../Interface/Types.h"
+
+class IMutex;
+class ISettingsReader;
+
+//A server this client is backed up by. A server can be reached via LAN (local),
+//via internet or both
+struct SServerEntry
+{
+	SServerEntry()
+		: id(0), local(true), internet(false), internet_compress(true),
+		internet_encrypt(true)
+	{}
+
+	//Stable id of the entry (entry 0 mirrors the internet settings in settings.cfg)
+	int id;
+	//Display name (empty: use endpoint or internet server host name)
+	std::string name;
+	//Server identity (empty if the server has not connected yet)
+	std::string ident;
+	//Last LAN address the server connected from
+	std::string endpoint;
+
+	bool local;
+	bool internet;
+
+	std::string internet_server;
+	std::string internet_server_port;
+	std::string internet_server_proxy;
+	std::string internet_authkey;
+	bool internet_compress;
+	bool internet_encrypt;
+};
+
+class ServerList
+{
+public:
+	static void init_mutex();
+	static void destroy_mutex();
+
+	static std::vector<SServerEntry> getEntries();
+	//Replaces all entries (e.g. from the tray UI). Entries removed from the list lose their trust
+	static bool setEntries(const std::vector<SServerEntry>& entries);
+
+	static bool getEntryByIdent(const std::string& ident, SServerEntry& entry);
+	static bool getEntryById(int id, SServerEntry& entry);
+
+	//Entry 0, whose internet settings are mirrored in settings.cfg
+	static std::string getDefaultInternetIdent();
+
+	//Called when a server identity becomes trusted. Adds a LAN entry if there is none
+	static void addTrustedIdent(const std::string& ident);
+
+	//Called when the server of internet entry id authenticated with its identity.
+	//Returns false if the entry belongs to another server
+	static bool setInternetIdent(int id, const std::string& ident);
+
+	static void setEndpoint(const std::string& ident, const std::string& endpoint);
+
+	//Update the internet settings of the entry of server ident from settings sent by that server.
+	//Returns true if they changed
+	static bool updateFromServerSettings(const std::string& ident, ISettingsReader* settings);
+
+	//settings.cfg was changed locally (old tray UI, urbackupclientctl set-settings): update entry 0
+	static void updateFromLocalSettings(ISettingsReader* settings);
+
+	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>"), used for
+	//server_list.cfg and for the tray UI (with_status adds read-only status fields)
+	static std::string toText(const std::vector<SServerEntry>& entries, bool with_status);
+	static bool fromText(const std::string& text, std::vector<SServerEntry>& entries);
+
+private:
+	static void load();
+	static bool save();
+	static void migrate();
+	//Sets entry 0 from the internet settings in settings.cfg. Returns true if it changed
+	static bool updateEntry0(ISettingsReader* settings);
+	static SServerEntry* findIdent(const std::string& ident);
+	static SServerEntry* findId(int id);
+	static int nextId();
+
+	static IMutex* mutex;
+	static bool loaded;
+	static std::vector<SServerEntry> entries;
+};

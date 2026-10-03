@@ -22,6 +22,7 @@
 #include "ClientService.h"
 #include "InternetClient.h"
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/escape.h"
@@ -83,6 +84,16 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 		}
 		else
 		{
+			SServerEntry lan_entry;
+			if( !internet_conn
+				&& ServerList::getEntryByIdent(identity, lan_entry)
+				&& !lan_entry.local )
+			{
+				Server->Log("Server " + identity + " tried to connect via LAN, but LAN is disabled for it", LL_DEBUG);
+				tcpstack.Send(pipe, "failed");
+				return;
+			}
+
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
@@ -99,7 +110,20 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 
 			const bool alwaysAcceptInternetIdent = Server->getServerParameter("always_accept_internet_ident") != "false";
 
-			if( ServerIdentityMgr::numServerIdentities()==0 || (internet_conn && alwaysAcceptInternetIdent ) )
+			SServerEntry entry;
+			if( internet_conn
+				&& ServerList::getEntryById(internet_server_id, entry)
+				&& entry.ident.empty() )
+			{
+				//The internet connection of this server list entry authenticated with its authkey,
+				//so this is the server configured for the entry
+				Server->Log("Trusting identity " + identity + " of the internet server of server list entry "
+					+ convert(internet_server_id), LL_INFO);
+				InternetClient::setInternetServerIdentity(internet_server_id, identity);
+				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
+				tcpstack.Send(pipe, "OK");
+			}
+			else if( ServerIdentityMgr::numServerIdentities()==0 || (internet_conn && alwaysAcceptInternetIdent ) )
 			{
 				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
@@ -3520,6 +3544,53 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	{
 		tcpstack.Send(pipe, "FAILED");
 	}
+}
+
+void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd)
+{
+	std::vector<SServerEntry> entries = ServerList::getEntries();
+	std::string data = ServerList::toText(entries, true);
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (entries[i].internet)
+		{
+			data += convert(i) + ".internet_status=" + InternetClient::getStatusMsg(entries[i].id) + "\n";
+		}
+	}
+
+	{
+		//Servers that tried to connect but are not trusted yet
+		IScopedLock lock(ident_mutex);
+		data += "pending_count=" + convert(new_server_idents.size()) + "\n";
+		for (size_t i = 0; i < new_server_idents.size(); ++i)
+		{
+			data += "pending." + convert(i) + "=" + new_server_idents[i] + "\n";
+		}
+	}
+
+	tcpstack.Send(pipe, data);
+}
+
+void ClientConnector::CMD_SET_SERVER_LIST(const std::string &cmd)
+{
+	std::string data = cmd.substr(16);
+	unescapeMessage(data);
+
+	std::vector<SServerEntry> entries;
+	if (!ServerList::fromText(data, entries))
+	{
+		tcpstack.Send(pipe, "INVALID");
+		return;
+	}
+
+	if (!ServerList::setEntries(entries))
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
+	InternetClient::updateSettings();
+	tcpstack.Send(pipe, "OK");
 }
 
 void ClientConnector::CMD_RESET_KEEP(str_map &params)

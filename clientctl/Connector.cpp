@@ -230,6 +230,18 @@ std::string Connector::getSharedPathsRaw()
 	return getResponse("GET BACKUP DIRS", "", false);
 }
 
+std::string Connector::getServerList()
+{
+	return getResponse("GET SERVER LIST", "", false);
+}
+
+std::string Connector::setServerList(const std::string &data)
+{
+	std::string edata = data;
+	escapeClientMessage(edata);
+	return getResponse("SET SERVER LIST " + edata, "", true);
+}
+
 std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 {
 	std::vector<SBackupDir> ret;
