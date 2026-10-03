@@ -93,5 +93,18 @@
 		{?can_restore}
 		<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid},'{path|j}', {server_confirms_restore}); return false">{tRestore folder to client}</a>
 		{/can_restore}
+		{?restore_disabled_on_client}
+		<br><br>
+		<div class="alert alert-info">
+			{tRestores started from the server are disabled on this client.}
+			{?restore_cmd}
+			{tTo restore this folder, run the following command on the client as root:}
+			<pre>{restore_cmd}</pre>
+			{tThis removes files in the folder that are not in the backup, like a restore started from the server. Add -n to keep them.}
+			<br><br>
+			{tAlternatively (not recommended), allow restores started from the server by setting RESTORE=server-confirms in /etc/default/urbackupclient on the client and restarting the client.}
+			{/restore_cmd}
+		</div>
+		{/restore_disabled_on_client}
 	</div>
 </div>
