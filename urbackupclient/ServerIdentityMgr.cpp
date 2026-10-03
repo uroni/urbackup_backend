@@ -64,6 +64,7 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SP
 		IScopedLock lock(mutex);
 		loadServerIdentities();
 		identities.push_back(SIdentity(pIdentity, pPublicKey));
+		filesrv->setIdentityServer("#I"+pIdentity+"#", pIdentity);
 		if(pPublicKey.empty())
 		{
 			filesrv->addIdentity("#I"+pIdentity+"#", false);
@@ -111,12 +112,14 @@ void ServerIdentityMgr::removeServerIdentity(const std::string& server_ident)
 	}
 	identities.erase(it);
 	filesrv->removeIdentity("#I" + server_ident + "#");
+	filesrv->setIdentityServer("#I" + server_ident + "#", std::string());
 
 	for(size_t i=0;i<session_identities.size();)
 	{
 		if(session_identities[i].server_ident==server_ident)
 		{
 			filesrv->removeIdentity("#I" + session_identities[i].ident + "#");
+			filesrv->setIdentityServer("#I" + session_identities[i].ident + "#", std::string());
 			session_identities.erase(session_identities.begin()+i);
 		}
 		else
@@ -258,6 +261,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 				filesrv->addIdentity("#I"+l+"#", false);
 			}
 			identities.push_back(SIdentity(l, pubkeys));
+			filesrv->setIdentityServer("#I"+l+"#", l);
 			std::vector<SIdentity>::iterator it=std::find(old_identities.begin(), old_identities.end(), SIdentity(l));
 			if(it!=old_identities.end())
 			{
@@ -307,6 +311,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
+			filesrv->setIdentityServer("#I" + l + "#", params["server_ident"]);
 
 			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), SSessionIdentity(session_ident));
 			if(it!=old_session_identities.end())
@@ -468,6 +473,7 @@ void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const 
 	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key, server_ident);
 	session_identities.push_back(session_ident);
 	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
+	filesrv->setIdentityServer("#I" + pIdentity + "#", server_ident);
 	writeSessionIdentities();
 }
 

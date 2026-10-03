@@ -1292,7 +1292,7 @@ void ClientConnector::ReceivePacketsInt()
 				}
 				else if(next(cmd, 0, "UPDATE SETTINGS ") )
 				{
-					CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
+					CMD_TOCHANNEL_UPDATE_SETTINGS(cmd, params); continue;
 				}
 				else if(cmd=="GET LOGPOINTS" )
 				{
@@ -2356,7 +2356,7 @@ void ClientConnector::updateInternetSettings(const std::string& settings_fn, ISe
 	}
 }
 
-void ClientConnector::replaceSettings(const std::string &pData)
+void ClientConnector::replaceSettings(const std::string &pData, const std::string& target_server)
 {
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
@@ -2376,6 +2376,17 @@ void ClientConnector::replaceSettings(const std::string &pData)
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
 	{
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+	}
+
+	if (!target_server.empty())
+	{
+		std::string primary_fn = settings_fn.substr(0, settings_fn.size() - 4) + "_primary_server.txt";
+		if (trim(getline(0, getFile(primary_fn))) == target_server)
+		{
+			//The primary server's settings are also in settings.cfg
+			replaceSettings(pData);
+		}
+		settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, target_server);
 	}
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));

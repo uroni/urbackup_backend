@@ -60,6 +60,25 @@ std::string map_file(std::string fn, const std::string& identity, bool& allow_ex
 {
 	allow_exec = false;
 
+	if (next(fn, 0, "urbackup/settings")
+		&& fn.size() > 4
+		&& fn.substr(fn.size() - 4) == ".cfg"
+		&& fn.find("_srv_") == std::string::npos)
+	{
+		//A server gets its own copy of the client settings (with the changes made for it)
+		std::string server_ident = FileServ::getIdentityServer(identity);
+		if (!server_ident.empty())
+		{
+			std::string srv_fn = map_file(fn.substr(0, fn.size() - 4) + "_srv_" + server_ident + ".cfg",
+				identity, allow_exec, cbt_hash_file_info);
+			if (!srv_fn.empty()
+				&& Server->fileExists(srv_fn))
+			{
+				return srv_fn;
+			}
+		}
+	}
+
 	std::string ts=getuntil("/",fn);
 	if(ts.empty())
 		ts=fn;

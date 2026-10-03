@@ -52,6 +52,8 @@ public:
 	bool hasActiveTransfersGen(const std::string& sharename, const std::string& server_token, size_t gen);
 
 	bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn);
+	void setIdentityServer(const std::string& pIdentity, const std::string& server_ident);
+	static std::string getIdentityServer(const std::string& pIdentity);
 
 	static std::string getRedirectedFn(const std::string& source_fn);
 
@@ -124,6 +126,7 @@ private:
 	static std::map<std::string, SScriptMapping> script_mappings;
 
 	static std::map<std::string, std::string> fn_redirects;
+	static std::map<std::string, std::string> identity_servers;
 	
 	static IMutex *mutex;
 

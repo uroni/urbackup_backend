@@ -59,6 +59,9 @@ public:
 	virtual bool hasActiveTransfers(const std::string& sharename, const std::string& server_token) = 0;
 	virtual bool hasActiveTransfersGen(const std::string& sharename, const std::string& server_token, size_t gen) = 0;
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
+	//The server (identity) behind a client identity. Requests of that identity for
+	//urbackup/settings*.cfg get the server's own settings file (settings*_srv_<server>.cfg) if there is one
+	virtual void setIdentityServer(const std::string& pIdentity, const std::string& server_ident) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file) = 0;
 	virtual void deregisterScriptPipeFile(const std::string& script_fn) = 0;

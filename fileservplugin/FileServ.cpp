@@ -33,6 +33,7 @@ bool FileServ::pause=false;
 std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 std::map<std::string, std::string> FileServ::fn_redirects;
+std::map<std::string, std::string> FileServ::identity_servers;
 std::map<std::pair<std::string, size_t>, size_t> FileServ::active_shares;
 size_t FileServ::active_generation = 0;
 FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
@@ -338,6 +339,26 @@ bool FileServ::hasActiveTransfersGen(const std::string& sharename, const std::st
 	}
 
 	return false;
+}
+
+void FileServ::setIdentityServer(const std::string& pIdentity, const std::string& server_ident)
+{
+	IScopedLock lock(mutex);
+	if (server_ident.empty())
+	{
+		identity_servers.erase(pIdentity);
+	}
+	else
+	{
+		identity_servers[pIdentity] = server_ident;
+	}
+}
+
+std::string FileServ::getIdentityServer(const std::string& pIdentity)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, std::string>::iterator it = identity_servers.find(pIdentity);
+	return it != identity_servers.end() ? it->second : std::string();
 }
 
 bool FileServ::registerFnRedirect(const std::string & source_fn, const std::string & target_fn)

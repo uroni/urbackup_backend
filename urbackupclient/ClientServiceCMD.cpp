@@ -1567,8 +1567,17 @@ void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cm
 	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"]);
 }
 
-void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params)
 {
+	//Optional: the settings are for this server only
+	std::string target_server = params["server"];
+	if (!target_server.empty()
+		&& !ServerIdentityMgr::checkServerIdentity(target_server))
+	{
+		tcpstack.Send(pipe, "UNKNOWN SERVER");
+		return;
+	}
+
 	std::string s_settings = cmd.substr(16);
 	unescapeMessage(s_settings);
 
@@ -1616,12 +1625,17 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 
 	
 	lasttime=Server->getTimeMS();
-	replaceSettings( s_settings );
+	replaceSettings( s_settings, target_server );
 
 	IScopedLock lock(backup_mutex);
 	bool ok=false;
 	for(size_t o=0;o<channel_pipes.size();++o)
 	{
+		if (!target_server.empty()
+			&& ServerIdentityMgr::getServerIdentity(channel_pipes[o].server_identity) != target_server)
+		{
+			continue;
+		}
 		CTCPStack tmpstack(channel_pipes[o].internet_connection);
 		_u32 rc=(_u32)tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
 		if(rc!=0)
@@ -3550,6 +3564,8 @@ void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd)
 {
 	std::vector<SServerEntry> entries = ServerList::getEntries();
 	std::string data = ServerList::toText(entries, true);
+	//Server whose settings are in settings.cfg
+	data += "primary=" + trim(getline(0, getFile("urbackup/data/settings_primary_server.txt"))) + "\n";
 	for (size_t i = 0; i < entries.size(); ++i)
 	{
 		if (entries[i].internet)

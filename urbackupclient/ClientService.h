@@ -281,7 +281,8 @@ private:
 	void updateSettings(const std::string &pData);
 	bool isPrimaryServer(const std::string& settings_fn);
 	void updateInternetSettings(const std::string& settings_fn, ISettingsReader* new_settings);
-	void replaceSettings(const std::string &pData);
+	//target_server: change the settings of this server only (empty: settings.cfg)
+	void replaceSettings(const std::string &pData, const std::string& target_server=std::string());
 	void saveLogdata(const std::string &created, const std::string &pData);
 	std::string getLogpoints(void);
 	void getLogLevel(int logid, int loglevel, std::string &data);
@@ -353,7 +354,7 @@ private:
 	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params);
-	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd);
+	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params);
 	void CMD_LOGDATA(const std::string &cmd);
 	void CMD_PAUSE(const std::string &cmd);
 	void CMD_GET_LOGPOINTS(const std::string &cmd);
