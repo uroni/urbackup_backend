@@ -4362,6 +4362,7 @@ g.general_settings_list=[
 "no_images",
 "no_file_backups",
 "autoshutdown",
+"startup_cleanup",
 "download_client",
 "autoupdate_clients",
 "max_sim_backups",
