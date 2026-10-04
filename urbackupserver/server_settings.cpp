@@ -315,6 +315,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->backupfolder = trim(settings_global->getValue("backupfolder", DEFAULT_BACKUP_FOLDER));
 		settings->backupfolder_uncompr = trim(settings_global->getValue("backupfolder_uncompr", settings->backupfolder));
 		settings->autoshutdown = (settings_global->getValue("autoshutdown", "false") == "true");;
+		settings->startup_cleanup = (settings_global->getValue("startup_cleanup", "false") == "true");
 		settings->download_client = (settings_global->getValue("download_client", "true") == "true");
 		settings->autoupdate_clients = (settings_global->getValue("autoupdate_clients", "true") == "true");
 		settings->max_active_clients = settings_global->getValue("max_active_clients", 10000);
