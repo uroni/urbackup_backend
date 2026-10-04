@@ -1429,6 +1429,7 @@ translations.en = {
 "tDo not do image backups": "Do not do image backups",
 "tDo not do file backups": "Do not do file backups",
 "tAutomatically shut down server": "Automatically shut down server",
+"tRun cleanup at server startup": "Run cleanup at server startup",
 "tAutoupdate clients": "Autoupdate clients",
 "tMax number of simultaneous backups": "Max number of simultaneous backups",
 "tMax number of recently active clients": "Max number of recently active clients",

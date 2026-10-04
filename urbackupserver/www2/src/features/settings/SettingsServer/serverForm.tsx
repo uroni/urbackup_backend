@@ -16,6 +16,7 @@ export const SERVER_LABELS = {
   no_images: "Do not do image backups",
   no_file_backups: "Do not do file backups",
   autoshutdown: "Automatically shut down server",
+  startup_cleanup: "Run cleanup at server startup",
   download_client: "Download client from update server",
   autoupdate_clients: "Autoupdate clients",
   max_sim_backups: "Max simultaneous backups",
@@ -113,6 +114,7 @@ export const serverFormSchema: Record<ServerFieldNames, ZodMiniType> = {
   no_images: z.boolean(),
   no_file_backups: z.boolean(),
   autoshutdown: z.boolean(),
+  startup_cleanup: z.boolean(),
   download_client: z.boolean(),
   autoupdate_clients: z.boolean(),
   backup_database: z.boolean(),
@@ -146,6 +148,10 @@ const baseServerFields: BaseField<ServerFieldNames>[] = [
   },
   {
     name: "autoshutdown",
+    type: "checkbox",
+  },
+  {
+    name: "startup_cleanup",
     type: "checkbox",
   },
   {
