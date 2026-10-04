@@ -119,7 +119,7 @@ void ServerList::destroy_mutex()
 	Server->destroy(mutex);
 }
 
-std::string ServerList::toText(const std::vector<SServerEntry>& p_entries, bool with_status)
+std::string ServerList::toText(const std::vector<SServerEntry>& p_entries, bool with_status, bool with_authkey)
 {
 	std::string ret = "count=" + convert(p_entries.size()) + "\n";
 	for (size_t i = 0; i < p_entries.size(); ++i)
@@ -135,7 +135,10 @@ std::string ServerList::toText(const std::vector<SServerEntry>& p_entries, bool 
 		ret += p + "internet_server=" + oneLine(e.internet_server) + "\n";
 		ret += p + "internet_server_port=" + oneLine(e.internet_server_port) + "\n";
 		ret += p + "internet_server_proxy=" + oneLine(e.internet_server_proxy) + "\n";
-		ret += p + "internet_authkey=" + oneLine(e.internet_authkey) + "\n";
+		if (with_authkey)
+		{
+			ret += p + "internet_authkey=" + oneLine(e.internet_authkey) + "\n";
+		}
 		ret += p + "internet_compress=" + boolStr(e.internet_compress) + "\n";
 		ret += p + "internet_encrypt=" + boolStr(e.internet_encrypt) + "\n";
 

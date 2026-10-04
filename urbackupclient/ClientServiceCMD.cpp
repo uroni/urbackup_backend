@@ -1571,22 +1571,22 @@ void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string
 
 void ClientConnector::CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_FILE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_INCR_FILE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_FILE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_FULL_FILE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_IMAGE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_FULL_IMAGE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params)
@@ -3619,10 +3619,11 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	}
 }
 
-void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd)
+void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change_ok)
 {
 	std::vector<SServerEntry> entries = ServerList::getEntries();
-	std::string data = ServerList::toText(entries, true);
+	//Also used by the (not elevated) tray icon. Only administrators get the auth keys
+	std::string data = ServerList::toText(entries, true, pw_change_ok);
 	//Server whose settings are in settings.cfg
 	data += "primary=" + trim(getline(0, getFile("urbackup/data/settings_primary_server.txt"))) + "\n";
 	for (size_t i = 0; i < entries.size(); ++i)

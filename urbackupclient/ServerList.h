@@ -85,7 +85,8 @@ public:
 
 	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>"), used for
 	//server_list.cfg and for the tray UI (with_status adds read-only status fields)
-	static std::string toText(const std::vector<SServerEntry>& entries, bool with_status);
+	//with_authkey: false for callers that are not allowed to see the internet auth keys
+	static std::string toText(const std::vector<SServerEntry>& entries, bool with_status, bool with_authkey = true);
 	static bool fromText(const std::string& text, std::vector<SServerEntry>& entries);
 
 private:

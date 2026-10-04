@@ -299,7 +299,7 @@ private:
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
 	bool checkVersion(IFile* updatef);
-	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
+	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client, const std::string& server);
 	void ImageErr(const std::string &msg);
 	bool mapSystemVolume();
 	void update_silent(void);
@@ -380,7 +380,7 @@ private:
 	void CMD_CAPA(const std::string &cmd);
 	void CMD_NEW_SERVER(str_map &params);
 	void CMD_RESET_KEEP(str_map &params);
-	void CMD_GET_SERVER_LIST(const std::string &cmd);
+	void CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change_ok);
 	void CMD_SET_SERVER_LIST(const std::string &cmd);
 	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 	void CMD_GET_VSSLOG(const std::string &cmd);
