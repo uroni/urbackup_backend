@@ -867,6 +867,9 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 	IQuery* q_get_virtual_client = db->Prepare("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=?");
 
+	ServerList::BackupDirServers dir_servers = ServerList::getBackupDirServers();
+	ServerList::BackupDirServers client_dir_servers = ServerList::getClientBackupDirServers();
+
 	if(timeoutms==0)
 	{
 		JSON::Object ret;
@@ -917,6 +920,18 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 			cdir.set("flags", str_flags);
 
+			//Servers this directory is backed up to (empty: all)
+			bool servers_from_client;
+			std::vector<std::string> servers = ServerList::getServersOfBackupDir(client_dir_servers, dir_servers,
+				ServerList::backupDirKey(tgroup, res[i]["path"]), &servers_from_client);
+			JSON::Array j_servers;
+			for (size_t j = 0; j < servers.size(); ++j)
+			{
+				j_servers.add(servers[j]);
+			}
+			cdir.set("servers", j_servers);
+			cdir.set("servers_from_client", servers_from_client);
+
 			dirs.add(cdir);
 		}
 
@@ -940,6 +955,32 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 		Server->Log("Changing paths to backup is disabled", LL_WARNING);
 		tcpstack.Send(pipe, "FAILED");
 		return;
+	}
+
+	//dir_N_servers: server names, ids or identities -> identities
+	for (size_t i = 0; params.find("dir_" + convert(i)) != params.end(); ++i)
+	{
+		str_map::iterator it = params.find("dir_" + convert(i) + "_servers");
+		if (it == params.end())
+			continue;
+		std::vector<std::string> servers;
+		Tokenize(it->second, servers, ",");
+		std::string idents;
+		for (size_t j = 0; j < servers.size(); ++j)
+		{
+			std::string server = trim(servers[j]);
+			if (server.empty())
+				continue;
+			std::string ident = ServerList::resolveServer(server);
+			if (ident.empty())
+			{
+				tcpstack.Send(pipe, "UNKNOWN SERVER " + server);
+				return;
+			}
+			if (!idents.empty()) idents += ",";
+			idents += ident;
+		}
+		it->second = idents;
 	}
 
 	if(saveBackupDirs(params, false, 0))
@@ -3663,6 +3704,23 @@ void ClientConnector::CMD_SET_SERVER_LIST(const std::string &cmd)
 	{
 		tcpstack.Send(pipe, "INVALID");
 		return;
+	}
+
+	//Keep the auth key of entries that were sent without one (e.g. listed without
+	//administrator rights)
+	std::vector<SServerEntry> old_entries = ServerList::getEntries();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (data.find(convert(i) + ".internet_authkey=") != std::string::npos)
+			continue;
+		for (size_t j = 0; j < old_entries.size(); ++j)
+		{
+			if (old_entries[j].id == entries[i].id)
+			{
+				entries[i].internet_authkey = old_entries[j].internet_authkey;
+				break;
+			}
+		}
 	}
 
 	if (!ServerList::setEntries(entries))

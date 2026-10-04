@@ -1525,6 +1525,9 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
 	std::vector<std::string> all_backupdirs;
+	//The tray UI sends the servers of each directory (dir_N_servers, empty: all servers)
+	bool with_servers = !server_default && args["with_servers"] == "1";
+	ServerList::BackupDirServers client_dir_servers;
 	do
 	{
 		dir=args["dir_"+convert(i)];
@@ -1687,6 +1690,24 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				}
 			}
 			
+			if (with_servers)
+			{
+				std::vector<std::string> servers;
+				Tokenize(args["dir_" + convert(i) + "_servers"], servers, ",");
+				for (size_t j = 0; j < servers.size();)
+				{
+					servers[j] = trim(servers[j]);
+					if (servers[j].empty())
+						servers.erase(servers.begin() + j);
+					else
+						++j;
+				}
+				if (!servers.empty())
+				{
+					client_dir_servers[ServerList::backupDirKey(group, dir)] = servers;
+				}
+			}
+
 			q_insert_dir->Bind(name);
 			q_insert_dir->Bind(dir);
 			q_insert_dir->Bind(curr_server_default);
@@ -1699,6 +1720,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}
 	while(!dir.empty());
 	db->EndTransaction();
+
+	if (with_servers)
+	{
+		if (all_virtual_clients)
+			ServerList::setClientBackupDirServers(0, INT_MAX, client_dir_servers);
+		else
+			ServerList::setClientBackupDirServers(group_offset, group_offset + c_group_max, client_dir_servers);
+	}
 
 #ifdef _WIN32
 	for(size_t i=0;i<new_watchdirs.size();++i)

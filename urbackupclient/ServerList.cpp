@@ -39,6 +39,7 @@ namespace
 namespace
 {
 	const char* backupdir_servers_fn = "urbackup/data/backupdir_servers.cfg";
+	const char* backupdir_client_servers_fn = "urbackup/data/backupdir_client_servers.cfg";
 }
 
 std::string ServerList::backupDirKey(int tgroup, std::string path)
@@ -61,9 +62,53 @@ std::string ServerList::backupDirKey(int tgroup, std::string path)
 
 ServerList::BackupDirServers ServerList::getBackupDirServers()
 {
+	return readDirServers(backupdir_servers_fn);
+}
+
+void ServerList::setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
+{
+	writeDirServers(backupdir_servers_fn, tgroup_min, tgroup_max, dir_servers);
+}
+
+ServerList::BackupDirServers ServerList::getClientBackupDirServers()
+{
+	return readDirServers(backupdir_client_servers_fn);
+}
+
+void ServerList::setClientBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
+{
+	writeDirServers(backupdir_client_servers_fn, tgroup_min, tgroup_max, dir_servers);
+}
+
+std::vector<std::string> ServerList::getServersOfBackupDir(const BackupDirServers& client_dir_servers,
+	const BackupDirServers& dir_servers, const std::string& key, bool* from_client)
+{
+	if (from_client != NULL)
+	{
+		*from_client = false;
+	}
+	BackupDirServers::const_iterator it = client_dir_servers.find(key);
+	if (it != client_dir_servers.end())
+	{
+		if (from_client != NULL)
+		{
+			*from_client = true;
+		}
+		return it->second;
+	}
+	it = dir_servers.find(key);
+	if (it != dir_servers.end())
+	{
+		return it->second;
+	}
+	return std::vector<std::string>();
+}
+
+ServerList::BackupDirServers ServerList::readDirServers(const std::string& fn)
+{
 	IScopedLock lock(mutex);
 	BackupDirServers ret;
-	std::string data = getFile(backupdir_servers_fn);
+	std::string data = getFile(fn);
 	int numl = linecount(data);
 	for (int i = 0; i <= numl; ++i)
 	{
@@ -80,10 +125,10 @@ ServerList::BackupDirServers ServerList::getBackupDirServers()
 	return ret;
 }
 
-void ServerList::setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
+void ServerList::writeDirServers(const std::string& fn, int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
 {
 	IScopedLock lock(mutex);
-	std::string data = getFile(backupdir_servers_fn);
+	std::string data = getFile(fn);
 	std::string new_data;
 	int numl = linecount(data);
 	for (int i = 0; i <= numl; ++i)
@@ -106,7 +151,7 @@ void ServerList::setBackupDirServers(int tgroup_min, int tgroup_max, const Backu
 		}
 		new_data += it->first + "\t" + idents + "\n";
 	}
-	write_file_only_admin(new_data, backupdir_servers_fn);
+	write_file_only_admin(new_data, fn);
 }
 
 void ServerList::init_mutex()

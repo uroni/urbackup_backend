@@ -27,7 +27,7 @@ typedef long long int int64;
 struct SBackupDir
 {
 	SBackupDir()
-		: id(0), group(0), server_default(0)
+		: id(0), group(0), server_default(0), servers_from_client(false)
 	{}
 
 	SBackupDir(std::string path,
@@ -39,7 +39,8 @@ struct SBackupDir
 		int server_default)
 		: path(path), name(name), id(id),
 		group(group), virtual_client(virtual_client),
-		flags(flags), server_default(server_default)
+		flags(flags), server_default(server_default),
+		servers_from_client(false)
 	{}
 
 	std::string path;
@@ -49,6 +50,10 @@ struct SBackupDir
 	std::string virtual_client;
 	std::string flags;
 	int server_default;
+	//Identities of the servers this directory is backed up to (empty: all)
+	std::vector<std::string> servers;
+	//The servers were chosen on the client (not a server's default directory)
+	bool servers_from_client;
 };
 
 struct SStatus
@@ -180,7 +185,8 @@ public:
 	static bool updateSettings(const std::string &sdata, bool& no_perm);
 
 	//Server list as "count=N" and "<n>.<field>=<value>" lines
-	static std::string getServerList();
+	//use_change_pw: with the internet auth keys
+	static std::string getServerList(bool use_change_pw = false);
 	static std::string setServerList(const std::string &data);
 	static std::vector<SLogEntry> getLogEntries(void);
 	static std::vector<SLogLine> getLogdata(int logid, int loglevel);

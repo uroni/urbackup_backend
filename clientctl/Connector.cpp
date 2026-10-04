@@ -230,9 +230,9 @@ std::string Connector::getSharedPathsRaw()
 	return getResponse("GET BACKUP DIRS", "", false);
 }
 
-std::string Connector::getServerList()
+std::string Connector::getServerList(bool use_change_pw)
 {
-	return getResponse("GET SERVER LIST", "", false);
+	return getResponse("GET SERVER LIST", "", use_change_pw);
 }
 
 std::string Connector::setServerList(const std::string &data)
@@ -280,6 +280,13 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 					dir["flags"].asString(),
 					dir["server_default"].asInt());
 
+			Json::Value servers = dir.get("servers", Json::Value(Json::arrayValue));
+			for (Json::Value::ArrayIndex j = 0; j < servers.size(); ++j)
+			{
+				rdir.servers.push_back(servers[j].asString());
+			}
+			rdir.servers_from_client = dir.get("servers_from_client", false).asBool();
+
 			ret.push_back(rdir);
 		}
 	}
@@ -292,7 +299,7 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
-	std::string args="all_virtual_clients=1&enable_client_paths_use=1";
+	std::string args="all_virtual_clients=1&enable_client_paths_use=1&with_servers=1";
 	size_t idx = 0;
 	for (size_t i = 0; i<res.size(); ++i)
 	{
@@ -318,10 +325,27 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 			args += "&dir_" + convert(idx) + "_virtual_client=" + EscapeParamString(res[i].virtual_client);
 		}
 
+		if (res[i].servers_from_client && !res[i].servers.empty())
+		{
+			std::string servers;
+			for (size_t j = 0; j < res[i].servers.size(); ++j)
+			{
+				if (!servers.empty()) servers += ",";
+				servers += res[i].servers[j];
+			}
+			args += "&dir_" + convert(idx) + "_servers=" + EscapeParamString(servers);
+		}
+
 		++idx;
 	}
 
 	std::string d = getResponse("SAVE BACKUP DIRS", args, true);
+
+	if (next(d, 0, "UNKNOWN SERVER "))
+	{
+		std::cerr << "Unknown server \"" << d.substr(15) << "\" (see list-servers)" << std::endl;
+		return false;
+	}
 
 	if (d != "OK")
 		return false;

@@ -82,6 +82,14 @@ public:
 	static BackupDirServers getBackupDirServers();
 	//Replace the entries with tgroup in [tgroup_min, tgroup_max]
 	static void setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
+	//Servers chosen on the client for a backup directory ("Add/Remove backup paths"). Takes
+	//precedence over getBackupDirServers(). Directories without an entry go to all servers
+	static BackupDirServers getClientBackupDirServers();
+	static void setClientBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
+	//Servers that back up a directory: chosen on the client, else the servers that configured it.
+	//Empty: all servers. from_client is set if the servers were chosen on the client
+	static std::vector<std::string> getServersOfBackupDir(const BackupDirServers& client_dir_servers,
+		const BackupDirServers& dir_servers, const std::string& key, bool* from_client = NULL);
 
 	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>"), used for
 	//server_list.cfg and for the tray UI (with_status adds read-only status fields)
@@ -98,6 +106,9 @@ private:
 	static SServerEntry* findIdent(const std::string& ident);
 	static SServerEntry* findId(int id);
 	static int nextId();
+
+	static BackupDirServers readDirServers(const std::string& fn);
+	static void writeDirServers(const std::string& fn, int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
 
 	static IMutex* mutex;
 	static bool loaded;

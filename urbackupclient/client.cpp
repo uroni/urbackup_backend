@@ -3042,18 +3042,21 @@ void IndexThread::filterBackupDirsForServer()
 		return;
 	}
 
-	//Only the default directories of the server this backup is for (and the ones added on the client)
+	//Only the directories for the server this backup is for: chosen on the client, else
+	//the default directories of this server (and the ones added on the client)
 	ServerList::BackupDirServers dir_servers = ServerList::getBackupDirServers();
+	ServerList::BackupDirServers client_dir_servers = ServerList::getClientBackupDirServers();
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
-		ServerList::BackupDirServers::iterator it = dir_servers.find(
-			ServerList::backupDirKey(backup_dirs[i].group, backup_dirs[i].path));
+		bool from_client;
+		std::vector<std::string> servers = ServerList::getServersOfBackupDir(client_dir_servers, dir_servers,
+			ServerList::backupDirKey(backup_dirs[i].group, backup_dirs[i].path), &from_client);
 		if (!backup_dirs[i].symlinked
-			&& it != dir_servers.end()
-			&& std::find(it->second.begin(), it->second.end(), server_ident) == it->second.end())
+			&& !servers.empty()
+			&& std::find(servers.begin(), servers.end(), server_ident) == servers.end())
 		{
 			Server->Log("Not backing up \"" + backup_dirs[i].path + "\" for server " + server_ident
-				+ " (default directory of another server)", LL_DEBUG);
+				+ (from_client ? " (backed up to other servers)" : " (default directory of another server)"), LL_DEBUG);
 			backup_dirs.erase(backup_dirs.begin() + i);
 		}
 		else

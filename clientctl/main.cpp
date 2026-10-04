@@ -1427,6 +1427,10 @@ int action_add_backupdir(std::vector<std::string> args)
 		"Keep deleted files and directories during incremental backups. DO NOT USE",
 		cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Back up this path to these servers only, comma separated (name, id or identity as shown by list-servers). Default: all servers",
+		false, "", "servers", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -1513,7 +1517,13 @@ int action_add_backupdir(std::vector<std::string> args)
 	new_dir.flags = flags;
 
 	new_dir.virtual_client = virtual_client_arg.getValue();
-	
+
+	if (!server_arg.getValue().empty())
+	{
+		Tokenize(server_arg.getValue(), new_dir.servers, ",");
+		new_dir.servers_from_client = true;
+	}
+
 	backup_dirs.push_back(new_dir);
 	
 	if (!Connector::saveSharedPaths(backup_dirs))
@@ -1635,6 +1645,7 @@ int action_list_backupdirs(std::vector<std::string> args)
 	bool has_virtual_client = false;
 	bool has_group = false;
 	bool has_server_default = false;
+	bool has_servers = false;
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
@@ -1648,6 +1659,30 @@ int action_list_backupdirs(std::vector<std::string> args)
 		}
 		if (backup_dirs[i].server_default)
 			has_server_default = true;
+		if (!backup_dirs[i].servers.empty())
+			has_servers = true;
+	}
+
+	//Server identity -> name, for the SERVERS column
+	std::map<std::string, std::string> server_names;
+	if (has_servers)
+	{
+		std::string data = Connector::getServerList();
+		std::map<std::string, std::string> values;
+		int numl = linecount(data);
+		for (int i = 0; i <= numl; ++i)
+		{
+			std::string l = getline(i, data);
+			if (l.find("=") != std::string::npos)
+				values[getuntil("=", l)] = getafter("=", l);
+		}
+		int count = watoi(values["count"]);
+		for (int i = 0; i < count; ++i)
+		{
+			std::string p = convert(i) + ".";
+			std::string name = values[p + "name"];
+			server_names[values[p + "ident"]] = name.empty() ? values[p + "ident"] : name;
+		}
 	}
 
 	std::vector<std::vector<std::string> > tab;
@@ -1667,6 +1702,10 @@ int action_list_backupdirs(std::vector<std::string> args)
 	if (has_server_default)
 	{
 		tab_header.push_back("CONFIGURED ON SERVER");
+	}
+	if (has_servers)
+	{
+		tab_header.push_back("SERVERS");
 	}
 
 	tab.push_back(tab_header);
@@ -1714,6 +1753,18 @@ int action_list_backupdirs(std::vector<std::string> args)
 			}
 		}
 
+		if (has_servers)
+		{
+			std::string servers;
+			for (size_t j = 0; j < backup_dirs[i].servers.size(); ++j)
+			{
+				if (!servers.empty()) servers += ", ";
+				std::map<std::string, std::string>::iterator it = server_names.find(backup_dirs[i].servers[j]);
+				servers += it != server_names.end() ? it->second : backup_dirs[i].servers[j];
+			}
+			row.push_back(servers.empty() ? "all" : servers);
+		}
+
 		tab.push_back(row);
 	}
 
@@ -1738,7 +1789,14 @@ int action_list_servers(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::string data = Connector::getServerList();
+	//The raw list is the input of set-servers, so it includes the auth keys if the
+	//administrator password is readable (set-servers keeps the keys of entries without one)
+	bool with_authkeys = raw_arg.getValue() && !trim(getFile(PWFILE_CHANGE)).empty();
+	if (with_authkeys)
+	{
+		Connector::setPWFileChange(PWFILE_CHANGE);
+	}
+	std::string data = Connector::getServerList(with_authkeys);
 	if (data.empty() || Connector::hasError())
 	{
 		std::cerr << "Error retrieving server list from backend" << std::endl;
