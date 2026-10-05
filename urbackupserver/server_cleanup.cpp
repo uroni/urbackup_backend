@@ -126,10 +126,12 @@ void ServerCleanupThread::operator()(void)
 		}	break;
 		case ECleanupAction_FreeMinspace:
 			{
+				ServerLogger::enableMemoryLog(logid);
 				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.cleanup_other);
+				saveCleanupLog();
 				if(cleanup_action.result!=NULL)
 				{
 					*(cleanup_action.result)=b;
@@ -214,10 +216,12 @@ void ServerCleanupThread::operator()(void)
 
 			{
 				logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ServerLogger::enableMemoryLog(logid);
 				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				do_cleanup();
+				saveCleanupLog();
 			}
 			
 			cleanupdao.reset();
@@ -353,12 +357,15 @@ void ServerCleanupThread::operator()(void)
 
 				{
 					logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+					ServerLogger::enableMemoryLog(logid);
 					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 					deletePendingClients();
 					do_cleanup();
 
 					enforce_quotas();
+
+					saveCleanupLog();
 				}
 
 				cleanupdao.reset();
@@ -527,6 +534,22 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool do_cleanup_other)
 	FileIndex::flush();
 
 	return success;
+}
+
+void ServerCleanupThread::saveCleanupLog(void)
+{
+	int errors = 0;
+	int warnings = 0;
+	int infos = 0;
+	std::string logdata = ServerLogger::getLogdata(logid, errors, warnings, infos);
+
+	if (!logdata.empty())
+	{
+		cleanupdao->saveCleanupLog(errors, warnings, infos);
+		backupdao->saveBackupLogData(db->getLastInsertID(), logdata);
+	}
+
+	ServerLogger::reset(logid);
 }
 
 void ServerCleanupThread::do_remove_unknown(void)
@@ -918,39 +941,41 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 
 	int backupid;
 	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups "+ val_info +"="+convert(max_image_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups "+ val_info +"="+convert(max_image_full), full_image_num>max_image_full ? LL_INFO : LL_DEBUG);
 	while(full_image_num>max_image_full
 		&& full_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
+		std::string backup_desc = "full image backup ( id="+convert(backupid)+" )";
 		if(clientname.exists && res_info.exists)
 		{
-			ServerLogger::Log(logid, "Deleting full image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			backup_desc = "full image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" )";
 		}
 
 		if (isImageLockedFromCleanup(backupid))
 		{
-			ServerLogger::Log(logid, "Backup image is locked from cleanup");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if(findUncompleteImageRef(cleanupdao.get(), backupid) )
 		{		
-			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 		else if (findLockedImageRef(cleanupdao.get(), backupid))
 		{
-			ServerLogger::Log(logid, "Backup image has dependent image which is currently locked from cleanup");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is currently locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if (findArchivedImageRef(cleanupdao.get(), backupid))
 		{
-			ServerLogger::Log(logid, "Backup image has dependent image which is currently archived");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is currently archived");
 			notit.push_back(backupid);
 		}
 		else
 		{
+			ServerLogger::Log(logid, "Deleting "+backup_desc+" ...", LL_INFO);
 			if (!removeImage(backupid, &settings, true, false, true, true))
 			{
 				notit.push_back(backupid);
@@ -976,39 +1001,41 @@ bool ServerCleanupThread::cleanup_one_imagebackup_client(int clientid, int64 min
 	}
 
 	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups "+val_info +"="+convert(max_image_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups "+val_info +"="+convert(max_image_incr), incr_image_num>max_image_incr ? LL_INFO : LL_DEBUG);
 	while(incr_image_num>max_image_incr
 		&& incr_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
+		std::string backup_desc = "incremental image backup ( id="+convert(backupid)+" )";
 		if(clientname.exists && res_info.exists)
 		{
-			ServerLogger::Log(logid, "Deleting incremental image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			backup_desc = "incremental image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" )";
 		}
 
 		if (isImageLockedFromCleanup(backupid))
 		{
-			ServerLogger::Log(logid, "Backup image is locked from cleanup");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if (findUncompleteImageRef(cleanupdao.get(), backupid))
 		{
-			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 		else if (findLockedImageRef(cleanupdao.get(), backupid))
 		{
-			ServerLogger::Log(logid, "Backup image has dependent image which is currently locked from cleanup");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is currently locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if (findArchivedImageRef(cleanupdao.get(), backupid))
 		{
-			ServerLogger::Log(logid, "Backup image has dependent image which is currently archived");
+			ServerLogger::Log(logid, "Not deleting "+backup_desc+": Backup image has dependent image which is currently archived");
 			notit.push_back(backupid);
 		}
 		else
 		{
+			ServerLogger::Log(logid, "Deleting "+backup_desc+" ...", LL_INFO);
 			if(!removeImage(backupid, &settings, true, false, true, true, 1))
 			{
 				notit.push_back(backupid);
@@ -1355,7 +1382,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 
 	int backupid;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups "+ full_val_info +"="+convert(max_file_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups "+ full_val_info +"="+convert(max_file_full), full_file_num>max_file_full ? LL_INFO : LL_DEBUG);
 	while(full_file_num>max_file_full
 		&& full_file_num>0
 		&& !(full_file_num==1
@@ -1371,11 +1398,10 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 		}
 		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, false, false);
 		filebid=backupid;
-				
-		ServerLogger::Log(logid, "Done.", LL_INFO);
 
 		if(b)
 		{
+			ServerLogger::Log(logid, "Done.", LL_INFO);
 			return true;
         }
         			
@@ -1383,7 +1409,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	}
 
 	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups "+ incr_val_info +"="+convert(max_file_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups "+ incr_val_info +"="+convert(max_file_incr), incr_file_num>max_file_incr ? LL_INFO : LL_DEBUG);
 	while(incr_file_num>max_file_incr
 		&& incr_file_num>0)
 	{
@@ -1396,10 +1422,9 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, false, false);
 		filebid=backupid;
 
-		ServerLogger::Log(logid, "Done.", LL_INFO);
-
 		if(b)
 		{
+			ServerLogger::Log(logid, "Done.", LL_INFO);
 			return true;
 		}
 		incr_file_num=(int)getFilesIncrNum(clientid, backupid);

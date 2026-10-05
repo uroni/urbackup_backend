@@ -29,6 +29,7 @@ IMutex *ServerLogger::mutex=NULL;
 std::map<int, SCircularData> ServerLogger::circular_logdata;
 logid_t ServerLogger::logid_gen;
 std::map<logid_t, int> ServerLogger::logid_client;
+std::set<logid_t> ServerLogger::memory_logids;
 
 const size_t circular_logdata_buffersize=20;
 const size_t max_memory_logdata_size = 2 * 1024 * 1024;
@@ -65,7 +66,8 @@ void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr
 {
 	std::map<logid_t, int>::iterator it = logid_client.find(logid);
 
-	if (it != logid_client.end() && it->second <= 0)
+	if (it != logid_client.end() && it->second <= 0
+		&& memory_logids.find(logid) == memory_logids.end())
 	{
 		return;
 	}
@@ -257,6 +259,15 @@ void ServerLogger::reset(logid_t id)
 		std::vector<SLogEntry>().swap(iter->second.data);
 		iter->second.memory_used = 0;
 	}
+
+	memory_logids.erase(id);
+}
+
+void ServerLogger::enableMemoryLog(logid_t id)
+{
+	IScopedLock lock(mutex);
+
+	memory_logids.insert(id);
 }
 
 void ServerLogger::reset( int clientid )
