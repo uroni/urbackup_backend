@@ -1580,7 +1580,7 @@ function show_status2(data)
 		}
 		
 		datatable_config.aoColumnDefs = [
-				{ "bVisible": false, "aTargets": [ 2, 4, 10, 11, 12 ]
+				{ "bVisible": false, "aTargets": [ 2, 4, 10, 11, 12, 13 ]
 				}];
 				
 		if(data.allow_modify_clients)
@@ -1612,6 +1612,7 @@ function show_status2(data)
 		colvis.columns.push(10);
 		colvis.columns.push(11);
 		colvis.columns.push(12);
+		colvis.columns.push(13);
 		
 		
 		var columns = [ 1 ];
@@ -5901,6 +5902,8 @@ function backups_started(data)
 }
 function stopBackup(clientid, id)
 {
+	if(!confirm(trans("really_stop_backup"))) return;
+	
 	if(!startLoading()) return;
 	
 	alert(trans("trying_to_stop_backup"));
