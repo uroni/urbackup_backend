@@ -624,9 +624,18 @@ bool mount_image(const std::string& imagepath, int partition, int64 offset, int6
 			mount_options+="uid="+convert(user_info->pw_uid)+",gid="+convert(user_info->pw_gid)+",allow_root";
 		}
 		
+		//The device is mounted by the background process of the calling user (the server's
+		//user, e.g. root). guestmount has to run as the same user, or it cannot open the device
+		std::string guestmount_user = "urbackup";
+		passwd* caller_info = getpwuid(getuid());
+		if(caller_info)
+		{
+			guestmount_user = caller_info->pw_name;
+		}
+
 		ubuntu_guestmount_fix();
-		
-		if(exec_wait(find_urbackupsrv_cmd(), true, "mount-vhd", "-f", imagepath.c_str(), "-m", mountpoint.c_str(), "-t", devpoint.c_str(), "-o", mount_options.c_str(), "--guestmount", NULL))
+
+		if(exec_wait(find_urbackupsrv_cmd(), true, "mount-vhd", "-f", imagepath.c_str(), "-m", mountpoint.c_str(), "-t", devpoint.c_str(), "-o", mount_options.c_str(), "--guestmount", "-u", guestmount_user.c_str(), NULL))
 		{
 			std::cout << "UrBackup mount process returned non-zero return code" << std::endl;
 			os_remove_dir(mountpoint);
