@@ -448,38 +448,41 @@ bool OpenSSLPipe::Write(const char * buffer, size_t bsize, int timeoutms, bool f
 	if (bsize == 0)
 		return true;
 
-	if (!bpipe->isWritable(timeoutms))
+	while(true)
 	{
-		return false;
-	}
+		if (!bpipe->isWritable(timeoutms))
+		{
+			return false;
+		}
 
 	IScopedLock lock(mutex.get());
 
-	int rc = BIO_write(bbio, buffer, static_cast<int>(bsize));
+		int rc = BIO_write(bbio, buffer, static_cast<int>(bsize));
 
-	if (rc <= 0)
-	{
-		if (!BIO_should_retry(bbio))
+		if (rc <= 0)
 		{
-			has_error = true;
+			if (!BIO_should_retry(bbio))
+			{
+				has_error = true;
+				return false;
+			}
 		}
-		return false;
-	}
-	else
-	{
-		if (rc < bsize)
+		else
 		{
-			bpipe->doThrottle(rc, true, true);
+			if (rc < bsize)
+			{
+				bpipe->doThrottle(rc, true, true);
 
-			return Write(buffer + rc, bsize - rc, -1, flush);
-		}
+				return Write(buffer + rc, bsize - rc, -1, flush);
+			}
 
 		if(flush)
 		{
 			BIO_flush(bbio);
 		}
 
-		return true;
+			return true;
+		}
 	}
 }
 

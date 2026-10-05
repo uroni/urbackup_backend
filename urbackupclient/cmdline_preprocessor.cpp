@@ -204,9 +204,9 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 void tune_glibc_malloc()
 {
 #if defined(HAVE_MALLOC_H) && defined(M_ARENA_MAX)
-	if(getenv("MALLOC_ARENA_MAX") != nullptr ||
-		getenv("GLIBC_TUNABLES") != nullptr ||
-		getenv("MALLOC_MMAP_THRESHOLD_") != nullptr)
+	if(getenv("MALLOC_ARENA_MAX") != NULL ||
+		getenv("GLIBC_TUNABLES") != NULL ||
+		getenv("MALLOC_MMAP_THRESHOLD_") != NULL)
 	{
 		return;
 	}

@@ -109,14 +109,19 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	{
 		max_read -= UINT_MAX%unchanged_align;
 	}
+	if (sparse_blocksize != 0)
+	{
+		max_read -= max_read%sparse_blocksize;
+	}
 
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
 	next_header.patch_size = 0;
 	bool has_header=true;
+	bool has_sparse_at_end = false;
 	_i64 file_pos;
 	_i64 size;
-	for(file_pos=0,size=file->Size(); (file_pos<size && file_pos<filesize) || has_header;)
+	for(file_pos=0,size=file->Size(); (file_pos<size && file_pos<filesize) || has_header || has_sparse_at_end;)
 	{
 		if(has_header && next_header.patch_off==-1)
 		{
@@ -138,7 +143,25 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 		if(!has_header && (file_pos>=filesize || file_pos>=size) )
 		{
-			break;
+			has_sparse_at_end = false;
+			if(file_pos<filesize && extent_iterator)
+			{
+				while (curr_sparse_extent.offset != -1
+				&& curr_sparse_extent.offset+curr_sparse_extent.size <= file_pos)
+				{
+					curr_sparse_extent = extent_iterator->nextExtent();
+				}
+
+				if (curr_sparse_extent.offset != -1
+					&& curr_sparse_extent.offset <= file_pos
+					&& curr_sparse_extent.offset + curr_sparse_extent.size > file_pos)
+				{
+					has_sparse_at_end = true;
+				}
+			}
+				
+			if(!has_sparse_at_end)
+				break;
 		}
 
 		unsigned int tr = max_read;
@@ -216,11 +239,14 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			}
 
 			bool was_sparse = false;
+			bool was_unaligned = false;
 			if (curr_sparse_extent.offset != -1
 				&& tr>=sparse_blocksize && tr>= unchanged_align
 				&& curr_sparse_extent.offset <= file_pos
-				&& curr_sparse_extent.offset + curr_sparse_extent.size >= file_pos + tr)
+				&& curr_sparse_extent.offset + curr_sparse_extent.size >= file_pos + sparse_blocksize)
 			{
+				tr = static_cast<unsigned int>((std::min)((int64)tr, curr_sparse_extent.offset + curr_sparse_extent.size - file_pos));
+
 				if ( (sparse_blocksize == 0
 					    || file_pos%sparse_blocksize == 0)
 					&& (unchanged_align == 0
@@ -230,12 +256,14 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						&& tr%sparse_blocksize != 0)
 					{
 						tr = tr - tr%sparse_blocksize;
+						was_unaligned = true;
 					}
 
 					if (unchanged_align != 0
 						&& tr%unchanged_align != 0)
 					{
 						tr = tr - tr%unchanged_align;
+						was_unaligned = true;
 					}
 
 					VLOG(Server->Log("Sparse extent at " + convert(file_pos) + " length=" + convert(tr), LL_DEBUG));
@@ -252,6 +280,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						file_pos += tr;
 					}
 					was_sparse = true;
+					if(!has_header && (file_pos>=size || file_pos>=filesize))
+                        has_sparse_at_end = true;
 				}
 				else
 				{
@@ -268,7 +298,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				}
 			}
 
-			if(!was_sparse && (file_pos>=size || file_pos>=filesize))
+			if( (!was_sparse || was_unaligned) && (file_pos>=size || file_pos>=filesize))
 			{
 				Server->Log("Patch corrupt. file_pos="+convert(file_pos)+" next_header.patch_off="+convert(next_header.patch_off)+" next_header.patch_size="+convert(next_header.patch_size)+" tr="+convert(tr)+" size="+convert(size)+" filesize="+convert(filesize), LL_ERROR);
 				assert(false);

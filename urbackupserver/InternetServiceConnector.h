@@ -155,6 +155,7 @@ private:
 	static int64 last_token_remove;
 
 	static std::set<std::string> internet_expect_endpoint;
+	static unsigned int proof_of_work_difficulty;
 
 	unsigned int client_ping_interval;
 

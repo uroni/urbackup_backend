@@ -109,9 +109,7 @@ bool ClientConnector::last_metered = false;
 int64 ClientConnector::startup_timestamp = 0;
 std::map<std::string, int64> ClientConnector::settings_update_versions;
 
-#ifdef _WIN32
 SVolumesCache* ClientConnector::volumes_cache;
-#endif
 
 
 #ifdef _WIN32

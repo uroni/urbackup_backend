@@ -445,8 +445,9 @@ void BackupServerPrepareHash::addUnchangedHashes(int64 start, size_t size, bool*
 
 	if (!hashoutput_f->Seek(sizeof(_i64) + (start / hash_bsize)*chunkhash_single_size))
 	{
-		Server->Log("Error seeking in hashoutput file " + hashoutput_f->getFilename(), LL_ERROR);
+		Server->Log("Error seeking in hashoutput file " + hashoutput_f->getFilename()+". "+ os_last_error_str(), LL_ERROR);
 		has_error = true;
+		return;
 	}
 
 	bool has_read_error = false;
@@ -455,8 +456,15 @@ void BackupServerPrepareHash::addUnchangedHashes(int64 start, size_t size, bool*
 
 	if (has_read_error)
 	{
-		Server->Log("Error reading from " + hashoutput_f->getFilename(), LL_ERROR);
+		Server->Log("Error reading from " + hashoutput_f->getFilename()+". "+ os_last_error_str(), LL_ERROR);
 		has_error = true;
+		return;
+	}
+	else if(r<big_hash_size)
+	{
+		Server->Log("Error reading from " + hashoutput_f->getFilename()+". Could only read " + convert(r) + " bytes", LL_ERROR);
+		has_error = true;
+		return;
 	}
 
 	assert(r == chunkhash_single_size || start + size == chunk_patcher.getFilesize());

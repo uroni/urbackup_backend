@@ -427,6 +427,55 @@ std::string CryptoFactory::sha256Binary(const std::string& data)
 	return std::string(reinterpret_cast<char*>(sha256_digest), sizeof(sha256_digest));
 }
 
+namespace
+{
+	unsigned int get_num_zero_bits(const std::string &str)
+	{
+		unsigned int num_bits=0;
+		for(size_t i=0; i<str.size(); i++)
+		{
+			unsigned char c=str[i];
+			if(c==0)
+			{
+				num_bits+=8;
+				continue;
+			}
+			for(int j=0; j<8; j++)
+			{
+				if(c&0x80)
+					return num_bits;
+				++num_bits;
+				c<<=1;
+			}
+		}
+		return num_bits;
+	}
+}
+
+std::string CryptoFactory::performProofOfWork(const std::string &challenge, unsigned int difficulty)
+{
+	int64 salt = 0;
+    std::string salt_str;
+    salt_str.resize(sizeof(salt));
+    
+    while(true)
+    {
+        salt_str.assign((char*)&salt, sizeof(salt));
+        std::string hash = generateBinaryPasswordHash(challenge, salt_str, 1);
+        if(get_num_zero_bits(hash)>=difficulty)
+        {
+            return salt_str;
+        }
+        ++salt;
+    }
+}
+
+bool CryptoFactory::verifyProofOfWork(const std::string &challenge, const std::string &proof, unsigned int difficulty)
+{
+	std::string hash = generateBinaryPasswordHash(challenge, proof, 1);
+    return get_num_zero_bits(hash) >= difficulty;
+}
+
 bool CryptoFactory::convertOpenSslSig(const std::string& pubkeyFn, const std::string& sigFn, const std::string& outFn)
 {
 	std::string derSignature, p1363Signature;

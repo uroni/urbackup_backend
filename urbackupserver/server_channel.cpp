@@ -58,14 +58,7 @@ namespace
 	bool needs_login(void)
 	{
 		db_results res=getDatabase()->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(watoi(res[0]["c"])>0)
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
+		return res.empty() || res[0]["c"] != "0";
 	}
 
 
@@ -1182,19 +1175,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 		std::string file_extension = strlower(findextension(res[0]["path"]));
 
-		IVHDFile *vhdfile;
-		if (file_extension == "raw")
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_RawCowFile); 
-		}
-		else if (file_extension == "vhdx" || file_extension == "vhdxz")
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0, 2 * 1024 * 1024, false, IFSImageFactory::ImageFormat_VHDX);
-		}
-		else
-		{
-			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0);
-		}
+		IVHDFile *vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0,
+			 2 * 1024 * 1024, false, image_fak->detectImageFormat(res[0]["path"])); 
 
 		ScopedDestroyVhdfile destroy_vhdfile(vhdfile);
 
@@ -1583,6 +1565,10 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		{
 			restore_flags = watoi64(restore_flags_it->second);
 		}
+
+		// Don't allow to ignore permissions when restoring files via tokens
+		restore_flags &= ~restore_flag_ignore_permissions;
+
 		THREADPOOL_TICKET ticket;
 
 		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, 

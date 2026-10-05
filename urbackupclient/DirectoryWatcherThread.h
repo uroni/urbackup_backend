@@ -38,7 +38,7 @@ public:
 	void On_DirAdded( const std::string & strFileName, bool closed );
     void On_FileModified(const std::string & strFileName, bool closed);
 	void On_FileOpen(const std::string & strFileName);
-	void On_ResetAll(const std::string &vol);
+	void On_ResetAll(const std::string &vol, const bool has_transaction);
 	void On_DirRemoved(const std::string & strDirName, bool closed);
 	void Commit(const std::vector<IChangeJournalListener::SSequence>& sequences);
 

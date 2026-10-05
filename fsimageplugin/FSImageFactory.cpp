@@ -80,15 +80,17 @@ namespace
 #ifndef HAVE_MNTENT_H
                 return std::string();
 #else
+				char buf[1024];
                 FILE *aFile;
 
                 aFile = setmntent("/proc/mounts", "r");
                 if (aFile == NULL) {
                         return std::string();
                 }
+				struct mntent entbuf;
                 struct mntent *ent;
                 std::string maxmount;
-                while (NULL != (ent = getmntent(aFile)))
+                while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
                 {
                         if(path.find(ent->mnt_dir)==0 &&
                                 std::string(ent->mnt_dir).size()>maxmount.size())
@@ -536,6 +538,23 @@ bool FSImageFactory::isNTFS(char *buffer)
 	{
 		return false;
 	}
+}
+
+IFSImageFactory::ImageFormat FSImageFactory::detectImageFormat(const std::string &fn)
+{
+	const std::string ext = strlower(findextension(fn));
+	if(ext == "vhd" || ext == "avhd")
+		return ImageFormat_VHD;
+	else if(ext == "vhdx" || ext == "avhdx")
+		return ImageFormat_VHDX;
+	else if(ext == "vhdz")
+		return ImageFormat_CompressedVHD;
+	else if(ext == "vhdxz")
+		return ImageFormat_CompressedVHDX;
+	else if(ext == "raw")
+		return ImageFormat_RawCowFile;
+	else
+		return ImageFormat_Unknown; // default fallback
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,

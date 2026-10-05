@@ -52,7 +52,7 @@ struct SProtocolVersions
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
 				async_index_version(0), restore_version(0),
-				filesrvtunnel(0)
+				filesrvtunnel(0), incr_sysvol_version(0)
 			{
 
 			}
@@ -70,6 +70,7 @@ struct SProtocolVersions
 	int client_bitmap_version;
 	int cmd_version;
 	int require_previous_cbitmap;
+	int incr_sysvol_version;
 	int async_index_version;
 	int symbit_version;
 	int phash_version;
@@ -85,7 +86,7 @@ struct SRunningBackup
 {
 	SRunningBackup()
 		: backup(NULL), ticket(ILLEGAL_THREADPOOL_TICKET),
-		group(c_group_default)
+		group(c_group_default), client_group(-1)
 	{
 
 	}
@@ -95,6 +96,7 @@ struct SRunningBackup
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
+	int client_group;
 };
 
 struct SRunningRestore
@@ -155,10 +157,10 @@ public:
 		bool internet_connection;
 	};
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, SConnection* conn=NULL, bool do_encrypt = true);
-	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, bool do_encrypt = true);
-	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, SConnection* conn=NULL, bool do_encrypt = true);
-	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, unsigned int timeout_after_first=0, bool do_encrypt=true);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, SConnection* conn=NULL, bool do_encrypt = true, const unsigned int connect_timeout = 10000, const logid_t override_log_id = logid_t());
+	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, bool do_encrypt = true, const logid_t override_log_id = logid_t());
+	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, SConnection* conn=NULL, bool do_encrypt = true, const unsigned int connect_timeout = 10000, const logid_t override_log_id = logid_t());
+	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, unsigned int timeout_after_first=0, bool do_encrypt=true, const logid_t override_log_id = logid_t());
 	void sendToPipe(const std::string &msg);
 
 	bool createDirectoryForClient();
@@ -334,6 +336,41 @@ private:
 
 	bool checkClientName(bool& continue_start_backups);
 
+	void startStartup();
+	void finishStartup();
+
+	int numRunningClientGroupJobs(const int group_id);
+
+	void addRunningClientGroupJob(const int group_id);
+
+	void subRunningClientGroupJob(const int group_id);
+
+	class ScopedStartStartup
+	{
+		ClientMain* cm;
+	public:
+
+		ScopedStartStartup(ClientMain* cm)
+			:cm(cm)
+		{
+			cm->startStartup();
+		}
+
+		~ScopedStartStartup()
+		{
+			if (cm != NULL)
+				cm->finishStartup();
+		}
+
+		void finishStartup()
+		{
+			if(cm!=NULL)
+				cm->finishStartup();
+
+			cm = NULL;
+		}
+	};
+
 
 	struct SPathComponents
 	{
@@ -462,4 +499,10 @@ private:
 	static ICondition* client_uid_reset_cond;
 
 	int64 settings_update_version;
+	static IMutex* client_startup_mutex;
+	static ICondition* client_startup_cond;
+	static std::set<std::string> client_startup;
+
+	static IMutex* client_group_job_mutex;
+	static std::map<int, int> client_group_jobs;
 };

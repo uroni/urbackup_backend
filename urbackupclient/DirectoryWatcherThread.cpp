@@ -122,7 +122,7 @@ void DirectoryWatcherThread::operator()(void)
 				{
 					dcw.watchDir(dir);
 					watching.push_back(dir);
-					On_ResetAll(dir);
+					On_ResetAll(dir, false);
 				}
 			}
 			else if( msg[0]=='D' )
@@ -396,10 +396,19 @@ bool DirectoryWatcherThread::is_stopped(void)
 	return do_stop;
 }
 
-void DirectoryWatcherThread::On_ResetAll(const std::string & vol)
+void DirectoryWatcherThread::On_ResetAll(const std::string & vol, const bool has_transaction)
 {
-	DBScopedSynchronous sync_db(db);
-	OnDirMod("##-GAP-##"+strlower(vol));
+	std::string rstr = "##-GAP-##" + strlower(vol);
+	if (!has_transaction)
+	{
+		DBScopedSynchronous sync_db(db);
+		OnDirMod(rstr);
+	}
+	else
+	{
+		OnDirMod(rstr);
+	}
+	
 }
 
 _i64 DirectoryWatcherThread::get_current_filetime()

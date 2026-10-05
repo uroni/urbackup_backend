@@ -146,9 +146,9 @@ void ContinuousWatchEnqueue::On_FileModified( const std::string & strFileName, b
 	}
 }
 
-void ContinuousWatchEnqueue::On_ResetAll( const std::string & vol )
+void ContinuousWatchEnqueue::On_ResetAll( const std::string & vol, const bool has_transaction)
 {
-	On_ResetAllInt(vol);
+	On_ResetAllInt(vol, has_transaction);
 }
 
 void ContinuousWatchEnqueue::On_DirRemoved( const std::string & strDirName, bool closed )
@@ -215,7 +215,7 @@ void ContinuousWatchEnqueue::addWatchdir( SWatchItem item )
 	{
 		watchdirs.push_back(item);
 
-		On_ResetAllInt(item.dir);
+		On_ResetAllInt(item.dir, false);
 	}
 }
 
@@ -228,7 +228,7 @@ void ContinuousWatchEnqueue::removeWatchdir( SWatchItem item )
 	if(iter!=watchdirs.end())
 	{
 		watchdirs.erase(iter);
-		On_ResetAllInt(item.dir);
+		On_ResetAllInt(item.dir, false);
 	}
 }
 
@@ -319,7 +319,7 @@ void ContinuousWatchEnqueue::On_FileModifiedInt( const std::string & strFileName
 	queue.addString((strFileName));
 }
 
-void ContinuousWatchEnqueue::On_ResetAllInt( const std::string & vol )
+void ContinuousWatchEnqueue::On_ResetAllInt( const std::string & vol, const bool has_transaction)
 {
 	queue.addChar(CHANGE_MOD_ALL);
 	queue.addString((vol));

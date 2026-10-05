@@ -82,6 +82,7 @@ struct SSettings
 	bool allow_config_paths;
 	bool allow_log_view;
 	bool allow_tray_exit;
+	bool allow_all_clients_restore;
 	std::string image_letters;
 	bool backup_database;
 	std::string internet_server;
@@ -154,6 +155,9 @@ struct SSettings
 	int client_hash_threads;
 	int image_compress_threads;
 	bool allow_config_max_backups;
+	bool client_rename_detection;
+	int max_running_jobs_per_client_group;
+	int group_id;
 };
 
 struct SLDAPSettings

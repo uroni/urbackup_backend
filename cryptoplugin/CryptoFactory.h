@@ -29,5 +29,8 @@ public:
 	virtual IECDHKeyExchange* createECDHKeyExchange();
 	virtual std::string sha1Binary(const std::string& data);
 	virtual std::string sha256Binary(const std::string& data);
+	virtual std::string performProofOfWork(const std::string &challenge, unsigned int difficulty);
+	virtual bool verifyProofOfWork(const std::string &challenge, const std::string &proof, unsigned int difficulty);
 	virtual bool convertOpenSslSig(const std::string& pubkeyFn, const std::string& sigFn, const std::string& outFn) override;
+	
 };

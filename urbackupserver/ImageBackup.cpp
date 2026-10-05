@@ -188,9 +188,13 @@ bool ImageBackup::doBackup()
 	ScopedLockImageFromCleanup lock_cleanup_esp(0);
 	if(strlower(letter)=="c:")
 	{
+		//cowraw incrementals are self-contained, so no cleanup dependencies
+		bool incr_sysvol = r_incremental && cowraw_format
+			&& client_main->getProtocolVersions().incr_sysvol_version>0;
+
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-			false, "SYSVOL", server_token, "SYSVOL", false, 0, std::string(), 0, scheduled);
+			incr_sysvol, "SYSVOL", server_token, "SYSVOL", false, 0, std::string(), 0, scheduled);
 		sysvol_backup.setStopBackupRunning(false);
 		sysvol_backup();
 
@@ -213,7 +217,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-				false, "ESP", server_token, "ESP", false, 0, std::string(), 0, scheduled);
+				incr_sysvol, "ESP", server_token, "ESP", false, 0, std::string(), 0, scheduled);
 			esp_backup.setStopBackupRunning(false);
 			esp_backup();
 
@@ -2511,7 +2515,8 @@ std::string ImageBackup::getMBR(const std::string &dl, const std::string& disk_p
 	params += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 	params += "&token=" + EscapeParamString(server_token);
 
-	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 10000);
+	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 60000, 
+		true, LL_ERROR, NULL, true, 60000, logid);
 	CRData r(&ret);
 	char b;
 	if(r.getChar(&b) && b==1 )

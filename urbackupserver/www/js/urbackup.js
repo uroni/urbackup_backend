@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2005003500;
+g.current_version=2005003800;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -4267,6 +4267,7 @@ g.settings_list=[
 "allow_file_restore",
 "allow_component_restore",
 "allow_component_config",
+"allow_all_clients_restore",
 "image_letters",
 "internet_authkey",
 "internet_speed",
@@ -4318,7 +4319,9 @@ g.settings_list=[
 "hash_threads",
 "client_hash_threads",
 "image_compress_threads",
-"allow_config_max_backups"
+"allow_config_max_backups",
+"client_rename_detection",
+"max_running_jobs_per_client_group"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4560,7 +4563,10 @@ function getInternetSettings()
 	pars+="&internet_server="+encodeURIComponent(internet_server_par);
 	pars+="&internet_server_port="+encodeURIComponent(internet_server_port);
 
-	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	if(I("internet_server_proxy"))
+	{
+		if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
+	}
 	
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
@@ -6135,9 +6141,11 @@ function addNewClient2()
 
 		var pars = "clientname="+encodeURIComponent(I("internet_client_name").value)
 
-		if(I("internet_server_url"))
+		if(I("internet_server"))
 		{
-			pars += getInternetSettings();
+			var internet_pars = getInternetSettings();
+			if(internet_pars==null) return;
+			pars += internet_pars;
 		}
 		
 		if(!startLoading()) return;

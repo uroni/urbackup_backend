@@ -12,7 +12,7 @@ SChannelPipe::SChannelPipe(CStreamPipe * bpipe)
 	: bpipe(bpipe), has_cred_handle(false),
 	has_ctxt_handle(false), decbuf_pos(0),
 	sendbuf_pos(0), last_flush_time(0),
-	has_error(false)
+	has_error(false), incomplete_message(false)
 {
 }
 
@@ -311,12 +311,15 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 		encbuf.resize(encbuf.size() + bsize);
 	}
 
-	size_t read = bpipe->Read(&encbuf[encbuf_pos], bsize, timeoutms);
+	if (encbuf_pos == 0)
+	{
+		size_t read = bpipe->Read(&encbuf[encbuf_pos], bsize, timeoutms);
 
-	if (read == 0)
-		return 0;
-
-	encbuf_pos += read;
+		if (read == 0)
+			return 0;
+		
+		encbuf_pos += read;
+	}
 
 	size_t orig_bsize = bsize;
 
@@ -337,7 +340,7 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 			size_t read = bpipe->Read(&encbuf[encbuf_pos], encbuf_size_incr, remaining_time);
 
 			if (read == 0)
-				return 0;
+				return orig_bsize - bsize;
 
 			encbuf_pos += read;
 		}
@@ -356,6 +359,8 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 		inbuf_desc.pBuffers = inbuf;
 
 		res = sec->DecryptMessage(&ctxt_handle, &inbuf_desc, 0, NULL);
+
+		incomplete_message = res == SEC_E_INCOMPLETE_MESSAGE;
 
 		if (res == SEC_E_OK
 			|| res== SEC_I_RENEGOTIATE)
@@ -402,12 +407,14 @@ size_t SChannelPipe::Read(char * buffer, size_t bsize, int timeoutms)
 		{
 			if (!ssl_connect_negotiate(timeoutms, false))
 			{
+				has_error = true;
 				return 0;
 			}
 		}
 
 		if (res == SEC_I_CONTEXT_EXPIRED)
 		{
+			has_error = true;
 			return 0;
 		}
 	}
@@ -458,6 +465,8 @@ bool SChannelPipe::Flush(int timeoutms)
 {
 	if (has_error)
 		return false;
+
+	last_flush_time = Server->getTimeMS();
 
 	size_t sendbuf_off = 0;
 	while (sendbuf_pos- sendbuf_off> 0)
@@ -533,8 +542,11 @@ bool SChannelPipe::isWritable(int timeoutms)
 
 bool SChannelPipe::isReadable(int timeoutms)
 {
-	if (has_error)
-		return false;
+	if (decbuf_pos > 0)
+		return true;
+
+	if (encbuf_pos > 0 && !incomplete_message)
+		return true;
 
 	return bpipe->isReadable(timeoutms);
 }

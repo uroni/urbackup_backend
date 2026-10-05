@@ -437,9 +437,11 @@ namespace
 		if (aFile == NULL) {
 			return std::string();
 		}
+		char buf[1024];
 		struct mntent *ent;
+		struct mntent entbuf;
 		std::string maxmount;
-		while (NULL != (ent = getmntent(aFile)))
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(path.find(ent->mnt_dir)==0 &&
 				std::string(ent->mnt_dir).size()>maxmount.size())
@@ -472,7 +474,9 @@ namespace
 			return std::string();
 		}
 		struct mntent *ent;
-		while (NULL != (ent = getmntent(aFile)))
+		struct mntent entbuf;
+		char buf[1024];
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(std::string(ent->mnt_dir)==path)
 			{
@@ -505,7 +509,9 @@ namespace
 			return std::string();
 		}
 		struct mntent *ent;
-		while (NULL != (ent = getmntent(aFile)))
+		struct mntent entbuf;
+		char buf[1024];
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if(std::string(ent->mnt_fsname)==dev)
 			{
@@ -522,7 +528,7 @@ namespace
 
 
 #ifndef _WIN32
-	std::vector<std::string> getAllMounts(const std::vector<std::string>& excl_fs, bool filter_usb)
+	std::vector<std::string> getAllMounts(const std::vector<std::string>& excl_fs, bool filter_usb, bool return_devs)
 	{
 #ifndef HAVE_MNTENT_H
 		return std::vector<std::string>();
@@ -557,19 +563,67 @@ namespace
 			return std::vector<std::string>();
 		}
 		struct mntent *ent;
+		struct mntent entbuf;
+		char buf[1024];
 		std::vector<std::string> ret;
-		while (NULL != (ent = getmntent(aFile)))
+		while (NULL != (ent = getmntent_r(aFile, &entbuf, buf, sizeof(buf))))
 		{
 			if (!std::binary_search(excl_fs.begin(), excl_fs.end(), std::string(ent->mnt_type))
 				&& !std::binary_search(usb_devs.begin(), usb_devs.end(), std::string(ent->mnt_fsname)) )
 			{
-				ret.push_back(ent->mnt_dir);
+				if(return_devs)
+					ret.push_back(ent->mnt_fsname);
+				else
+					ret.push_back(ent->mnt_dir);
 			}
 		}
 		endmntent(aFile);
 
 		return ret;
 #endif
+	}
+
+	std::vector<std::string> getFsFilterList(const std::vector<std::string>& vol_types)
+	{
+		std::vector<std::string> filter_add;
+		filter_add.push_back("sysfs");
+		filter_add.push_back("proc");
+		filter_add.push_back("devtmpfs");
+		filter_add.push_back("devpts");
+		filter_add.push_back("securityfs");
+		filter_add.push_back("cgroup");
+		filter_add.push_back("pstore");
+		filter_add.push_back("autofs");
+		filter_add.push_back("debugfs");
+		filter_add.push_back("mqueue");
+		filter_add.push_back("hugetlbfs");
+		filter_add.push_back("configfs");
+		filter_add.push_back("cgroup2");
+		filter_add.push_back("fusectl");
+		filter_add.push_back("efivarfs");
+		filter_add.push_back("nfs");
+
+		if(std::find(vol_types.begin(), vol_types.end(), "ALL") != vol_types.end() ||
+			std::find(vol_types.begin(), vol_types.end(), "ALL_NONUSB") != vol_types.end())
+		{
+			filter_add.push_back("tmpfs");
+		}
+		else if(std::find(vol_types.begin(), vol_types.end(), "ALL_NONET") != vol_types.end())
+		{
+			filter_add.push_back("nfs");
+			filter_add.push_back("smbfs");
+			filter_add.push_back("cifs");
+		}
+
+		std::sort(filter_add.begin(), filter_add.end());
+		return filter_add;
+	}
+
+	std::vector<std::string> getAllMountsByVoltypes(const std::vector<std::string>& vol_types)
+	{
+		const bool filter_usb = std::find(vol_types.begin(), vol_types.end(), "ALL_NONUSB") != vol_types.end();
+		const std::vector<std::string> filter_add = getFsFilterList(vol_types);
+		return getAllMounts(filter_add, filter_usb, false);
 	}
 #endif
 }
@@ -578,6 +632,28 @@ IMutex *IndexThread::filelist_mutex=NULL;
 IPipe* IndexThread::msgpipe=NULL;
 IFileServ *IndexThread::filesrv=NULL;
 IMutex *IndexThread::filesrv_mutex=NULL;
+
+#ifndef _WIN32
+std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
+{
+	std::vector<std::string> vol_types;
+	if(filter_usb)
+		vol_types.push_back("ALL_NONUSB");
+	else
+		vol_types.push_back("ALL");
+
+	const std::vector<std::string> filter_add = getFsFilterList(vol_types);
+	const std::vector<std::string> mounts = getAllMounts(filter_add, filter_usb, true);
+	std::string ret;
+	for(size_t i=0;i<mounts.size();++i)
+	{
+		if(!ret.empty())
+			ret+=";";
+		ret+=mounts[i];
+	}
+	return ret;
+}
+#endif
 
 std::string add_trailing_slash(const std::string &strDirName)
 {
@@ -2147,7 +2223,7 @@ void IndexThread::updateBackupDirsWithAll()
 	bool has_all = false;
 	bool has_all_nonusb = false;
 	size_t ref_idx;
-	std::vector<std::string> filter_add;
+	std::vector<std::string> vol_types;
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
 		if (backup_dirs[i].group == index_group
@@ -2156,7 +2232,7 @@ void IndexThread::updateBackupDirsWithAll()
 		{
 			ref_idx = i;
 			has_all = true;
-			filter_add.push_back("tmpfs");
+			vol_types.push_back(backup_dirs[i].path);
 		}
 		else if (backup_dirs[i].group == index_group
 			&& backup_dirs[i].path == "ALL_NONUSB" &&  backup_dirs[i].tname == "ALL_NONUSB"
@@ -2164,7 +2240,7 @@ void IndexThread::updateBackupDirsWithAll()
 		{
 			ref_idx = i;
 			has_all_nonusb = true;
-			filter_add.push_back("tmpfs");
+			vol_types.push_back(backup_dirs[i].path);
 		}
 #ifndef _WIN32
 		else if (backup_dirs[i].group == index_group
@@ -2173,9 +2249,7 @@ void IndexThread::updateBackupDirsWithAll()
 		{
 			ref_idx = i;
 			has_all = true;
-			filter_add.push_back("nfs");
-			filter_add.push_back("smbfs");
-			filter_add.push_back("cifs");
+			vol_types.push_back(backup_dirs[i].path);
 		}
 		else if (backup_dirs[i].group == index_group
 			&& backup_dirs[i].path == "ALL_WITH_TMPFS" &&  backup_dirs[i].tname == "ALL_WITH_TMPFS"
@@ -2183,6 +2257,7 @@ void IndexThread::updateBackupDirsWithAll()
 		{
 			ref_idx = i;
 			has_all = true;
+			vol_types.push_back(backup_dirs[i].path);
 		}
 #endif
 	}
@@ -2205,23 +2280,7 @@ void IndexThread::updateBackupDirsWithAll()
 #ifndef HAVE_MNTENT_H
 		VSSLog("Error getting mounted file systems. Client not compiled with HAVE_MNTENT_H", LL_ERROR);
 #endif
-		filter_add.push_back("sysfs");
-		filter_add.push_back("proc");
-		filter_add.push_back("devtmpfs");
-		filter_add.push_back("devpts");
-		filter_add.push_back("securityfs");
-		filter_add.push_back("cgroup");
-		filter_add.push_back("pstore");
-		filter_add.push_back("autofs");
-		filter_add.push_back("debugfs");
-		filter_add.push_back("mqueue");
-		filter_add.push_back("hugetlbfs");
-		filter_add.push_back("configfs");
-		filter_add.push_back("cgroup2");
-		filter_add.push_back("fusectl");
-		filter_add.push_back("efivarfs");
-		std::sort(filter_add.begin(), filter_add.end());
-		volumes = getAllMounts(filter_add, has_all_nonusb);
+		volumes = getAllMountsByVoltypes(vol_types);
 	}
 #endif
 

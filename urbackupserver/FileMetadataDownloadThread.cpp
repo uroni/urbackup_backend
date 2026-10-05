@@ -1489,6 +1489,7 @@ void FileMetadataDownloadThread::forceStart()
 {
 	IScopedLock lock(mutex.get());
 	force_start = true;
+	cond->notify_all();
 }
 
 bool FileMetadataDownloadThread::getHasTimeoutError()

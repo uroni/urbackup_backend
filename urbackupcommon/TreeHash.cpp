@@ -159,12 +159,13 @@ void TreeHash::addHashAllAdler(const char * h, size_t size, size_t hashed_size)
 
 void TreeHash::allAdlerTo64byteHash(const char * h, size_t size, size_t hashed_size, char * byteout)
 {
-	size_t num_adlers = (size - 16) / sizeof(_u32);
-	const unsigned int* input_adler = reinterpret_cast<const unsigned int*>(h + 16);
+	const size_t big_hash_size = 16;
+	size_t num_adlers = size < big_hash_size ? 0 : ((size - big_hash_size) / sizeof(_u32));
+	const unsigned int* input_adler = reinterpret_cast<const unsigned int*>(h + big_hash_size);
 
-	memcpy(byteout, h, 16);
+	memcpy(byteout, h, big_hash_size);
 
-	unsigned int* n_adlers = reinterpret_cast<unsigned int*>(byteout + 16);
+	unsigned int* n_adlers = reinterpret_cast<unsigned int*>(byteout + big_hash_size);
 
 	for (size_t i = 0; i < 12; ++i)
 	{

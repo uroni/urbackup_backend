@@ -75,8 +75,6 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
 	std::vector<size_t> *deleted_inplace_ids, bool has_symbit, bool is_windows)
 {
-	size_t nc_2=t2->getNumChildren();
-	size_t nc_1=t1->getNumChildren();
 	TreeNode *c2=t2->getFirstChild();
 	TreeNode *c1=t1->getFirstChild();
 	bool did_subtree_change=false;
@@ -110,7 +108,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			{
 				if (c2->getType() == sn->getType()
 					&& c2->nameEquals(*sn)
-					&& sn->getMappedNode()==NULL)
+					&& !sn->isMapped())
 				{
 					cmp = 0;
 					c1 = sn;
@@ -136,8 +134,8 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			{
 				gatherDiffs(c1, c2, depth+1, diffs, modified_inplace_ids, 
 					dir_diffs, deleted_inplace_ids, has_symbit, is_windows);
-				c2->setMappedNode(c1);
-				c1->setMappedNode(c2);
+				c2->setMapped(true);
+				c1->setMapped(true);
 			}
 			else
 			{
@@ -196,7 +194,7 @@ void TreeDiff::gatherDeletes(TreeNode *t1, std::vector<size_t> &deleted_ids)
 	TreeNode *c1=t1->getFirstChild();
 	while(c1!=NULL)
 	{
-		if(c1->getMappedNode()==NULL)
+		if(!c1->isMapped())
 		{
 			deleted_ids.push_back(c1->getId());
 		}
@@ -233,7 +231,7 @@ void TreeDiff::gatherLargeUnchangedSubtrees( TreeNode *t2, std::vector<size_t> &
 	while(c2!=NULL)
 	{
 		if(!c2->getSubtreeChanged()
-			&& c2->getMappedNode()!=NULL
+			&& c2->isMapped()
 			&& getTreesize(c2,10)>10)
 		{
 			large_unchanged_subtrees.push_back(c2->getId());

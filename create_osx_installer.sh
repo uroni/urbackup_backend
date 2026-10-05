@@ -3,22 +3,30 @@
 set -e
 
 development=false
+already_reset=false
 
 # Check if using development switch
 if [ "$1" != "" ]; then
 	if [[ "$1" == "-d" ]] || [[ "$1" == "--development" ]]; then
 		development=true
+	elif [[ "$1" == "--already-reset" ]]; then
+		already_reset=true
 	fi
 fi
 
-
-if !($development); then
-	git reset --hard
-	cd client
-	git reset --hard
-	cd ..
-	python3 build/replace_versions.py
-	echo foo
+if $already_reset
+then
+	echo "Already reset, skipping git reset"
+else
+	if !($development); then
+		git reset --hard
+		cd client
+		git reset --hard
+		cd ..
+		python3 build/replace_versions.py
+		./create_osx_installer.sh --already-reset
+		exit 0
+	fi
 fi
 
 rm -R osx-pkg || true
@@ -73,10 +81,19 @@ if !($development); then
 	make install DESTDIR=$PWD/osx-pkg_x86
 fi
 
+function merge() {
+	lipo -create "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/$1" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1" -output "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1.new"
+	mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1.new" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/$1"
+}
+
 for i in $(ls "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/")
 do
-	lipo -create "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i" -output "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new"
-	mv "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i.new" "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin/$i"
+	merge bin/$i
+done
+
+for i in $(ls "osx-pkg_x86/Applications/UrBackup Client.app/Contents/MacOS/sbin/")
+do
+	merge sbin/$i
 done
 
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"

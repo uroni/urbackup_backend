@@ -950,13 +950,13 @@ ACTION_IMPL(settings)
 					if (t_clientid > 0)
 					{
 						ServerSettings::updateClient(t_clientid);
+						updateOnlineClientSettings(db, t_clientid);
 					}
 					else
 					{
 						ServerSettings::updateAll();
-					}				
-
-					updateOnlineClientSettings(db, t_clientid);
+						updateAllOnlineClientSettings(db);
+					}
 				}
 				
 				ServerSettings settings(db, t_clientid);

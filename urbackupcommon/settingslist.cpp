@@ -53,6 +53,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("allow_pause");
 	ret.push_back("allow_log_view");
 	ret.push_back("allow_tray_exit");
+	ret.push_back("allow_all_clients_restore");
 	ret.push_back("image_letters");
 	ret.push_back("internet_server");
 	ret.push_back("internet_server_port");
@@ -110,6 +111,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("client_hash_threads");
 	ret.push_back("image_compress_threads");
 	ret.push_back("allow_config_max_backups");
+	ret.push_back("client_rename_detection");
+	ret.push_back("max_running_jobs_per_client_group");
 	return ret;
 }
 
@@ -201,6 +204,9 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("alert_params");
 	ret.push_back("archive");
 	ret.push_back("client_settings_tray_access_pw");
+	ret.push_back("client_rename_detection");
+	ret.push_back("allow_all_clients_restore");
+	ret.push_back("max_running_jobs_per_client_group");
 	return ret;
 }
 

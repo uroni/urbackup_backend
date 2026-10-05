@@ -33,7 +33,6 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "serverinterface/login.h"
-
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
@@ -41,6 +40,7 @@
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
+const unsigned int connect_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
 const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
@@ -54,6 +54,7 @@ unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
 std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
 std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
+unsigned int InternetServiceConnector::proof_of_work_difficulty=0;
 
 const int INTERNET_SERVICE_CONNECTNG_WTIME_MS = 1000;
 const int INTERNET_SERVICE_MAX_WTIME_MS = 60000;
@@ -62,6 +63,7 @@ const int INTERNET_SERVICE_LONG_WTIME_MS = 10000;
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
+const unsigned int max_client_iterations = 10*pbkdf2_iterations;
 
 InternetService::InternetService(BackupServer * backup_server)
 	:backup_server(backup_server)
@@ -173,6 +175,11 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 
 		data.addString(ecdh_key_exchange->getPublicKey());
 
+		if(proof_of_work_difficulty)
+		{
+			data.addVarInt(proof_of_work_difficulty);
+		}
+
 		tcpstack.Send(cs, data);
 	}
 	lastpingtime=Server->getTimeMS();
@@ -233,19 +240,20 @@ int InternetServiceConnector::Run()
 	{
 		return -1;
 	}
-
-	if (state == ISS_RECEIVE_ENDPOINT)
+	
+	if (state == ISS_AUTH && Server->getTimeMS() - lastpingtime > connect_timeout)
+	{
+		Server->Log("ISS_AUTH timeout in InternetServiceConnector::Run", LL_DEBUG);
+		has_timeout = true;
+		return false;
+	}
+	else if (state == ISS_RECEIVE_ENDPOINT)
 	{
 		if (Server->getTimeMS() - lastpingtime > ping_timeout)
 		{
 			Server->Log("ISS_RECEIVE_ENDPOINT timeout in InternetServiceConnector::Run", LL_DEBUG);
-			IScopedLock lock(mutex);
-			if (!connect_start)
-			{
-				has_timeout = true;
-				cleanup_pipes(true);
-				return -1;
-			}
+			has_timeout = true;
+			return -1;
 		}
 		return ping_timeout/10;
 	}
@@ -419,6 +427,15 @@ void InternetServiceConnector::ReceivePackets()
 							if(id!=ID_ISC_AUTH_TOKEN && id!=ID_ISC_AUTH_TOKEN2)
 							{
 								rd.getUInt(&client_iterations);
+								if(client_iterations>max_client_iterations)
+									errmsg = "Too many iterations requested by client";
+
+								if(proof_of_work_difficulty)
+								{
+									std::string proof;
+									if(!rd.getStr2(&proof) || !crypto_fak->verifyProofOfWork(challenge, proof, proof_of_work_difficulty))
+										errmsg = "Proof of work failed";
+								}
 							}
 
 							if(errmsg.empty() && !authkey.empty())
@@ -674,6 +691,19 @@ void InternetServiceConnector::init_mutex(void)
 			{
 				internet_expect_endpoint.insert(toks[i]);
 			}
+		}
+	}
+
+	const std::string proof_of_work_difficulty_str = Server->getServerParameter("internet_proof_of_work_difficulty");
+	if(!proof_of_work_difficulty_str.empty())
+	{
+		try
+		{
+			proof_of_work_difficulty = std::stoul(proof_of_work_difficulty_str);
+		}
+		catch(const std::exception&)
+		{
+			Server->Log("Invalid value for internet_proof_of_work_difficulty: "+proof_of_work_difficulty_str, LL_WARNING);
 		}
 	}
 }

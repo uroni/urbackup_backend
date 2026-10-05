@@ -96,5 +96,6 @@ int patch_hash()
 	}
 
 	bool b = chunk_patcher.ApplyPatch(f.get(), patch_file.get(), extent_iterator.get());
+	Server->Log("Patch applied to " + source_file + " with patch file " + patch_file_fn + (b ? " successfully" : " unsuccessfully"), LL_INFO);
 	return b ? 0 : 1;
 }

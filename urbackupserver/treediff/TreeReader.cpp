@@ -308,7 +308,7 @@ bool TreeReader::readTree(const std::string &fn)
 
 							if(!parents.empty())
 							{
-								parents.top()->incrementNumChildren();
+								parents.top()->setHasChildren();
 								nodes[idx].setParent(parents.top());
 							}
 

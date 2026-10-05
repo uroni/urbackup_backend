@@ -129,6 +129,7 @@ Section "install"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\UrBackupServer" "DisplayName" "UrBackupServer (remove only)"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\UrBackupServer" "UninstallString" "$INSTDIR\Uninstall.exe"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\UrBackupServer" "Path" "$INSTDIR"
+	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\UrBackupServer" "DisplayVersion" "$version_short$"
 	
 	SetOutPath "$INSTDIR"
 	File "data_common\args.txt"

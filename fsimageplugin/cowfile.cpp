@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include "fs/ntfs.h"
 #include <errno.h>
+#include <string.h>
 #include <memory>
 #include <assert.h>
 #include "FileWrapper.h"
@@ -60,7 +61,7 @@
 const unsigned int blocksize = 4096;
 
 CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
- : bitmap_dirty(false), finished(false), curr_offset(0), trim_warned(false)
+ : bitmap_dirty(false), finished(false), curr_offset(0), trim_warned(false), has_parent(false)
 {
 	filename = fn;
 	read_only = pRead_only;
@@ -198,7 +199,7 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 }
 
 CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, uint64 pDstsize)
-	: bitmap_dirty(false), finished(false), curr_offset(0)
+	: bitmap_dirty(false), finished(false), curr_offset(0), has_parent(true)
 {
 	filename = fn;
 	read_only = pRead_only;
@@ -420,9 +421,41 @@ bool CowFile::Read(char* buffer, size_t bsize, size_t& read_bytes)
 	}
 }
 
+bool CowFile::sameAsParent(const char* buffer, _u32 bsize)
+{
+#ifndef _WIN32
+	if(cmp_buf.size()<bsize)
+	{
+		cmp_buf.resize(bsize);
+	}
+
+	ssize_t r=pread64(fd, cmp_buf.data(), bsize, curr_offset);
+
+	return r==static_cast<ssize_t>(bsize)
+		&& memcmp(buffer, cmp_buf.data(), bsize)==0;
+#else
+	return false;
+#endif
+}
+
 _u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	if(!is_open) return 0;
+
+	//Incremental images are snapshots of the parent. Rewriting identical data only unshares extents
+	if(has_parent && !read_only
+		&& sameAsParent(buffer, bsize))
+	{
+		setBitmapRange(curr_offset, curr_offset+bsize, true);
+
+		if(!Seek(curr_offset+bsize))
+		{
+			if(has_error) *has_error=true;
+			return 0;
+		}
+
+		return bsize;
+	}
 
 #ifndef _WIN32
 	ssize_t w=write(fd, buffer, bsize);
