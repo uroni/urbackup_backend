@@ -2711,10 +2711,10 @@ std::string ClientConnector::getLogpoints(const std::string& server_ident)
 	return ret;
 }
 
-void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
+void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data, bool with_time)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT loglevel, message FROM logdata WHERE logid=? AND loglevel>=? ORDER BY idx ASC");
+	IQuery *q=db->Prepare("SELECT loglevel, message, strftime('%s', ltime) AS ltime FROM logdata WHERE logid=? AND loglevel>=? ORDER BY idx ASC");
 	q->Bind(logid);
 	q->Bind(loglevel);
 	int timeoutms=300;
@@ -2722,6 +2722,10 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 	for(size_t i=0;i<res.size();++i)
 	{
 		data+=(res[i]["loglevel"])+"-";
+		if (with_time)
+		{
+			data += (res[i]["ltime"].empty() ? std::string("0") : res[i]["ltime"]) + "-";
+		}
 		data+=(res[i]["message"])+"\n";
 	}
 	db->destroyAllQueries();

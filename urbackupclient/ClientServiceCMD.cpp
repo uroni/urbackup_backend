@@ -1776,7 +1776,7 @@ void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
 	int logid=watoi(params["logid"]);
 	int loglevel=watoi(params["loglevel"]);
 	std::string ret;
-	getLogLevel(logid, loglevel, ret);
+	getLogLevel(logid, loglevel, ret, params["with_time"] == "1");
 	tcpstack.Send(pipe, ret);
 }
 

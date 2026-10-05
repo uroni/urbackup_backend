@@ -286,7 +286,8 @@ private:
 	void saveLogdata(const std::string &created, const std::string &pData);
 	//server_ident: only the logs of this server and the ones without a recorded server
 	std::string getLogpoints(const std::string& server_ident);
-	void getLogLevel(int logid, int loglevel, std::string &data);
+	//with_time: "level-time-message" lines (time: unix time, 0 if unknown) instead of "level-message"
+	void getLogLevel(int logid, int loglevel, std::string &data, bool with_time = false);
 	bool waitForThread(void);
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
