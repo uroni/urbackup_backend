@@ -18,18 +18,27 @@ import {
   VALUE_TO_USE,
 } from "./utils";
 
-interface InitialFormState {
-  use: 1 | 2 | 4;
-  value_group: number;
-  value?: number;
-  value_client?: number;
+type Use = 1 | 2 | 4;
+// Numeric settings arrive from the server as strings
+type SettingValue = number | string;
+
+export interface InitialFormState {
+  use: Use;
+  value_group: SettingValue;
+  value?: SettingValue;
+  value_client?: SettingValue;
+}
+
+interface FormData {
+  enabled: boolean;
+  value: SettingValue | undefined; // Value shown in the input
+  here: SettingValue | undefined; // Value for the "here" settings source
+  use: Use;
 }
 
 const HERE_SETTINGS = USE_VALUES[SETTINGS_SOURCE.HERE];
 
-function selectValueInUse(multiValue: InitialFormState) {
-  const { use } = multiValue;
-
+function selectValueInUse(multiValue: InitialFormState, use: Use) {
   return multiValue[VALUE_TO_USE[use]];
 }
 
@@ -37,50 +46,43 @@ function initialValue(
   initialFormState: InitialFormState,
   {
     field,
-    name,
-    nameUse,
     isEnabled,
   }: {
     field: Field<string>;
-    name: string;
-    nameUse: string;
     isEnabled?: boolean;
   },
-) {
+): FormData {
   const { use } = initialFormState;
 
-  const selectedValue = selectValueInUse(initialFormState);
-  const hereValue = selectValueInUse({
-    ...initialFormState,
-    use: HERE_SETTINGS,
-  });
+  const selectedValue = selectValueInUse(initialFormState, use);
+  const hereValue = selectValueInUse(initialFormState, HERE_SETTINGS);
 
   // Handle cases when client setting has the value set as NaN
-  if (isNaN(selectedValue)) {
+  if (selectedValue === undefined || isNaN(Number(selectedValue))) {
     return {
       enabled: isEnabled ?? true, // Show the fields to allow changing
-      [name]: selectedValue,
+      value: selectedValue,
       here: hereValue,
-      [nameUse]: use,
+      use,
     };
   }
 
-  const enabled = isEnabled ?? selectedValue >= 0;
+  const enabled = isEnabled ?? Number(selectedValue) >= 0;
 
   if (field.transformer?.ui) {
     return {
       enabled,
-      [name]: field.transformer?.ui(selectedValue),
-      here: field.transformer?.ui(hereValue),
-      [nameUse]: use,
+      value: field.transformer.ui(Number(selectedValue)),
+      here: field.transformer.ui(Number(hereValue)),
+      use,
     };
   }
 
   return {
     enabled,
-    [name]: selectedValue,
+    value: selectedValue,
     here: hereValue,
-    [nameUse]: use,
+    use,
   };
 }
 
@@ -104,8 +106,6 @@ export function CheckboxTextDropdown({
   const [formData, setFormData] = useState(() =>
     initialValue(initialFormState, {
       field,
-      name,
-      nameUse,
       // If no checkbox, keep the fields enabled by default
       isEnabled: checkboxLabel ? undefined : true,
     }),
@@ -120,33 +120,28 @@ export function CheckboxTextDropdown({
     field: {
       ...field,
       type: "number",
-      value: formData[name],
+      value: formData.value,
     },
     dropdown: {
       name: nameUse,
       label: dropdownLabel,
-      value: formData[nameUse],
+      value: formData.use,
     },
   };
 
   const getHereValue = () => {
     // Send no changes to "HERE" value if the selected source is not HERE.
     // Even if the field was interacted with.
-    if (formData[nameUse] != HERE_SETTINGS) {
-      const hereValue = selectValueInUse({
-        ...initialFormState,
-        use: HERE_SETTINGS,
-      });
-
-      return hereValue;
+    if (formData.use != HERE_SETTINGS) {
+      return selectValueInUse(initialFormState, HERE_SETTINGS);
     }
 
-    return field.transformer?.api(formData["here"]) ?? formData["here"];
+    return field.transformer?.api(Number(formData.here)) ?? formData.here;
   };
 
   const hiddenInputValues = {
     value: getHereValue(),
-    use: formData[nameUse],
+    use: formData.use,
   };
 
   return (
@@ -160,14 +155,14 @@ export function CheckboxTextDropdown({
           onChange={(_, d) => {
             const newChecked = d.checked as boolean;
             const newValue = newChecked
-              ? Math.abs(+formData[name])
-              : Math.abs(+formData[name]) * -1;
+              ? Math.abs(Number(formData.value))
+              : Math.abs(Number(formData.value)) * -1;
 
             setFormData({
               enabled: newChecked,
-              [name]: newValue,
+              value: newValue,
               here: newValue,
-              [nameUse]: HERE_SETTINGS,
+              use: HERE_SETTINGS,
             });
           }}
         />
@@ -179,20 +174,22 @@ export function CheckboxTextDropdown({
           <TextFieldDropdown
             key={checky.field.name}
             label={checky.field.label}
-            description={checky.field.description}
             validationMessage={validationMessage}
             type="text"
             inputProps={{
               ...checky.field.inputProps,
-              value: formData[name],
+              value:
+                formData.value === undefined
+                  ? undefined
+                  : String(formData.value),
             }}
             onChange={(newValue) => {
               setFormData((p) => ({
                 ...p,
-                [name]: newValue,
+                value: newValue,
                 here: newValue,
                 // Switch used settings to HERE if input is changed
-                [nameUse]: HERE_SETTINGS,
+                use: HERE_SETTINGS,
               }));
             }}
           >
@@ -201,26 +198,21 @@ export function CheckboxTextDropdown({
               label={dropdownLabel}
               options={VALUE_TO_USE}
               formattedOptions={FORMATTED_VALUE_TO_USE}
-              value={
-                FORMATTED_VALUE_TO_USE[VALUE_TO_USE[formData[nameUse]]].name
-              }
-              selectedOptions={[String(formData[nameUse])]}
+              value={FORMATTED_VALUE_TO_USE[VALUE_TO_USE[formData.use]].name}
+              selectedOptions={[String(formData.use)]}
               onOptionSelect={(e, d) => {
-                const newUse = d.optionValue;
+                const newUse = Number(d.optionValue) as Use;
 
                 const newValue =
-                  selectValueInUse({
-                    ...initialFormState,
-                    use: newUse,
-                  }) ?? "";
+                  selectValueInUse(initialFormState, newUse) ?? "";
 
                 const transformedValue =
-                  field.transformer?.ui(+newValue) ?? newValue;
+                  field.transformer?.ui(Number(newValue)) ?? newValue;
 
                 setFormData((p) => ({
                   ...p,
-                  [name]: transformedValue,
-                  [nameUse]: newUse,
+                  value: transformedValue,
+                  use: newUse,
                 }));
               }}
             />
@@ -241,9 +233,9 @@ function TextFieldDropdown({
   children,
 }: {
   label: string;
-  name: string;
+  name?: string;
   type: InputProps["type"];
-  onChange: (value: string) => void;
+  onChange: (value: string | undefined) => void;
   validationMessage?: string;
   inputProps?: Omit<InputProps, "onChange">;
   children?: React.ReactNode;
