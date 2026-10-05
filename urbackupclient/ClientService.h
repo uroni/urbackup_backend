@@ -284,7 +284,8 @@ private:
 	//target_server: change the settings of this server only (empty: settings.cfg)
 	void replaceSettings(const std::string &pData, const std::string& target_server=std::string());
 	void saveLogdata(const std::string &created, const std::string &pData);
-	std::string getLogpoints(void);
+	//server_ident: only the logs of this server and the ones without a recorded server
+	std::string getLogpoints(const std::string& server_ident);
 	void getLogLevel(int logid, int loglevel, std::string &data);
 	bool waitForThread(void);
 	bool sendFullImage(void);
@@ -357,7 +358,7 @@ private:
 	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params);
 	void CMD_LOGDATA(const std::string &cmd);
 	void CMD_PAUSE(const std::string &cmd);
-	void CMD_GET_LOGPOINTS(const std::string &cmd);
+	void CMD_GET_LOGPOINTS(const std::string &cmd, str_map &params);
 	void CMD_GET_LOGDATA(const std::string &cmd, str_map &params);
 	void CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok);
 	void CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok);

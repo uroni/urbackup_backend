@@ -1296,7 +1296,7 @@ void ClientConnector::ReceivePacketsInt()
 				}
 				else if(cmd=="GET LOGPOINTS" )
 				{
-					CMD_GET_LOGPOINTS(cmd); continue;
+					CMD_GET_LOGPOINTS(cmd, params); continue;
 				}
 				else if(cmd=="GET LOGDATA" )
 				{
@@ -2621,6 +2621,18 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	q_p->Write();
 	_i64 logid=db->getLastInsertID();
 
+	if (!server_ident.empty())
+	{
+		//Which server's backup the log is of. A separate table, so older client
+		//versions can still use the database
+		db->Write("CREATE TABLE IF NOT EXISTS log_servers (logid INTEGER PRIMARY KEY, server_ident TEXT)");
+		IQuery* q_s = db->Prepare("INSERT OR REPLACE INTO log_servers (logid, server_ident) VALUES (?, ?)", false);
+		q_s->Bind(logid);
+		q_s->Bind(server_ident);
+		q_s->Write();
+		db->destroyQuery(q_s);
+	}
+
 	while(!db->BeginWriteTransaction())
 				Server->wait(500);
 
@@ -2666,9 +2678,26 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	db->destroyAllQueries();
 }
 
-std::string ClientConnector::getLogpoints(void)
+std::string ClientConnector::getLogpoints(const std::string& server_ident)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	if (!server_ident.empty())
+	{
+		//Logs of this server and logs saved before the server was recorded ("id-time-known")
+		db->Write("CREATE TABLE IF NOT EXISTS log_servers (logid INTEGER PRIMARY KEY, server_ident TEXT)");
+		IQuery* q = db->Prepare("SELECT l.id AS id, strftime('%s',l.ttime) AS ltime, s.server_ident AS server_ident "
+			"FROM logs l LEFT OUTER JOIN log_servers s ON l.id=s.logid "
+			"WHERE s.server_ident=? OR s.server_ident IS NULL ORDER BY l.ttime DESC LIMIT 100", false);
+		q->Bind(server_ident);
+		db_results res = q->Read();
+		db->destroyQuery(q);
+		std::string ret;
+		for (size_t i = 0; i < res.size(); ++i)
+		{
+			ret += res[i]["id"] + "-" + res[i]["ltime"] + "-" + (res[i]["server_ident"].empty() ? "0" : "1") + "\n";
+		}
+		return ret;
+	}
 	int timeoutms=300;
 	IQuery *q=db->Prepare("SELECT id, strftime('%s',ttime) AS ltime FROM logs ORDER BY ttime DESC LIMIT 100");
 	db_results res=q->Read(&timeoutms);

@@ -1756,10 +1756,18 @@ void ClientConnector::CMD_PAUSE(const std::string &cmd)
 	else   tcpstack.Send(pipe, "FAILED");
 }
 
-void ClientConnector::CMD_GET_LOGPOINTS(const std::string &cmd)
+void ClientConnector::CMD_GET_LOGPOINTS(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
-	tcpstack.Send(pipe, getLogpoints() );
+	//server: only the logs of this server (and the ones without a server)
+	std::string server = params["server"];
+	if (!server.empty())
+	{
+		std::string ident = ServerList::resolveServer(server);
+		tcpstack.Send(pipe, getLogpoints(ident.empty() ? server : ident));
+		return;
+	}
+	tcpstack.Send(pipe, getLogpoints(std::string()) );
 }
 
 void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
