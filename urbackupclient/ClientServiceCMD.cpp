@@ -3678,6 +3678,17 @@ void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change
 			//Web interface of the server (for "Access/restore backups")
 			data += convert(i) + ".server_url=" + getServerUrl(entries[i].ident) + "\n";
 			data += convert(i) + ".last_backup=" + convert(getServerLastBackup(entries[i].ident)) + "\n";
+			//What the server allows/does (capa_bits.h), from its channel. Missing: not connected
+			IScopedLock lock(backup_mutex);
+			for (size_t j = 0; j < channel_pipes.size(); ++j)
+			{
+				if (channel_pipes[j].virtual_client.empty()
+					&& channelMatchesServer(channel_pipes[j], entries[i].ident))
+				{
+					data += convert(i) + ".capa=" + convert(channel_pipes[j].capa) + "\n";
+					break;
+				}
+			}
 		}
 	}
 
