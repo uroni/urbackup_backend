@@ -269,7 +269,9 @@ void ServerAutomaticArchive::archiveBackup(int backupid, int length, bool image)
 		}
 		else
 		{
-			q_archive->Bind(-1);
+			//Archived forever. Like manually archived backups (timeout 0), so the
+			//archive timeout check does not unarchive it
+			q_archive->Bind(0);
 		}
 		q_archive->Bind(toarchive[i]);
 		q_archive->Write();

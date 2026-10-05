@@ -38,6 +38,7 @@ std::map<std::string, int64> Helper::banned_ips;
 ICondition* Helper::login_wait_addr_cond;
 IMutex* Helper::login_wait_addr_mutex;
 ICondition* Helper::login_wait_username_cond;
+IMutex* Helper::access_dir_checks_mutex;
 IMutex* Helper::login_wait_username_mutex;
 std::set<std::string> Helper::logging_in_addrs;
 std::set<std::string> Helper::logging_in_usernames;
@@ -247,6 +248,7 @@ void Helper::init_mutex()
 	login_wait_username_cond = Server->createCondition();
 	login_wait_username_mutex = Server->createMutex();
 	login_wait_addr_cond = Server->createCondition();
+	access_dir_checks_mutex = Server->createMutex();
 	login_wait_addr_mutex = Server->createMutex();
 
 	if (failedLoginRateLimit())

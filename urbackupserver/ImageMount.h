@@ -25,7 +25,7 @@ public:
 	static bool lockImage(int backupid, int64 timeoutms);
 	static void unlockImage(int backupid);
 
-	static void mount_image_thread(int backupid, int partition, std::string& errmsg);
+	static void mount_image_thread(int backupid, int partition);
 
 private:
 
@@ -43,9 +43,18 @@ private:
 		}
 	};
 
+	struct SMountProcess
+	{
+		SMountProcess()
+			: ticket(ILLEGAL_THREADPOOL_TICKET) {}
+
+		THREADPOOL_TICKET ticket;
+		std::string errmsg;
+	};
+
 	static bool mount_image_int(int backupid, int partition, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
 
-	static std::map<SMountId, THREADPOOL_TICKET> mount_processes;
+	static std::map<SMountId, SMountProcess> mount_processes;
 	static IMutex* mount_processes_mutex;
 
 	static std::map<SMountId, size_t> mounted_images;
