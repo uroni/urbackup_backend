@@ -2053,6 +2053,43 @@ bool ClientConnector::updateBackupDirsFromServers(const std::string& settings_fn
 		}
 	}
 
+	//Paths added on this client belong to the client, not to the settings of a server:
+	//keep them (the servers they are backed up to are in ServerList::getClientBackupDirServers())
+	{
+		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+		db_results res_client = db->Read("SELECT path, name, optional, tgroup FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN "
+			+ convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		std::vector<std::pair<int, std::string> > flag_mapping = getFlagStrMapping();
+		for (size_t i = 0; i < res_client.size(); ++i)
+		{
+			int tgroup = watoi(res_client[i]["tgroup"]);
+			std::string key = ServerList::backupDirKey(tgroup, res_client[i]["path"]);
+			if (!all_keys.insert(key).second)
+			{
+				continue;
+			}
+
+			int optional = watoi(res_client[i]["optional"]);
+			std::string str_flags;
+			for (size_t j = 0; j < flag_mapping.size(); ++j)
+			{
+				if (optional & flag_mapping[j].first)
+				{
+					if (!str_flags.empty()) str_flags += ",";
+					str_flags += flag_mapping[j].second;
+				}
+			}
+
+			SDefaultDir dir;
+			dir.path = res_client[i]["path"];
+			dir.name = res_client[i]["name"] + (str_flags.empty() ? std::string() : "/" + str_flags);
+			dir.group = tgroup - group_offset;
+			dir.client = true;
+			all_dirs.push_back(dir);
+			client_keys.insert(key);
+		}
+	}
+
 	if (all_dirs.empty())
 	{
 		return false;
