@@ -2816,6 +2816,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
+	std::auto_ptr<IFile> dev_delete(dev);
 
 	std::string gpt_header = dev->Read(512LL, 512, NULL);
 
@@ -2852,6 +2853,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
+	std::auto_ptr<IFile> dev_delete(dev);
 #endif
 
 	dev->Seek(0);
