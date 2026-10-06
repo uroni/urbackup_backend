@@ -3455,6 +3455,11 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 				all_volumes = val;
 				all_nonusb_volumes = val;
 			}
+			else if (keys[i] == "update_capa_interval")
+			{
+				//How often the server asks for these again (ms), e.g. to pick up new virtual clients
+				def_args += "&UPDATE_CAPA_INTERVAL=" + EscapeParamString(val);
+			}
 			else
 			{
 				def_args += "&def_key_" + convert(def_idx) + "=" + EscapeParamString(keys[i])
