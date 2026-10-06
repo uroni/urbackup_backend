@@ -2146,6 +2146,17 @@ function show_backups2(data)
 			obj.download_zip=true;
 		}
 		
+		if(data.restore_disabled_on_client
+			&& data.backupid>0)
+		{
+			obj.restore_disabled_on_client=true;
+			if(data.client_os
+				&& data.client_os!="windows")
+			{
+				obj.restore_cmd=clientRestoreCommand(data.clientname, data.backupid, path);
+			}
+		}
+		
 		ndata=dustRender("backups_files", obj);
 	}
 	else if(data.files && data.single_item)
@@ -2420,6 +2431,30 @@ function downloadZIP(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
+function shellQuote(str)
+{
+	return "'"+str.replace(/'/g, "'\\''")+"'";
+}
+
+function clientRestoreCommand(clientname, backupid, path)
+{
+	var cmd="urbackupclientctl restore-start -b "+backupid;
+
+	var restore_path=path.replace(/^\/+/, "");
+	if(restore_path.length>0)
+	{
+		cmd+=" -d "+shellQuote(restore_path);
+	}
+
+	var virtual_client=clientname.match(/\[([^\]]+)\]$/);
+	if(virtual_client)
+	{
+		cmd+=" -v "+shellQuote(virtual_client[1]);
+	}
+
+	return cmd;
+}
+
 function restoreFiles(clientid, backupid, path, server_confirms_restore, fn_filter)
 {
 	if(!startLoading()) return;
