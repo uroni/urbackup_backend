@@ -2826,7 +2826,16 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	} dev_num;
 
 	std::string dev_fn;
-	parseDevicePartNumber(dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
+	//The volume may be a symlink to the device (e.g. a stable name for a changing device)
+	std::string real_dl = dl;
+	char* real_path = realpath(dl.c_str(), NULL);
+	if (real_path != NULL)
+	{
+		real_dl = real_path;
+		free(real_path);
+	}
+
+	parseDevicePartNumber(real_dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
 
 	IFile* dev = Server->openFile(dev_fn, MODE_READ_DEVICE);
 	if (dev == NULL)
