@@ -194,7 +194,9 @@ std::vector<std::string> get_local_users()
                         static int uid_max = INT_MAX;
         #endif
 
-                        if( (uid_min==-1 || uid_max==-1 || (
+                        //root as well: it uses urbackupclientctl (e.g. restores on servers
+                        //without a desktop), which needs its token in the backups
+                        if( (pw->pw_uid == 0 || uid_min==-1 || uid_max==-1 || (
                                 pw->pw_uid >= uid_min &&
                                 pw->pw_uid <= uid_max )) &&
 				strlen(pw->pw_dir)>0 &&
