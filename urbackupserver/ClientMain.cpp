@@ -736,6 +736,13 @@ void ClientMain::operator ()(void)
 				update_capa = false;
 
 				updateCapabilities(NULL);
+
+				if (next_capa_update == 0
+					&& protocol_versions.update_capa_interval > 0)
+				{
+					next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
+				}
+
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
 				if (!authenticateIfNeeded(true, false))
