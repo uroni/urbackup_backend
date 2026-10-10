@@ -225,7 +225,7 @@ void CServiceWorker::work()
 		{
 			char ch;
 			ssize_t r = read(wakeup_event[0], &ch, 1);
-			if (r != 0)
+			if (r != 1)
 			{
 				Server->Log("Error reading from pipe fd", LL_WARNING);
 			}
