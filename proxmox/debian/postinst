@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = configure ]; then
+    modprobe nbd 2>/dev/null || true
+    # The services of Proxmox VE load the storage plugins when they start
+    for service in pvedaemon pveproxy pvestatd pvescheduler; do
+        systemctl try-reload-or-restart "$service.service" 2>/dev/null || true
+    done
+fi
+
+exit 0

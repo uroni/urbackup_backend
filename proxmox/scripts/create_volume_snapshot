@@ -1,0 +1,28 @@
+#!/bin/sh
+# Snapshot script of the virtual clients of the Proxmox VE backup provider.
+# create_volume_snapshot <snapshot id> <volume> ...
+#
+# The volume is the backup export of a VM disk, which already is a consistent snapshot.
+# Report a snapshot path whose "-dev" file names the device to read. It is a whole disk, and
+# maybe only its changed parts can be read: the client is not to look for a file system
+# ("-fs" file).
+#
+# With a bitmap of Proxmox VE for the disk, the plugin has put a file next to the volume: the
+# list of the parts that have changed since the last backup, or that the bitmap is new.
+set -e
+
+SNAP_DIR=/run/urbackup-pve/snap
+SNAP="$SNAP_DIR/$1"
+
+mkdir -p "$SNAP_DIR" "$SNAP"
+readlink -f "$2" > "$SNAP-dev"
+echo unknown > "$SNAP-fs"
+
+if [ -e "$2.changed" ]; then
+    echo "CBT=type=extents"
+    echo "CBT_FILE=$2.changed"
+elif [ -e "$2.all-changed" ]; then
+    echo "CBT=type=extents"
+fi
+
+echo "SNAPSHOT=$SNAP"
