@@ -367,7 +367,13 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		}
 		else
 		{
-			if (r == "err")
+			//One answer per server connection
+			std::string errs = r;
+			while (next(errs, 0, "err -- "))
+			{
+				errs.erase(0, 7);
+			}
+			if (errs == "err")
 			{
 				tries = 0;
 			}
