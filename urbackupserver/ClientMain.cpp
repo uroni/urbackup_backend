@@ -1953,6 +1953,8 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		if (update_settings)
 		{
 			ServerSettings::updateClient(clientid);
+			//Start new virtual clients now, not when the settings are looked at the next time
+			updateVirtualClients();
 		}
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
