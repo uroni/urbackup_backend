@@ -3396,7 +3396,9 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 	{
 		lock_process.relock(NULL);
 
-		size_t selidx = 0;
+		//No server for a virtual client it does not know (yet), instead of starting a backup
+		//of the main client
+		size_t selidx = virtual_client.empty() ? 0 : channel_pipes.size();
 		for (size_t i = 0; i < channel_pipes.size(); ++i)
 		{
 			if (channel_pipes[i].virtual_client == virtual_client)
