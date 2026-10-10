@@ -1,0 +1,3 @@
+#!/bin/sh
+# CMake and vcpkg need the compiler/tool as a single executable path
+exec "${ZIG:-zig}" ar "$@"

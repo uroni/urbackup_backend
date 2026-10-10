@@ -332,3 +332,9 @@ urbackup_mount_helper
 urbackup_snapshot_helper
 urbackupsrv
 /out/
+install-data
+install-data-dbg
+linux-installer
+linux-installer-dbg
+UrBackupUpdateLinux.sh
+UrBackupUpdateLinux-dbg.sh

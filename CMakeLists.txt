@@ -79,6 +79,8 @@ option(URBACKUP_INSTALL_REDHAT_INITD "Install the RedHat init.d file (client)" O
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
 	set(URBACKUP_LINUX TRUE)
+	# musl >= 1.2.4 only declares stat64, open64, ... with this (glibc has it via _GNU_SOURCE)
+	add_compile_definitions(_LARGEFILE64_SOURCE)
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
 	set(URBACKUP_FREEBSD TRUE)

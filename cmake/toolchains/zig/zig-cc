@@ -1,0 +1,3 @@
+#!/bin/sh
+# CMake and vcpkg need the compiler as a single executable path
+exec "$(dirname "$0")/zig-cc-wrapper" cc "$@"

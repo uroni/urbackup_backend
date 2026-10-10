@@ -162,12 +162,12 @@ if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "\(Glibc not installed or too old. Falling back to Android NDK build...\)"
+		echo "\(Glibc not installed or too old. Falling back to static musl build...\)"
 		TARGET=x86_64-linux-android
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "\(Glibc not installed or too old \(2\). Falling back to Android NDK build...\)"
+			echo "\(Glibc not installed or too old \(2\). Falling back to static musl build...\)"
 			TARGET=x86_64-linux-android
 		fi
 	fi
@@ -177,12 +177,12 @@ if [ $TARGET = arm-linux-androideabi ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "\(Android NDK build not working. Falling back to ELLCC build...\)"
+		echo "\(armv7 build not working. Falling back to armv6 build...\)"
 		TARGET=armv6-linux-engeabihf
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "\(Android NDK build not working. Falling back to ELLCC build...\)"
+			echo "\(armv7 build not working. Falling back to armv6 build...\)"
 			TARGET=armv6-linux-engeabihf
 		fi
 	fi

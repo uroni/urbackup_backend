@@ -4,11 +4,15 @@ set -ex
 
 CDIR=$(pwd)
 
-git reset --hard
-cd client
-git reset --hard
-cd ..
-python3 build/replace_versions.py
+if [[ $BUILD_SERVER == 1 ]]
+then
+
+	git reset --hard
+	cd client
+	git reset --hard
+	cd ..
+	python3 build/replace_versions.py
+fi
 
 if [ "x$VCPKG_ROOT" = "x" ]
 then
@@ -44,73 +48,65 @@ cp -R install-data/* install-data-dbg/
 
 COMMON_CMAKE_ARGS="-G Ninja -DCMAKE_BUILD_TYPE=None -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_HEADLESS=ON -DURBACKUP_CLIENT_UPDATE=ON -DURBACKUP_EMBEDDED_ZSTD=ON"
 
-build_ndk() {
+# Fully static musl builds with Zig (zig cc/c++), dependencies from vcpkg. Needs zig and llvm-strip.
+build_zig() {
 	TARGET_FOLDER=$1
-	NDK_CPUFLAGS=""
 	ARCH_CPPFLAGS=""
-	if [[ $TARGET_FOLDER == "arm-linux-androideabi" ]]
+	OPT_FLAGS="-O2 -flto"
+	EXTRA_CMAKE_ARGS="-DURBACKUP_WITH_C_ARES=ON"
+	if [[ $TARGET_FOLDER == "armv6-linux-engeabihf" ]]
 	then
-		ABI=armeabi-v7a
-		TRIPLET=arm-android-urbackup
-		NDK_CPUFLAGS="-march=armv7-a -mfpu=vfp"
-		NDK_LDFLAGS="-Wl,--fix-cortex-a8"
+		TRIPLET=armv6-linux-zig-urbackup
+		ZIG_TARGET=arm-linux-musleabihf
+		ZIG_CPU=arm1176jzf_s
+		ARCH_CPPFLAGS="-DCRYPTOPP_DISABLE_ASM"
+		OPT_FLAGS="-Os"
+		EXTRA_CMAKE_ARGS=""
+	elif [[ $TARGET_FOLDER == "arm-linux-androideabi" ]]
+	then
+		TRIPLET=armv7-linux-zig-urbackup
+		ZIG_TARGET=arm-linux-musleabihf
+		ZIG_CPU=generic+v7a-neon-d32
 		ARCH_CPPFLAGS="-DCRYPTOPP_DISABLE_ASM"
 	elif [[ $TARGET_FOLDER == "aarch64-linux-android" ]]
 	then
-		ABI=arm64-v8a
-		TRIPLET=arm64-android-urbackup
-		NDK_CPUFLAGS="-march=armv8-a+crc"
+		TRIPLET=arm64-linux-zig-urbackup
+		ZIG_TARGET=aarch64-linux-musl
+		ZIG_CPU=generic+crc
 	elif [[ $TARGET_FOLDER == "x86_64-linux-android" ]]
 	then
-		ABI=x86_64
-		TRIPLET=x64-android-urbackup
-		NDK_CPUFLAGS="-mno-sse4a -mno-sse4.1 -mno-sse4.2 -mno-popcnt"
+		TRIPLET=x64-linux-zig-urbackup
+		ZIG_TARGET=x86_64-linux-musl
+		ZIG_CPU=x86_64
 	elif [[ $TARGET_FOLDER == "i686-linux-android" ]]
 	then
-		ABI=x86
-		TRIPLET=x86-android-urbackup
-		NDK_CPUFLAGS="-mno-sse4a -mno-sse4.1 -mno-sse4.2 -mno-popcnt -mno-sse3"
+		TRIPLET=x86-linux-zig-urbackup
+		ZIG_TARGET=x86-linux-musl
+		ZIG_CPU=pentium4
 	fi
 
-	if [[ $TARGET_FOLDER == "x86_64-linux-android" ]] || [[ $TARGET_FOLDER == "i686-linux-android" ]]
-	then
-		export ANDROID_NDK_HOME=/media/data2/android-ndk/android-ndk-r20
-	else
-		export ANDROID_NDK_HOME=/media/data2/android-ndk/android-ndk-r20-orig
-	fi
-	STRIP_CMD=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
-	if [ ! -e $STRIP_CMD ]; then
-		STRIP_CMD=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$TARGET_FOLDER-strip
-	fi
+	STRIP_CMD="$CDIR/cmake/toolchains/zig/zig-strip"
 
+	# -g instead of -ggdb: zig strips debug info when linking with optimization unless -g is passed.
 	# blockalign adds -msse4.2 after these flags, so it still gets SSE4.2 on x86
-	cmake -S . -B "$BUILD_DIR" $COMMON_CMAKE_ARGS -DURBACKUP_WITH_C_ARES=ON \
+	cmake -S . -B "$BUILD_DIR" $COMMON_CMAKE_ARGS $EXTRA_CMAKE_ARGS \
 		-DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-		-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-		-DVCPKG_TARGET_TRIPLET=$TRIPLET -DANDROID_ABI=$ABI -DANDROID_PLATFORM=29 -DANDROID_STL=c++_static \
-		-DCMAKE_C_FLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS $ARCH_CPPFLAGS -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576" \
-		-DCMAKE_CXX_FLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS $ARCH_CPPFLAGS -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DCRYPTOPP_INIT_PRIORITY=0 -I$ANDROID_NDK_HOME/sources/android/cpufeatures/ -DOPENSSL_SEARCH_CA" \
-		-DCMAKE_EXE_LINKER_FLAGS="-static -Wl,--gc-sections -O2 -flto $NDK_CPUFLAGS $NDK_LDFLAGS"
+		-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$CDIR/cmake/toolchains/zig.cmake" \
+		-DVCPKG_TARGET_TRIPLET=$TRIPLET -DZIG_TARGET=$ZIG_TARGET -DZIG_CPU=$ZIG_CPU \
+		-DCMAKE_C_FLAGS="-g $OPT_FLAGS $ARCH_CPPFLAGS -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576" \
+		-DCMAKE_CXX_FLAGS="-g $OPT_FLAGS $ARCH_CPPFLAGS -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DOPENSSL_SEARCH_CA" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections -g $OPT_FLAGS"
 }
 
-#ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
+# The folder names (*-linux-android, armv6-linux-engeabihf) are historical. install_client_linux.sh and
+# restore_linux_img.sh select the binaries by them, so they are kept although all non-glibc builds use Zig/musl now.
 for arch in armv6-linux-engeabihf x86_64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
 do
 	echo "Compiling for architecture $arch..."
 	BUILD_DIR="out/linux-installer/$arch"
-	NDK_LDFLAGS=""
 	rm -R "$BUILD_DIR" || true
 
-	if [ $arch = armv6-linux-engeabihf ]
-	then
-		# Uses the prebuilt libraries from the ELLCC sysroot instead of vcpkg
-		cmake -S . -B "$BUILD_DIR" $COMMON_CMAKE_ARGS \
-			-DCMAKE_TOOLCHAIN_FILE="$CDIR/cmake/toolchains/ellcc-armv6.cmake" \
-			-DCMAKE_C_FLAGS="-ggdb -Os -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576" \
-			-DCMAKE_CXX_FLAGS="-ggdb -Os -ffunction-sections -fdata-sections -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576" \
-			-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections"
-		STRIP_CMD="/usr/local/ellcc/bin/ecc-strip"
-	elif [ $arch = x86_64-linux-glibc ]
+	if [ $arch = x86_64-linux-glibc ]
 	then
 		cmake -S . -B "$BUILD_DIR" $COMMON_CMAKE_ARGS \
 			-DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
@@ -121,7 +117,7 @@ do
 			-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections -static-libstdc++ -flto"
 		STRIP_CMD="strip"
 	else
-		build_ndk $arch
+		build_zig $arch
 	fi
 
 	cmake --build "$BUILD_DIR" -j4

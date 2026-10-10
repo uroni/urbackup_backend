@@ -1,0 +1,46 @@
+#!/bin/sh
+# Runs "zig cc" or "zig c++" ($1) with the remaining arguments.
+#
+# zig cc interprets -march as a CPU name and rejects e.g. -march=armv8-a+crypto, which Crypto++
+# uses to compile its ARMv8 AES/SHA/PMULL code. On aarch64 translate it to the zig equivalent
+# -mcpu=generic[+v8_Na]+feature... (the last -mcpu wins, like the last -march with clang).
+
+mode=$1
+shift
+
+aarch64=no
+for arg
+do
+	case "$arg" in
+		--target=aarch64*|aarch64*) aarch64=yes ;;
+	esac
+done
+
+if [ $aarch64 = yes ]
+then
+	for arg
+	do
+		shift
+		case "$arg" in
+			-march=armv8*)
+				march=${arg#-march=}
+				base=${march%%+*}
+				features=${march#"$base"}
+				case "$base" in
+					armv8-a) cpu=generic ;;
+					armv8.*-a) ver=${base#armv8.}; cpu="generic+v8_${ver%-a}a" ;;
+					*) cpu="" ;;
+				esac
+				if [ -n "$cpu" ]
+				then
+					# LLVM feature names: SHA512 is part of sha3, SM3 part of sm4
+					features=$(echo "$features" | sed 's/+sha512/+sha3/g; s/+sm3/+sm4/g')
+					arg="-mcpu=$cpu$features"
+				fi
+				;;
+		esac
+		set -- "$@" "$arg"
+	done
+fi
+
+exec "${ZIG:-zig}" "$mode" "$@"

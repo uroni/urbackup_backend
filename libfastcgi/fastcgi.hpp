@@ -17,6 +17,7 @@
 #include <map>
 #include <queue>
 #include <string>
+#include <vector>
 #include <stdexcept>
 #include <new>
 #ifndef _WIN32
@@ -155,7 +156,7 @@ private:
   reqmap_t reqmap;
   std::queue<u_int16_t> new_request_queue;
 
-  std::basic_string<u_int8_t> InputBuffer;
+  std::vector<u_int8_t> InputBuffer;
   u_int8_t tmp_buf[64];
 };
 

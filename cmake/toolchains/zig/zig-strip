@@ -1,0 +1,14 @@
+#!/bin/sh
+# Zig has no strip command and zig objcopy cannot strip ELF debug info, so use llvm-strip
+# (Debian: apt install llvm), which handles every target architecture.
+
+for s in llvm-strip $(ls -r /usr/bin/llvm-strip-* /usr/lib/llvm-*/bin/llvm-strip 2>/dev/null)
+do
+	if command -v "$s" > /dev/null 2>&1
+	then
+		exec "$s" "$@"
+	fi
+done
+
+echo "zig-strip: llvm-strip not found. Install it (e.g. apt install llvm)." >&2
+exit 1
