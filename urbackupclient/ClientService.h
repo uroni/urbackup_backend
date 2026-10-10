@@ -94,16 +94,18 @@ struct SRunningProcess
 struct SFinishedProcess
 {
 	SFinishedProcess()
-		:id(0), success(false), start_id(0)
+		:id(0), success(false), action(RUNNING_NONE), start_id(0)
 	{
 	}
 
-	SFinishedProcess(int64 id, bool success, int64 start_id)
-		: id(id), success(success), start_id(start_id)
+	SFinishedProcess(int64 id, bool success, RunningAction action, const std::string& details, int64 start_id)
+		: id(id), success(success), action(action), details(details), start_id(start_id)
 	{}
 
 	int64 id;
 	bool success;
+	RunningAction action;
+	std::string details;
 	int64 start_id;
 };
 
