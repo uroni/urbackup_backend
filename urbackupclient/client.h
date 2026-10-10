@@ -91,7 +91,8 @@ enum CbtType
 {
 	CbtType_None,
 	CbtType_Datto,
-	CbtType_Era
+	CbtType_Era,
+	CbtType_Extents
 };
 
 struct SCRef
@@ -622,6 +623,8 @@ private:
 
 #ifndef _WIN32
 	bool finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
+
+	bool finishCbtExtents(IFile* volfile, IFsFile* hdat_img, std::string volume, int shadow_id, std::string cbt_file);
 #endif
 
 	bool finishCbtEra(IFsFile* hdat_file, IFsFile* hdat_img, std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file, int64& hdat_file_era, int64& hdat_img_era);
