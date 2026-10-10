@@ -1,0 +1,162 @@
+name: Server release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+  # Manual run: select the tag to release under "Use workflow from"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    environment: build
+    env:
+      VCPKG_BINARY_SOURCES: "clear;http,https://vcpkg2:${{ secrets.VCPKG_WEBDAV_PW }}@vcpkg.urbackup.org,readwrite"
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      package_name: ${{ steps.version.outputs.package_name }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Determine version
+      id: version
+      run: |
+        if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+          echo "::error::Releases must be created from a tag"
+          exit 1
+        fi
+        CMAKE_VERSION=$(sed -n 's/^set(URBACKUP_SERVER_VERSION \(.*\))$/\1/p' CMakeLists.txt)
+        if [ "$TAG" != "$CMAKE_VERSION" ] && [ "$TAG.0" != "$CMAKE_VERSION" ]; then
+          echo "::error::Tag $TAG does not match URBACKUP_SERVER_VERSION $CMAKE_VERSION in CMakeLists.txt"
+          exit 1
+        fi
+        echo "VERSION=$TAG" >> "$GITHUB_ENV"
+        echo "PACKAGE_NAME=urbackup-server-$CMAKE_VERSION" >> "$GITHUB_ENV"
+        echo "version=$TAG" >> "$GITHUB_OUTPUT"
+        echo "package_name=urbackup-server-$CMAKE_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 \
+          libcrypto++-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev libfuse-dev \
+          git curl zip unzip tar autoconf autoconf-archive automake libtool bison
+
+    - name: Set up vcpkg
+      run: |
+        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    - name: Replace versions
+      run: URBACKUP_SERVER_VERSION="$VERSION" python3 build/replace_versions.py
+
+    - name: Create source package
+      run: |
+        cmake --preset server-system -DURBACKUP_WITH_MOUNTVHD=ON
+        cmake --build --preset server-system --target package_source
+        mkdir -p release
+        cp "out/build/server-system/$PACKAGE_NAME.tar.gz" release/
+
+    - name: Build from source package
+      run: |
+        mkdir -p out/distcheck
+        tar xzf "release/$PACKAGE_NAME.tar.gz" -C out/distcheck
+        cd "out/distcheck/$PACKAGE_NAME"
+        cmake --preset server -DURBACKUP_WITH_MOUNTVHD=ON -DURBACKUP_PACKAGING=ON -DURBACKUP_INSTALL_INITD=ON
+        cmake --build --preset server
+        DESTDIR="$PWD/destdir" cmake --install out/build/server --prefix /usr
+        test -x destdir/usr/bin/urbackupsrv
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: source
+        path: release/
+
+  debian:
+    needs: source
+    runs-on: ubuntu-24.04
+    # Oldest supported Debian, so the package installs on newer Debian/Ubuntu releases too
+    container: node:20-bookworm
+    environment: build
+    env:
+      VCPKG_BINARY_SOURCES: "clear;http,https://vcpkg2:${{ secrets.VCPKG_WEBDAV_PW }}@vcpkg.urbackup.org,readwrite"
+      PACKAGE_NAME: ${{ needs.source.outputs.package_name }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: source
+
+    - name: Install build dependencies
+      run: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends debhelper fakeroot \
+          cmake ninja-build pkg-config g++ python3 libfuse-dev wget git curl zip unzip tar \
+          autoconf autoconf-archive automake libtool bison
+
+    - name: Set up vcpkg
+      run: |
+        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    - name: Build Debian packages
+      run: |
+        tar xzf "$PACKAGE_NAME.tar.gz"
+        cd "$PACKAGE_NAME"
+        SKIP_PREPARE=1 EMBEDDED_CRYPTOPP=1 ./build_server_debian.sh
+        mkdir -p ../release
+        mv output/*.deb ../release/
+
+    - name: Check Debian packages
+      run: |
+        for deb in release/*.deb; do dpkg-deb --info "$deb"; done
+        dpkg-deb -x release/urbackup-server_*.deb pkg
+        ldd pkg/usr/bin/urbackupsrv
+        if ldd pkg/usr/bin/urbackupsrv | grep -E 'libcrypto\+\+|libcurl|libzstd|not found'; then
+          echo "::error::urbackupsrv links against unexpected shared libraries"
+          exit 1
+        fi
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: debian
+        path: release/
+
+  release:
+    needs: [source, debian]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: release
+        merge-multiple: true
+
+    - name: Checksums
+      working-directory: release
+      run: |
+        sha256sum * > SHA256SUMS
+        cat SHA256SUMS
+
+    - name: Create GitHub release
+      if: ${{ !env.ACT }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$TAG" release/* \
+          --repo "$GITHUB_REPOSITORY" \
+          --verify-tag \
+          --title "UrBackup Server $VERSION"

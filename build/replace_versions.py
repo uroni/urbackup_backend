@@ -149,9 +149,28 @@ replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/
 replace_with_content_hashes("urbackupserver/www/help.htm", "urbackupserver/www/")
 replace_with_content_hashes("urbackupserver/www/license.htm", "urbackupserver/www/")
 
-version = get_version(get_branch())
+def get_version_from_env():
+    server_version = os.environ.get("URBACKUP_SERVER_VERSION")
+    if not server_version:
+        return None
+    full_numeric = server_version.split(".")
+    while len(full_numeric) < 4:
+        full_numeric.append("0")
+    print("Using server version from environment: "+server_version)
+    return {"server": {"short": server_version,
+                       "full": server_version,
+                       "full_numeric": ".".join(full_numeric)}}
+
+version = get_version_from_env()
 
 if version == None:
+    version = get_version(get_branch())
+
+if version == None:
+    exit(1)
+
+if os.path.exists("client") and "client" not in version:
+    print("No client version available")
     exit(1)
 
 version["server"]["full_rev"] = version["server"]["full"] + " Rev. " + get_head_rev();

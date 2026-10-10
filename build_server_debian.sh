@@ -2,8 +2,12 @@
 
 set -e
 
-git reset --hard
-python3.3 build/replace_versions.py
+# SKIP_PREPARE: build from an already prepared tree (e.g. an extracted source package)
+if [ "x$SKIP_PREPARE" = "x" ]
+then
+	git reset --hard
+	python3.3 build/replace_versions.py
+fi
 
 wget http://buildserver.urbackup.org/urbackup-debian2.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
@@ -14,6 +18,7 @@ DEBVERSION="${VERSION}-1"
 sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian/changelog
 
 CMAKE_ARGS="-DURBACKUP_PACKAGING=ON -DURBACKUP_INSTALL_INITD=ON -DURBACKUP_WITH_MOUNTVHD=ON -DURBACKUP_EMBEDDED_ZSTD=ON"
+CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -ggdb -O2"
 
 if [ "x$STATIC_CRYPTOPP" != "x" ]
 then
@@ -29,10 +34,12 @@ then
 		exit 1
 	fi
 	CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+	# vcpkg libraries are built with the default libstdc++ ABI
+	CXX_FLAGS="-ggdb -O2"
 fi
 
 # The packaging files are shared with the old autotools build. Switch them to CMake.
-sed -i "s@^\tdh_auto_configure -- .*@\tdh_auto_configure -- $CMAKE_ARGS -DCMAKE_CXX_FLAGS=\"-D_GLIBCXX_USE_CXX11_ABI=0 -ggdb -O2\"@" debian/rules
+sed -i "s@^\tdh_auto_configure -- .*@\tdh_auto_configure -- $CMAKE_ARGS -DCMAKE_CXX_FLAGS=\"$CXX_FLAGS\"@" debian/rules
 sed -i 's|^\tdh \$@ *$|\tdh $@ --buildsystem=cmake|' debian/rules
 sed -i 's@^\(Build-Depends: .*\)$@\1, cmake (>= 3.18), pkg-config@' debian/control
 
