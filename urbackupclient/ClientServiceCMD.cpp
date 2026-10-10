@@ -3460,6 +3460,8 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 			{
 				all_volumes = val;
 				all_nonusb_volumes = val;
+				//They can change at any time: have the server ask for them before each image backup
+				def_args += "&UPDATE_VOLS=1";
 			}
 			else if (keys[i] == "update_capa_interval")
 			{
