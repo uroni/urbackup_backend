@@ -1029,7 +1029,14 @@ void ClientMain::operator ()(void)
 		}
 
 		std::string msg;
-		pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		int64 wait_time = skip_checking ? 0 : check_time_intervall;
+		if (next_capa_update != 0)
+		{
+			//Be in time for the next capability update the client asked for
+			int64 capa_wait_time = next_capa_update - Server->getTimeMS();
+			wait_time = (std::max)((int64)0, (std::min)(wait_time, capa_wait_time));
+		}
+		pipe->Read(&msg, static_cast<int>(wait_time));
 		
 		skip_checking=false;
 		if(msg=="exit")
