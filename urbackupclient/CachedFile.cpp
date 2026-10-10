@@ -1,4 +1,5 @@
 #include "CachedFile.h"
+#include <string.h>
 
 CachedFile::CachedFile(IFsFile* backing_file)
     : backing_file(backing_file), writeCacheOffset(0), writeCacheSize(0), currPos(0), readCacheOffset(0), readCacheSize(0)

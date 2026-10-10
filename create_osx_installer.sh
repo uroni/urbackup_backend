@@ -33,17 +33,25 @@ rm -R osx-pkg || true
 rm -R osx-pkg2 || true
 rm -R osx-pkg_x86 || true
 
-./download_cryptopp.sh
+if [ "x$VCPKG_ROOT" = "x" ]
+then
+	echo "Please set VCPKG_ROOT"
+	exit 1
+fi
+
+CMAKE_INSTALL_ARGS=(-DCMAKE_INSTALL_PREFIX="/Applications/UrBackup Client.app/Contents/MacOS" -DCMAKE_INSTALL_SYSCONFDIR="/Library/Application Support/UrBackup Client/etc" -DCMAKE_INSTALL_LOCALSTATEDIR="/Library/Application Support/UrBackup Client/var")
+CMAKE_COMMON_ARGS=(-G Ninja -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_UPDATE=ON -DURBACKUP_EMBEDDED_ZSTD=ON -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
 
 function config() {
 	ARCH=$1
+	BUILD_DIR=$2
 	echo "Configuring for arch $ARCH..."
-	OPENSSL="$HOME/openssl"
 	WXWIDGETS="$HOME/wxWidgets/dest"
+	TRIPLET=arm64-osx-urbackup
 	if [ $ARCH = "x86_64" ]
 	then
-		OPENSSL="$HOME/openssl_x86"
 		WXWIDGETS="$HOME/wxWidgets_x86/dest"
+		TRIPLET=x64-osx-urbackup
 	fi
 
 	if ! [ -e $WXWIDGETS ]
@@ -52,13 +60,10 @@ function config() {
 		exit 5
 	fi
 
-	if ! [ -e $OPENSSL ]
-	then
-		echo "OpenSSL not found at $OPENSSL"
-		exit 5
-	fi
-
-	arch -$ARCH ./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=$OPENSSL --with-wx-prefix=$WXWIDGETS CXXFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CFLAGS="-mmacosx-version-min=10.10 -DNDEBUG -DURB_WITH_CLIENTUPDATE -arch $ARCH" CPPFLAGS="-mmacosx-version-min=10.10 -I$OPENSSL/include -arch $ARCH -DWITH_OPENSSL" LDFLAGS="-L$OPENSSL -mmacosx-version-min=10.10 -arch $ARCH" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10 -arch $ARCH" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+	rm -R "$BUILD_DIR" || true
+	cmake -S . -B "$BUILD_DIR" "${CMAKE_COMMON_ARGS[@]}" "${CMAKE_INSTALL_ARGS[@]}" -DCMAKE_BUILD_TYPE=Release \
+		-DVCPKG_TARGET_TRIPLET=$TRIPLET -DCMAKE_OSX_ARCHITECTURES=$ARCH -DCMAKE_OSX_DEPLOYMENT_TARGET=10.10 \
+		-DwxWidgets_CONFIG_EXECUTABLE="$WXWIDGETS/bin/wx-config"
 }
 
 mkdir -p osx-pkg/Library/LaunchDaemons
@@ -66,19 +71,24 @@ cp osx_installer/daemon.plist osx-pkg/Library/LaunchDaemons/org.urbackup.client.
 mkdir -p osx-pkg/Library/LaunchAgents
 cp osx_installer/agent.plist osx-pkg/Library/LaunchAgents/org.urbackup.client.plist
 if !($development); then
-	config arm64
+	config arm64 out/osx/arm64
 else
-	./configure --enable-embedded-cryptopp --enable-embedded-zstd --enable-clientupdate --with-openssl=/opt/homebrew CXXFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CFLAGS="-mmacosx-version-min=10.10 -DDEBUG -DURB_WITH_CLIENTUPDATE -O0 -g" CPPFLAGS='-mmacosx-version-min=10.10 -I/opt/homebrew/include' LDFLAGS="-mmacosx-version-min=10.10 -L/opt/homebrew/lib" OBJCFLAGS="-mmacosx-version-min=10.10" OBJCXXFLAGS="-mmacosx-version-min=10.10" --prefix="/Applications/UrBackup Client.app/Contents/MacOS" --sysconfdir="/Library/Application Support/UrBackup Client/etc" --localstatedir="/Library/Application Support/UrBackup Client/var"
+	rm -R out/osx/dev || true
+	cmake -S . -B out/osx/dev "${CMAKE_COMMON_ARGS[@]}" "${CMAKE_INSTALL_ARGS[@]}" -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_C_FLAGS="-DDEBUG" -DCMAKE_CXX_FLAGS="-DDEBUG" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.10
 fi
-make clean
-make -j10
-make install DESTDIR=$PWD/osx-pkg2
+if !($development); then
+	BUILD_DIR=out/osx/arm64
+else
+	BUILD_DIR=out/osx/dev
+fi
+cmake --build $BUILD_DIR -j10
+DESTDIR=$PWD/osx-pkg2 cmake --install $BUILD_DIR
 
 if !($development); then
-	config x86_64
-	make clean
-	make -j10
-	make install DESTDIR=$PWD/osx-pkg_x86
+	config x86_64 out/osx/x86_64
+	cmake --build out/osx/x86_64 -j10
+	DESTDIR=$PWD/osx-pkg_x86 cmake --install out/osx/x86_64
 fi
 
 function merge() {

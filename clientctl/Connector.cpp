@@ -32,7 +32,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #else
-#include "../config.h"
+#include "config.h"
 #endif
 #include <iostream>
 #include <memory.h>

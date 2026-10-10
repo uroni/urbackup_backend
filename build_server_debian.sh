@@ -4,43 +4,37 @@ set -e
 
 git reset --hard
 python3.3 build/replace_versions.py
-if [ "x$STATIC_CRYPTOPP" != "x" ]
-then
-	sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
-fi
 
 wget http://buildserver.urbackup.org/urbackup-debian2.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
-if ! test -e build_server_debian_ok
-then
-	./switch_build.sh server
-	./download_cryptopp.sh
-	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd --enable-embedded-cryptopp --enable-embedded-zstd
-	touch build_server_debian_ok
-fi
-
-./switch_build.sh server
-make dist > tmp
-BASENAME=`awk -F'"' '{ for(i=1; i<NF; i++) if($i ~/urbackup-server-(.*)/) {print $i; exit;} }' tmp`
-ANAME="${BASENAME}.tar.gz"
-VERSION=`echo $BASENAME | cut -d "-" -f 3`
+VERSION=`sed -n 's/^set(URBACKUP_SERVER_VERSION \(.*\))$/\1/p' CMakeLists.txt`
 DEBVERSION="${VERSION}-1"
 
 sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian/changelog
 
+CMAKE_ARGS="-DURBACKUP_PACKAGING=ON -DURBACKUP_INSTALL_INITD=ON -DURBACKUP_WITH_MOUNTVHD=ON -DURBACKUP_EMBEDDED_ZSTD=ON"
+
+if [ "x$STATIC_CRYPTOPP" != "x" ]
+then
+	CMAKE_ARGS="$CMAKE_ARGS -DCRYPTOPP_LIBRARY=/usr/local/lib/libcryptopp.a -DCRYPTOPP_INCLUDE_DIR=/usr/local/include"
+fi
+
 if [ "x$EMBEDDED_CRYPTOPP" != "x" ]
 then
-	sed -i 's/--enable-packaging/--enable-packaging --enable-embedded-cryptopp --enable-embedded-zstd/g' debian/rules
-else
-	sed -i 's/--enable-packaging/--enable-packaging -enable-embedded-zstd/g' debian/rules
-fi	
-
-if [ "x$LDFLAGS" != "x" ]
-then
-	sed -i "s/LDFLAGS=\"/LDFLAGS=\"${LDFLAGS} /" debian/rules
+	# Build Crypto++ (and the other dependencies) statically via vcpkg
+	if [ "x$VCPKG_ROOT" = "x" ]
+	then
+		echo "EMBEDDED_CRYPTOPP needs VCPKG_ROOT"
+		exit 1
+	fi
+	CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 fi
+
+# The packaging files are shared with the old autotools build. Switch them to CMake.
+sed -i "s@^\tdh_auto_configure -- .*@\tdh_auto_configure -- $CMAKE_ARGS -DCMAKE_CXX_FLAGS=\"-D_GLIBCXX_USE_CXX11_ABI=0 -ggdb -O2\"@" debian/rules
+sed -i 's|^\tdh \$@ *$|\tdh $@ --buildsystem=cmake|' debian/rules
+sed -i 's@^\(Build-Depends: .*\)$@\1, cmake (>= 3.18), pkg-config@' debian/control
 
 dh clean
 fakeroot dh binary

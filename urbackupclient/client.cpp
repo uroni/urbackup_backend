@@ -65,7 +65,7 @@
 #include "win_disk_mon.h"
 #include "win_all_volumes.h"
 #else
-#include "../config.h"
+#include "config.h"
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif

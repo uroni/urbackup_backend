@@ -30,7 +30,7 @@
 #ifndef _WIN32
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "../config.h"
+#include "config.h"
 #include <time.h>
 #include <sys/time.h>
 #define PWFILE VARDIR "/urbackup/pw.txt"

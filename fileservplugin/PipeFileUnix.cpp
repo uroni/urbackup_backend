@@ -25,7 +25,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <stdlib.h>
-#include "../config.h"
+#include "config.h"
 #if defined(HAVE_SPAWN_H)
 #include <spawn.h>
 #endif

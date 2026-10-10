@@ -44,7 +44,7 @@
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../urbackupcommon/json.h"
 #ifndef _WIN32
-#include "../config.h"
+#include "config.h"
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>

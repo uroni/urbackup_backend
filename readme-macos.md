@@ -35,7 +35,7 @@ Install Homebrew (see https://brew.sh ):
 
 Use Homebrew to install supporting tools:
 ```bash
-brew install wget autoconf automake libtool python3 gnu-sed bash makeself
+brew install wget cmake ninja pkg-config python3 bash makeself
 ```
 
 Download and unzip **stable** wxWidgets from https://www.wxwidgets.org/downloads/
@@ -69,11 +69,12 @@ cd client
 git checkout dev
 ```
 
-Switch to building the client:
+Install [vcpkg](https://vcpkg.io) and point `VCPKG_ROOT` at it. It provides the
+remaining dependencies (Crypto++, OpenSSL, zstd, zlib):
 ```bash
-cd ~/UrBackup/urbackup_backend
-./switch_build_mac.sh client
-autoreconf -fvi
+git clone https://github.com/microsoft/vcpkg ~/vcpkg
+~/vcpkg/bootstrap-vcpkg.sh
+export VCPKG_ROOT=~/vcpkg
 ```
 
 And then build it!

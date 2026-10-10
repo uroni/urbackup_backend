@@ -48,7 +48,7 @@
 #endif
 
 #ifndef _WIN32
-#include "../config.h"
+#include "config.h"
 #endif
 
 #ifndef FALLOC_FL_KEEP_SIZE

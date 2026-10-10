@@ -43,7 +43,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <limits.h>
-#include "../config.h"
+#include "config.h"
 #ifdef __linux__
 #include <sys/resource.h>
 #include <sys/syscall.h>

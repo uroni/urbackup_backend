@@ -1,4 +1,4 @@
-#include "../config.h"
+#include "config.h"
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif

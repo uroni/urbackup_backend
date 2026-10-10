@@ -20,7 +20,7 @@ extern char **environ;
 
 #define DEF_Server
 #include "../Server.h"
-#include "../config.h"
+#include "config.h"
 
 #ifndef LOOP_SET_DIRECT_IO
 #define LOOP_SET_DIRECT_IO	0x4C08

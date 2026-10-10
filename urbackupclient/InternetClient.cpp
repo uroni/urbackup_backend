@@ -39,7 +39,7 @@
 #include "../stringtools.h"
 
 #ifndef _WIN32
-#include "../config.h"
+#include "config.h"
 #endif
 
 #include <stdlib.h>

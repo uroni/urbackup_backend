@@ -1,0 +1,78 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    },
+    {
+      "name": "server",
+      "displayName": "Server (vcpkg)",
+      "inherits": "vcpkg"
+    },
+    {
+      "name": "client",
+      "displayName": "Client with GUI (vcpkg)",
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "URBACKUP_BUILD_SERVER": "OFF",
+        "URBACKUP_BUILD_CLIENT": "ON"
+      }
+    },
+    {
+      "name": "client-headless",
+      "displayName": "Client without GUI (vcpkg)",
+      "inherits": "client",
+      "cacheVariables": {
+        "URBACKUP_CLIENT_HEADLESS": "ON"
+      }
+    },
+    {
+      "name": "server-system",
+      "displayName": "Server (system libraries)",
+      "inherits": "base"
+    },
+    {
+      "name": "client-system",
+      "displayName": "Client with GUI (system libraries)",
+      "inherits": "base",
+      "cacheVariables": {
+        "URBACKUP_BUILD_SERVER": "OFF",
+        "URBACKUP_BUILD_CLIENT": "ON"
+      }
+    },
+    {
+      "name": "client-headless-system",
+      "displayName": "Client without GUI (system libraries)",
+      "inherits": "client-system",
+      "cacheVariables": {
+        "URBACKUP_CLIENT_HEADLESS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "server", "configurePreset": "server" },
+    { "name": "client", "configurePreset": "client" },
+    { "name": "client-headless", "configurePreset": "client-headless" },
+    { "name": "server-system", "configurePreset": "server-system" },
+    { "name": "client-system", "configurePreset": "client-system" },
+    { "name": "client-headless-system", "configurePreset": "client-headless-system" }
+  ]
+}

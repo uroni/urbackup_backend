@@ -209,7 +209,7 @@ typedef SHA512_CTX sha512_ctx;
 #ifdef _WIN32
 #define CRYPTOPP_INCLUDE_PREFIX cryptopp
 #else
-#include "../../config.h"
+#include "config.h"
 #endif
 #define CRYPTOPP_INCLUDE_SHA <CRYPTOPP_INCLUDE_PREFIX/sha.h>
 #include CRYPTOPP_INCLUDE_SHA

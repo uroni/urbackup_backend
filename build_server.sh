@@ -5,18 +5,13 @@ set -e
 git reset --hard
 python3 build/replace_versions.py
 
-if ! test -e build_server_ok
+if [ "x$VCPKG_ROOT" = "x" ]
 then
-	./switch_build.sh server
-	./download_cryptopp.sh
-	autoreconf || true
-	automake --add-missing || true
-	autoreconf --install
-	./configure --enable-embedded-cryptopp
-	touch build_server_ok
+	echo "Please set VCPKG_ROOT"
+	exit 1
 fi
 
-./switch_build.sh server
-
-make
-make dist
+cmake --preset server
+cmake --build --preset server
+cmake --build --preset server --target package_source
+cp out/build/server/urbackup-server-*.tar.gz .

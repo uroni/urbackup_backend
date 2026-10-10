@@ -3,14 +3,14 @@
 set -e
 set -x
 
-./download_cryptopp.sh
-./switch_build.sh client
+if [ "x$VCPKG_ROOT" = "x" ]
+then
+	echo "Please set VCPKG_ROOT"
+	exit 1
+fi
 
-autoreconf --install
-
-./configure CXXFLAGS="-DRESTORE_CLIENT" --enable-headless --enable-embedded-cryptopp
-
-make -j4
+cmake --preset client-headless -B out/build/restore -DCMAKE_CXX_FLAGS="-DRESTORE_CLIENT"
+cmake --build out/build/restore -j4
 
 LANG=en
 
@@ -18,7 +18,7 @@ mkdir -p restore_cd/urbackup/restore
 cp urbackupclient/backup_client.db restore_cd/urbackup/
 touch restore_cd/urbackup/new.txt
 
-cp urbackupclientbackend restore_cd/urbackuprestoreclient
+cp out/build/restore/urbackupclientbackend restore_cd/urbackuprestoreclient
 cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
 cp urbackupserver/restore/* restore_cd/urbackup/restore/ || true
 chmod +x restore_cd/urbackup/restore/*.sh

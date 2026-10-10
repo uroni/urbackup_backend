@@ -331,3 +331,4 @@ compile_commands.json
 urbackup_mount_helper
 urbackup_snapshot_helper
 urbackupsrv
+/out/
