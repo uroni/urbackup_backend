@@ -2000,6 +2000,27 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 
 	std::string dl=params["driveletter"];
 
+#ifndef _WIN32
+	//Whole disk of a virtual client (e.g. a disk of a virtual machine that a backup provider plugin
+	//connected): instead of the partition table of the disk the volume is on, the server gets a zip
+	//file with information about the disk and stores the image as an image of the whole disk
+	if (!params["clientsubname"].empty()
+		&& params.find("disk_path") != params.end())
+	{
+		std::string zip_name = "disk_" + conv_filename(params["clientsubname"]) + "_"
+			+ conv_filename(ExtractFileName(params["disk_path"], "/")) + ".zip";
+		if (FileExists("urbackup/data/" + zip_name))
+		{
+			CWData r;
+			r.addChar(1);
+			r.addChar(100);
+			r.addString2("urbackup/" + zip_name);
+			tcpstack.Send(pipe, r);
+			return;
+		}
+	}
+#endif
+
 	if(dl=="SYSVOL")
 	{
 		std::string mpath;
