@@ -408,8 +408,12 @@ ACTION_IMPL(status_check)
 		IDatabase *db = helper.getDatabase();
 		helper.releaseAll();
 		ServerSettings settings(db);
-		access_dir_checks(db, settings, settings.getSettings()->backupfolder,
-			settings.getSettings()->backupfolder_uncompr, ret);
+		{
+			//The checks use a fixed test folder name, so concurrent runs would interfere with each other
+			IScopedLock lock(Helper::access_dir_checks_mutex);
+			access_dir_checks(db, settings, settings.getSettings()->backupfolder,
+				settings.getSettings()->backupfolder_uncompr, ret);
+		}
 
 		if (settings.getSettings()->internet_server.empty())
 			ret.set("no_internet_server", true);
