@@ -203,7 +203,8 @@ void ServerCleanupThread::operator()(void)
 		ScopedActiveThread sat;
 		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings",
 			"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
-		if( settings->getValue("autoshutdown", "false")=="true" )
+		if( settings->getValue("autoshutdown", "false")=="true"
+			|| settings->getValue("startup_cleanup", "false")=="true" )
 		{
 			IScopedLock lock(a_mutex);
 

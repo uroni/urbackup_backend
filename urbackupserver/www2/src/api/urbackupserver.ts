@@ -1297,6 +1297,7 @@ class UrBackupServer {
       "no_images", // Switch if image backups should be disabled : boolean
       "no_file_backups", // Switch if file backups should be disabled : boolean
       "autoshutdown", // Switch if autoshutdown should be enabled : boolean
+      "startup_cleanup", // Switch if cleanup should run at server startup : boolean
       "download_client", // Switch if downloading client should be enabled : boolean
       "autoupdate_clients", // Switch if autoupdate of clients should be enabled : boolean
       "max_sim_backups", // Maximum number of simultaneous backups : integer number

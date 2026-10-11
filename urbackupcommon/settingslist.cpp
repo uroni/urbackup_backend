@@ -238,6 +238,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("no_images");
 	ret.push_back("no_file_backups");
 	ret.push_back("autoshutdown");
+	ret.push_back("startup_cleanup");
 	ret.push_back("download_client");
 	ret.push_back("autoupdate_clients");
 	ret.push_back("max_sim_backups");

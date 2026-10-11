@@ -334,6 +334,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(no_images);
 	SET_SETTING(no_file_backups);
 	SET_SETTING(autoshutdown);
+	SET_SETTING(startup_cleanup);
 	SET_SETTING(download_client);
 	SET_SETTING(autoupdate_clients);
 	SET_SETTING(max_sim_backups);
