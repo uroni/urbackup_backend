@@ -42,6 +42,7 @@
 #include "ClientBitmap.h"
 #include <stdlib.h>
 #include "FileWrapper.h"
+#include "NbdService.h"
 
 #ifndef _WIN32
 #include "config.h"
@@ -626,6 +627,11 @@ IReadOnlyBitmap * FSImageFactory::createClientBitmap(const std::string & fn)
 IReadOnlyBitmap * FSImageFactory::createClientBitmap(IFile * bitmap_file)
 {
 	return new ClientBitmap(bitmap_file);
+}
+
+IService* FSImageFactory::createNbdService(IFile* backing_file)
+{
+	return new NbdService(backing_file);
 }
 
 bool FSImageFactory::initializeImageMounting()

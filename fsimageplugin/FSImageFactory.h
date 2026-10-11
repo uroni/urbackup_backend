@@ -24,6 +24,8 @@ public:
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file);
 
+	virtual IService* createNbdService(IFile* backing_file);
+
 	virtual bool initializeImageMounting();
 
 	virtual std::vector<SPartition> readPartitions(IVHDFile *vhd, int64 offset, bool& gpt_style);

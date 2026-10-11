@@ -299,6 +299,8 @@
     <ClCompile Include="fs\ntfs_win.cpp" />
     <ClCompile Include="ImdiskSrv.cpp" />
     <ClCompile Include="LRUMemCache.cpp" />
+    <ClCompile Include="NbdClient.cpp" />
+    <ClCompile Include="NbdService.cpp" />
     <ClCompile Include="partclone.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
@@ -323,6 +325,8 @@
     <ClInclude Include="ImdiskSrv.h" />
     <ClInclude Include="IVHDFile.h" />
     <ClInclude Include="LRUMemCache.h" />
+    <ClInclude Include="NbdClient.h" />
+    <ClInclude Include="NbdService.h" />
     <ClInclude Include="partclone.h" />
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="vhdfile.h" />

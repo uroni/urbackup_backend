@@ -274,7 +274,7 @@ set(URBACKUP_FSIMAGEPLUGIN_SOURCES
 	fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp
 	fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/vhdxfile.cpp fsimageplugin/fs/ntfs.cpp
 	fsimageplugin/fs/unknown.cpp fsimageplugin/fs/partitioned.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp
-	fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp fsimageplugin/ClientBitmap.cpp
+	fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp fsimageplugin/ClientBitmap.cpp fsimageplugin/NbdClient.cpp fsimageplugin/NbdService.cpp
 	fsimageplugin/partclone.cpp)
 
 set(URBACKUP_FILESERVPLUGIN_SOURCES

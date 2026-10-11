@@ -9,6 +9,7 @@ class IVHDFile;
 class IFile;
 class IReadOnlyBitmap;
 class IFsNextBlockCallback;
+class IService;
 
 class IFSImageFactory : public IPlugin
 {
@@ -56,6 +57,8 @@ public:
 	virtual IReadOnlyBitmap* createClientBitmap(const std::string& fn)=0;
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
+
+	virtual IService* createNbdService(IFile* backing_file)=0;
 
 	virtual bool initializeImageMounting() = 0;
 
