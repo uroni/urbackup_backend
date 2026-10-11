@@ -79,7 +79,7 @@ UrBackup client (`--nodes`):
 | `client-name`         | computer name of the client, else the host name | Name of the host's client on the server |
 | `restore-dir`         | `/var/tmp`                         | Directory for the disk images or files of a guest during a restore (needs space for up to the size of the guest) |
 | `backup-timeout`      | 14400                              | Seconds to wait for the server to start and finish a backup |
-| `full-image-interval` | 30                                 | Days after which the next backup of a VM is a full image backup |
+| `full-image-interval` | 30                                 | Days after which the next backup of a VM is a full image backup (it is one earlier, if there would be more incremental ones in a row than the server keeps) |
 | `username`, `password` | none                              | User of the UrBackup server for listing and restoring the backups of VMs, if the server has users |
 
 The server's own backup schedule is turned off for the virtual clients, because the guests
@@ -101,6 +101,12 @@ and tells the server about the rest of the disks from them.
   bitmap of the changes since the last backup: after the VM was stopped or has moved to another
   node, after a backup that failed, after a disk was added or resized, and for a full image
   backup (`full-image-interval`).
+- The server cannot remove an incremental image without the ones made after it. Of a lot more
+  incremental images in a row than it is set to keep ("Maximal number of incremental image
+  backups", 30) its cleanup would remove the latest ones, so the plugin makes a full image
+  backup before there are that many (with the default settings of the server after 26
+  incremental ones). If the server runs out of space, its cleanup still removes the latest
+  incremental images, down to the minimal number it is set to keep.
 - If the server has lost or removed the last image backup of a disk, the next backup fails
   (the client would have to read parts it cannot read), and the one after it reads all of the
   disks.

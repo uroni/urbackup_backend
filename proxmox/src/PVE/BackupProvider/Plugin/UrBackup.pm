@@ -443,25 +443,64 @@ my sub client_has_container_dirs {
             eq $plugin->container_config_name($vmid);
 }
 
+# The time of the last full image backup of the guest, and the number of incremental image
+# backups since then
+my sub read_last_full {
+    my ($self, $vmid) = @_;
+
+    my $fn = $self->{'storage-plugin'}->state_dir() . "/$vmid.last-full";
+    return (0, 0) if !-e $fn;
+    my ($time, $incrementals) = file_get_contents($fn) =~ m/^(\d+)\n(?:(\d+)\n)?/;
+    return ($time // 0, $incrementals // 0);
+}
+
+my sub write_last_full {
+    my ($self, $vmid, $time, $incrementals) = @_;
+    my $state_dir = $self->{'storage-plugin'}->state_dir();
+    make_path($state_dir);
+    file_set_contents("$state_dir/$vmid.last-full", "$time\n$incrementals\n");
+}
+
+# How many incremental image backups in a row the server may get of the guest. Its incremental
+# images are of the changes since the image before (see bitmap_state_file()), so its cleanup
+# cannot remove one without the ones after it. If there are a lot more of a disk than it keeps
+# ("max_image_incr"), it removes all but the oldest "min_image_incr": the latest backups. With
+# a full image backup in time it removes the incremental images from before that instead.
+my sub max_incremental_backups {
+    my ($self, $vmid) = @_;
+
+    my $settings = read_kv_file(
+        option($self, 'client-dir') . "/data/settings_" . virtual_client($vmid) . ".cfg");
+    my ($min) = ($settings->{min_image_incr} // '') =~ m/^(\d+)\s*$/;
+    my ($max) = ($settings->{max_image_incr} // '') =~ m/^(\d+)\s*$/;
+
+    return ($max // 30) - ($min // 4);
+}
+
 # Whether the next image backup of the guest should be a full one. The server's own schedule is
 # off for the virtual clients (the disks can only be read during a backup job), so the plugin
 # decides.
 my sub full_image_due {
     my ($self, $vmid) = @_;
 
+    my ($last_full, $incrementals) = read_last_full($self, $vmid);
+    return 1 if $incrementals >= max_incremental_backups($self, $vmid);
+
     my $interval_days = option($self, 'full-image-interval');
     return 0 if !$interval_days;
 
-    my $state_dir = $self->{'storage-plugin'}->state_dir();
-    my $last_full = file_read_firstline("$state_dir/$vmid.last-full") // 0;
     return time() - $last_full >= $interval_days * 24 * 3600;
 }
 
-my sub record_full_image {
-    my ($self, $vmid, $time) = @_;
-    my $state_dir = $self->{'storage-plugin'}->state_dir();
-    make_path($state_dir);
-    file_set_contents("$state_dir/$vmid.last-full", "$time\n");
+my sub record_image_backup {
+    my ($self, $vmid, $full, $time) = @_;
+
+    if ($full) {
+        write_last_full($self, $vmid, $time, 0);
+    } else {
+        my ($last_full, $incrementals) = read_last_full($self, $vmid);
+        write_last_full($self, $vmid, $last_full, $incrementals + 1);
+    }
 }
 
 # Proxmox VE can keep a bitmap of the parts of each disk that change after a backup (while the
@@ -1145,7 +1184,7 @@ sub backup_vm {
             . " virtual client " . virtual_client($vmid));
         run_image_backup($self, $vmid, $full, \@backup_volumes);
         wait_for_server_images($self, $vmid);
-        record_full_image($self, $vmid, $start_time) if $full;
+        record_image_backup($self, $vmid, $full, $start_time);
 
         if (!$no_bitmaps && defined(my $process = vm_process($vmid))) {
             make_path($self->{'storage-plugin'}->state_dir());
