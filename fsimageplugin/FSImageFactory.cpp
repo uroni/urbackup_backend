@@ -27,6 +27,7 @@
 #define FSNTFS FSNTFSWIN
 #endif
 #include "fs/unknown.h"
+#include "fs/partitioned.h"
 #include "vhdfile.h"
 #include "vhdxfile.h"
 #include "../stringtools.h"
@@ -316,7 +317,7 @@ void PrintInfo(IFilesystem *fs)
 }
 
 IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, EReadaheadMode read_ahead,
-	bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)
+	bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback, bool partitioned)
 {
 	std::string pDev = pDevOrig;
 #ifndef _WIN32
@@ -332,6 +333,18 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 		return NULL;
 	}
 #endif
+
+	if (partitioned)
+	{
+		FSPartitioned* fs = new FSPartitioned(pDev, read_ahead, background_priority, next_block_callback);
+		if (fs->hasError())
+		{
+			Server->Log("FSPartitioned has error (" + pDev + ")", LL_WARNING);
+			delete fs;
+			return NULL;
+		}
+		return fs;
+	}
 
 	IFile *dev = Server->openFile(pDev, MODE_READ_DEVICE);
 

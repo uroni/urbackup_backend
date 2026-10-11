@@ -29,7 +29,7 @@ public:
 	};
 
 	virtual IFilesystem *createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
-		bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)=0;
+		bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback, bool partitioned=false)=0;
 
 	enum ImageFormat
 	{
