@@ -17,7 +17,8 @@ export function DropdownField({
 }: {
   label: string;
   options: typeof VALUE_TO_USE;
-  formattedOptions: typeof FORMATTED_VALUE_TO_USE;
+  // May leave out sources that aren't offered, e.g. the client value
+  formattedOptions: Partial<typeof FORMATTED_VALUE_TO_USE>;
 } & Partial<DropdownProps>) {
   return (
     <div>
@@ -38,14 +39,22 @@ export function DropdownField({
         }}
         {...props}
       >
-        {Object.entries(options).map(([k, v]) => (
-          <Option key={k} value={k} text={formattedOptions[v].name}>
-            <div className={styles.option}>
-              <Body1 block>{formattedOptions[v].name}</Body1>
-              <Body1 as="p">{formattedOptions[v].desc}</Body1>
-            </div>
-          </Option>
-        ))}
+        {Object.entries(options).map(([k, v]) => {
+          const option = formattedOptions[v];
+
+          if (!option) {
+            return null;
+          }
+
+          return (
+            <Option key={k} value={k} text={option.name}>
+              <div className={styles.option}>
+                <Body1 block>{option.name}</Body1>
+                <Body1 as="p">{option.desc}</Body1>
+              </div>
+            </Option>
+          );
+        })}
       </Dropdown>
     </div>
   );

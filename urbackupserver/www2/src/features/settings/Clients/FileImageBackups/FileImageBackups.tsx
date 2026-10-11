@@ -16,7 +16,6 @@ import {
   excludeFilesSchema,
   fileBackupsFields,
   fileBackupsFormSchema,
-  FileBackupsSettingsKey,
   includeFilesSchema,
 } from "./backupsForm";
 import { useSettings } from "../../useSettings";
@@ -24,14 +23,21 @@ import styles from "../Clients.module.css";
 import secondaryFormStyles from "./FileImageBackups.module.css";
 import { useFileBackups } from "./useFileBackups";
 import {
+  ClientSettings,
   ClientSettingState,
   SettingState,
 } from "../../../../api/urbackupserver";
 import { Field } from "../../Form/types";
-import { CheckboxTextDropdown } from "./CheckboxTextDropdown";
+import {
+  CheckboxTextDropdown,
+  type InitialFormState as CheckboxTextDropdownState,
+} from "./CheckboxTextDropdown";
 import { MergeableFields } from "./MergeableFields";
 import { Banner } from "../../../../components/Banner/Banner";
-import { CheckboxDropdown } from "./CheckboxDropdown";
+import {
+  CheckboxDropdown,
+  type InitialFormState as CheckboxDropdownState,
+} from "./CheckboxDropdown";
 import { VALUE_TO_USE } from "./utils";
 
 const checkboxFieldInputs = [
@@ -88,18 +94,29 @@ export function FileImageBackups() {
     return <h1>No client found with ID: {clientId}</h1>;
   }
 
-  const { settings, handleSubmit } = useFileBackups(+clientId!);
+  return (
+    <FileImageBackupsForm clientId={+clientId!} clientName={client.name} />
+  );
+}
+
+function FileImageBackupsForm({
+  clientId,
+  clientName,
+}: {
+  clientId: number;
+  clientName: string;
+}) {
+  const { settings, handleSubmit } = useFileBackups(clientId);
 
   const initialFormState = useMemo(
-    () =>
-      getInitialFormState<FileBackupsSettingsKey>(fileBackupsFields, settings),
+    () => getInitialFormState(fileBackupsFields, settings),
     [settings, clientId],
   );
 
   return (
     <FormContainer key={clientId}>
       <h1>
-        <Body2 className={styles["client-name"]}>{client?.name}</Body2>
+        <Body2 className={styles["client-name"]}>{clientName}</Body2>
         <Title3>Backups</Title3>
       </h1>
 
@@ -126,7 +143,10 @@ export function FileImageBackups() {
                     checkboxLabel={labels?.checkbox}
                     dropdownLabel={labels.dropdown}
                     field={fileBackupsFields.find((f) => f.name === name)!}
-                    initialFormState={settings[name]}
+                    initialFormState={getSettingState<CheckboxTextDropdownState>(
+                      settings,
+                      name,
+                    )}
                     validationMessage={validationMessages[name]}
                   />
                 ))}
@@ -145,7 +165,10 @@ export function FileImageBackups() {
                     name={field}
                     dropdownLabel={labels.dropdown}
                     field={fileBackupsFields.find((f) => f.name === field)!}
-                    initialFormState={settings[field]}
+                    initialFormState={getSettingState<CheckboxDropdownState>(
+                      settings,
+                      field,
+                    )}
                   />
                 ))}
               </>
@@ -206,7 +229,7 @@ export function FileImageBackups() {
                         key={name}
                         name={name}
                         label={label}
-                        initialFormState={settings[name]}
+                        initialFormState={getSettingState(settings, name)}
                       />
                     )}
                   </FormSection>
@@ -220,21 +243,33 @@ export function FileImageBackups() {
   );
 }
 
-function getInitialFormState<T extends string>(
-  fields: Field<T>[],
-  settings: Record<T, SettingState["value"]>,
+type SettingLookup = ClientSettingState | SettingState["value"];
+
+// The clientsettings response mixes the per-setting objects
+// ({ use, value_group, ... }) with a few plain values (clientid, clientname,
+// ...). Every field on this page is a setting.
+function getSettingState<T = ClientSettingState>(
+  settings: ClientSettings["settings"],
+  name: string,
 ) {
-  return fields.reduce(
+  return (settings as Record<string, unknown>)[name] as T;
+}
+
+function getInitialFormState(
+  fields: Field<string>[],
+  settings: ClientSettings["settings"],
+) {
+  return fields.reduce<Record<string, SettingState["value"]>>(
     (all, f) => ({
       ...all,
       [f.name]: transformValue(getValueFromSettings(f.name, settings)),
     }),
-    {} as typeof settings,
+    {},
   );
 }
 
-function transformValue(value: ClientSettingState) {
-  if (value?.use) {
+function transformValue(value: SettingLookup) {
+  if (typeof value === "object" && value?.use) {
     return value[VALUE_TO_USE[value.use]];
   }
 
@@ -243,15 +278,18 @@ function transformValue(value: ClientSettingState) {
 
 function getValueFromSettings(
   key: string,
-  settings: Record<string, SettingState["value"]>,
-): string | boolean | number {
+  settings: Record<string, unknown>,
+): SettingLookup {
   if (!key.includes(".") && key in settings) {
-    return settings[key];
+    return settings[key] as SettingLookup;
   }
 
   const [k, ...rest] = key.split(".");
 
-  return getValueFromSettings(rest.join("."), settings[k]);
+  return getValueFromSettings(
+    rest.join("."),
+    settings[k] as Record<string, unknown>,
+  );
 }
 
 function createDropdownLabel(text: string) {

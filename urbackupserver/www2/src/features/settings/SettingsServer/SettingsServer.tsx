@@ -105,6 +105,11 @@ function FormSection<T extends string>({
           );
         }
 
+        // Custom fields are rendered by the caller, not as a text input
+        if (f.type === "custom") {
+          return null;
+        }
+
         const value = f.transformer?.ui(+initialValue) ?? initialValue;
 
         return (
