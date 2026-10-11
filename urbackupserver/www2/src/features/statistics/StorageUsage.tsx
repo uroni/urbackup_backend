@@ -92,7 +92,7 @@ export function StorageUsage({
 
   const clients = clientsResult.data;
 
-  const storageUsage = storageUsageResult.data!;
+  const { data: storageUsage, unit } = storageUsageResult.data!;
 
   if (!storageUsage.length) {
     return <span>No storage in use</span>;
@@ -114,7 +114,7 @@ export function StorageUsage({
           xAxisCalloutData: new Intl.DateTimeFormat("en-US", {
             dateStyle: "long",
           }).format(Date.parse(d.xlabel)),
-          yAxisCalloutData: `${d.data.toFixed(0)} MB`,
+          yAxisCalloutData: `${d.data.toFixed(unit === "GB" ? 1 : 0)} ${unit}`,
         })),
         color: tokens.colorBrandBackground,
       },
@@ -166,7 +166,7 @@ export function StorageUsage({
           yMaxValue={limits.max}
           width={width}
           height={height}
-          yAxisTitle="Storage Usage (MB)"
+          yAxisTitle={`Storage Usage (${unit})`}
           xAxisTitle={DURATIONS[duration]}
           {...(duration === "y" && {
             customDateTimeFormatter: (d) => d.getFullYear().toString(),

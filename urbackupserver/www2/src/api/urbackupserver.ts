@@ -364,7 +364,7 @@ export interface PieGraphData {
 }
 
 export interface UsageGraphData {
-  data: number; // Number of GiB used for backups
+  data: number; // Storage used for backups, in the unit returned alongside (MB or GB)
   xlabel: string; // ISO Date of the data (YYYY-MM-DD)
 }
 
@@ -640,7 +640,7 @@ class UrBackupServer {
 
   // Generic function to fetch data from server
   fetchData = async (params: Record<string, string>, action: string) => {
-    const useTestoutput = true;
+    const useTestoutput = import.meta.env.VITE_USE_TEST_PROGRESS === "true";
 
     if (useTestoutput && action == "progress") return testoutputProgress;
 
@@ -1008,7 +1008,11 @@ class UrBackupServer {
     if (typeof resp.data == "undefined")
       throw new ResponseParseError("No data found in response");
 
-    return resp.data as UsageGraphData[];
+    return {
+      data: resp.data as UsageGraphData[],
+      // The server switches to GB when any value is above 1 GiB
+      unit: (resp.ylabel as string | undefined) ?? "MB",
+    };
   }
 
   // Start recalculation of all statistics
