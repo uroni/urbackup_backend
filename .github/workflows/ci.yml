@@ -78,9 +78,11 @@ jobs:
     - name: Check out client frontend
       run: git clone --depth 1 --branch "$env:FRONTEND_REF" https://github.com/uroni/urbackup_frontend_wx client
 
+    # Full clone: with a partial clone vcpkg fetches the overridden port versions (lua) from
+    # GitHub during the build, which fails on network hiccups
     - name: Set up vcpkg
       run: |
-        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+        git clone https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
         & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
         & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" integrate install
 
