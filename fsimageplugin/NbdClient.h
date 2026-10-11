@@ -9,6 +9,8 @@ class NbdService;
 enum EClientState
 {
 	ClientState_Handshake,
+	ClientState_ClientFlags,
+	ClientState_Options,
 	ClientState_Data
 };
 
@@ -27,6 +29,11 @@ public:
 	bool handleRequests();
 
 private:
+	bool handleClientFlags();
+	bool handleOption();
+	bool sendOptionReply(unsigned int opt, unsigned int reply_type, const char* data, size_t data_size);
+	bool sendExportInfo(unsigned int opt);
+	void consumeRecvBuf(size_t n);
 
 	NbdService* service;
 
@@ -35,6 +42,7 @@ private:
 	IPipe* pipe;
 
 	EClientState state;
+	bool no_zeroes;
 
 	IFile* backing_file;
 

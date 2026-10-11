@@ -72,6 +72,7 @@ extern IServer* Server;
 #endif
 #include "FileWrapper.h"
 #include "FSImageFactory.h"
+#include "NbdService.h"
 
 #ifdef __linux__
 #include <linux/fs.h>
@@ -83,6 +84,20 @@ extern IServer* Server;
 #endif
 
 #include "ClientBitmap.h"
+
+#include <signal.h>
+
+namespace
+{
+	volatile sig_atomic_t nbd_serve_stop = 0;
+
+#ifndef _WIN32
+	void nbd_serve_stop_handler(int signum)
+	{
+		nbd_serve_stop = 1;
+	}
+#endif
+}
 
 
 CImagePluginMgr *imagepluginmgr;
@@ -1744,6 +1759,48 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(0);
 	}
 #endif //_WIN32
+
+	std::string nbd_serve = Server->getServerParameter("nbd_serve");
+	if (!nbd_serve.empty())
+	{
+		IFile* backing_file = Server->openFile(nbd_serve, MODE_RW);
+		if (backing_file == NULL)
+		{
+			Server->Log("Cannot open file \""+nbd_serve+"\" to serve via NBD. "+os_last_error_str(), LL_ERROR);
+			exit(1);
+		}
+
+		unsigned short port = 10809;
+		std::string s_port = Server->getServerParameter("nbd_port");
+		if (!s_port.empty())
+		{
+			port = static_cast<unsigned short>(watoi(s_port));
+		}
+
+		IServer::BindTarget bind_target = IServer::BindTarget_All;
+		if (Server->getServerParameter("nbd_localhost_only") == "1")
+		{
+			bind_target = IServer::BindTarget_Localhost;
+		}
+
+		Server->Log("Serving \"" + nbd_serve + "\" (" + PrettyPrintBytes(backing_file->Size()) + ") via NBD on port " + convert(port));
+
+		Server->StartCustomStreamService(new NbdService(backing_file), "NBD", port, -1, bind_target);
+
+#ifndef _WIN32
+		signal(SIGINT, nbd_serve_stop_handler);
+		signal(SIGTERM, nbd_serve_stop_handler);
+#endif
+
+		while (!nbd_serve_stop)
+		{
+			Server->wait(500);
+		}
+
+		Server->Log("Stopping NBD server");
+		backing_file->Sync();
+		exit(0);
+	}
 
 	imagepluginmgr=new CImagePluginMgr;
 
