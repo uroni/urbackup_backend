@@ -408,7 +408,7 @@ endif()
 set(CPACK_SOURCE_GENERATOR TGZ)
 set(CPACK_SOURCE_IGNORE_FILES
 	"/\\\\.git/" "/\\\\.git$" "/\\\\.vs/" "/out/" "/vcpkg_installed/" "/obj-[^/]*/"
-	"/build_[a-z_]*ok$" "/install-data" "/linux-installer" "/osx-pkg" "\\\\.o$" "\\\\.a$"
+	"/build_[a-z_]*ok$" "/install-data" "/linux-installer" "/osx-pkg" "/UrBackupUpdate[^/]*$" "\\\\.o$" "\\\\.a$"
 	"/x64/" "/ARM64/" "/Debug/" "/Release/" "/node_modules/")
 if(NOT URBACKUP_BUILD_CLIENT)
 	list(APPEND CPACK_SOURCE_IGNORE_FILES "/client/")

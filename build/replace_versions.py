@@ -149,17 +149,33 @@ replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/
 replace_with_content_hashes("urbackupserver/www/help.htm", "urbackupserver/www/")
 replace_with_content_hashes("urbackupserver/www/license.htm", "urbackupserver/www/")
 
-def get_version_from_env():
-    server_version = os.environ.get("URBACKUP_SERVER_VERSION")
-    if not server_version:
-        return None
-    full_numeric = server_version.split(".")
+def get_cmake_version(name):
+    with open("CMakeLists.txt", "r") as f:
+        m = re.search(r"^set\(" + name + r" (.*)\)$", f.read(), re.MULTILINE)
+    return m.group(1) if m else None
+
+def version_entry(v):
+    full_numeric = v.split(".")
     while len(full_numeric) < 4:
         full_numeric.append("0")
+    return {"short": v,
+            "full": v,
+            "full_numeric": ".".join(full_numeric)}
+
+def get_version_from_env():
+    server_version = os.environ.get("URBACKUP_SERVER_VERSION")
+    client_version = os.environ.get("URBACKUP_CLIENT_VERSION")
+    if not server_version and not client_version:
+        return None
+    if not server_version:
+        # Client release: the server version strings are not used, take them from CMakeLists.txt
+        server_version = get_cmake_version("URBACKUP_SERVER_VERSION")
     print("Using server version from environment: "+server_version)
-    return {"server": {"short": server_version,
-                       "full": server_version,
-                       "full_numeric": ".".join(full_numeric)}}
+    ret = {"server": version_entry(server_version)}
+    if client_version:
+        print("Using client version from environment: "+client_version)
+        ret["client"] = version_entry(client_version)
+    return ret
 
 version = get_version_from_env()
 

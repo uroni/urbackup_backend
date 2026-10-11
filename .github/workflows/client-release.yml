@@ -1,0 +1,361 @@
+name: Client release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+client'
+  # Manual run: select the tag to release under "Use workflow from"
+  workflow_dispatch:
+    inputs:
+      frontend_ref:
+        description: Branch or tag of urbackup_frontend_wx to build with
+        default: 2.5.x
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.ref_name }}
+  FRONTEND_REF: ${{ inputs.frontend_ref || '2.5.x' }}
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      package_name: ${{ steps.version.outputs.package_name }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check out client frontend
+      run: git clone --depth 1 --branch "$FRONTEND_REF" https://github.com/uroni/urbackup_frontend_wx client
+
+    - name: Determine version
+      id: version
+      run: |
+        if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+          echo "::error::Releases must be created from a tag"
+          exit 1
+        fi
+        VERSION="${TAG%client}"
+        CMAKE_VERSION=$(sed -n 's/^set(URBACKUP_CLIENT_VERSION \(.*\))$/\1/p' CMakeLists.txt)
+        if [ "$TAG" != "${VERSION}client" ] || [ "$VERSION" != "$CMAKE_VERSION" ]; then
+          echo "::error::Tag $TAG does not match URBACKUP_CLIENT_VERSION ${CMAKE_VERSION} in CMakeLists.txt (expected tag ${CMAKE_VERSION}client)"
+          exit 1
+        fi
+        # CMake appends URBACKUP_BUILDID (default 0)
+        PACKAGE_NAME="urbackup-client-$CMAKE_VERSION.0"
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "PACKAGE_NAME=$PACKAGE_NAME" >> "$GITHUB_ENV"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 \
+          libcrypto++-dev libssl-dev libzstd-dev zlib1g-dev libwxgtk3.2-dev
+
+    - name: Replace versions
+      run: URBACKUP_CLIENT_VERSION="$VERSION" python3 build/replace_versions.py
+
+    - name: Create source package
+      run: |
+        cmake --preset client-headless-system
+        cmake --build --preset client-headless-system --target package_source
+        mkdir -p release
+        cp "out/build/client-headless-system/$PACKAGE_NAME.tar.gz" release/
+
+    - name: Build from source package
+      run: |
+        mkdir -p out/distcheck
+        tar xzf "release/$PACKAGE_NAME.tar.gz" -C out/distcheck
+        cd "out/distcheck/$PACKAGE_NAME"
+        cmake --preset client-system
+        cmake --build --preset client-system
+        cmake --install out/build/client-system
+
+    - name: Run client
+      run: |
+        # Paths are compiled in, so run it from the preset's install directory
+        PREFIX="$PWD/out/distcheck/$PACKAGE_NAME/out/install/client-system"
+        test -x "$PREFIX/bin/urbackupclientgui"
+        # --version exits with 1
+        "$PREFIX/bin/urbackupclientctl" --version | grep "UrBackup Client Controller v$VERSION"
+        "$PREFIX/sbin/urbackupclientbackend" --daemon --logfile "$RUNNER_TEMP/urbackupclient.log" \
+          --loglevel debug --pidfile "$RUNNER_TEMP/urbackupclient.pid"
+        for i in $(seq 60); do
+          if "$PREFIX/bin/urbackupclientctl" status; then
+            kill "$(cat "$RUNNER_TEMP/urbackupclient.pid")"
+            exit 0
+          fi
+          sleep 1
+        done
+        cat "$RUNNER_TEMP/urbackupclient.log"
+        exit 1
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: source
+        path: release/
+
+  linux:
+    needs: source
+    runs-on: ubuntu-24.04
+    # The x86_64 glibc build has to run on older distributions too. The installer falls back
+    # to the static musl build if it does not.
+    container: node:20-bookworm
+    environment: build
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      PACKAGE_NAME: ${{ needs.source.outputs.package_name }}
+      # Without the secret (e.g. act), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+      ZIG_VERSION: 0.16.0
+      ZIG_SHA256: 70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: source
+
+    - name: Install build dependencies
+      run: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          cmake ninja-build pkg-config g++ python3 llvm makeself xz-utils git curl zip unzip tar \
+          autoconf autoconf-archive automake libtool bison
+
+    # Tools live in the workspace instead of RUNNER_TEMP, so that they stay out of the
+    # container's file system when running with "act --bind"
+    - name: Set up Zig
+      run: |
+        curl -sSfL -o zig.tar.xz "https://ziglang.org/download/$ZIG_VERSION/zig-x86_64-linux-$ZIG_VERSION.tar.xz"
+        echo "$ZIG_SHA256  zig.tar.xz" | sha256sum -c
+        mkdir -p tools/zig
+        tar xJf zig.tar.xz -C tools/zig --strip-components=1
+        rm zig.tar.xz
+        echo "$PWD/tools/zig" >> "$GITHUB_PATH"
+        echo "ZIG_GLOBAL_CACHE_DIR=$PWD/tools/zig-cache" >> "$GITHUB_ENV"
+        echo "ZIG_LOCAL_CACHE_DIR=$PWD/tools/zig-cache" >> "$GITHUB_ENV"
+
+    - name: Set up vcpkg
+      run: |
+        git clone --depth 1 https://github.com/microsoft/vcpkg tools/vcpkg
+        tools/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        echo "VCPKG_ROOT=$PWD/tools/vcpkg" >> "$GITHUB_ENV"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$PWD/tools/vcpkg-cache" >> "$GITHUB_ENV"
+        mkdir -p tools/vcpkg-cache
+
+    - name: Build Linux installer
+      run: |
+        tar xzf "$PACKAGE_NAME.tar.gz"
+        cd "$PACKAGE_NAME"
+        ./create_linux_installer.sh
+        mkdir -p ../release
+        mv UrBackupUpdateLinux.sh UrBackupUpdateLinux-dbg.sh ../release/
+
+    - name: Check installer
+      run: |
+        sh release/UrBackupUpdateLinux.sh --noexec --target installer
+        grep -F "UrBackup Client $VERSION " installer/install_client_linux.sh
+        mkdir installer/data
+        tar xzf installer/install-data.tar.gz -C installer/data
+        for arch in x86_64-linux-glibc x86_64-linux-android i686-linux-android aarch64-linux-android arm-linux-androideabi armv6-linux-engeabihf; do
+          for bin in urbackupclientbackend urbackupclientctl blockalign; do
+            test -x "installer/data/$arch/$bin" || { echo "::error::Missing $arch/$bin"; exit 1; }
+          done
+        done
+        cmp installer/data/version.txt "$PACKAGE_NAME/client/version.txt"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: linux
+        path: release/
+
+  linux-test:
+    needs: [source, linux]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # bookworm runs the glibc build, bullseye's glibc is too old for it and gets the musl build
+        image: [node:20-bookworm-slim, node:20-bullseye]
+    container: ${{ matrix.image }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: linux
+
+    - name: Install client
+      run: sh UrBackupUpdateLinux.sh
+
+    - name: Run client
+      run: |
+        # --version exits with 1
+        urbackupclientctl --version | grep "UrBackup Client Controller v$VERSION"
+        for i in $(seq 60); do
+          if urbackupclientctl status; then
+            exit 0
+          fi
+          sleep 1
+        done
+        cat /var/log/urbackupclient.log
+        exit 1
+
+  windows:
+    needs: source
+    runs-on: windows-2022
+    environment: build
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      PACKAGE_NAME: ${{ needs.source.outputs.package_name }}
+      # Without the secret (e.g. act), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: source
+
+    - name: Extract source package
+      shell: bash
+      run: tar xzf "$PACKAGE_NAME.tar.gz"
+
+    - name: Set up vcpkg
+      run: |
+        git clone --depth 1 https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+        & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+        & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" integrate install
+
+    - uses: microsoft/setup-msbuild@v2
+
+    - name: Build client
+      working-directory: ${{ env.PACKAGE_NAME }}
+      run: |
+        msbuild UrBackupBackend.sln /m /p:Configuration=Release /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        msbuild CompiledServer.vcxproj /m "/p:Configuration=Release Service" /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        msbuild client\UrBackupClientGUI.sln /m /p:Configuration=Release /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    # Same layout as the installer (client/update_data.bat, client/urbackup.nsi)
+    - name: Run client
+      working-directory: ${{ env.PACKAGE_NAME }}
+      run: |
+        $dir = "$env:RUNNER_TEMP\UrBackup"
+        New-Item -ItemType Directory -Force "$dir\urbackup\data" | Out-Null
+        Copy-Item "x64\Release Service\Server.exe" "$dir\UrBackupClientBackend.exe"
+        Copy-Item x64\Release\urbackupclient.dll "$dir\urbackup.dll"
+        Copy-Item x64\Release\fileservplugin.dll, x64\Release\fsimageplugin.dll, x64\Release\cryptoplugin.dll, x64\Release\sysvol_test.exe $dir
+        Copy-Item x64\Release\clientctl.exe "$dir\UrBackupClient_cmd.exe"
+        Copy-Item client\x64\Release\UrBackupClientGUI.exe "$dir\UrBackupClient.exe"
+        Copy-Item client\data\urbackup_ecdsa409k1.pub, client\data\updates_h.dat, client\info.txt $dir
+        Copy-Item client\version.txt "$dir\curr_version.txt"
+        (Get-Content client\data\args.txt) -replace '^warn$', 'debug' | Set-Content "$dir\args.txt"
+
+        $version = & "$dir\UrBackupClient_cmd.exe" --version | Out-String
+        if ($version -notmatch "UrBackup Client Controller v$env:VERSION") { Write-Output $version; exit 1 }
+        sc.exe create UrBackupClientBackend binPath= "$dir\UrBackupClientBackend.exe" start= demand
+        sc.exe start UrBackupClientBackend
+        $ok = $false
+        for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
+          & "$dir\UrBackupClient_cmd.exe" status
+          if ($LASTEXITCODE -eq 0) { $ok = $true } else { Start-Sleep 1 }
+        }
+        sc.exe stop UrBackupClientBackend
+        if (-not $ok) {
+          Get-Content "$dir\debug.log" -ErrorAction SilentlyContinue
+          exit 1
+        }
+        exit 0
+
+  macos:
+    needs: source
+    runs-on: macos-14
+    environment: build
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      PACKAGE_NAME: ${{ needs.source.outputs.package_name }}
+      # Without the secret (e.g. act), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: source
+
+    - name: Install build dependencies
+      run: brew install ninja pkg-config autoconf autoconf-archive automake libtool
+
+    - name: Set up vcpkg
+      run: |
+        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    # Same options as create_osx_installer.sh, but wxWidgets from vcpkg and installed to a
+    # temporary prefix. The installer itself needs signing and notarization.
+    - name: Build client
+      run: |
+        tar xzf "$PACKAGE_NAME.tar.gz"
+        cd "$PACKAGE_NAME"
+        cmake -S . -B out/osx -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_UPDATE=ON \
+          -DURBACKUP_EMBEDDED_ZSTD=ON -DURBACKUP_GUI_FROM_VCPKG=ON \
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+          -DVCPKG_TARGET_TRIPLET=arm64-osx-urbackup -DCMAKE_OSX_ARCHITECTURES=arm64 \
+          -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/urbackup"
+        cmake --build out/osx
+        cmake --install out/osx
+        test -x "$RUNNER_TEMP/urbackup/bin/urbackupclientgui"
+
+    - name: Run client
+      run: |
+        PREFIX="$RUNNER_TEMP/urbackup"
+        # --version exits with 1
+        "$PREFIX/bin/urbackupclientctl" --version | grep "UrBackup Client Controller v$VERSION"
+        "$PREFIX/sbin/urbackupclientbackend" --daemon --logfile "$RUNNER_TEMP/urbackupclient.log" \
+          --loglevel debug --pidfile "$RUNNER_TEMP/urbackupclient.pid"
+        for i in $(seq 60); do
+          if "$PREFIX/bin/urbackupclientctl" status; then
+            kill "$(cat "$RUNNER_TEMP/urbackupclient.pid")"
+            exit 0
+          fi
+          sleep 1
+        done
+        cat "$RUNNER_TEMP/urbackupclient.log"
+        exit 1
+
+  release:
+    needs: [source, linux, linux-test, windows, macos]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: release
+        merge-multiple: true
+
+    - name: Checksums
+      working-directory: release
+      run: |
+        sha256sum * > SHA256SUMS
+        cat SHA256SUMS
+
+    - name: Create GitHub release
+      if: ${{ !env.ACT }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$TAG" release/* \
+          --repo "$GITHUB_REPOSITORY" \
+          --verify-tag \
+          --title "UrBackup Client $VERSION"
