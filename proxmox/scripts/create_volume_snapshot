@@ -9,6 +9,9 @@
 #
 # With a bitmap of Proxmox VE for the disk, the plugin has put a file next to the volume: the
 # list of the parts that have changed since the last backup, or that the bitmap is new.
+#
+# The ".snapshot" file next to the volume tells the plugin that the client has started an image
+# backup of this export (and does not continue one of an earlier export).
 set -e
 
 SNAP_DIR=/run/urbackup-pve/snap
@@ -17,6 +20,7 @@ SNAP="$SNAP_DIR/$1"
 mkdir -p "$SNAP_DIR" "$SNAP"
 readlink -f "$2" > "$SNAP-dev"
 echo unknown > "$SNAP-fs"
+: > "$2.snapshot"
 
 if [ -e "$2.changed" ]; then
     echo "CBT=type=extents"

@@ -51,6 +51,7 @@ use PVE::Tools qw(file_get_contents file_read_firstline file_set_contents run_co
 use base qw(PVE::BackupProvider::Plugin::Base);
 
 my $RUN_DIR = '/run/urbackup-pve';
+my $SNAPSHOT_DIR = "$RUN_DIR/snap"; # (of the snapshot scripts)
 my $SNAPSHOT_SCRIPT_DIR = '/usr/share/urbackup-pve';
 my $LOCK_FILE = '/run/lock/urbackup-pve.lock';
 # Seconds the server gets to finish the images after the client has sent the data
@@ -202,6 +203,24 @@ my sub bind_next_free_dev_nbd_node {
     return $block_device;
 }
 
+# Removes the snapshots of the snapshot script that are of a device. A client that was stopped
+# during a backup keeps its snapshot, and the server continues the image backup with it when the
+# client is back. By then the device can be the export of another backup, or of another disk.
+my sub remove_snapshots_of_device {
+    my ($node) = @_;
+
+    for my $fn (glob("$SNAPSHOT_DIR/*-dev")) {
+        # (untainted: vzdump runs with -T)
+        my ($snapshot) = $fn =~ m!^(\Q$SNAPSHOT_DIR\E/[\w.-]+)-dev$! or next;
+        my $device = eval { file_get_contents("$snapshot-dev") } // next;
+        $device =~ s/\s+$//;
+        next if $device ne $node;
+
+        unlink("$snapshot-dev", "$snapshot-fs");
+        rmdir($snapshot);
+    }
+}
+
 # Removes the directory of a guest's backup in /run. The file system of a container is mounted
 # there (read-only) during its backup: for the host, and before that for vzdump.
 my sub remove_run_dir {
@@ -263,6 +282,7 @@ my sub cleanup_backup {
     my ($self, $vmid) = @_;
 
     for my $node (($self->{$vmid}->{'nbd-nodes'} // [])->@*) {
+        remove_snapshots_of_device($node);
         eval { run_command(["qemu-nbd", "-d", $node], outfunc => sub {}) };
         log_warning($self, "unable to disconnect $node - $@") if $@;
     }
@@ -678,8 +698,19 @@ my sub run_image_backup {
             delete $procs->{$id};
             $next_request = time() + $request_interval;
 
-            die "image backup of " . $name->($volume) . " of $vc failed - see the logs of the"
-                . " UrBackup server\n" if !$proc->{success};
+            if (!$proc->{success}) {
+                # After the client was restarted during a backup, the server continues the image
+                # backup of that backup. It fails, as its snapshot is gone, and the server has
+                # ignored the request of this backup while it was at it.
+                if (!-e "$volume.snapshot") {
+                    log_info($self, "the UrBackup server could not continue an earlier image"
+                        . " backup of " . $name->($volume) . " - asking for a new one");
+                    $next_request = 0;
+                    next;
+                }
+                die "image backup of " . $name->($volume) . " of $vc failed - see the logs of the"
+                    . " UrBackup server\n";
+            }
 
             log_info($self, "image backup of " . $name->($volume) . " finished");
             delete $pending->{$volume};
@@ -1070,6 +1101,7 @@ sub backup_vm {
             my $node = bind_next_free_dev_nbd_node(
                 $self, ["nbd:unix:${nbd_path}:exportname=${device_name}", "--format=raw", "--read-only"]);
             push $self->{$vmid}->{'nbd-nodes'}->@*, $node;
+            remove_snapshots_of_device($node); # (of a backup that was not cleaned up)
 
             my $link = "$RUN_DIR/$vmid/$device_name";
             symlink($node, $link) or die "unable to create $link - $!\n";
