@@ -126,7 +126,16 @@ CServiceAcceptor::~CServiceAcceptor()
 		closesocket(s_v6);
 
 	if(has_error)
+	{
+		//Accept thread was not started
+		Server->destroy(exitpipe);
+#ifndef _WIN32
+		close(xpipe[0]);
+		close(xpipe[1]);
+#endif
+		delete service;
 		return;
+	}
 	
 	for(size_t i=0;i<workers.size();++i)
 	{
@@ -145,6 +154,10 @@ CServiceAcceptor::~CServiceAcceptor()
 		}
 	}
 	Server->destroy(exitpipe);
+#ifndef _WIN32
+	close(xpipe[0]);
+	close(xpipe[1]);
+#endif
 	for(size_t i=0;i<workers.size();++i)
 	{
 		delete workers[i];

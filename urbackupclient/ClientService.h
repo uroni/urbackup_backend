@@ -238,6 +238,8 @@ public:
 
 	static void timeoutFilesrvConnections();
 
+	static void releaseChannelPipe(IPipe* cp, SChannel::EChannelState new_state);
+
 	static void timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool& has_backup, int64& starttime);
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
@@ -332,6 +334,7 @@ private:
 	void CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
+	void CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
 	void CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params);

@@ -188,6 +188,7 @@ CServer::CServer()
 	startup_complete_mutex=createMutex();
 	startup_complete_cond=createCondition();
 	rnd_mutex=createMutex();
+	stream_services_mutex=createMutex();
 
 	initRandom(static_cast<unsigned int>(time(0)));
 	initRandom(getSecureRandomNumber());
@@ -368,6 +369,7 @@ CServer::~CServer()
 	destroy(startup_complete_mutex);
 	destroy(startup_complete_cond);
 	destroy(rnd_mutex);
+	destroy(stream_services_mutex);
 #ifndef NO_SQLITE
 	CDatabase::destroyMutex();
 #endif
@@ -1032,12 +1034,44 @@ std::string CServer::GenerateBinaryMD5(const std::string &input)
 	return ret;
 }
 
-void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
+bool CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 {
 	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort, pMaxClientsPerThread, bindTarget);
-	Server->createThread(acc, pServiceName+": accept");
+	const bool has_error = acc->hasError();
+	if (!has_error)
+	{
+		Server->createThread(acc, pServiceName+": accept");
+	}
 
+	IScopedLock lock(stream_services_mutex);
 	stream_services.push_back( acc );
+
+	return !has_error;
+}
+
+bool CServer::StopCustomStreamService(IService *pService)
+{
+	CServiceAcceptor* acc = NULL;
+	{
+		IScopedLock lock(stream_services_mutex);
+		for (size_t i = 0; i < stream_services.size(); ++i)
+		{
+			if (stream_services[i]->getService() == pService)
+			{
+				acc = stream_services[i];
+				stream_services.erase(stream_services.begin() + i);
+				break;
+			}
+		}
+	}
+
+	if (acc == NULL)
+	{
+		return false;
+	}
+
+	delete acc;
+	return true;
 }
 
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)

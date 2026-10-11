@@ -16,6 +16,10 @@ public:
 
 	void operator()(void);
 
+	bool hasError() { return has_error; }
+
+	IService* getService() { return service; }
+
 private:
 	void AddToWorker(SOCKET pSocket, const std::string& endpoint);
 

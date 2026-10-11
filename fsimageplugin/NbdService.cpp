@@ -3,8 +3,8 @@
 #include "../Interface/Server.h"
 
 
-NbdService::NbdService( IFile* backing_file )
-	: backing_file(backing_file), client_mutex(Server->createMutex()), has_client(false)
+NbdService::NbdService( IFile* backing_file, bool read_only )
+	: backing_file(backing_file), read_only(read_only), client_mutex(Server->createMutex()), has_client(false)
 {
 
 }
@@ -17,7 +17,7 @@ NbdService::~NbdService()
 
 ICustomClient* NbdService::createClient()
 {
-	return new NbdClient(this, backing_file);
+	return new NbdClient(this, backing_file, read_only);
 }
 
 void NbdService::destroyClient( ICustomClient * pClient )

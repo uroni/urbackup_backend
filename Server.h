@@ -139,7 +139,8 @@ public:
 	virtual std::string GenerateHexMD5(const std::string &input);
 	virtual std::string GenerateBinaryMD5(const std::string &input);
 
-	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
+	virtual bool StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
+	virtual bool StopCustomStreamService(IService *pService);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe* ConnectSslStream(const std::string& pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe *PipeFromSocket(SOCKET pSocket);
@@ -248,6 +249,7 @@ private:
 	IMutex* param_mutex;
 	IMutex* startup_complete_mutex;
 	IMutex* rnd_mutex;
+	IMutex* stream_services_mutex;
 
 	ICondition *startup_complete_cond;
 	bool startup_complete;

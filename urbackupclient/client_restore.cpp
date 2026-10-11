@@ -43,6 +43,8 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../urbackupcommon/json.h"
+#include "../urbackupcommon/image_read_protocol.h"
+#include <signal.h>
 #ifndef _WIN32
 #include "config.h"
 #include <sys/ioctl.h>
@@ -1082,6 +1084,16 @@ namespace
 	}
 }
 
+namespace
+{
+	volatile sig_atomic_t nbd_image_stop = 0;
+
+	void nbd_image_stop_handler(int signum)
+	{
+		nbd_image_stop = 1;
+	}
+}
+
 void do_restore(void)
 {
 	std::string cmd=Server->getServerParameter("restore_cmd");
@@ -1279,6 +1291,7 @@ void do_restore(void)
 		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("nbd_image(restore_img_id,restore_time|restore_token,[nbd_port],[nbd_localhost_only])", LL_INFO);
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
@@ -1377,6 +1390,93 @@ void do_restore(void)
 				Server->destroy(c);exit(0);return;
 			}
 		}
+	}
+	else if(cmd=="nbd_image")
+	{
+		std::string dl_args;
+		std::string restore_token = Server->getServerParameter("restore_token");
+		if (!restore_token.empty())
+		{
+			dl_args = "&token=" + EscapeParamString(restore_token);
+		}
+		else
+		{
+			dl_args = "&img_id=" + Server->getServerParameter("restore_img_id") + "&time=" + Server->getServerParameter("restore_time");
+		}
+
+		std::string nbd_port = Server->getServerParameter("nbd_port");
+		if (nbd_port.empty())
+		{
+			nbd_port = "10809";
+		}
+
+		tcpstack.Send(c, "NBD IMAGE#pw="+pw+dl_args+"&nbd_port="+EscapeParamString(nbd_port)
+			+"&nbd_localhost_only="+(Server->getServerParameter("nbd_localhost_only")=="0" ? "0" : "1"));
+
+		_i64 imgsize;
+		if (!image_read_full(c, reinterpret_cast<char*>(&imgsize), sizeof(imgsize), 120000))
+		{
+			Server->Log("Error reading image size from client service", LL_ERROR);
+			exit(1);
+		}
+		imgsize = little_endian(imgsize);
+
+		if (imgsize == -2)
+		{
+			Server->Log("Client service is not connected to a server", LL_ERROR);
+			exit(2);
+		}
+		else if (imgsize == -3)
+		{
+			Server->Log("Client service could not start NBD server on port " + nbd_port, LL_ERROR);
+			exit(1);
+		}
+		else if (imgsize < 0)
+		{
+			Server->Log("Server refused random access image restore (image not found, no permission or server too old)", LL_ERROR);
+			exit(1);
+		}
+
+		Server->Log("Client service serves image backup (" + PrettyPrintBytes(imgsize) + ") read-only via NBD on port " + nbd_port
+			+ ". E.g. nbd-client localhost " + nbd_port + " /dev/nbd0 -readonly. Stop with SIGINT/SIGTERM.", LL_INFO);
+
+		signal(SIGINT, nbd_image_stop_handler);
+		signal(SIGTERM, nbd_image_stop_handler);
+
+		while (!nbd_image_stop)
+		{
+			bool readable = c->isReadable(500);
+
+			if (nbd_image_stop)
+			{
+				//Signal interrupts waiting (and sets error on pipe)
+				break;
+			}
+
+			if (readable)
+			{
+				char ch;
+				if (c->Read(&ch, 1, 0) == 0
+					&& c->hasError())
+				{
+					Server->Log("Client service ended NBD image restore (connection to server lost?)", LL_ERROR);
+					exit(2);
+				}
+			}
+			else if (c->hasError())
+			{
+				Server->Log("Connection to client service lost", LL_ERROR);
+				exit(2);
+			}
+		}
+
+		Server->Log("Stopping NBD server", LL_INFO);
+		if (!c->hasError())
+		{
+			c->Write("x", 1, 10000);
+		}
+		Server->destroy(c);
+		exit(0);
 	}
 	else if(cmd=="download_mbr" || cmd=="download_image" )
 	{

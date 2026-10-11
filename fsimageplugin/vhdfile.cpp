@@ -812,7 +812,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 
 			file->Seek(dataoffset);
 
-			if(dataoffset+bitmap_size+blockoffset+bsize>(uint64)file->Size() )
+			if(dataoffset+bitmap_size+blockoffset+(std::min)(remaining, toread)>(uint64)file->Size() )
 			{
 				Server->Log("Wrong dataoffset: "+convert(dataoffset), LL_ERROR);
 				return false;

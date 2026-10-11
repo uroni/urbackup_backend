@@ -64,7 +64,7 @@ add_executable(urbackupclientbackend
 	${URBACKUP_FILESERVPLUGIN_SOURCES}
 	urbackupclient/dllmain.cpp urbackupclient/clientdao.cpp urbackupclient/client.cpp
 	urbackupclient/ClientService.cpp urbackupclient/ClientSend.cpp urbackupclient/client_restore.cpp
-	urbackupclient/ServerIdentityMgr.cpp urbackupclient/ClientServiceCMD.cpp urbackupclient/ImageThread.cpp
+	urbackupclient/ServerIdentityMgr.cpp urbackupclient/ClientServiceCMD.cpp urbackupclient/ImageReadFile.cpp urbackupclient/ImageThread.cpp
 	urbackupclient/InternetClient.cpp urbackupclient/file_permissions.cpp urbackupclient/lin_ver.cpp
 	urbackupclient/lin_tokens.cpp urbackupclient/common_tokens.cpp urbackupclient/FileMetadataDownloadThread.cpp
 	urbackupclient/RestoreFiles.cpp urbackupclient/RestoreDownloadThread.cpp urbackupclient/TokenCallback.cpp

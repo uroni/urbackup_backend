@@ -17,7 +17,7 @@ enum EClientState
 class NbdClient : public ICustomClient
 {
 public:
-	NbdClient(NbdService* service, IFile* backing_file);
+	NbdClient(NbdService* service, IFile* backing_file, bool read_only);
 	~NbdClient();
 
 	virtual void Init( THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName, const IClientWakeup* wakeup );
@@ -33,6 +33,7 @@ private:
 	bool handleOption();
 	bool sendOptionReply(unsigned int opt, unsigned int reply_type, const char* data, size_t data_size);
 	bool sendExportInfo(unsigned int opt);
+	unsigned short transmissionFlags();
 	void consumeRecvBuf(size_t n);
 
 	NbdService* service;
@@ -45,6 +46,7 @@ private:
 	bool no_zeroes;
 
 	IFile* backing_file;
+	bool read_only;
 
 	size_t recv_buf_off;
 	std::vector<char> recv_buf;

@@ -42,6 +42,7 @@
 #include "serverinterface/backups.h"
 #include "dao/ServerBackupDao.h"
 #include "../urbackupcommon/mbrdata.h"
+#include "../urbackupcommon/image_read_protocol.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -274,7 +275,7 @@ void ServerChannelThread::run()
 				curr_ident = client_main->getIdentity();
 				tcpstack.reset();
 				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client)+
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=2&startup=1&virtual_client="+EscapeParamString(virtual_client)+
 					"&settings_update_version="+convert(client_main->getSettingsUpdateVersion()));
 
 				lasttime=Server->getTimeMS();
@@ -512,6 +513,36 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		{
 			Server->Log("Image restore token timeout", LL_DEBUG);
 			_i64 r = -1;
+			input->Write((char*)&r, sizeof(_i64), 30000);
+		}
+	}
+	else if(next(msg, 0, "READ IMAGE ") && allow_restore)
+	{
+		std::string s_params=msg.substr(11);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		if (hasDownloadImageRights(params))
+		{
+			{
+				IScopedLock lock(mutex);
+				allow_shutdown = false;
+			}
+
+			add_extra_channel();
+			READ_IMAGE(params);
+			remove_extra_channel();
+			Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
+
+			{
+				IScopedLock lock(mutex);
+				allow_shutdown = true;
+			}
+		}
+		else
+		{
+			Server->Log("No rights for random access image restore", LL_DEBUG);
+			_i64 r = little_endian(static_cast<_i64>(-1));
 			input->Write((char*)&r, sizeof(_i64), 30000);
 		}
 	}
@@ -1039,26 +1070,16 @@ namespace
 	};
 }
 
-void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
+bool ServerChannelThread::lookupRestoreImage(IDatabase* db, str_map& params, db_results& res, int& img_id)
 {
-	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-
-	const _u32 img_send_timeout = 30000;
-
-	ServerBackupDao backup_dao(db);
-
 	bool check_client_permissions = true;
-	db_results res;
-	int img_id;
 	if (params.find("token") != params.end())
 	{
 		SRestoreToken token_info;
 		std::string restore_token = params["token"];
 		if (!get_restore_token(restore_token, token_info))
 		{
-			_i64 r = -1;
-			input->Write((char*)&r, sizeof(_i64), img_send_timeout);
-			return;
+			return false;
 		}
 
 		if (restore_token_keepalive_thread != NULL)
@@ -1089,32 +1110,77 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	if(res.empty())
 	{
 		Server->Log("Image to download not found (img_id=" + convert(img_id) + " time=" + params["time"] + ")", LL_DEBUG);
+		return false;
+	}
+
+	if (check_client_permissions)
+	{
+		std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
+
+		if (clientname.empty()
+			|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
+		{
+			Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+namespace
+{
+	//Returns offset of the volume in the image file (skip) and the volume size
+	void getImageVolumeRange(IVHDFile* vhdfile, const std::string& path, int img_version, int& skip, _i64& imgsize)
+	{
+		skip=1024*512;
+
+		if(img_version==0
+			&& strlower(findextension(path))!="raw")
+			skip=512*512;
+
+		const bool whole_disk = is_disk_mbr(path + ".mbr");
+		if (whole_disk)
+			skip = 0;
+
+		imgsize = (_i64)vhdfile->getSize() - skip;
+
+		if (!whole_disk && imgsize + skip > 2LL * 1024 * 1024 * 1024 * 1024)
+		{
+			// Get size of volume without GPT footer for images > 2TiB
+			bool gpt_style = false;
+			const std::vector<IFSImageFactory::SPartition> parts = image_fak->readPartitions(vhdfile, 0, gpt_style);
+			if (gpt_style && parts.size() == 1
+				&& parts[0].length < imgsize && parts[0].length >= imgsize - 1*1024*1024 - 2*512)
+			{
+				Server->Log("Using volume size " + convert(parts[0].length) + " from GPT (image file size " + convert(imgsize) + ")", LL_INFO);
+				imgsize = parts[0].length;
+			}
+		}
+	}
+}
+
+void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	const _u32 img_send_timeout = 30000;
+
+	ServerBackupDao backup_dao(db);
+
+	db_results res;
+	int img_id;
+	if(!lookupRestoreImage(db, params, res, img_id))
+	{
 		_i64 r=-1;
 		if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
 		{
 			reset();
-			return;
 		}
+		return;
 	}
 	else
 	{
-		if (check_client_permissions)
-		{
-			std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
-
-			if (clientname.empty()
-				|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
-			{
-				Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
-				_i64 r = -1;
-				if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
-				{
-					reset();
-				}
-				return;
-			}
-		}
-
 		int img_version=watoi(res[0]["version"]);
 		if(params["mbr"]=="true")
 		{
@@ -1173,8 +1239,6 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 		lasttime=Server->getTimeMS();
 
-		std::string file_extension = strlower(findextension(res[0]["path"]));
-
 		IVHDFile *vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0,
 			 2 * 1024 * 1024, false, image_fak->detectImageFormat(res[0]["path"])); 
 
@@ -1196,30 +1260,9 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			backup_dao.addRestore(watoi(res[0]["clientid"]), std::string(), std::string(), 1, res[0]["letter"]);
 			ScopedSetRestoreDone restore_done(backup_dao, db->getLastInsertID());
 
-			int skip=1024*512;
-
-			if(img_version==0
-				&& file_extension!="raw")
-				skip=512*512;
-
-			const bool whole_disk = is_disk_mbr(res[0]["path"] + ".mbr");
-			if (whole_disk)
-				skip = 0;
-
-			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
-
-			if (!whole_disk && imgsize + skip > 2LL * 1024 * 1024 * 1024 * 1024)
-			{
-				// Get size of volume without GPT footer for images > 2TiB
-				bool gpt_style = false;
-				const std::vector<IFSImageFactory::SPartition> parts = image_fak->readPartitions(vhdfile, 0, gpt_style);
-				if (gpt_style && parts.size() == 1
-					&& parts[0].length < imgsize && parts[0].length >= imgsize - 1*1024*1024 - 2*512)
-				{
-					Server->Log("Using volume size " + convert(parts[0].length) + " from GPT (image file size " + convert(imgsize) + ")", LL_INFO);
-					imgsize = parts[0].length;
-				}
-			}
+			int skip;
+			_i64 imgsize;
+			getImageVolumeRange(vhdfile, res[0]["path"], img_version, skip, imgsize);
 
 			_i64 r=little_endian(imgsize);
 			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
@@ -1375,6 +1418,184 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			{
 				restore_done.set_ok();
 			}
+		}
+	}
+}
+
+void ServerChannelThread::READ_IMAGE(str_map& params)
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	const _u32 img_send_timeout = 30000;
+
+	ServerBackupDao backup_dao(db);
+
+	db_results res;
+	int img_id;
+	if(!lookupRestoreImage(db, params, res, img_id))
+	{
+		_i64 r=little_endian(static_cast<_i64>(-1));
+		if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+		{
+			reset();
+		}
+		return;
+	}
+
+	IPipe::SCompressionSettings comp_params;
+	comp_params.mem = IPipe::Compression_HighMem;
+	input->setCompressionSettings(comp_params);
+
+	ServerStatus::updateActive();
+
+	lasttime=Server->getTimeMS();
+
+	IVHDFile *vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0,
+		2 * 1024 * 1024, false, image_fak->detectImageFormat(res[0]["path"]));
+
+	ScopedDestroyVhdfile destroy_vhdfile(vhdfile);
+
+	if(vhdfile==NULL
+		|| !vhdfile->isOpen())
+	{
+		Server->Log("Error opening image \""+res[0]["path"]+"\" for random access restore", LL_ERROR);
+		_i64 r=little_endian(static_cast<_i64>(-1));
+		if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+		{
+			reset();
+		}
+		return;
+	}
+
+	std::string clientname = backup_dao.getClientnameByImageid(img_id).value;
+	ScopedProcess restore_process(clientname, sa_restore_image, res[0]["letter"], logid_t(), false, watoi(res[0]["clientid"]));
+	backup_dao.addRestore(watoi(res[0]["clientid"]), std::string(), std::string(), 1, res[0]["letter"]);
+	ScopedSetRestoreDone restore_done(backup_dao, db->getLastInsertID());
+
+	int skip;
+	_i64 imgsize;
+	getImageVolumeRange(vhdfile, res[0]["path"], watoi(res[0]["version"]), skip, imgsize);
+
+	Server->Log("Serving random access reads of image \"" + res[0]["path"] + "\" (volume size " + PrettyPrintBytes(imgsize) + ")", LL_INFO);
+
+	_i64 r=little_endian(imgsize);
+	if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+	{
+		Server->Log("Sending image size failed", LL_DEBUG);
+		reset();
+		return;
+	}
+
+	std::vector<char> buffer;
+	int64 last_update_time = Server->getTimeMS();
+	int64 transferred_bytes = 0;
+
+	while(true)
+	{
+		//Wait for next request. Not using isReadable() since compressed pipes may return true without having data.
+		char req_buf[image_read_request_size];
+		size_t req_off = 0;
+		int64 wait_start = Server->getTimeMS();
+		while(req_off<sizeof(req_buf)
+			&& !do_exit
+			&& !input->hasError()
+			&& Server->getTimeMS() - wait_start < image_read_idle_timeout)
+		{
+			req_off += input->Read(req_buf + req_off, sizeof(req_buf) - req_off, 1000);
+		}
+
+		if(req_off<sizeof(req_buf))
+		{
+			Server->Log("Timeout or error while waiting for random access image read request", LL_INFO);
+			reset();
+			return;
+		}
+
+		lasttime=Server->getTimeMS();
+
+		if (Server->getTimeMS() - last_update_time > 60000)
+		{
+			last_update_time = Server->getTimeMS();
+			ServerStatus::updateActive();
+		}
+
+		SImageReadRequest req = image_read_decode_request(req_buf);
+
+		if(req.cmd==image_read_cmd_close)
+		{
+			Server->Log("Random access image restore finished. Transferred "+PrettyPrintBytes(transferred_bytes), LL_INFO);
+			restore_done.set_ok();
+			return;
+		}
+
+		int err = image_read_err_ok;
+		size_t data_size = 0;
+
+		if(req.cmd==image_read_cmd_keepalive)
+		{
+		}
+		else if(req.cmd==image_read_cmd_read)
+		{
+			if(req.len>image_read_max_len
+				|| req.offset>static_cast<uint64>(imgsize)
+				|| req.len>static_cast<uint64>(imgsize)-req.offset)
+			{
+				Server->Log("Invalid image read request (offset="+convert(req.offset)+" len="+convert(req.len)+" size="+convert(imgsize)+")", LL_WARNING);
+				err = image_read_err_inval;
+			}
+			else
+			{
+				buffer.resize(image_read_response_header_size + req.len);
+
+				if(!vhdfile->Seek(skip + req.offset))
+				{
+					Server->Log("Error seeking to "+convert(skip + req.offset)+" in image", LL_ERROR);
+					err = image_read_err_io;
+				}
+				else
+				{
+					size_t pos = 0;
+					while(pos<req.len)
+					{
+						size_t read = 0;
+						if(!vhdfile->Read(&buffer[image_read_response_header_size + pos], req.len - pos, read)
+							|| read==0)
+						{
+							Server->Log("Error reading from image at offset "+convert(skip+req.offset+pos)+". "+os_last_error_str(), LL_ERROR);
+							err = image_read_err_io;
+							break;
+						}
+						pos+=read;
+					}
+				}
+
+				if(err==image_read_err_ok)
+				{
+					data_size = req.len;
+					transferred_bytes += req.len;
+				}
+			}
+		}
+		else
+		{
+			Server->Log("Unknown image read command "+convert(req.cmd), LL_ERROR);
+			reset();
+			return;
+		}
+
+		if(buffer.size()<image_read_response_header_size)
+		{
+			buffer.resize(image_read_response_header_size);
+		}
+
+		int err_le = little_endian(err);
+		memcpy(buffer.data(), &err_le, sizeof(err_le));
+
+		if(!input->Write(buffer.data(), image_read_response_header_size + data_size, img_send_timeout))
+		{
+			Server->Log("Sending random access image read response failed", LL_DEBUG);
+			reset();
+			return;
 		}
 	}
 }

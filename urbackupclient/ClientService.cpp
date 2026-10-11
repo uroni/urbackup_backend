@@ -1343,6 +1343,15 @@ void ClientConnector::ReceivePacketsInt()
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
+			}
+			else if( cmd=="NBD IMAGE" )
+			{
+				CMD_RESTORE_NBD_IMAGE(cmd, params);
+				if (state == CCSTATE_FILESERV)
+				{
+					return;
+				}
+				continue;
 			}		
 			else if( cmd=="DOWNLOAD FILES" )
 			{
@@ -3056,6 +3065,18 @@ void ClientConnector::removeChannelpipe(IPipe *cp)
 		if (channel_pipes[i].pipe == cp)
 		{
 			channel_pipes[i].state = SChannel::EChannelState_Exit;
+		}
+	}
+}
+
+void ClientConnector::releaseChannelPipe(IPipe* cp, SChannel::EChannelState new_state)
+{
+	IScopedLock lock(backup_mutex);
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].pipe == cp)
+		{
+			channel_pipes[i].state = new_state;
 		}
 	}
 }

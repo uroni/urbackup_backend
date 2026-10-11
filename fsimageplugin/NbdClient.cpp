@@ -22,6 +22,14 @@ const unsigned int NBD_FLAG_C_NO_ZEROES = 1<<1;
 
 //NBD_FLAG_HAS_FLAGS|NBD_FLAG_SEND_FLUSH|NBD_FLAG_ROTATIONAL|NBD_FLAG_SEND_TRIM
 const unsigned short NBD_TRANSMISSION_FLAGS = (1<<0) | (1<<2) | (1<<4) | (1<<5);
+//NBD_FLAG_HAS_FLAGS|NBD_FLAG_READ_ONLY
+const unsigned short NBD_TRANSMISSION_FLAGS_READ_ONLY = (1<<0) | (1<<1);
+
+const int NBD_EPERM = 1;
+const int NBD_EIO = 5;
+const int NBD_EINVAL = 22;
+
+const unsigned int max_request_size = 32*1024*1024;
 
 const unsigned int NBD_OPT_EXPORT_NAME = 1;
 const unsigned int NBD_OPT_ABORT = 2;
@@ -39,10 +47,15 @@ const unsigned short NBD_INFO_EXPORT = 0;
 
 const size_t max_option_size = 64*1024;
 
-NbdClient::NbdClient( NbdService* service, IFile* backing_file )
-	: service(service), was_client(false), no_zeroes(false), backing_file(backing_file)
+NbdClient::NbdClient( NbdService* service, IFile* backing_file, bool read_only )
+	: service(service), was_client(false), no_zeroes(false), backing_file(backing_file), read_only(read_only)
 {
 
+}
+
+unsigned short NbdClient::transmissionFlags()
+{
+	return read_only ? NBD_TRANSMISSION_FLAGS_READ_ONLY : NBD_TRANSMISSION_FLAGS;
 }
 
 NbdClient::~NbdClient()
@@ -213,7 +226,7 @@ bool NbdClient::sendExportInfo(unsigned int opt)
 	memcpy(&info[0], &info_type, sizeof(info_type));
 	uint64 size = big_endian(static_cast<uint64>(backing_file->Size()));
 	memcpy(&info[2], &size, sizeof(size));
-	unsigned short transmission_flags = big_endian(NBD_TRANSMISSION_FLAGS);
+	unsigned short transmission_flags = big_endian(transmissionFlags());
 	memcpy(&info[10], &transmission_flags, sizeof(transmission_flags));
 
 	return sendOptionReply(opt, NBD_REP_INFO, info, sizeof(info));
@@ -269,7 +282,7 @@ bool NbdClient::handleOption()
 			std::vector<char> msg(8+2+(no_zeroes ? 0 : 124));
 			uint64 size = big_endian(static_cast<uint64>(backing_file->Size()));
 			memcpy(&msg[0], &size, sizeof(size));
-			unsigned short transmission_flags = big_endian(NBD_TRANSMISSION_FLAGS);
+			unsigned short transmission_flags = big_endian(transmissionFlags());
 			memcpy(&msg[8], &transmission_flags, sizeof(transmission_flags));
 
 			if(!pipe->Write(msg.data(), msg.size()))
@@ -365,6 +378,14 @@ bool NbdClient::handleRequests()
 
 	size_t used_bytes=header_size;
 
+	if((type==NBD_CMD_WRITE || type==NBD_CMD_READ)
+		&& len>max_request_size)
+	{
+		Server->Log("NBD request with size "+convert(len)+" too large", LL_ERROR);
+		shutdown=true;
+		return false;
+	}
+
 	if(type==NBD_CMD_WRITE
 		&& recv_buf_off<header_size+len)
 	{
@@ -380,7 +401,17 @@ bool NbdClient::handleRequests()
 		used_bytes+=len;
 	}
 
+	bool out_of_range = false;
 	if(type==NBD_CMD_WRITE || type==NBD_CMD_READ)
+	{
+		_i64 backing_size = backing_file->Size();
+		out_of_range = offset<0 || offset>backing_size
+			|| static_cast<_i64>(len)>backing_size-offset;
+	}
+
+	if(!out_of_range
+		&& (type==NBD_CMD_READ
+			|| (type==NBD_CMD_WRITE && !read_only) ) )
 	{
 		if(!backing_file->Seek(offset))
 		{
@@ -410,20 +441,37 @@ bool NbdClient::handleRequests()
 	{
 	case NBD_CMD_WRITE:
 		{
-			if(backing_file->Write(&recv_buf[header_size], len)!=len)
+			if(out_of_range)
+			{
+				Server->Log("NBD write of "+convert(len)+" bytes at offset "+convert(offset)+" out of range", LL_ERROR);
+				err=NBD_EINVAL;
+			}
+			else if(read_only)
+			{
+				Server->Log("NBD client tried to write to read-only export", LL_WARNING);
+				err=NBD_EPERM;
+			}
+			else if(backing_file->Write(&recv_buf[header_size], len)!=len)
 			{
 				Server->Log("Error writing "+convert(len)+" bytes at offset "+convert(offset)+" to backing file", LL_ERROR);
-				err=5;
+				err=NBD_EIO;
 			}
 		} break;
 	case NBD_CMD_READ:
 		{
+			if(out_of_range)
+			{
+				Server->Log("NBD read of "+convert(len)+" bytes at offset "+convert(offset)+" out of range", LL_ERROR);
+				err=NBD_EINVAL;
+				break;
+			}
+
 			size_t read = backing_file->Read(&response_buf[response_header_size], len);
 
 			if(read!=len)
 			{
 				Server->Log("Error reading "+convert(len)+" bytes at offset "+convert(offset)+" from backing file", LL_ERROR);
-				err=5;
+				err=NBD_EIO;
 			}
 			else
 			{
@@ -432,6 +480,10 @@ bool NbdClient::handleRequests()
 		} break;
 	case NBD_CMD_TRIM:
 		{
+			if(read_only)
+			{
+				err=NBD_EPERM;
+			}
 			//TODO
 		} break;
 	case NBD_CMD_DISC:
@@ -441,10 +493,10 @@ bool NbdClient::handleRequests()
 	case NBD_CMD_FLUSH:
 		{
 			Server->Log("Client requested flush");
-			if(!backing_file->Sync())
+			if(!read_only && !backing_file->Sync())
 			{
 				Server->Log("Error syncing backing file", LL_ERROR);
-				err=5;
+				err=NBD_EIO;
 			}
 		} break;
 	default:

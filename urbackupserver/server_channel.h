@@ -66,6 +66,8 @@ private:
 	void GET_FILE_BACKUPS_TOKENS(str_map& params);
 	void GET_FILE_LIST_TOKENS(str_map& params);
 	void DOWNLOAD_IMAGE(str_map& params);
+	void READ_IMAGE(str_map& params);
+	bool lookupRestoreImage(IDatabase* db, str_map& params, db_results& res, int& img_id);
 	void DOWNLOAD_FILES(str_map& params);
 	void DOWNLOAD_FILES_TOKENS(str_map& params);
 	void RESTORE_PERCENT( str_map params );

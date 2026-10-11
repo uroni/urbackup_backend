@@ -58,7 +58,7 @@ public:
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
 
-	virtual IService* createNbdService(IFile* backing_file)=0;
+	virtual IService* createNbdService(IFile* backing_file, bool read_only=false)=0;
 
 	virtual bool initializeImageMounting() = 0;
 

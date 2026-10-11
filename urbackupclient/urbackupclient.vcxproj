@@ -60,6 +60,7 @@
     <ClCompile Include="ClientSend.cpp" />
     <ClCompile Include="ClientService.cpp" />
     <ClCompile Include="ClientServiceCMD.cpp" />
+    <ClCompile Include="ImageReadFile.cpp" />
     <ClCompile Include="client_restore.cpp" />
     <ClCompile Include="client_winvss.cpp" />
     <ClCompile Include="cmdline_preprocessor.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="ClientHash.h" />
     <ClInclude Include="ClientSend.h" />
     <ClInclude Include="ClientService.h" />
+    <ClInclude Include="ImageReadFile.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
     <ClInclude Include="FileMetadataDownloadThread.h" />

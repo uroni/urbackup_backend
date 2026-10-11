@@ -629,9 +629,9 @@ IReadOnlyBitmap * FSImageFactory::createClientBitmap(IFile * bitmap_file)
 	return new ClientBitmap(bitmap_file);
 }
 
-IService* FSImageFactory::createNbdService(IFile* backing_file)
+IService* FSImageFactory::createNbdService(IFile* backing_file, bool read_only)
 {
-	return new NbdService(backing_file);
+	return new NbdService(backing_file, read_only);
 }
 
 bool FSImageFactory::initializeImageMounting()

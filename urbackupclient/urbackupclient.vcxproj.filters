@@ -78,6 +78,9 @@
     <ClCompile Include="ClientServiceCMD.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="ImageReadFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
     <ClCompile Include="ImageThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -216,6 +219,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="ClientService.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageReadFile.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="database.h">

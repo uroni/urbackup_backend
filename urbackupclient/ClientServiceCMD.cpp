@@ -25,6 +25,9 @@
 #include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/escape.h"
+#include "../urbackupcommon/image_read_protocol.h"
+#include "../fsimageplugin/IFSImageFactory.h"
+#include "ImageReadFile.h"
 #include "client.h"
 #include "database.h"
 #include "../stringtools.h"
@@ -56,6 +59,7 @@
 extern std::string time_format_str;
 
 extern ICryptoFactory *crypto_fak;
+extern IFSImageFactory* image_fak;
 
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)
 {
@@ -2468,6 +2472,202 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	downloadImage(params, lock);
 	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
+}
+
+namespace
+{
+	/**
+	* Keeps a random access image restore session (NBD server reading the image via the channel) alive
+	* and stops it once the local restore process closes its connection or the channel breaks.
+	* Owns local_pipe, image_file and nbd_service. The channel is reset afterwards.
+	*/
+	class NbdImageThread : public IThread
+	{
+	public:
+		NbdImageThread(IPipe* local_pipe, IPipe* channel_pipe,
+			ImageReadFile* image_file, IService* nbd_service)
+			: local_pipe(local_pipe), channel_pipe(channel_pipe),
+			image_file(image_file), nbd_service(nbd_service)
+		{
+		}
+
+		void operator()()
+		{
+			SRunningProcess proc;
+			proc.action = RUNNING_RESTORE_IMAGE;
+			proc.pcdone = -1;
+			int64 process_id = ClientConnector::addNewProcess(proc);
+
+			while (true)
+			{
+				if (local_pipe->isReadable(500))
+				{
+					char ch;
+					if (local_pipe->Read(&ch, 1, 0) > 0
+						|| local_pipe->hasError())
+					{
+						Server->Log("Local restore process ended random access image restore", LL_DEBUG);
+						break;
+					}
+				}
+
+				if (local_pipe->hasError())
+				{
+					Server->Log("Local restore process connection closed", LL_DEBUG);
+					break;
+				}
+
+				if (!image_file->keepalive())
+				{
+					Server->Log("Channel broken during random access image restore", LL_ERROR);
+					break;
+				}
+			}
+
+			stopNbdImage(nbd_service, image_file);
+
+			Server->Log("Random access image restore finished", LL_INFO);
+
+			delete local_pipe;
+			ClientConnector::releaseChannelPipe(channel_pipe, SChannel::EChannelState_Exit);
+			ClientConnector::removeRunningProcess(process_id, true);
+			delete this;
+		}
+
+		static void stopNbdImage(IService* nbd_service, ImageReadFile* image_file)
+		{
+			Server->StopCustomStreamService(nbd_service);
+			image_file->close();
+			delete image_file;
+		}
+
+	private:
+		IPipe* local_pipe;
+		IPipe* channel_pipe;
+		ImageReadFile* image_file;
+		IService* nbd_service;
+	};
+}
+
+void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	Server->Log("Starting random access image restore via NBD...", LL_DEBUG);
+
+	if (image_fak == NULL)
+	{
+		Server->Log("fsimageplugin not loaded", LL_ERROR);
+		_i64 imgsize_le = little_endian(static_cast<_i64>(-1));
+		pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000);
+		do_quit = true;
+		return;
+	}
+
+	unsigned short port = 10809;
+	if (!params["nbd_port"].empty())
+	{
+		port = static_cast<unsigned short>(watoi(params["nbd_port"]));
+	}
+
+	IServer::BindTarget bind_target = IServer::BindTarget_Localhost;
+	if (params["nbd_localhost_only"] == "0")
+	{
+		bind_target = IServer::BindTarget_All;
+	}
+
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+
+	std::string token_param;
+	if (params.find("token") != params.end())
+	{
+		token_param = "&token=" + EscapeParamString(params["token"]);
+	}
+
+	_i64 imgsize = -2;
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		SChannel& chan = channel_pipes[i];
+		if (chan.state != SChannel::EChannelState_Idle)
+		{
+			continue;
+		}
+
+		if (chan.restore_version < 2)
+		{
+			Server->Log("Server on channel " + convert((int)i) + " does not support random access image restore", LL_INFO);
+			imgsize = -1;
+			continue;
+		}
+
+		chan.state = SChannel::EChannelState_Used;
+		IPipe* c = chan.pipe;
+
+		if (!sendChannelPacket(chan, "READ IMAGE img_id=" + params["img_id"] + "&time=" + params["time"] + token_param))
+		{
+			removeChannelpipe(c);
+			continue;
+		}
+
+		_i64 r;
+		if (!image_read_full(c, reinterpret_cast<char*>(&r), sizeof(r), 60000))
+		{
+			Server->Log("Error reading image size from channel " + convert((int)i), LL_ERROR);
+			removeChannelpipe(c);
+			imgsize = -1;
+			continue;
+		}
+		r = little_endian(r);
+
+		if (r < 0)
+		{
+			Server->Log("Server refused random access image restore on channel " + convert((int)i), LL_INFO);
+			removeChannelpipe(c);
+			imgsize = -1;
+			continue;
+		}
+
+		Server->Log("Image volume size " + convert(r), LL_DEBUG);
+
+		ImageReadFile* image_file = new ImageReadFile(c, r);
+		IService* nbd_service = image_fak->createNbdService(image_file, true);
+
+		if (!Server->StartCustomStreamService(nbd_service, "NBD image restore", port, -1, bind_target))
+		{
+			Server->Log("Error starting NBD server on port " + convert(port), LL_ERROR);
+			NbdImageThread::stopNbdImage(nbd_service, image_file);
+			removeChannelpipe(c);
+			imgsize = -3;
+			break;
+		}
+
+		Server->Log("Serving image volume via NBD on port " + convert(port), LL_INFO);
+
+		_i64 imgsize_le = little_endian(r);
+		if (!pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000))
+		{
+			Server->Log("Could not write image size to local restore process", LL_ERROR);
+			NbdImageThread::stopNbdImage(nbd_service, image_file);
+			removeChannelpipe(c);
+			do_quit = true;
+			return;
+		}
+
+		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service), "nbd image restore");
+		state = CCSTATE_FILESERV;
+		do_quit = true;
+		want_receive = false;
+		return;
+	}
+
+	if (imgsize == -2)
+	{
+		Server->Log("No channel found for random access image restore", LL_DEBUG);
+	}
+
+	_i64 imgsize_le = little_endian(imgsize);
+	pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000);
+	do_quit = true;
 }
 
 void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params)
