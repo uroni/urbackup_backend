@@ -406,7 +406,7 @@ void ClientMain::operator ()(void)
 		next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
 	}
 
-	ServerStatus::setClientId(clientname, clientid);
+	ServerStatus::setClientId(clientname, clientid, clientsubname);
 
 	bool use_reflink=false;
 #ifndef _WIN32

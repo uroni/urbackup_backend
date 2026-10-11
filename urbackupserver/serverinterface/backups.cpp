@@ -691,8 +691,9 @@ namespace backupaccess
 			}
 		}
 
+		std::string client_subname;
 		bool restore_disabled_on_client = !can_restore
-			&& ServerStatus::isRestoreDisabled(clientname);
+			&& ServerStatus::isRestoreDisabled(clientname, client_subname);
 		std::string client_os;
 		if (restore_disabled_on_client)
 		{
@@ -753,6 +754,10 @@ namespace backupaccess
 				{
 					ret.set("restore_disabled_on_client", true);
 					ret.set("client_os", client_os);
+					if (!client_subname.empty())
+					{
+						ret.set("client_subname", client_subname);
+					}
 				}
 				
 

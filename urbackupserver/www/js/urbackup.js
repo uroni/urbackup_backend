@@ -2153,7 +2153,7 @@ function show_backups2(data)
 			if(data.client_os
 				&& data.client_os!="windows")
 			{
-				obj.restore_cmd=clientRestoreCommand(data.clientname, data.backupid, path);
+				obj.restore_cmd=clientRestoreCommand(data.client_subname, data.backupid, path);
 			}
 		}
 		
@@ -2436,7 +2436,7 @@ function shellQuote(str)
 	return "'"+str.replace(/'/g, "'\\''")+"'";
 }
 
-function clientRestoreCommand(clientname, backupid, path)
+function clientRestoreCommand(client_subname, backupid, path)
 {
 	var cmd="urbackupclientctl restore-start -b "+backupid;
 
@@ -2446,10 +2446,9 @@ function clientRestoreCommand(clientname, backupid, path)
 		cmd+=" -d "+shellQuote(restore_path);
 	}
 
-	var virtual_client=clientname.match(/\[([^\]]+)\]$/);
-	if(virtual_client)
+	if(client_subname)
 	{
-		cmd+=" -v "+shellQuote(virtual_client[1]);
+		cmd+=" -v "+shellQuote(client_subname);
 	}
 
 	return cmd;

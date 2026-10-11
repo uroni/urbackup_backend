@@ -110,6 +110,7 @@ struct SStatus
 	IPipe *comm_pipe;
 	std::string client_version_string;
 	std::string os_version_string;
+	std::string client_subname;
 	std::vector<SProcess> processes;
 	int running_jobs;
 	ERestore restore;
@@ -132,10 +133,10 @@ public:
 	static void setClientVersionString(const std::string &clientname, const std::string& client_version_string);
 	static void setOSVersionString(const std::string &clientname, const std::string& os_version_string);
 	static bool sendToCommPipe(const std::string &clientname, const std::string& msg);
-	static void setClientId(const std::string &clientname, int clientid);
+	static void setClientId(const std::string &clientname, int clientid, const std::string& client_subname);
 	static void setRestore(const std::string &clientname, ERestore restore);
 	static bool canRestore(const std::string &clientname, bool& server_confirms);
-	static bool isRestoreDisabled(const std::string &clientname);
+	static bool isRestoreDisabled(const std::string &clientname, std::string& client_subname);
 	static void updateLastseen(const std::string &clientname);
 	static int64 getLastseen(const std::string &clientname);
 

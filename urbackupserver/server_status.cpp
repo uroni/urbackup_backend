@@ -500,13 +500,14 @@ void ServerStatus::setProcessEtaSetTime( const std::string &clientname, size_t i
 	}
 }
 
-void ServerStatus::setClientId( const std::string &clientname, int clientid)
+void ServerStatus::setClientId( const std::string &clientname, int clientid, const std::string& client_subname)
 {
 	assert(!clientname.empty());
 
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->clientid = clientid;
+	s->client_subname = client_subname;
 }
 
 void ServerStatus::addRunningJob( const std::string &clientname )
@@ -559,7 +560,7 @@ bool ServerStatus::canRestore( const std::string &clientname, bool& server_confi
 	return s->online && s->r_online && s->restore!=ERestore_disabled;
 }
 
-bool ServerStatus::isRestoreDisabled(const std::string &clientname)
+bool ServerStatus::isRestoreDisabled(const std::string &clientname, std::string& client_subname)
 {
 	IScopedLock lock(mutex);
 	std::map<std::string, SStatus>::iterator it=status.find(clientname);
@@ -568,6 +569,7 @@ bool ServerStatus::isRestoreDisabled(const std::string &clientname)
 		return false;
 	}
 	SStatus* s=&it->second;
+	client_subname = s->client_subname;
 	return s->online && s->r_online && s->restore==ERestore_disabled;
 }
 
