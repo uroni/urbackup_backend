@@ -101,6 +101,11 @@ std::string ServerList::getSettingsFn(int facet_id, const std::string& clientsub
 	return getFacetDir(facet_id) + "/settings_" + conv_filename(clientsubname) + ".cfg";
 }
 
+std::string ServerList::getSettingsPendingFn(int facet_id)
+{
+	return getFacetDir(facet_id) + os_file_sep() + "server_settings_pending";
+}
+
 std::string ServerList::getDefaultSettingsFn(const std::string& clientsubname)
 {
 	return getSettingsFn(getDefaultFacetId(), clientsubname);
@@ -338,6 +343,58 @@ void ServerList::removeFacet(int id)
 			break;
 		}
 	}
+}
+
+void ServerList::seedFacet(int src_id, int dst_id)
+{
+	createFacetDir(dst_id);
+
+	std::string src_dir = getFacetDir(src_id);
+	std::string dst_dir = getFacetDir(dst_id);
+	std::vector<SFile> files = getFiles(src_dir);
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		//settings.cfg and the settings of the virtual clients
+		if (files[i].isdir
+			|| !next(files[i].name, 0, "settings")
+			|| findextension(files[i].name) != "cfg")
+		{
+			continue;
+		}
+
+		std::string dst_fn = dst_dir + os_file_sep() + files[i].name;
+		if (!FileExists(dst_fn))
+		{
+			//Without the settings version of the other server
+			std::string data = getFile(src_dir + os_file_sep() + files[i].name);
+			std::string new_data;
+			int numl = linecount(data);
+			for (int j = 0; j <= numl; ++j)
+			{
+				std::string l = trim(getline(j, data));
+				if (!l.empty()
+					&& trim(getuntil("=", l)) != "update_version")
+				{
+					new_data += l + "\n";
+				}
+			}
+			write_file_only_admin(new_data, dst_fn);
+		}
+	}
+
+	write_file_only_admin("", getSettingsPendingFn(dst_id));
+
+	IDatabase* db = getDb();
+	std::string str_src = convert(src_id);
+	std::string str_dst = convert(dst_id);
+	Server->Log("Client facet " + convert(dst_id) + " starts with the settings and backup paths of facet " + convert(src_id)
+		+ " until its server sends its own", LL_INFO);
+	db->Write("INSERT INTO virtual_client_group_offsets (virtual_client, group_offset, facet) "
+		"SELECT virtual_client, group_offset, " + str_dst + " FROM virtual_client_group_offsets a WHERE facet=" + str_src +
+		" AND NOT EXISTS (SELECT 1 FROM virtual_client_group_offsets b WHERE b.facet=" + str_dst + " AND b.virtual_client=a.virtual_client)");
+	db->Write("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked, reset_keep, facet) "
+		"SELECT name, path, server_default, optional, tgroup, 0, reset_keep, " + str_dst + " FROM backupdirs a WHERE symlinked=0 AND facet=" + str_src +
+		" AND NOT EXISTS (SELECT 1 FROM backupdirs b WHERE b.facet=" + str_dst + " AND b.symlinked=0 AND b.tgroup=a.tgroup AND b.path=a.path)");
 }
 
 void ServerList::setFacetIdent(int id, const std::string& ident)
@@ -667,6 +724,15 @@ bool ServerList::setInternetIdent(int id, const std::string& ident)
 			}
 			e = findId(id);
 			other = findId(other_id);
+
+			if (!e->ident.empty()
+				&& !FileExists(getSettingsFn(other_id)))
+			{
+				//Both servers used the settings and paths of this facet so far. A server only
+				//sends its settings when it starts with the client or when they are changed,
+				//so without them its new facet would have no paths to back up until then
+				seedFacet(id, other_id);
+			}
 
 			Server->Log("Internet server of client facet " + convert(id) + " has identity " + ident
 				+ ". Moving the internet settings to its facet " + convert(other_id), LL_INFO);

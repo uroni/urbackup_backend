@@ -2104,6 +2104,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
+
+	if (clientsubname.empty())
+	{
+		//The facet has the settings of its server now
+		Server->deleteFile(ServerList::getSettingsPendingFn(settings_facet_id));
+	}
 }
 
 void ClientConnector::replaceSettings(const std::string &pData, int target_facet_id)
