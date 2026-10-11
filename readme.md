@@ -4,20 +4,22 @@ Please see the website at https://www.urbackup.org for more information, wiki, f
 
 ### Building on Linux
 
-UrBackup is built with CMake. Dependencies are either installed via
-[vcpkg](https://vcpkg.io) (statically linked) or taken from the system.
-
-With vcpkg (set `VCPKG_ROOT` to your vcpkg checkout). Some vcpkg ports need host tools,
+UrBackup is built with CMake. Dependencies are installed via [vcpkg](https://vcpkg.io)
+and statically linked. Set `VCPKG_ROOT` to a vcpkg checkout (a full or `--filter=blob:none`
+clone, not a shallow one, since `vcpkg.json` pins versions). Some vcpkg ports need host tools,
 on Debian/Ubuntu: `cmake ninja-build pkg-config autoconf autoconf-archive automake libtool bison`
-(plus `libwxgtk3.2-dev` for the client GUI, which uses the system wxWidgets):
+(plus `libfuse-dev` for `URBACKUP_WITH_MOUNTVHD` and `libwxgtk3.2-dev` for the client GUI, which uses the system wxWidgets):
 
 ```bash
 cmake --preset server
 cmake --build --preset server
 ```
 
-With system libraries (e.g. on Debian/Ubuntu install `cmake ninja-build pkg-config
-libcrypto++-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev`):
+Alternatively, the `*-system` presets (or `-DURBACKUP_USE_SYSTEM_LIBS=ON`) use the system libraries,
+dynamically linked. vcpkg (`VCPKG_ROOT`) is still needed for the libraries distributions do not package
+(miniz). On Debian/Ubuntu install `cmake ninja-build pkg-config libcrypto++-dev libcurl4-openssl-dev
+libzstd-dev zlib1g-dev liblua5.4-dev libtclap-dev libutfcpp-dev` (plus `libjsoncpp-dev libssl-dev`
+for the client):
 
 ```bash
 cmake --preset server-system
@@ -32,7 +34,7 @@ cd client && git checkout BRANCH
 ```
 
 and use the `client` (with GUI, needs wxWidgets and its `wx-config`) or `client-headless` presets
-(`client-system`/`client-headless-system` for system libraries).
+(`client-system`/`client-headless-system` with system libraries).
 
 Binaries end up in `out/build/<preset>`. Install with
 `cmake --install out/build/<preset> --prefix /usr/local`, create a source tarball
@@ -45,14 +47,14 @@ Build options (pass as `-D<option>=ON/OFF` when configuring):
 | `URBACKUP_BUILD_SERVER` / `URBACKUP_BUILD_CLIENT` | `ON` / `OFF` | Which component to build |
 | `URBACKUP_CLIENT_HEADLESS` | `OFF` | Do not build the client GUI |
 | `URBACKUP_GUI_FROM_VCPKG` | `OFF` | Build wxWidgets via vcpkg instead of using the system `wx-config` |
+| `URBACKUP_USE_SYSTEM_LIBS` | `OFF` | Use system libraries where distributions package them, vcpkg for the rest (set by the `*-system` presets) |
 | `URBACKUP_WITH_MOUNTVHD` | `OFF` | Mount VHD files via fuse (server, needs libfuse-dev) |
 | `URBACKUP_WITH_MAIL` | `ON` | Mail features (server, needs libcurl) |
 | `URBACKUP_WITH_CRYPTO` | `ON` | Internet mode (server, needs Crypto++) |
 | `URBACKUP_CLIENT_UPDATE` | `OFF` | Internal client update functionality |
 | `URBACKUP_WITH_C_ARES` | `OFF` | Use c-ares for DNS resolution (client) |
 | `URBACKUP_WITH_OPENSSL` | `ON` | Use OpenSSL if found (client web socket/https proxy) |
-| `URBACKUP_EMBEDDED_ZSTD` | `OFF` | Use the zstd included in `external/zstd` |
-| `URBACKUP_EMBEDDED_SQLITE3`, `_LUA`, `_LMDB` | `ON` | Use the embedded copies instead of system libraries |
+| `URBACKUP_EMBEDDED_SQLITE3`, `_LMDB` | `ON` | Use the embedded copies instead of system libraries |
 | `URBACKUP_INSTALL_INITD` | `OFF` | Install init.d/default/logrotate files (server) |
 | `URBACKUP_INSTALL_DEBIAN_INITD` / `_REDHAT_INITD` | `OFF` | Install init.d files (client) |
 | `URBACKUP_PACKAGING` | `OFF` | Install for packaging (no user creation/chown on install) |

@@ -18,9 +18,6 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\all.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pluginmgr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -31,9 +28,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\stringtools.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

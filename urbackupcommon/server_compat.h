@@ -5,7 +5,7 @@
 #include <iostream>
 #endif
 
-#include "../utf8/utf8.h"
+#include <utf8cpp/utf8.h>
 
 namespace {
 

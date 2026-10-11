@@ -28,7 +28,7 @@
 #include "../urbackupcommon/escape.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../socket_header.h"
-#include "json/json.h"
+#include <json/json.h>
 #ifdef _WIN32
 #include <Windows.h>
 #else

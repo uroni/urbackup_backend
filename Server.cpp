@@ -49,7 +49,7 @@
 #include "StreamPipe.h"
 #include "ThreadPool.h"
 #include "file.h"
-#include "utf8/utf8.h"
+#include <utf8cpp/utf8.h>
 #include "MemoryPipe.h"
 #include "MemorySettingsReader.h"
 #include "Database.h"
@@ -1775,7 +1775,7 @@ std::string CServer::ConvertToUTF16(const std::string &input)
 	std::string ret;
 	try
 	{
-		std::vector<utf8::uint16_t> tmp;
+		std::vector<std::uint16_t> tmp;
 		utf8::utf8to16(input.begin(), input.end(), back_inserter(tmp) );
 		ret.resize(tmp.size()*2);
 		memcpy(&ret[0], &tmp[0], tmp.size()*2); 
@@ -1790,7 +1790,7 @@ std::string CServer::ConvertToUTF32(const std::string &input)
 	std::string ret;
 	try
 	{
-		std::vector<utf8::uint32_t> tmp;
+		std::vector<std::uint32_t> tmp;
 		utf8::utf8to32(input.begin(), input.end(), back_inserter(tmp) );
 		ret.resize(tmp.size()*4);
 		memcpy(&ret[0], &tmp[0], tmp.size()*4); 
@@ -1810,7 +1810,7 @@ std::string CServer::ConvertFromUTF16(const std::string &input)
 	std::string ret;
     try
     {
-		utf8::utf16to8((utf8::uint16_t*)&input[0], (utf8::uint16_t*)(&input[input.size()-1]+1), back_inserter(ret));
+		utf8::utf16to8((std::uint16_t*)&input[0], (std::uint16_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
     catch(...){}	
     return ret;
@@ -1826,7 +1826,7 @@ std::string CServer::ConvertFromUTF32(const std::string &input)
 	std::string ret;
     try
     {
-		utf8::utf32to8((utf8::uint32_t*)&input[0], (utf8::uint32_t*)(&input[input.size()-1]+1), back_inserter(ret));
+		utf8::utf32to8((std::uint32_t*)&input[0], (std::uint32_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
     catch(...){}	
     return ret;

@@ -23,8 +23,8 @@
 #include <errno.h>
 #include "Connector.h"
 #include "../stringtools.h"
-#include "../tclap/CmdLine.h"
-#include "json/json.h"
+#include <tclap/CmdLine.h>
+#include <json/json.h>
 #include "../urbackupcommon/os_functions.h"
 
 #ifndef _WIN32

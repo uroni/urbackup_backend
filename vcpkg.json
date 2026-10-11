@@ -2,27 +2,46 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
   "name": "urbackup",
   "version": "2.5.0",
+  "builtin-baseline": "e456309491fd875487bf02b8a0dca76c1b1b00cc",
   "dependencies": [
     {
-      "name": "cryptopp",
-      "default-features": true
-    },
-    {
-      "name": "zstd",
-      "default-features": true
-    },
-    {
-      "name": "zlib",
-      "default-features": true
-    },
-    {
-      "name": "openssl",
-      "platform": "!windows"
+      "name": "miniz"
     }
   ],
   "features": {
+    "libs": {
+      "description": "Libraries that are taken from the system with URBACKUP_USE_SYSTEM_LIBS",
+      "dependencies": [
+        {
+          "name": "cryptopp",
+          "default-features": true
+        },
+        {
+          "name": "zstd",
+          "default-features": true
+        },
+        {
+          "name": "zlib",
+          "default-features": true
+        },
+        {
+          "name": "tclap"
+        },
+        {
+          "name": "utfcpp"
+        },
+        {
+          "name": "jsoncpp",
+          "default-features": false
+        },
+        {
+          "name": "openssl",
+          "platform": "!windows"
+        }
+      ]
+    },
     "server": {
-      "description": "Server dependencies (mail/LDAP via libcurl)",
+      "description": "Server dependencies (mail/LDAP via libcurl, Lua)",
       "dependencies": [
         {
           "name": "curl",
@@ -32,6 +51,10 @@
             "ssl",
             "ldap"
           ]
+        },
+        {
+          "name": "lua",
+          "default-features": false
         }
       ]
     },
@@ -52,6 +75,13 @@
     }
   },
   "default-features": [
+    "libs",
     "server"
+  ],
+  "overrides": [
+    {
+      "name": "lua",
+      "version": "5.4.8"
+    }
   ]
 }

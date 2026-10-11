@@ -1,6 +1,6 @@
 #include "partclone.h"
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 #include <stdio.h>
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"

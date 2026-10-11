@@ -339,9 +339,6 @@
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\miniz.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
     <ClCompile Include="ImageMount.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -673,9 +670,6 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\miniz.h">
-      <Filter>miniz</Filter>
     </ClInclude>
     <ClInclude Include="ImageMount.h">
       <Filter>Headerdateien</Filter>

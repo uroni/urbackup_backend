@@ -10,6 +10,7 @@ option(URBACKUP_BUILD_CLIENT "Build the UrBackup client (urbackupclientbackend)"
 
 option(URBACKUP_CLIENT_HEADLESS "Do not compile and install the client GUI components" OFF)
 option(URBACKUP_GUI_FROM_VCPKG "Install wxWidgets for the client GUI via vcpkg instead of using the system wx-config" OFF)
+option(URBACKUP_USE_SYSTEM_LIBS "Use system libraries (e.g. Debian packages) instead of vcpkg" OFF)
 
 # vcpkg settings have to be in place before project() runs the vcpkg toolchain
 if(NOT DEFINED VCPKG_OVERLAY_TRIPLETS)
@@ -19,15 +20,33 @@ if(URBACKUP_BUILD_CLIENT AND NOT URBACKUP_CLIENT_HEADLESS AND URBACKUP_GUI_FROM_
 	AND NOT "gui" IN_LIST VCPKG_MANIFEST_FEATURES)
 	list(APPEND VCPKG_MANIFEST_FEATURES gui)
 endif()
-if(NOT URBACKUP_BUILD_SERVER AND NOT DEFINED VCPKG_MANIFEST_NO_DEFAULT_FEATURES)
-	# The default "server" feature pulls in libcurl, which the client does not need
+if(NOT DEFINED VCPKG_MANIFEST_NO_DEFAULT_FEATURES)
+	# With system libraries vcpkg only installs what distributions do not package (the base dependencies).
+	# The "server" feature (libcurl, Lua) is not needed by the client.
 	set(VCPKG_MANIFEST_NO_DEFAULT_FEATURES ON)
+	if(NOT URBACKUP_USE_SYSTEM_LIBS AND NOT "libs" IN_LIST VCPKG_MANIFEST_FEATURES)
+		list(APPEND VCPKG_MANIFEST_FEATURES libs)
+	endif()
+	if(NOT URBACKUP_USE_SYSTEM_LIBS AND URBACKUP_BUILD_SERVER AND NOT "server" IN_LIST VCPKG_MANIFEST_FEATURES)
+		list(APPEND VCPKG_MANIFEST_FEATURES server)
+	endif()
 endif()
-if(URBACKUP_BUILD_CLIENT AND URBACKUP_WITH_C_ARES AND NOT "c-ares" IN_LIST VCPKG_MANIFEST_FEATURES)
+if(NOT URBACKUP_USE_SYSTEM_LIBS AND URBACKUP_BUILD_CLIENT AND URBACKUP_WITH_C_ARES
+	AND NOT "c-ares" IN_LIST VCPKG_MANIFEST_FEATURES)
 	list(APPEND VCPKG_MANIFEST_FEATURES c-ares)
 endif()
 
 project(urbackup LANGUAGES C CXX)
+
+if(NOT VCPKG_TOOLCHAIN)
+	message(FATAL_ERROR "UrBackup's dependencies are installed via vcpkg. Configure with one of the CMake presets "
+		"(e.g. cmake --preset server, with VCPKG_ROOT set) or with -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake. "
+		"With URBACKUP_USE_SYSTEM_LIBS (the *-system presets) vcpkg only provides the libraries distributions do not package.")
+endif()
+if(URBACKUP_USE_SYSTEM_LIBS)
+	# Distributions do not ship CMake packages for all dependencies (e.g. Crypto++), use pkg-config for those
+	find_package(PkgConfig REQUIRED)
+endif()
 
 if(NOT URBACKUP_BUILD_SERVER AND NOT URBACKUP_BUILD_CLIENT)
 	message(FATAL_ERROR "Enable at least one of URBACKUP_BUILD_SERVER or URBACKUP_BUILD_CLIENT")
@@ -58,14 +77,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Options shared by server and client
 option(URBACKUP_ENABLE_ASSERTIONS "Enable assertions (bug finding)" OFF)
 option(URBACKUP_ENABLE_FORTIFY "Enable GCC/runtime fortification" ON)
-option(URBACKUP_EMBEDDED_ZSTD "Compile and use ZSTD included with the source distribution" OFF)
 option(URBACKUP_EMBEDDED_SQLITE3 "Use the embedded sqlite3. Disabling is not recommended" ON)
 
 # Server options
 option(URBACKUP_WITH_MAIL "Enable server mailing features (requires libcurl)" ON)
 option(URBACKUP_WITH_CRYPTO "Enable cryptography functions (internet mode, requires Crypto++)" ON)
 option(URBACKUP_WITH_MOUNTVHD "Enable mounting of VHD files via fuse" OFF)
-option(URBACKUP_EMBEDDED_LUA "Use the embedded lua. Disabling is not recommended" ON)
 option(URBACKUP_EMBEDDED_LMDB "Use the embedded lmdb. Disabling is not recommended" ON)
 option(URBACKUP_INSTALL_INITD "Install the init.d/default/logrotate files into sysconfdir (server)" OFF)
 option(URBACKUP_PACKAGING "Install for packaging (no user creation/chown during install)" OFF)
@@ -163,128 +180,46 @@ if(NOT APPLE)
 	endif()
 endif()
 
-# Crypto++: vcpkg config package, then pkg-config, then plain library search.
-# Set CRYPTOPP_LIBRARY (and CRYPTOPP_INCLUDE_DIR) to force a specific library, e.g. a static one.
-set(URBACKUP_NEED_CRYPTOPP FALSE)
+# Crypto++
+set(CRYPTOPP_INCLUDE_PREFIX cryptopp)
 if(URBACKUP_BUILD_CLIENT OR (URBACKUP_BUILD_SERVER AND URBACKUP_WITH_CRYPTO))
-	set(URBACKUP_NEED_CRYPTOPP TRUE)
-endif()
-if(URBACKUP_NEED_CRYPTOPP)
-	if(NOT CRYPTOPP_LIBRARY)
-		find_package(cryptopp CONFIG QUIET)
-	endif()
-	if(TARGET cryptopp::cryptopp)
+	if(URBACKUP_USE_SYSTEM_LIBS)
+		# libcrypto++ (Debian), libcryptopp (Fedora)
+		pkg_search_module(CRYPTOPP REQUIRED IMPORTED_TARGET libcrypto++ libcryptopp)
+		set(URBACKUP_CRYPTOPP PkgConfig::CRYPTOPP)
+		cmake_push_check_state(RESET)
+		set(CMAKE_REQUIRED_LIBRARIES ${URBACKUP_CRYPTOPP})
+		set(CMAKE_REQUIRED_QUIET ON)
+		check_cxx_source_compiles("#include <cryptopp/cryptlib.h>\nint main(){return 0;}" URBACKUP_CRYPTOPP_PREFIX_CRYPTOPP)
+		cmake_pop_check_state()
+		if(NOT URBACKUP_CRYPTOPP_PREFIX_CRYPTOPP)
+			set(CRYPTOPP_INCLUDE_PREFIX crypto++)
+		endif()
+	else()
+		find_package(cryptopp CONFIG REQUIRED)
 		set(URBACKUP_CRYPTOPP cryptopp::cryptopp)
-	else()
-		if(NOT CRYPTOPP_LIBRARY AND PKG_CONFIG_FOUND)
-			pkg_check_modules(CRYPTOPP_PC QUIET IMPORTED_TARGET libcrypto++)
-			if(NOT CRYPTOPP_PC_FOUND)
-				pkg_check_modules(CRYPTOPP_PC QUIET IMPORTED_TARGET libcryptopp)
-			endif()
-		endif()
-		if(CRYPTOPP_PC_FOUND)
-			set(URBACKUP_CRYPTOPP PkgConfig::CRYPTOPP_PC)
-		else()
-			find_path(CRYPTOPP_INCLUDE_DIR NAMES cryptopp/cryptlib.h crypto++/cryptlib.h)
-			find_library(CRYPTOPP_LIBRARY NAMES cryptopp crypto++)
-			if(NOT CRYPTOPP_INCLUDE_DIR OR NOT CRYPTOPP_LIBRARY)
-				message(FATAL_ERROR "Crypto++ not found. Install it via vcpkg or the system package manager (cryptopp-devel/libcrypto++-dev), or set CRYPTOPP_LIBRARY and CRYPTOPP_INCLUDE_DIR.")
-			endif()
-			add_library(urbackup_cryptopp INTERFACE)
-			target_include_directories(urbackup_cryptopp INTERFACE ${CRYPTOPP_INCLUDE_DIR})
-			target_link_libraries(urbackup_cryptopp INTERFACE ${CRYPTOPP_LIBRARY})
-			set(URBACKUP_CRYPTOPP urbackup_cryptopp)
-		endif()
 	endif()
-
-	cmake_push_check_state(RESET)
-	set(CMAKE_REQUIRED_LIBRARIES ${URBACKUP_CRYPTOPP} Threads::Threads)
-	set(CMAKE_REQUIRED_QUIET ON)
-	check_cxx_source_compiles("#include <cryptopp/cryptlib.h>\nint main(){return 0;}" URBACKUP_CRYPTOPP_PREFIX_CRYPTOPP)
-	if(URBACKUP_CRYPTOPP_PREFIX_CRYPTOPP)
-		set(CRYPTOPP_INCLUDE_PREFIX cryptopp)
-	else()
-		set(CRYPTOPP_INCLUDE_PREFIX crypto++)
-	endif()
-	check_cxx_source_compiles("#include <${CRYPTOPP_INCLUDE_PREFIX}/misc.h>\nint main(){CryptoPP::AlignedAllocate(5);return 0;}" URBACKUP_CRYPTOPP_ALIGNED_ALLOCATE_MISC)
-	check_cxx_source_compiles("#include <${CRYPTOPP_INCLUDE_PREFIX}/allocate.h>\nint main(){CryptoPP::AlignedAllocate(5);return 0;}" URBACKUP_CRYPTOPP_ALIGNED_ALLOCATE)
-	cmake_pop_check_state()
-	set(URBACKUP_CRYPTOPP_DEFINITIONS "")
-	if(NOT URBACKUP_CRYPTOPP_ALIGNED_ALLOCATE_MISC AND NOT URBACKUP_CRYPTOPP_ALIGNED_ALLOCATE)
-		set(URBACKUP_CRYPTOPP_DEFINITIONS CRYPTOPP_DISABLE_ASM)
-	endif()
-else()
-	set(CRYPTOPP_INCLUDE_PREFIX cryptopp)
 endif()
 
 # ZSTD
-set(URBACKUP_WITH_ZSTD FALSE)
-if(URBACKUP_EMBEDDED_ZSTD)
-	set(ZSTD_DIR ${CMAKE_SOURCE_DIR}/external/zstd)
-	add_library(urbackup_zstd STATIC
-		${ZSTD_DIR}/common/debug.c
-		${ZSTD_DIR}/common/entropy_common.c
-		${ZSTD_DIR}/common/error_private.c
-		${ZSTD_DIR}/common/fse_decompress.c
-		${ZSTD_DIR}/common/pool.c
-		${ZSTD_DIR}/common/threading.c
-		${ZSTD_DIR}/common/xxhash.c
-		${ZSTD_DIR}/common/zstd_common.c
-		${ZSTD_DIR}/compress/fse_compress.c
-		${ZSTD_DIR}/compress/hist.c
-		${ZSTD_DIR}/compress/huf_compress.c
-		${ZSTD_DIR}/compress/zstdmt_compress.c
-		${ZSTD_DIR}/compress/zstd_compress.c
-		${ZSTD_DIR}/compress/zstd_compress_literals.c
-		${ZSTD_DIR}/compress/zstd_compress_sequences.c
-		${ZSTD_DIR}/compress/zstd_double_fast.c
-		${ZSTD_DIR}/compress/zstd_fast.c
-		${ZSTD_DIR}/compress/zstd_lazy.c
-		${ZSTD_DIR}/compress/zstd_ldm.c
-		${ZSTD_DIR}/compress/zstd_opt.c
-		${ZSTD_DIR}/decompress/huf_decompress.c
-		${ZSTD_DIR}/decompress/zstd_ddict.c
-		${ZSTD_DIR}/decompress/zstd_decompress.c
-		${ZSTD_DIR}/decompress/zstd_decompress_block.c
-		${ZSTD_DIR}/deprecated/zbuff_common.c
-		${ZSTD_DIR}/deprecated/zbuff_compress.c
-		${ZSTD_DIR}/deprecated/zbuff_decompress.c
-		${ZSTD_DIR}/dictBuilder/cover.c
-		${ZSTD_DIR}/dictBuilder/divsufsort.c
-		${ZSTD_DIR}/dictBuilder/fastcover.c
-		${ZSTD_DIR}/dictBuilder/zdict.c)
-	target_include_directories(urbackup_zstd PUBLIC ${ZSTD_DIR} ${ZSTD_DIR}/common)
-	target_compile_definitions(urbackup_zstd PUBLIC XXH_NAMESPACE=ZSTD_)
-	set(URBACKUP_ZSTD urbackup_zstd)
-	set(URBACKUP_WITH_ZSTD TRUE)
+if(URBACKUP_USE_SYSTEM_LIBS)
+	pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd>=1.4.0)
+	set(URBACKUP_ZSTD PkgConfig::ZSTD)
 else()
-	find_package(zstd CONFIG QUIET)
+	find_package(zstd CONFIG REQUIRED)
 	if(TARGET zstd::libzstd)
 		set(URBACKUP_ZSTD zstd::libzstd)
-	elseif(TARGET zstd::libzstd_static)
+	else()
 		set(URBACKUP_ZSTD zstd::libzstd_static)
-	elseif(TARGET zstd::libzstd_shared)
-		set(URBACKUP_ZSTD zstd::libzstd_shared)
-	elseif(PKG_CONFIG_FOUND)
-		pkg_check_modules(ZSTD_PC QUIET IMPORTED_TARGET libzstd)
-		if(ZSTD_PC_FOUND)
-			set(URBACKUP_ZSTD PkgConfig::ZSTD_PC)
-		endif()
-	endif()
-	if(URBACKUP_ZSTD)
-		cmake_push_check_state(RESET)
-		set(CMAKE_REQUIRED_LIBRARIES ${URBACKUP_ZSTD})
-		set(CMAKE_REQUIRED_QUIET ON)
-		check_cxx_source_compiles("#include <zstd.h>\nint main(){ZSTD_CCtx_setParameter(0, ZSTD_c_compressionLevel, 1);return 0;}" URBACKUP_ZSTD_RECENT)
-		cmake_pop_check_state()
-		if(URBACKUP_ZSTD_RECENT)
-			set(URBACKUP_WITH_ZSTD TRUE)
-		endif()
-	endif()
-	if(NOT URBACKUP_WITH_ZSTD)
-		message(WARNING "ZSTD compression library not present or not recent enough. Compiling without ZSTD support. Install zstd or use -DURBACKUP_EMBEDDED_ZSTD=ON")
 	endif()
 endif()
+
+# miniz (not packaged by distributions, always from vcpkg)
+find_package(miniz CONFIG REQUIRED)
+
+# Header-only libraries
+find_path(TCLAP_INCLUDE_DIR tclap/CmdLine.h REQUIRED)
+find_path(UTF8CPP_INCLUDE_DIR utf8cpp/utf8.h REQUIRED)
 
 if(NOT URBACKUP_EMBEDDED_SQLITE3)
 	find_package(SQLite3 3.8.7 REQUIRED)
@@ -323,7 +258,7 @@ set(URBACKUP_CORE_SOURCES
 	LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp
 	Condition_lin.cpp MemorySettingsReader.cpp sqlite/shell.c SQLiteFactory.cpp PipeThrottler.cpp
 	mt19937ar.cpp DatabaseCursor.cpp SharedMutex_lin.cpp StaticPluginRegistration.cpp
-	common/data.cpp common/adler32.cpp common/miniz.c)
+	common/data.cpp common/adler32.cpp)
 
 set(URBACKUP_COMMON_SOURCES
 	urbackupcommon/os_functions_lin.cpp urbackupcommon/sha2/sha2.cpp urbackupcommon/fileclient/FileClient.cpp
@@ -359,12 +294,12 @@ set(URBACKUP_CRYPTOPLUGIN_SOURCES
 
 # Settings shared by urbackupsrv and urbackupclientbackend
 function(urbackup_setup_backend target config_dir)
-	target_include_directories(${target} PRIVATE ${config_dir} ${CMAKE_SOURCE_DIR})
+	target_include_directories(${target} PRIVATE ${config_dir} ${CMAKE_SOURCE_DIR} ${TCLAP_INCLUDE_DIR} ${UTF8CPP_INCLUDE_DIR})
 	target_compile_definitions(${target} PRIVATE
 		SQLITE_PREPARE_RETRIES=5
 		$<$<COMPILE_LANGUAGE:CXX>:LINUX>
 		$<$<COMPILE_LANGUAGE:CXX>:STATIC_PLUGIN>)
-	target_link_libraries(${target} PRIVATE ${URBACKUP_SYSTEM_LIBS})
+	target_link_libraries(${target} PRIVATE ${URBACKUP_SYSTEM_LIBS} miniz::miniz)
 	if(URBACKUP_EMBEDDED_SQLITE3)
 		target_sources(${target} PRIVATE sqlite/sqlite3.c)
 		target_compile_definitions(${target} PRIVATE $<$<COMPILE_LANGUAGE:C>:SQLITE_ENABLE_UNLOCK_NOTIFY>)
@@ -372,19 +307,14 @@ function(urbackup_setup_backend target config_dir)
 		target_compile_definitions(${target} PRIVATE USE_SYSTEM_SQLITE)
 		target_link_libraries(${target} PRIVATE SQLite::SQLite3)
 	endif()
-	if(URBACKUP_WITH_ZSTD)
-		target_sources(${target} PRIVATE urbackupcommon/CompressedPipeZstd.cpp)
-		target_compile_definitions(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:ZSTD_STATIC_LINKING_ONLY>)
-		target_link_libraries(${target} PRIVATE ${URBACKUP_ZSTD})
-	else()
-		target_compile_definitions(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:NO_ZSTD_COMPRESSION>)
-	endif()
+	target_sources(${target} PRIVATE urbackupcommon/CompressedPipeZstd.cpp)
+	target_compile_definitions(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:ZSTD_STATIC_LINKING_ONLY>)
+	target_link_libraries(${target} PRIVATE ${URBACKUP_ZSTD})
 	urbackup_fortify(${target})
 endfunction()
 
 function(urbackup_link_cryptopp target)
 	target_link_libraries(${target} PRIVATE ${URBACKUP_CRYPTOPP})
-	target_compile_definitions(${target} PRIVATE ${URBACKUP_CRYPTOPP_DEFINITIONS})
 endfunction()
 
 set(URBACKUP_COMPONENT_NAMES "")
@@ -416,5 +346,3 @@ endif()
 include(CPack)
 
 message(STATUS "UrBackup components: ${URBACKUP_COMPONENT_NAMES}")
-message(STATUS "  ZSTD: ${URBACKUP_WITH_ZSTD} (embedded: ${URBACKUP_EMBEDDED_ZSTD})")
-message(STATUS "  Crypto++ include prefix: ${CRYPTOPP_INCLUDE_PREFIX}")

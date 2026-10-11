@@ -32,7 +32,7 @@
 #include <Windows.h>
 #endif
 
-#include "utf8/utf8.h"
+#include <utf8cpp/utf8.h>
 #include "Interface/Types.h"
 #include "stringtools.h"
 

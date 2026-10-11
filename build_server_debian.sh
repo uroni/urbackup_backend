@@ -17,31 +17,27 @@ DEBVERSION="${VERSION}-1"
 
 sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian/changelog
 
-CMAKE_ARGS="-DURBACKUP_PACKAGING=ON -DURBACKUP_INSTALL_INITD=ON -DURBACKUP_WITH_MOUNTVHD=ON -DURBACKUP_EMBEDDED_ZSTD=ON"
-CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -ggdb -O2"
+CMAKE_ARGS="-DURBACKUP_PACKAGING=ON -DURBACKUP_INSTALL_INITD=ON -DURBACKUP_WITH_MOUNTVHD=ON"
 
-if [ "x$STATIC_CRYPTOPP" != "x" ]
+if [ "x$VCPKG_ROOT" = "x" ]
 then
-	CMAKE_ARGS="$CMAKE_ARGS -DCRYPTOPP_LIBRARY=/usr/local/lib/libcryptopp.a -DCRYPTOPP_INCLUDE_DIR=/usr/local/include"
+	echo "VCPKG_ROOT needs to be set (dependencies are built statically via vcpkg)"
+	exit 1
 fi
-
-if [ "x$EMBEDDED_CRYPTOPP" != "x" ]
-then
-	# Build Crypto++ (and the other dependencies) statically via vcpkg
-	if [ "x$VCPKG_ROOT" = "x" ]
-	then
-		echo "EMBEDDED_CRYPTOPP needs VCPKG_ROOT"
-		exit 1
-	fi
-	CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-	# vcpkg libraries are built with the default libstdc++ ABI
-	CXX_FLAGS="-ggdb -O2"
-fi
+CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+CXX_FLAGS="-ggdb -O2"
 
 # The packaging files are shared with the old autotools build. Switch them to CMake.
 sed -i "s@^\tdh_auto_configure -- .*@\tdh_auto_configure -- $CMAKE_ARGS -DCMAKE_CXX_FLAGS=\"$CXX_FLAGS\"@" debian/rules
 sed -i 's|^\tdh \$@ *$|\tdh $@ --buildsystem=cmake|' debian/rules
 sed -i 's@^\(Build-Depends: .*\)$@\1, cmake (>= 3.18), pkg-config@' debian/control
+
+# dh builds with a single job unless parallel=N is set
+if [ "x$DEB_BUILD_OPTIONS" = "x" ]
+then
+	DEB_BUILD_OPTIONS="parallel=$(nproc)"
+	export DEB_BUILD_OPTIONS
+fi
 
 dh clean
 fakeroot dh binary

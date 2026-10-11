@@ -28,7 +28,7 @@
 #include "LRUMemCache.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 
 const size_t c_cacheBuffersize = 2*1024*1024;
 const size_t c_ncacheItems = 5;

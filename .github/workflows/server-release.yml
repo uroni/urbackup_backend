@@ -47,13 +47,13 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 \
-          libcrypto++-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev libfuse-dev \
-          git curl zip unzip tar autoconf autoconf-archive automake libtool bison
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 libfuse-dev \
+          git curl zip unzip tar autoconf autoconf-archive automake libtool bison \
+          libcrypto++-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev liblua5.4-dev libtclap-dev libutfcpp-dev
 
     - name: Set up vcpkg
       run: |
-        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
         "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
         echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
 
@@ -62,10 +62,15 @@ jobs:
 
     - name: Create source package
       run: |
-        cmake --preset server-system -DURBACKUP_WITH_MOUNTVHD=ON
-        cmake --build --preset server-system --target package_source
+        cmake --preset server -DURBACKUP_WITH_MOUNTVHD=ON
+        cmake --build --preset server --target package_source
         mkdir -p release
-        cp "out/build/server-system/$PACKAGE_NAME.tar.gz" release/
+        cp "out/build/server/$PACKAGE_NAME.tar.gz" release/
+
+    - name: Build with system libraries
+      run: |
+        cmake --preset server-system -DURBACKUP_WITH_MOUNTVHD=ON
+        cmake --build --preset server-system
 
     - name: Build from source package
       run: |
@@ -106,7 +111,7 @@ jobs:
 
     - name: Set up vcpkg
       run: |
-        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
         "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
         echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
 
@@ -114,7 +119,7 @@ jobs:
       run: |
         tar xzf "$PACKAGE_NAME.tar.gz"
         cd "$PACKAGE_NAME"
-        SKIP_PREPARE=1 EMBEDDED_CRYPTOPP=1 ./build_server_debian.sh
+        SKIP_PREPARE=1 ./build_server_debian.sh
         mkdir -p ../release
         mv output/*.deb ../release/
 

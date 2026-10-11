@@ -105,7 +105,7 @@ SStartupStatus startup_status;
 #include "serverinterface/settings.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 
 namespace
 {

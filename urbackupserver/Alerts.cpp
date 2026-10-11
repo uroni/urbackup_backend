@@ -9,7 +9,7 @@
 #include "Mailer.h"
 #include "ClientMain.h"
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 
 extern ILuaInterpreter* lua_interpreter;
 extern IUrlFactory *url_fak;

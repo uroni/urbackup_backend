@@ -26,15 +26,9 @@
 #include "../../common/data.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../../common/miniz.h"
+#include <miniz/miniz.h>
 #ifndef _WIN32
-#define _fdopen fdopen
-#define _close close
-#include <unistd.h>
 #include <errno.h>
-#else
-#include <io.h>
-#include <fcntl.h>
 #endif
 
 namespace
@@ -65,6 +59,19 @@ size_t my_mz_write_func(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, siz
 	fileInfo->last_writetime = Server->getTimeMS();
 
   return b?n:0;
+}
+
+size_t my_mz_read_func(void *pOpaque, mz_uint64 file_ofs, void *pBuf, size_t n)
+{
+	IFsFile* file = reinterpret_cast<IFsFile*>(pOpaque);
+	bool has_error = false;
+	_u32 read = file->Read(static_cast<int64>(file_ofs), reinterpret_cast<char*>(pBuf), static_cast<_u32>(n), &has_error);
+	if (has_error)
+	{
+		// miniz treats 0 as end of file. Returning more than requested makes it fail with MZ_ZIP_FILE_READ_FAILED
+		return n + 1;
+	}
+	return read;
 }
 
 mz_bool my_mz_needs_keepalive(void *pOpaque)
@@ -295,38 +302,15 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 				return false;
 			}
 			int64 fsize = add_file->Size();
-#ifndef _WIN32
-			int fd = add_file->getOsHandle(true);
-#else
-			int fd =_open_osfhandle(reinterpret_cast<intptr_t>(add_file->getOsHandle(true)), _O_RDONLY);
-			if (fd == -1)
-			{
-				Server->Log("Error opening file fd for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
-				return false;
-			}
-#endif
-			add_file.reset();
 
-			FILE* file = _fdopen(fd, "r");
-			if (file != NULL)
-			{
-				rc = mz_zip_writer_add_cfile(&zip_archive, archivename.c_str(), file, fsize, last_modified, NULL, 0,
-					MZ_DEFAULT_LEVEL,
-					extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
-					extra_data_central.getDataPtr(), extra_data_central.getDataSize());
+			rc = mz_zip_writer_add_read_buf_callback(&zip_archive, archivename.c_str(), my_mz_read_func, add_file.get(), fsize, last_modified, NULL, 0,
+				MZ_DEFAULT_LEVEL,
+				extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
+				extra_data_central.getDataPtr(), extra_data_central.getDataSize());
 
-				if (rc == MZ_FALSE)
-				{
-					os_err = os_last_error_str();
-				}
-
-				fclose(file);
-			}
-			else
+			if (rc == MZ_FALSE)
 			{
-				Server->Log("Error opening FILE handle for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
-				_close(fd);
-				return false;
+				os_err = os_last_error_str();
 			}
 		}
 

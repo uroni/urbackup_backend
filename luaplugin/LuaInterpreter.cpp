@@ -1,21 +1,11 @@
 #include "LuaInterpreter.h"
-#ifdef NO_EMBEDDED_LUA
 #include <lua.hpp>
-#else
-#include "src/lua.hpp"
-#endif
 #include "../Interface/Server.h"
 #include "../common/data.h"
 #include <assert.h>
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 #include "../stringtools.h"
-
-#ifndef NO_EMBEDDED_LUA
-extern "C" {
-	LUAMOD_API int luaopen_os_custom(lua_State *L);
-}
-#endif
 
 namespace
 {
@@ -242,15 +232,25 @@ namespace
 		return 0;
 	}
 
+	/* os library restricted to the functions without side effects */
+	int luaopen_os_custom(lua_State *L) {
+		static const char* const allowed[] = { "clock", "date", "difftime", "time", NULL };
+		luaopen_os(L);
+		lua_newtable(L);
+		for (const char* const* name = allowed; *name; ++name) {
+			lua_getfield(L, -2, *name);
+			lua_setfield(L, -2, *name);
+		}
+		return 1;
+	}
+
 	static const luaL_Reg loadedlibs[] = {
 		{ "_G", luaopen_base },
 		{ LUA_TABLIBNAME, luaopen_table },
 		{ LUA_STRLIBNAME, luaopen_string },
 		{ LUA_MATHLIBNAME, luaopen_math },
 		{ LUA_UTF8LIBNAME, luaopen_utf8 },
-#ifndef NO_EMBEDDED_LUA
 		{ LUA_OSLIBNAME, luaopen_os_custom},
-#endif
 		{ "time", luaopen_time },
 		{ NULL, NULL }
 	};

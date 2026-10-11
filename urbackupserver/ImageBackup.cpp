@@ -38,7 +38,7 @@
 #include "../Interface/Pipe.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 #include "server_ping.h"
 #include "snapshot_helper.h"
 #include "server.h"

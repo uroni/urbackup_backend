@@ -224,12 +224,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\common\data.cpp" />
-    <ClCompile Include="..\common\miniz.c" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="LuaInterpreter.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
-    <ClCompile Include="src\all.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ILuaInterpreter.h" />

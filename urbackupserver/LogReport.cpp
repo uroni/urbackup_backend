@@ -11,7 +11,7 @@
 #include "ClientMain.h"
 #include "dao/ServerBackupDao.h"
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 
 extern ILuaInterpreter* lua_interpreter;
 extern IUrlFactory *url_fak;

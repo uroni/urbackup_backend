@@ -70,7 +70,7 @@ git checkout dev
 ```
 
 Install [vcpkg](https://vcpkg.io) and point `VCPKG_ROOT` at it. It provides the
-remaining dependencies (Crypto++, OpenSSL, zstd, zlib):
+remaining dependencies (Crypto++, OpenSSL, zstd, zlib, TCLAP, UTF8-CPP, JsonCpp):
 ```bash
 git clone https://github.com/microsoft/vcpkg ~/vcpkg
 ~/vcpkg/bootstrap-vcpkg.sh

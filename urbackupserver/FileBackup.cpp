@@ -35,7 +35,7 @@
 #include <stack>
 #include <limits.h>
 #include "FileMetadataDownloadThread.h"
-#include "../utf8/utf8.h"
+#include <utf8cpp/utf8.h>
 #include "server.h"
 #include "../urbackupcommon/TreeHash.h"
 #include "../common/data.h"
@@ -945,7 +945,7 @@ std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& 
 	}
 
 #ifdef _WIN32
-	std::vector<utf8::uint16_t> tmp;
+	std::vector<std::uint16_t> tmp;
 	bool unicode_err = false;
 	try
 	{

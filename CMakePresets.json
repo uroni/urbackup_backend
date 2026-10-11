@@ -47,13 +47,17 @@
     {
       "name": "server-system",
       "displayName": "Server (system libraries)",
-      "inherits": "base"
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "URBACKUP_USE_SYSTEM_LIBS": "ON"
+      }
     },
     {
       "name": "client-system",
       "displayName": "Client with GUI (system libraries)",
-      "inherits": "base",
+      "inherits": "vcpkg",
       "cacheVariables": {
+        "URBACKUP_USE_SYSTEM_LIBS": "ON",
         "URBACKUP_BUILD_SERVER": "OFF",
         "URBACKUP_BUILD_CLIENT": "ON"
       }

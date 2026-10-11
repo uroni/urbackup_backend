@@ -21,6 +21,10 @@ env:
 jobs:
   source:
     runs-on: ubuntu-24.04
+    environment: build
+    env:
+      # Without the secret (e.g. act), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       package_name: ${{ steps.version.outputs.package_name }}
@@ -54,32 +58,44 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 \
-          libcrypto++-dev libssl-dev libzstd-dev zlib1g-dev libwxgtk3.2-dev
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 libwxgtk3.2-dev \
+          git curl zip unzip tar autoconf autoconf-archive automake libtool bison \
+          libcrypto++-dev libssl-dev libzstd-dev zlib1g-dev libtclap-dev libutfcpp-dev libjsoncpp-dev
+
+    - name: Set up vcpkg
+      run: |
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
 
     - name: Replace versions
       run: URBACKUP_CLIENT_VERSION="$VERSION" python3 build/replace_versions.py
 
     - name: Create source package
       run: |
-        cmake --preset client-headless-system
-        cmake --build --preset client-headless-system --target package_source
+        cmake --preset client-headless
+        cmake --build --preset client-headless --target package_source
         mkdir -p release
-        cp "out/build/client-headless-system/$PACKAGE_NAME.tar.gz" release/
+        cp "out/build/client-headless/$PACKAGE_NAME.tar.gz" release/
+
+    - name: Build with system libraries
+      run: |
+        cmake --preset client-system
+        cmake --build --preset client-system
 
     - name: Build from source package
       run: |
         mkdir -p out/distcheck
         tar xzf "release/$PACKAGE_NAME.tar.gz" -C out/distcheck
         cd "out/distcheck/$PACKAGE_NAME"
-        cmake --preset client-system
-        cmake --build --preset client-system
-        cmake --install out/build/client-system
+        cmake --preset client
+        cmake --build --preset client
+        cmake --install out/build/client
 
     - name: Run client
       run: |
         # Paths are compiled in, so run it from the preset's install directory
-        PREFIX="$PWD/out/distcheck/$PACKAGE_NAME/out/install/client-system"
+        PREFIX="$PWD/out/distcheck/$PACKAGE_NAME/out/install/client"
         test -x "$PREFIX/bin/urbackupclientgui"
         # --version exits with 1
         "$PREFIX/bin/urbackupclientctl" --version | grep "UrBackup Client Controller v$VERSION"
@@ -142,7 +158,7 @@ jobs:
 
     - name: Set up vcpkg
       run: |
-        git clone --depth 1 https://github.com/microsoft/vcpkg tools/vcpkg
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg tools/vcpkg
         tools/vcpkg/bootstrap-vcpkg.sh -disableMetrics
         echo "VCPKG_ROOT=$PWD/tools/vcpkg" >> "$GITHUB_ENV"
         echo "VCPKG_DEFAULT_BINARY_CACHE=$PWD/tools/vcpkg-cache" >> "$GITHUB_ENV"
@@ -228,7 +244,7 @@ jobs:
 
     - name: Set up vcpkg
       run: |
-        git clone --depth 1 https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
         & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
         & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" integrate install
 
@@ -236,6 +252,10 @@ jobs:
 
     - name: Build client
       working-directory: ${{ env.PACKAGE_NAME }}
+      env:
+        # msbuild /m only builds projects in parallel. The projects do not enable
+        # MultiProcessorCompilation, so let cl.exe compile their files in parallel.
+        CL: /MP
       run: |
         msbuild UrBackupBackend.sln /m /p:Configuration=Release /p:Platform=x64
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -295,7 +315,7 @@ jobs:
 
     - name: Set up vcpkg
       run: |
-        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
         "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
         echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
 
@@ -307,7 +327,7 @@ jobs:
         cd "$PACKAGE_NAME"
         cmake -S . -B out/osx -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_UPDATE=ON \
-          -DURBACKUP_EMBEDDED_ZSTD=ON -DURBACKUP_GUI_FROM_VCPKG=ON \
+          -DURBACKUP_GUI_FROM_VCPKG=ON \
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
           -DVCPKG_TARGET_TRIPLET=arm64-osx-urbackup -DCMAKE_OSX_ARCHITECTURES=arm64 \
           -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/urbackup"

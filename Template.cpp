@@ -20,7 +20,7 @@
 #include "Template.h"
 #include "stringtools.h"
 #include "Table.h"
-#include "utf8/utf8.h"
+#include <utf8cpp/utf8.h>
 #include "Server.h"
 
 #include "Interface/Database.h"

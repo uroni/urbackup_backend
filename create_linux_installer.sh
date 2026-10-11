@@ -46,7 +46,7 @@ chmod +x install-data/*_filesystem_snapshot
 
 cp -R install-data/* install-data-dbg/
 
-COMMON_CMAKE_ARGS="-G Ninja -DCMAKE_BUILD_TYPE=None -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_HEADLESS=ON -DURBACKUP_CLIENT_UPDATE=ON -DURBACKUP_EMBEDDED_ZSTD=ON"
+COMMON_CMAKE_ARGS="-G Ninja -DCMAKE_BUILD_TYPE=None -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_HEADLESS=ON -DURBACKUP_CLIENT_UPDATE=ON"
 
 # Fully static musl builds with Zig (zig cc/c++), dependencies from vcpkg. Needs zig and llvm-strip.
 build_zig() {
@@ -120,7 +120,7 @@ do
 		build_zig $arch
 	fi
 
-	cmake --build "$BUILD_DIR" -j4
+	cmake --build "$BUILD_DIR" -j"$(nproc)"
 
 	rm -R install-data/$arch || true
 	mkdir -p install-data/$arch

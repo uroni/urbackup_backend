@@ -80,7 +80,7 @@ extern IServer* Server;
 #include "../urbackupcommon/WalCheckpointThread.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.h"
+#include <miniz/miniz.h>
 
 namespace
 {

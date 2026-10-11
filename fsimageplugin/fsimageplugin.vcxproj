@@ -287,7 +287,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\common\data.cpp" />
-    <ClCompile Include="..\common\miniz.c" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.cpp" />
     <ClCompile Include="ClientBitmap.cpp" />
@@ -310,7 +309,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\data.h" />
-    <ClInclude Include="..\common\miniz.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="ClientBitmap.h" />
     <ClInclude Include="CompressedFile.h" />

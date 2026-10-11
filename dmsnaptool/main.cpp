@@ -17,7 +17,7 @@
 **************************************************************************/
 
 #include <sys/mman.h>
-#include "../tclap/CmdLine.h"
+#include <tclap/CmdLine.h>
 #include <libdevmapper.h>
 #include "../stringtools.h"
 #include <sys/time.h>
