@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: server
+          - preset: server-system
+            packages: libfuse-dev libcrypto++-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev liblua5.4-dev libtclap-dev libutfcpp-dev
+          - preset: client-headless
+          - preset: client-system
+            packages: libwxgtk3.2-dev libcrypto++-dev libssl-dev libzstd-dev zlib1g-dev libtclap-dev libutfcpp-dev libjsoncpp-dev
+            frontend: true
+    environment: build
+    env:
+      FRONTEND_REF: 2.5.x
+      # Without the secret (e.g. act or pull requests from forks), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check out client frontend
+      if: matrix.frontend
+      run: git clone --depth 1 --branch "$FRONTEND_REF" https://github.com/uroni/urbackup_frontend_wx client
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config g++ python3 \
+          git curl zip unzip tar autoconf autoconf-archive automake libtool bison ${{ matrix.packages }}
+
+    - name: Set up vcpkg
+      run: |
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    - name: Configure
+      run: cmake --preset ${{ matrix.preset }}
+
+    - name: Build
+      run: cmake --build --preset ${{ matrix.preset }}
+
+    - name: Install
+      run: DESTDIR="$PWD/destdir" cmake --install out/build/${{ matrix.preset }}
+
+  # Builds the server and the client (UrBackupBackend.sln contains both)
+  windows:
+    runs-on: windows-2022
+    environment: build
+    env:
+      FRONTEND_REF: 2.5.x
+      # Without the secret (e.g. act or pull requests from forks), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check out client frontend
+      run: git clone --depth 1 --branch "$env:FRONTEND_REF" https://github.com/uroni/urbackup_frontend_wx client
+
+    - name: Set up vcpkg
+      run: |
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+        & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+        & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" integrate install
+
+    - uses: microsoft/setup-msbuild@v2
+
+    - name: Build
+      env:
+        # msbuild /m only builds projects in parallel. The projects do not enable
+        # MultiProcessorCompilation, so let cl.exe compile their files in parallel.
+        CL: /MP
+      run: |
+        msbuild UrBackupBackend.sln /m /p:Configuration=Release /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        msbuild CompiledServer.vcxproj /m "/p:Configuration=Release Service" /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        msbuild client\UrBackupClientGUI.sln /m /p:Configuration=Release /p:Platform=x64
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  # Only the client is supported on macOS
+  macos:
+    runs-on: macos-14
+    environment: build
+    env:
+      FRONTEND_REF: 2.5.x
+      # Without the secret (e.g. act or pull requests from forks), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check out client frontend
+      run: git clone --depth 1 --branch "$FRONTEND_REF" https://github.com/uroni/urbackup_frontend_wx client
+
+    - name: Install build dependencies
+      run: brew install ninja pkg-config autoconf autoconf-archive automake libtool
+
+    - name: Set up vcpkg
+      run: |
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    # Same options as create_osx_installer.sh, but wxWidgets from vcpkg
+    - name: Configure
+      run: |
+        cmake -S . -B out/osx -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DURBACKUP_BUILD_SERVER=OFF -DURBACKUP_BUILD_CLIENT=ON -DURBACKUP_CLIENT_UPDATE=ON \
+          -DURBACKUP_GUI_FROM_VCPKG=ON \
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+          -DVCPKG_TARGET_TRIPLET=arm64-osx-urbackup -DCMAKE_OSX_ARCHITECTURES=arm64
+
+    - name: Build
+      run: cmake --build out/osx
+
+    - name: Install
+      run: DESTDIR="$PWD/destdir" cmake --install out/osx
