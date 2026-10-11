@@ -53,6 +53,7 @@ using namespace nt;
 #	include <sys/wait.h>
 #	include <grp.h>
 #	include <errno.h>
+#	include <dirent.h>
 #endif
 
 #ifdef __ANDROID__
@@ -106,6 +107,35 @@ void invalid_parameter_handler(const wchar_t* expression,
 	RaiseException(0, 0, 0, NULL);
 }
 
+#endif
+
+#ifndef _WIN32
+void close_all_fds()
+{
+#ifdef __linux__
+	// getdtablesize() can be very large (e.g. 2^30 in Docker containers), only close the open ones
+	DIR* dir = opendir("/proc/self/fd");
+	if (dir != NULL)
+	{
+		std::vector<int> fds;
+		struct dirent* ent;
+		while ((ent = readdir(dir)) != NULL)
+		{
+			if (ent->d_name[0] != '.')
+			{
+				fds.push_back(atoi(ent->d_name));
+			}
+		}
+		closedir(dir);
+		for (size_t i = 0; i < fds.size(); ++i)
+		{
+			close(fds[i]);
+		}
+		return;
+	}
+#endif
+	for (int i = getdtablesize(); i >= 0; --i) close(i);
+}
 #endif
 
 #ifdef AS_SERVICE
@@ -400,7 +430,7 @@ int main_fkt(int argc, char *argv[])
 			setsid();
 			if(fork()==0)
 			{
-				for (int i=getdtablesize();i>=0;--i) close(i);
+				close_all_fds();
 				int i=open("/dev/null",O_RDWR);
 				dup(i);
 				dup(i);
