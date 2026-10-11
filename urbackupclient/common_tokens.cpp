@@ -23,6 +23,8 @@
 #ifndef _WIN32
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pwd.h>
+#include <algorithm>
 #endif
 
 namespace tokens
@@ -39,6 +41,19 @@ bool write_tokens()
 
 	bool has_new_token=false;
 	std::vector<std::string> users = get_local_users();
+
+#ifndef _WIN32
+	//root is outside of UID_MIN-UID_MAX. Its token would otherwise only be created
+	//lazily when metadata of a file only root can access is transferred (which does
+	//not happen e.g. in incremental backups without changes to such files),
+	//so restores as root would fail
+	struct passwd* root_pw = getpwuid(0);
+	if (root_pw != NULL
+		&& std::find(users.begin(), users.end(), std::string(root_pw->pw_name)) == users.end())
+	{
+		users.push_back(root_pw->pw_name);
+	}
+#endif
 
 	os_create_dir(tokens_path);
 
