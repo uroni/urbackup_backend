@@ -118,6 +118,15 @@ void CServiceWorker::work()
 
 		if (wtime < 0)
 		{
+#ifdef _WIN32
+			//The events are in the order of the clients. A socket that is used on after this
+			//(closeSocket()==false) must not stay in the non-blocking mode of WSAEventSelect
+			WSAEventSelect(clients[i].second->getSocket(), NULL, 0);
+			u_long nonblocking = 0;
+			ioctlsocket(clients[i].second->getSocket(), FIONBIO, &nonblocking);
+			WSACloseEvent(client_events[i]);
+			client_events.erase(client_events.begin() + i);
+#endif
 			if (clients[i].first->closeSocket())
 			{
 				delete clients[i].second;
