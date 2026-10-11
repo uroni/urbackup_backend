@@ -64,7 +64,6 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SP
 		IScopedLock lock(mutex);
 		loadServerIdentities();
 		identities.push_back(SIdentity(pIdentity, pPublicKey));
-		filesrv->setIdentityServer("#I"+pIdentity+"#", pIdentity);
 		if(pPublicKey.empty())
 		{
 			filesrv->addIdentity("#I"+pIdentity+"#", false);
@@ -112,14 +111,14 @@ void ServerIdentityMgr::removeServerIdentity(const std::string& server_ident)
 	}
 	identities.erase(it);
 	filesrv->removeIdentity("#I" + server_ident + "#");
-	filesrv->setIdentityServer("#I" + server_ident + "#", std::string());
+	filesrv->removeDir("urbackup", "#I" + server_ident + "#");
 
 	for(size_t i=0;i<session_identities.size();)
 	{
 		if(session_identities[i].server_ident==server_ident)
 		{
 			filesrv->removeIdentity("#I" + session_identities[i].ident + "#");
-			filesrv->setIdentityServer("#I" + session_identities[i].ident + "#", std::string());
+			filesrv->removeDir("urbackup", "#I" + session_identities[i].ident + "#");
 			session_identities.erase(session_identities.begin()+i);
 		}
 		else
@@ -197,14 +196,36 @@ void ServerIdentityMgr::setServerTokenIdentity(const std::string& server_token, 
 	server_token_identities[server_token] = server_ident;
 }
 
-std::string ServerIdentityMgr::getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident)
+void ServerIdentityMgr::shareFacetDir(const std::string& pIdentity, const std::string& server_ident)
 {
-	std::string base = settings_fn;
-	if(base.size()>4 && base.substr(base.size()-4)==".cfg")
+	if(filesrv==NULL)
 	{
-		base.erase(base.size()-4);
+		return;
 	}
-	return base + "_srv_" + conv_filename(server_ident) + ".cfg";
+
+	//Each server sees the settings and file lists of its own facet as "urbackup"
+	int facet_id = ServerList::getFacetId(server_ident);
+	if(facet_id==0)
+	{
+		filesrv->removeDir("urbackup", "#I"+pIdentity+"#");
+		return;
+	}
+
+	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data_"+convert(facet_id),
+		"#I"+pIdentity+"#", false);
+}
+
+void ServerIdentityMgr::updateFacetShares()
+{
+	IScopedLock lock(mutex);
+	for(size_t i=0;i<identities.size();++i)
+	{
+		shareFacetDir(identities[i].ident, identities[i].ident);
+	}
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		shareFacetDir(session_identities[i].ident, session_identities[i].server_ident);
+	}
 }
 
 std::string ServerIdentityMgr::getServerTokenIdentity(const std::string& server_token)
@@ -261,7 +282,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 				filesrv->addIdentity("#I"+l+"#", false);
 			}
 			identities.push_back(SIdentity(l, pubkeys));
-			filesrv->setIdentityServer("#I"+l+"#", l);
+			shareFacetDir(l, l);
 			std::vector<SIdentity>::iterator it=std::find(old_identities.begin(), old_identities.end(), SIdentity(l));
 			if(it!=old_identities.end())
 			{
@@ -311,7 +332,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
-			filesrv->setIdentityServer("#I" + l + "#", params["server_ident"]);
+			shareFacetDir(l, params["server_ident"]);
 
 			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), SSessionIdentity(session_ident));
 			if(it!=old_session_identities.end())
@@ -473,7 +494,7 @@ void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const 
 	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key, server_ident);
 	session_identities.push_back(session_ident);
 	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
-	filesrv->setIdentityServer("#I" + pIdentity + "#", server_ident);
+	shareFacetDir(pIdentity, server_ident);
 	writeSessionIdentities();
 }
 

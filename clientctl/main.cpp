@@ -1506,6 +1506,17 @@ int action_add_backupdir(std::vector<std::string> args)
 	if (name_arg.getValue().empty())
 	{
 		new_dir.name = getDefaultDirname(backup_dirs, new_dir.path);
+
+		//A path that is already backed up to other servers has the same name for all servers
+		for (size_t i = 0; i < backup_dirs.size(); ++i)
+		{
+			if (backup_dirs[i].path == new_dir.path
+				&& backup_dirs[i].virtual_client == virtual_client_arg.getValue())
+			{
+				new_dir.name = backup_dirs[i].name;
+				break;
+			}
+		}
 	}
 	else
 	{
@@ -1680,8 +1691,12 @@ int action_list_backupdirs(std::vector<std::string> args)
 		for (int i = 0; i < count; ++i)
 		{
 			std::string p = convert(i) + ".";
+			//Same name as in list-servers. A server that did not connect yet is listed by its id
 			std::string name = values[p + "name"];
-			server_names[values[p + "ident"]] = name.empty() ? values[p + "ident"] : name;
+			if (name.empty()) name = values[p + "endpoint"];
+			if (name.empty()) name = values[p + "internet_server"];
+			std::string key = values[p + "ident"].empty() ? values[p + "id"] : values[p + "ident"];
+			server_names[key] = name.empty() ? key : name;
 		}
 	}
 

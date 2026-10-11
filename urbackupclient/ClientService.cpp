@@ -304,6 +304,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	file_version=1;
 	internet_conn=false;
 	internet_server_id=-1;
+	facet_id=0;
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
 	endpoint_name = pEndpointName;
@@ -1067,6 +1068,18 @@ void ClientConnector::ReceivePacketsInt()
 			{
 				InternetClient::setInternetServerIdentity(internet_server_id, server_ident);
 			}
+
+			if(!server_ident.empty()
+				&& ServerList::getFacetId(server_ident)==0)
+			{
+				ServerList::addTrustedIdent(server_ident);
+			}
+		}
+
+		if(ident_ok || is_channel)
+		{
+			//Settings, backup paths and file lists of this server are in its facet
+			facet_id = ServerList::getFacetIdOrDefault(server_ident);
 		}
 
 		if( (ident_ok || is_channel) && !internet_conn )
@@ -1480,36 +1493,39 @@ std::string ClientConnector::removeIllegalCharsFromBackupName(std::string in)
 	return ret;
 }
 
-bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset, int facet_id)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
-	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs");
+	const std::string str_facet = convert(facet_id);
+	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs WHERE facet="+str_facet);
 	bool all_virtual_clients = false;
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND facet="+str_facet);
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND facet="+str_facet);
 		}
 	}
 	else
 	{
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+				+ " AND facet="+str_facet);
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+				+ " AND facet="+str_facet);
 		}
 	}
-	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? , ?, ?, ?)");
+	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, facet) VALUES (?, ? , ?, ?, ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1519,15 +1535,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		q->Reset();
 	}
 	*/
-	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
-	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?");
+	//A name can only be used once per facet. The same path has the same name in all facets
+	//(the names are also the names of the shares of the directories)
+	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=? AND (facet="+str_facet+" OR path!=?)");
+	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet="+str_facet);
 	std::string dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
 	std::vector<std::string> all_backupdirs;
-	//The tray UI sends the servers of each directory (dir_N_servers, empty: all servers)
-	bool with_servers = !server_default && args["with_servers"] == "1";
-	ServerList::BackupDirServers client_dir_servers;
 	do
 	{
 		dir=args["dir_"+convert(i)];
@@ -1636,6 +1651,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			}
 
 			q2->Bind(name);
+			q2->Bind(dir);
 			std::string orig_name = name;
 			if(q2->Read().empty()==false
 				|| name=="urbackup")
@@ -1644,6 +1660,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				{
 					q2->Reset();
 					q2->Bind(name+"_"+convert(k));
+					q2->Bind(dir);
 					if(q2->Read().empty()==true)
 					{
 						name+="_"+convert(k);
@@ -1690,29 +1707,12 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				}
 			}
 			
-			if (with_servers)
-			{
-				std::vector<std::string> servers;
-				Tokenize(args["dir_" + convert(i) + "_servers"], servers, ",");
-				for (size_t j = 0; j < servers.size();)
-				{
-					servers[j] = trim(servers[j]);
-					if (servers[j].empty())
-						servers.erase(servers.begin() + j);
-					else
-						++j;
-				}
-				if (!servers.empty())
-				{
-					client_dir_servers[ServerList::backupDirKey(group, dir)] = servers;
-				}
-			}
-
 			q_insert_dir->Bind(name);
 			q_insert_dir->Bind(dir);
 			q_insert_dir->Bind(curr_server_default);
 			q_insert_dir->Bind(flags);
 			q_insert_dir->Bind(group);
+			q_insert_dir->Bind(facet_id);
 			q_insert_dir->Write();
 			q_insert_dir->Reset();
 		}
@@ -1720,14 +1720,6 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}
 	while(!dir.empty());
 	db->EndTransaction();
-
-	if (with_servers)
-	{
-		if (all_virtual_clients)
-			ServerList::setClientBackupDirServers(0, INT_MAX, client_dir_servers);
-		else
-			ServerList::setClientBackupDirServers(group_offset, group_offset + c_group_max, client_dir_servers);
-	}
 
 #ifdef _WIN32
 	for(size_t i=0;i<new_watchdirs.size();++i)
@@ -1748,13 +1740,23 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	IQuery* q_other_has_path = NULL;
 	if (!all_virtual_clients)
 	{
-		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+			+ " AND facet="+str_facet);
 	}
+
+	IQuery* q_other_facet_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND facet!="+str_facet);
 
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
 		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
+			q_other_facet_has_path->Bind(backupdirs[i]["path"]);
+			db_results res_other_facet = q_other_facet_has_path->Read();
+			q_other_facet_has_path->Reset();
+
+			if (!res_other_facet.empty())
+				continue;
+
 			if (!all_virtual_clients)
 			{
 				q_other_has_path->Bind(backupdirs[i]["path"]);
@@ -1860,11 +1862,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}	
 #endif
 
-	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end()))
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end(), facet_id))
 	{
 		IScopedLock lock(backup_mutex);
 		for (size_t o = 0; o<channel_pipes.size(); ++o)
 		{
+			if (ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerIdentity(channel_pipes[o].server_identity)) != facet_id)
+				continue;
+
 			CTCPStack tmpstack(channel_pipes[o].internet_connection);
 			tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
 		}
@@ -1969,157 +1974,9 @@ std::vector<ClientConnector::SDefaultDir> ClientConnector::parseDefaultDirs(ISet
 	return ret;
 }
 
-bool ClientConnector::updateBackupDirsFromServers(const std::string& settings_fn, int group_offset)
+std::string ClientConnector::settingsVersionKey(int facet_id, const std::string& clientsubname)
 {
-	//Each server's default directories are in its settings file. The backup directories are the
-	//union of them; ServerList::getBackupDirServers() says which server configured which directory
-	std::string base = ExtractFileName(settings_fn, "/");
-	if (base.size() > 4 && base.substr(base.size() - 4) == ".cfg")
-	{
-		base.erase(base.size() - 4);
-	}
-	std::string prefix = base + "_srv_";
-
-	std::string primary_ident = trim(getline(0, getFile("urbackup/data/" + base + "_primary_server.txt")));
-
-	std::vector<SFile> files = getFiles(os_file_prefix("urbackup/data"));
-	std::vector<std::string> idents;
-	for (size_t i = 0; i < files.size(); ++i)
-	{
-		const std::string& name = files[i].name;
-		if (files[i].isdir
-			|| !next(name, 0, prefix)
-			|| name.size() <= prefix.size() + 4
-			|| name.substr(name.size() - 4) != ".cfg")
-		{
-			continue;
-		}
-		std::string ident = name.substr(prefix.size(), name.size() - prefix.size() - 4);
-		if (!ServerIdentityMgr::checkServerIdentity(ident))
-		{
-			continue;
-		}
-		if (ident == primary_ident)
-		{
-			idents.insert(idents.begin(), ident);
-		}
-		else
-		{
-			idents.push_back(ident);
-		}
-	}
-
-	std::vector<SDefaultDir> all_dirs;
-	std::set<std::string> all_keys;
-	std::set<std::string> client_keys;
-	ServerList::BackupDirServers dir_servers;
-	std::vector<std::string> idents_without_dirs;
-	for (size_t i = 0; i < idents.size(); ++i)
-	{
-		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(
-			"urbackup/data/" + prefix + idents[i] + ".cfg"));
-		if (settings.get() == NULL)
-		{
-			continue;
-		}
-
-		std::vector<SDefaultDir> dirs = parseDefaultDirs(settings.get());
-		if (dirs.empty())
-		{
-			idents_without_dirs.push_back(idents[i]);
-			continue;
-		}
-
-		for (size_t j = 0; j < dirs.size(); ++j)
-		{
-			std::string key = ServerList::backupDirKey(group_offset + dirs[j].group, dirs[j].path);
-			if (dirs[j].client)
-			{
-				client_keys.insert(key);
-			}
-			else
-			{
-				std::vector<std::string>& servers = dir_servers[key];
-				if (std::find(servers.begin(), servers.end(), idents[i]) == servers.end())
-				{
-					servers.push_back(idents[i]);
-				}
-			}
-
-			if (all_keys.insert(key).second)
-			{
-				all_dirs.push_back(dirs[j]);
-			}
-		}
-	}
-
-	//Paths added on this client belong to the client, not to the settings of a server:
-	//keep them (the servers they are backed up to are in ServerList::getClientBackupDirServers())
-	{
-		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-		db_results res_client = db->Read("SELECT path, name, optional, tgroup FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN "
-			+ convert(group_offset) + " AND " + convert(group_offset + c_group_max));
-		std::vector<std::pair<int, std::string> > flag_mapping = getFlagStrMapping();
-		for (size_t i = 0; i < res_client.size(); ++i)
-		{
-			int tgroup = watoi(res_client[i]["tgroup"]);
-			std::string key = ServerList::backupDirKey(tgroup, res_client[i]["path"]);
-			if (!all_keys.insert(key).second)
-			{
-				continue;
-			}
-
-			int optional = watoi(res_client[i]["optional"]);
-			std::string str_flags;
-			for (size_t j = 0; j < flag_mapping.size(); ++j)
-			{
-				if (optional & flag_mapping[j].first)
-				{
-					if (!str_flags.empty()) str_flags += ",";
-					str_flags += flag_mapping[j].second;
-				}
-			}
-
-			SDefaultDir dir;
-			dir.path = res_client[i]["path"];
-			dir.name = res_client[i]["name"] + (str_flags.empty() ? std::string() : "/" + str_flags);
-			dir.group = tgroup - group_offset;
-			dir.client = true;
-			all_dirs.push_back(dir);
-			client_keys.insert(key);
-		}
-	}
-
-	if (all_dirs.empty())
-	{
-		return false;
-	}
-
-	//Directories added on the client are backed up by all servers, servers without
-	//default directories back up all directories
-	for (std::set<std::string>::iterator it = client_keys.begin(); it != client_keys.end(); ++it)
-	{
-		dir_servers.erase(*it);
-	}
-	for (ServerList::BackupDirServers::iterator it = dir_servers.begin(); it != dir_servers.end(); ++it)
-	{
-		it->second.insert(it->second.end(), idents_without_dirs.begin(), idents_without_dirs.end());
-	}
-
-	str_map args;
-	for (size_t i = 0; i < all_dirs.size(); ++i)
-	{
-		std::string key = ServerList::backupDirKey(group_offset + all_dirs[i].group, all_dirs[i].path);
-		args["dir_" + convert(i)] = all_dirs[i].path;
-		if (!all_dirs[i].name.empty())
-			args["dir_" + convert(i) + "_name"] = all_dirs[i].name;
-		args["dir_" + convert(i) + "_group"] = convert(all_dirs[i].group);
-		args["dir_" + convert(i) + "_server_default"] = convert(client_keys.count(key) > 0 ? 0 : 1);
-	}
-
-	saveBackupDirs(args, true, group_offset);
-	ServerList::setBackupDirServers(group_offset, group_offset + c_group_max, dir_servers);
-	return true;
+	return convert(facet_id) + "|" + clientsubname;
 }
 
 void ClientConnector::updateSettings(const std::string &pData)
@@ -2127,26 +1984,32 @@ void ClientConnector::updateSettings(const std::string &pData)
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
-	std::string settings_fn="urbackup/data/settings.cfg";
+	//Each server has its own settings and backup paths in its facet
+	const int settings_facet_id = facet_id != 0 ? facet_id : ServerList::getDefaultFacetId();
+	const std::string str_facet = convert(settings_facet_id);
+
+	std::string settings_fn=ServerList::getSettingsFn(settings_facet_id);
 	std::string clientsubname;
 	std::string str_group_offset;
 	int group_offset=0;
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty()
 		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
 	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_fn = ServerList::getSettingsFn(settings_facet_id, clientsubname);
 		group_offset = atoi(str_group_offset.c_str());
 
-		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset)
+			+ " AND facet=" + str_facet);
 		if (!res_old_client.empty()
 			&& res_old_client[0]["virtual_client"]!=clientsubname)
 		{
-			db->Write("DELETE FROM backupdirs WHERE tgroup=" + convert(group_offset));
-			db->Write("DELETE FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+			db->Write("DELETE FROM backupdirs WHERE tgroup=" + convert(group_offset) + " AND facet=" + str_facet);
+			db->Write("DELETE FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset) + " AND facet=" + str_facet);
 		}
-		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset) VALUES (?,?)", false);
+		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset, facet) VALUES (?,?,?)", false);
 		q->Bind(clientsubname);
 		q->Bind(group_offset);
+		q->Bind(settings_facet_id);
 		q->Write();
 		q->Reset();
 		db->destroyQuery(q);
@@ -2156,48 +2019,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 	if (settings_update_version != 0)
 	{
 		IScopedLock lock(backup_mutex);
-		settings_update_versions[clientsubname] = (std::max)(settings_update_version, settings_update_versions[clientsubname]);
-	}
-
-	if (!server_ident.empty())
-	{
-		//Keep each server's settings separately, so backups for that server use them
-		std::string srv_settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, server_ident);
-		if (getFile(srv_settings_fn) != pData)
-		{
-			std::auto_ptr<IFile> newf(Server->openFile(srv_settings_fn + ".new", MODE_WRITE));
-			if (newf.get() != NULL
-				&& newf->Write(pData) == pData.size()
-				&& newf->Sync())
-			{
-				newf.reset();
-				os_rename_file(srv_settings_fn + ".new", srv_settings_fn);
-			}
-		}
-
-		updateBackupDirsFromServers(settings_fn, group_offset);
-
-		//Internet settings of servers other than the default internet server live in the server list
-		SServerEntry entry;
-		if (ServerList::getEntryByIdent(server_ident, entry)
-			&& entry.id != 0)
-		{
-			if (ServerList::updateFromServerSettings(server_ident, new_settings.get()))
-			{
-				InternetClient::updateSettings();
-			}
-		}
-	}
-
-	if (!isPrimaryServer(settings_fn))
-	{
-		Server->Log("Settings of server " + server_ident + " (not the primary server) are only used for its own backups", LL_DEBUG);
-		if (internet_conn
-			&& internet_server_id == 0)
-		{
-			updateInternetSettings(settings_fn, new_settings.get());
-		}
-		return;
+		std::string version_key = settingsVersionKey(settings_facet_id, clientsubname);
+		settings_update_versions[version_key] = (std::max)(settings_update_version, settings_update_versions[version_key]);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -2210,8 +2033,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 	critical_settings.push_back("internet_authkey");
 	critical_settings.push_back("computername");
 
-	bool mod = false;
-
 	std::string settings_add="\n";
 	for (size_t i = 0; i < critical_settings.size(); ++i)
 	{
@@ -2221,26 +2042,24 @@ void ClientConnector::updateSettings(const std::string &pData)
 			&& !new_settings->getValue(critical_settings[i], &new_v) )
 		{
 			settings_add += critical_settings[i] + "=" + curr_v + "\n";
-			mod = true;
 		}
 		else if (curr_v != new_v && new_v.empty()
 			&& critical_settings[i] != "internet_server_proxy")
 		{
 			settings_add += critical_settings[i] + "=" + curr_v + "\n";
-			mod = true;
 		}
 	}
 
-	std::string internet_server_ident = ServerList::getDefaultInternetIdent();
+	std::string curr_internet_server;
 	std::string new_internet_server;
-	if (!server_ident.empty()
-		&& !internet_conn
-		&& ( (!internet_server_ident.empty() && internet_server_ident != server_ident)
-			|| !new_settings->getValue("internet_server", &new_internet_server)
-			|| new_internet_server.empty() ) )
+	if (!internet_conn
+		&& curr_settings->getValue("internet_server", &curr_internet_server)
+		&& !curr_internet_server.empty()
+		&& (!new_settings->getValue("internet_server", &new_internet_server)
+			|| new_internet_server.empty()))
 	{
-		//The internet connection belongs to another server, or this server has no internet
-		//server address (its internet_authkey etc. are of no use). Keep the current settings
+		//The server does not know the internet server configured on this client. Its internet
+		//settings (e.g. its internet_authkey) are not the ones of that server: keep the current ones
 		std::vector<std::string> curr_keys = curr_settings->getKeys();
 		for (size_t i = 0; i < curr_keys.size(); ++i)
 		{
@@ -2249,34 +2068,27 @@ void ClientConnector::updateSettings(const std::string &pData)
 				&& curr_settings->getValue(curr_keys[i], &curr_v))
 			{
 				settings_add += curr_keys[i] + "=" + curr_v + "\n";
-				mod = true;
 			}
 		}
 	}
 
-
-	if (server_ident.empty())
+	std::vector<SDefaultDir> default_dirs = parseDefaultDirs(new_settings.get());
+	if (!default_dirs.empty())
 	{
-		//Server not identified: its default directories replace the current ones
-		std::vector<SDefaultDir> default_dirs = parseDefaultDirs(new_settings.get());
-		if (!default_dirs.empty())
+		str_map args;
+		for (size_t i = 0; i < default_dirs.size(); ++i)
 		{
-			str_map args;
-			for (size_t i = 0; i < default_dirs.size(); ++i)
-			{
-				args["dir_" + convert(i)] = default_dirs[i].path;
-				if (!default_dirs[i].name.empty())
-					args["dir_" + convert(i) + "_name"] = default_dirs[i].name;
-				args["dir_" + convert(i) + "_group"] = convert(default_dirs[i].group);
-				args["dir_" + convert(i) + "_server_default"] = convert(default_dirs[i].client ? 0 : 1);
-			}
-
-			saveBackupDirs(args, true, group_offset);
+			args["dir_" + convert(i)] = default_dirs[i].path;
+			if (!default_dirs[i].name.empty())
+				args["dir_" + convert(i) + "_name"] = default_dirs[i].name;
+			args["dir_" + convert(i) + "_group"] = convert(default_dirs[i].group);
+			args["dir_" + convert(i) + "_server_default"] = convert(default_dirs[i].client ? 0 : 1);
 		}
+
+		saveBackupDirs(args, true, group_offset, settings_facet_id);
 	}
 
-	if(mod
-		|| getFile(settings_fn)!= pData)
+	if(getFile(settings_fn)!= pData + settings_add)
 	{
 		std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
@@ -2294,135 +2106,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	}
 }
 
-bool ClientConnector::isPrimaryServer(const std::string& settings_fn)
-{
-	if (server_ident.empty())
-	{
-		return true;
-	}
-
-	std::string primary_fn = settings_fn;
-	if (primary_fn.size() > 4 && primary_fn.substr(primary_fn.size() - 4) == ".cfg")
-	{
-		primary_fn.erase(primary_fn.size() - 4);
-	}
-	primary_fn += "_primary_server.txt";
-
-	IScopedLock lock(ident_mutex);
-
-	std::string data = getFile(primary_fn);
-	std::string primary_ident = trim(getline(0, data));
-	bool primary_internet = trim(getline(1, data)) == "internet";
-
-	if (primary_ident == server_ident
-		&& (internet_conn || !primary_internet))
-	{
-		return true;
-	}
-
-	if (!primary_ident.empty()
-		&& primary_ident != server_ident
-		&& !(primary_internet && !internet_conn)
-		&& ServerIdentityMgr::checkServerIdentity(primary_ident))
-	{
-		return false;
-	}
-
-	//No primary server yet, a LAN server takes over from a server only seen via internet,
-	//or the previous primary server is no longer a trusted server
-	if (primary_ident != server_ident)
-	{
-		Server->Log("Server " + server_ident + " is now the primary server (settings in " + settings_fn + ")"
-			+ (primary_ident.empty() ? "" : ". Previous primary server: " + primary_ident), LL_INFO);
-	}
-
-	writestring(server_ident + "\n" + (internet_conn ? "internet" : "lan") + "\n", primary_fn);
-	return true;
-}
-
-void ClientConnector::updateInternetSettings(const std::string& settings_fn, ISettingsReader* new_settings)
-{
-	//The internet connection settings belong to the server connected via internet,
-	//even if it is not the primary server
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
-
-	std::vector<std::string> new_keys = new_settings->getKeys();
-	std::vector<std::string> changed_keys;
-	std::string settings_add;
-	for (size_t i = 0; i < new_keys.size(); ++i)
-	{
-		const std::string& key = new_keys[i];
-		if (!next(key, 0, "internet_"))
-		{
-			continue;
-		}
-
-		std::string new_v;
-		if (!new_settings->getValue(key, &new_v))
-		{
-			continue;
-		}
-
-		if (new_v.empty()
-			&& (key == "internet_mode_enabled"
-				|| key == "internet_server"
-				|| key == "internet_server_port"
-				|| key == "internet_authkey"))
-		{
-			continue;
-		}
-
-		std::string curr_v;
-		if (curr_settings.get() != NULL
-			&& curr_settings->getValue(key, &curr_v)
-			&& curr_v == new_v)
-		{
-			continue;
-		}
-
-		changed_keys.push_back(key);
-		settings_add += key + "=" + new_v + "\n";
-	}
-
-	if (changed_keys.empty())
-	{
-		return;
-	}
-
-	std::sort(changed_keys.begin(), changed_keys.end());
-
-	std::string curr_data = getFile(settings_fn);
-	std::string new_data;
-	int numl = linecount(curr_data);
-	for (int i = 0; i <= numl; ++i)
-	{
-		std::string l = getline(i, curr_data);
-		std::string key = trim(getuntil("=", l));
-		if (!key.empty()
-			&& std::binary_search(changed_keys.begin(), changed_keys.end(), key))
-		{
-			continue;
-		}
-		l = trim(l);
-		if (!l.empty())
-		{
-			new_data += l + "\n";
-		}
-	}
-	new_data += settings_add;
-
-	std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
-	if (newf.get() != NULL
-		&& newf->Write(new_data) == new_data.size()
-		&& newf->Sync())
-	{
-		newf.reset();
-		os_rename_file(settings_fn + ".new", settings_fn);
-		InternetClient::updateSettings();
-	}
-}
-
-void ClientConnector::replaceSettings(const std::string &pData, const std::string& target_server)
+void ClientConnector::replaceSettings(const std::string &pData, int target_facet_id)
 {
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
@@ -2437,23 +2121,9 @@ void ClientConnector::replaceSettings(const std::string &pData, const std::strin
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
-	std::string settings_fn="urbackup/data/settings.cfg";
 	std::string clientsubname;
-	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
-	}
-
-	if (!target_server.empty())
-	{
-		std::string primary_fn = settings_fn.substr(0, settings_fn.size() - 4) + "_primary_server.txt";
-		if (trim(getline(0, getFile(primary_fn))) == target_server)
-		{
-			//The primary server's settings are also in settings.cfg
-			replaceSettings(pData);
-		}
-		settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, target_server);
-	}
+	new_settings->getValue("clientsubname", &clientsubname);
+	std::string settings_fn=ServerList::getSettingsFn(target_facet_id, clientsubname);
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
 	
@@ -2502,8 +2172,9 @@ void ClientConnector::replaceSettings(const std::string &pData, const std::strin
 		int64 local_settings_version;
 		{
 			IScopedLock lock(backup_mutex);
-			settings_update_versions[clientsubname] = (std::max)(settings_update_versions[clientsubname], (std::max)(old_settings->getValue("update_version", int64()), new_settings->getValue("update_version", int64()))) + 1;
-			local_settings_version = settings_update_versions[clientsubname];
+			std::string version_key = settingsVersionKey(target_facet_id, clientsubname);
+			settings_update_versions[version_key] = (std::max)(settings_update_versions[version_key], (std::max)(old_settings->getValue("update_version", int64()), new_settings->getValue("update_version", int64()))) + 1;
+			local_settings_version = settings_update_versions[version_key];
 		}
 
 		std::string new_data;
@@ -3998,11 +3669,7 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 {
 	if(internet_conn)
 	{
-		std::string settings_fn = "urbackup/data/settings.cfg";
-		if(!clientsubname.empty())
-		{
-			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
-		}
+		std::string settings_fn = ServerList::getSettingsFn(facet_id != 0 ? facet_id : ServerList::getDefaultFacetId(), clientsubname);
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
 		if (curr_settings == NULL)
@@ -4132,14 +3799,13 @@ int ClientConnector::getCapabilities(IDatabase* db)
 std::string ClientConnector::getServerUrl(const std::string& server_ident)
 {
 	std::string server_url;
-	std::string settings_fn = ServerIdentityMgr::getServerSettingsFn("urbackup/data/settings.cfg", server_ident);
-	if (!FileExists(settings_fn)
-		&& trim(getline(0, getFile("urbackup/data/settings_primary_server.txt"))) == server_ident)
+	int server_facet_id = ServerList::getFacetId(server_ident);
+	if (server_facet_id == 0)
 	{
-		settings_fn = "urbackup/data/settings.cfg";
+		return server_url;
 	}
 
-	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(settings_fn));
+	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(ServerList::getSettingsFn(server_facet_id)));
 	if (settings.get() != NULL)
 	{
 		if (!settings->getValue("server_url", &server_url))
@@ -4511,7 +4177,7 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 std::string ClientConnector::getClientName(const std::string& virtual_client)
 {
 	std::auto_ptr<ISettingsReader> settings(
-		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+		Server->createFileSettingsReader(ServerList::getDefaultSettingsFn()));
 
 	std::string computername;
 	if (settings.get() == NULL
@@ -4672,15 +4338,10 @@ int ClientConnector::parseVersion(const std::string & version, std::vector<std::
 	}
 }
 
-int64 ClientConnector::readSettingsUpdateVersion(const std::string& virtual_client)
+int64 ClientConnector::readSettingsUpdateVersion(int settings_facet_id, const std::string& virtual_client)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-	if (!virtual_client.empty())
-	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(virtual_client) + ".cfg";
-	}
-
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(
+		ServerList::getSettingsFn(settings_facet_id, virtual_client)));
 
 	if (!curr_settings.get())
 		return 0;
@@ -4756,13 +4417,13 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 	}
 }
 
-bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use)
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id)
 {
 	db_results res_virtual_clients;
 	if(all_virtual_clients)
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE facet="+convert(facet_id));
 	else
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset)+" AND facet="+convert(facet_id));
 
 	if (all_virtual_clients || group_offset == 0)
 	{
@@ -4779,7 +4440,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 		int curr_group_offset = watoi(res_virtual_client["group_offset"]);
 
-		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
+		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset)+" AND facet="+convert(facet_id));
 
 		int default_dirs_use = c_use_value_client;
 		bool has_client_path = false;
@@ -4833,10 +4494,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			default_dirs += path +"|"+EscapePathParamString(res_path["name"]) + str_flags;
 		}
 
-		std::string settings_fn = "urbackup/data/settings.cfg";
+		std::string settings_fn = ServerList::getSettingsFn(facet_id);
 		if (curr_group_offset !=0)
 		{
-			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
+			settings_fn = ServerList::getSettingsFn(facet_id, res_virtual_client["virtual_client"]);
 		}
 
 		if (res_paths.empty() &&

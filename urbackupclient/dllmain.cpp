@@ -461,7 +461,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #define INITIAL_SETTINGS_PREFIX "urbackup/"
 #endif
 
-	if( !FileExists("urbackup/data/settings.cfg") && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
+	//Settings of the first server (the one the installer was created by)
+	const std::string default_settings_fn = ServerList::getDefaultSettingsFn();
+
+	if( !FileExists(default_settings_fn) && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
 	{
 		std::auto_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
 		std::string access_keys;
@@ -517,25 +520,33 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 		}
 
-		copy_file(INITIAL_SETTINGS_PREFIX "initial_settings.cfg", "urbackup/data/settings.cfg");
+		copy_file(INITIAL_SETTINGS_PREFIX "initial_settings.cfg", default_settings_fn);
 		Server->deleteFile(INITIAL_SETTINGS_PREFIX "initial_settings.cfg");
 	}
 
 #ifndef _DEBUG
-	if(FileExists("urbackup/data/settings.cfg"))
 	{
-		change_file_permissions_admin_only("urbackup/data/settings.cfg");
-	}
+		std::vector<int> facet_ids = ServerList::getFacetIds();
+		for(size_t i=0;i<facet_ids.size();++i)
+		{
+			std::string facet_dir = ServerList::getFacetDir(facet_ids[i]);
+			if(FileExists(facet_dir+"/settings.cfg"))
+			{
+				change_file_permissions_admin_only(facet_dir+"/settings.cfg");
+			}
 
-	if(FileExists("urbackup/data/filelist.ub"))
-	{
-		change_file_permissions_admin_only("urbackup/data/filelist.ub");
+			if(FileExists(facet_dir+"/filelist.ub"))
+			{
+				change_file_permissions_admin_only(facet_dir+"/filelist.ub");
+			}
+
+			change_file_permissions_admin_only(facet_dir);
+		}
 	}
 
 #ifdef _WIN32
 	change_file_permissions_admin_only("urbackup");
 #endif
-	change_file_permissions_admin_only("urbackup/data");
 
 	if(FileExists("debug.log"))
 	{
@@ -808,7 +819,37 @@ void update_client26_27(IDatabase* db)
 
 void update_client27_28(IDatabase* db)
 {
-	ClientConnector::updateDefaultDirsSetting(db, true, 0, false);
+	//updateDefaultDirsSetting is done in update_client28_29
+}
+
+void update_client28_29(IDatabase* db)
+{
+	//Client facets: settings, backup paths and file lists per server
+	db->Write("CREATE TABLE client_facets (id INTEGER PRIMARY KEY, name TEXT, server_identity TEXT)");
+	db->Write("ALTER TABLE backupdirs ADD facet INTEGER REFERENCES client_facets(id)");
+	db->Write("ALTER TABLE fileaccess_tokens ADD facet INTEGER REFERENCES client_facets(id)");
+	db->Write("INSERT INTO client_facets (name, server_identity) VALUES ('default', '')");
+	int64 fid = db->getLastInsertID();
+	db->Write("UPDATE backupdirs SET facet=" + convert(fid));
+	db->Write("UPDATE fileaccess_tokens SET facet=" + convert(fid));
+
+	//Each server has its own virtual clients (and group offsets of them)
+	db->Write("ALTER TABLE virtual_client_group_offsets RENAME TO virtual_client_group_offsets_old");
+	db->Write("CREATE TABLE virtual_client_group_offsets (id INTEGER PRIMARY KEY, virtual_client TEXT, group_offset INTEGER, "
+		"facet INTEGER REFERENCES client_facets(id), UNIQUE(virtual_client, facet))");
+	db->Write("INSERT INTO virtual_client_group_offsets (id, virtual_client, group_offset, facet) "
+		"SELECT id, virtual_client, group_offset, " + convert(fid) + " FROM virtual_client_group_offsets_old");
+	db->Write("DROP TABLE virtual_client_group_offsets_old");
+
+	//The current settings and file lists are the ones of the first facet
+	std::string facet_dir = "urbackup/data_" + convert(fid);
+	if (os_directory_exists("urbackup/data")
+		&& !os_directory_exists(facet_dir))
+	{
+		os_rename_file("urbackup/data", facet_dir);
+	}
+
+	ClientConnector::updateDefaultDirsSetting(db, true, 0, false, static_cast<int>(fid));
 }
 
 bool upgrade_client(void)
@@ -822,7 +863,7 @@ bool upgrade_client(void)
 		return false;
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 28;
+	int max_v = 29;
 
 	if (ver > max_v)
 	{
@@ -952,6 +993,10 @@ bool upgrade_client(void)
 				break;
 			case 27:
 				update_client27_28(db);
+				++ver;
+				break;
+			case 28:
+				update_client28_29(db);
 				++ver;
 				break;
 			default:

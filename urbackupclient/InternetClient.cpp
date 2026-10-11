@@ -163,12 +163,21 @@ void InternetClient::setInternetServerIdentity(int server_id, const std::string&
 		return;
 	}
 
+	SServerEntry entry;
+	if(!ServerList::getEntryById(server_id, entry)
+		|| entry.ident!=server_ident)
+	{
+		//The internet settings were moved to the facet of the server
+		updateSettings();
+		return;
+	}
+
 	IScopedLock lock(mutex);
 	InternetClient* instance = findInstance(server_id);
 	if(instance!=NULL
 		&& instance->server_ident!=server_ident)
 	{
-		Server->Log("Internet server of server list entry "+convert(server_id)+" has identity " + server_ident, LL_INFO);
+		Server->Log("Internet server of client facet "+convert(server_id)+" has identity " + server_ident, LL_INFO);
 		instance->server_ident = server_ident;
 	}
 }
@@ -229,14 +238,8 @@ void InternetClient::rmConnection(void)
 
 void InternetClient::updateSettings(void)
 {
-	{
-		//settings.cfg changed: entry 0 of the server list mirrors its internet settings
-		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
-		if(settings.get()!=NULL)
-		{
-			ServerList::updateFromLocalSettings(settings.get());
-		}
-	}
+	//The internet settings of each server are in the settings.cfg of its facet
+	ServerList::settingsChanged();
 
 	IScopedLock lock(mutex);
 	for(size_t i=0;i<instances.size();++i)
@@ -289,7 +292,7 @@ void InternetClient::reconcileInstances()
 
 		if(!keep)
 		{
-			Server->Log("Stopping internet connection of server list entry "+convert(instance->server_id), LL_INFO);
+			Server->Log("Stopping internet connection of client facet "+convert(instance->server_id), LL_INFO);
 			instance->retired=true;
 		}
 	}
@@ -303,12 +306,15 @@ void InternetClient::reconcileInstances()
 		}
 
 		InternetClient* instance = new InternetClient(entries[j].id);
-		instance->server_ident = entries[j].ident;
+		if(entries[j].internetServerConfirmed())
+		{
+			instance->server_ident = entries[j].ident;
+		}
 		//Internet only servers do not need to wait for a LAN connection
 		instance->wait_for_local = entries[j].local;
 		instances.push_back(instance);
 
-		Server->Log("Starting internet connection of server list entry "+convert(entries[j].id)
+		Server->Log("Starting internet connection of client facet "+convert(entries[j].id)
 			+ (entries[j].name.empty() ? "" : (" (" + entries[j].name + ")")), LL_INFO);
 
 		if(use_pool)
@@ -447,29 +453,31 @@ void InternetClient::doUpdateSettings(void)
 	if(!ServerList::getEntryById(server_id, entry)
 		|| !entry.internet)
 	{
-		Server->Log("Internet connection of server list entry "+convert(server_id)+" not enabled", LL_DEBUG);
+		Server->Log("Internet connection of client facet "+convert(server_id)+" not enabled", LL_DEBUG);
 		return;
 	}
 
-	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
-	if(settings==NULL)
-	{
-		Server->Log("Cannot open settings in InternetClient", LL_WARNING);
-		return;
-	}
+	//A LAN connection of the server of the facet only makes the internet connection unnecessary
+	//if that server is the internet server. That is known once it connected via internet
+	server_ident = entry.internetServerConfirmed() ? entry.ident : std::string();
+
+	const int default_facet_id = ServerList::getDefaultFacetId();
 
 	std::string computername;
-	if( (!settings->getValue("computername", &computername)
-		 && !settings->getValue("computername_def", &computername) )
-		   || computername.empty())
-	{
-		computername=(IndexThread::getFileSrv()->getServerName());
-	}
-
 	server_settings.internet_connect_always=false;
-	if(server_id==0)
 	{
-		//The setting from the server applies to the default internet server
+		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(ServerList::getSettingsFn(server_id)));
+		if(settings.get()==NULL)
+		{
+			Server->Log("Cannot open settings in InternetClient", LL_WARNING);
+			return;
+		}
+
+		if(!settings->getValue("computername", &computername))
+		{
+			settings->getValue("computername_def", &computername);
+		}
+
 		std::string tmp;
 		if( (settings->getValue("internet_connect_always", &tmp) || settings->getValue("internet_connect_always_def", &tmp) )
 			&& tmp=="true")
@@ -477,18 +485,34 @@ void InternetClient::doUpdateSettings(void)
 			server_settings.internet_connect_always=true;
 		}
 	}
-	Server->destroy(settings);
+
+	if(computername.empty()
+		&& server_id!=default_facet_id)
+	{
+		//No name of its own for this server: the one of the default facet
+		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(ServerList::getDefaultSettingsFn()));
+		if(settings.get()!=NULL
+			&& !settings->getValue("computername", &computername))
+		{
+			settings->getValue("computername_def", &computername);
+		}
+	}
+
+	if(computername.empty())
+	{
+		computername=(IndexThread::getFileSrv()->getServerName());
+	}
 
 	if(entry.internet_authkey.empty())
 	{
-		if(Server->getServerParameter("internet_only_mode")=="true" && server_id==0)
+		if(Server->getServerParameter("internet_only_mode")=="true" && server_id==default_facet_id)
 		{
 			Server->Log("Internet authentication key not configured. Please configure \"internet_authkey\".", LL_ERROR);
 			exit(2);
 		}
 		else
 		{
-			Server->Log("Internet authentication key of server list entry "+convert(server_id)+" not configured", LL_INFO);
+			Server->Log("Internet authentication key of client facet "+convert(server_id)+" not configured", LL_INFO);
 		}
 		return;
 	}
@@ -547,14 +571,14 @@ void InternetClient::doUpdateSettings(void)
 	}
 	else
 	{
-		if(Server->getServerParameter("internet_only_mode")=="true" && server_id==0)
+		if(Server->getServerParameter("internet_only_mode")=="true" && server_id==default_facet_id)
 		{
 			Server->Log("Internet server not configured. Please configure \"internet_server\".", LL_ERROR);
 			exit(2);
 		}
 		else
 		{
-			Server->Log("Internet server of server list entry "+convert(server_id)+" not configured", LL_INFO);
+			Server->Log("Internet server of client facet "+convert(server_id)+" not configured", LL_INFO);
 			connected = false;
 		}
 	}
@@ -682,8 +706,9 @@ void InternetClient::clearOnetimeTokens()
 
 std::string InternetClient::getStatusMsg()
 {
+	const int default_facet_id = ServerList::getDefaultFacetId();
 	IScopedLock lock(mutex);
-	InternetClient* instance = findInstance(0);
+	InternetClient* instance = findInstance(default_facet_id);
 	if(instance==NULL)
 	{
 		for(size_t i=0;i<instances.size();++i)
@@ -1063,7 +1088,7 @@ void InternetClientThread::operator()(void)
 		if(parent->isRetired())
 		{
 			delete[] buf;
-			Server->Log("Closing internet connection (server list entry "+convert(parent->getServerId())+" disabled)", LL_INFO);
+			Server->Log("Closing internet connection (client facet "+convert(parent->getServerId())+" disabled)", LL_INFO);
 			goto cleanup;
 		}
 
@@ -1171,7 +1196,7 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 				&& !ClientConnector::isBackupRunning())
 			{
 				//Do not interrupt a running backup or restore. Close afterwards
-				Server->Log("Closing internet command connection (server list entry "+convert(parent->getServerId())+" disabled)", LL_INFO);
+				Server->Log("Closing internet command connection (client facet "+convert(parent->getServerId())+" disabled)", LL_INFO);
 				printInfo(pipe);
 				return;
 			}
@@ -1246,7 +1271,7 @@ void InternetClientThread::checkHttp(IPipe* pipe, const std::string& hostname)
 	if (next(data, 0, "HTTP/1.1"))
 	{
 		Server->Log("Probably mistakenly configured to connect to a HTTP port", LL_ERROR);
-		InternetClient::setStatusMsg("error:Probably mistakenly configured to connect to a HTTP port");
+		parent->setStatusMsg("error:Probably mistakenly configured to connect to a HTTP port");
 	}
 }
 

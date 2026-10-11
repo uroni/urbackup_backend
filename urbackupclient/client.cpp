@@ -676,7 +676,7 @@ IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
 	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
 	index_backup_dirs_optional(false), sc_refs_cleanup(false),
-	dataless_warning_logged(false)
+	dataless_warning_logged(false), index_facet_id(0)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -1606,9 +1606,12 @@ void IndexThread::operator()(void)
 
 IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
+	//The backup is for the server of starttoken. Its facet has the settings, backup paths
+	//and file lists
+	index_facet_id = getStartTokenFacet();
 	readPatterns(index_group, index_clientsubname,
 		index_exclude_dirs, index_include_dirs,
-		index_backup_dirs_optional, ServerIdentityMgr::getServerTokenIdentity(starttoken));
+		index_backup_dirs_optional, index_facet_id);
 	file_id = 0;
 
 	//Watches all directories (of all servers)...
@@ -1722,10 +1725,10 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	index_error=false;
 	dataless_warning_logged=false;
 
-	std::string filelist_dest_fn = "urbackup/data/filelist.ub";
+	std::string filelist_dest_fn = ServerList::getFacetDir(index_facet_id) + "/filelist.ub";
 	if (index_group != c_group_default)
 	{
-		filelist_dest_fn = "urbackup/data/filelist_" + convert(index_group) + ".ub";
+		filelist_dest_fn = ServerList::getFacetDir(index_facet_id) + "/filelist_" + convert(index_group) + ".ub";
 	}
 
 	IFile* last_filelist_f = NULL;
@@ -1743,7 +1746,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		last_filelist->f = last_filelist_f;
 	}
 
-	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
+	std::string filelist_fn = ServerList::getFacetDir(index_facet_id) + "/filelist_new_" + convert(index_group) + ".ub";
 
 	std::streamoff outfile_size = 0;
 	{
@@ -2293,7 +2296,7 @@ void IndexThread::updateBackupDirsWithAll()
 	std::vector<std::string> volumes_norm;
 	if (!volumes.empty())
 	{
-		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?)", false);
+		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, facet) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?, ?)", false);
 		IQuery *q_name = db->Prepare("SELECT id FROM backupdirs WHERE name=?", false);
 
 		for (size_t i = 0; i < volumes.size(); ++i)
@@ -2392,6 +2395,7 @@ void IndexThread::updateBackupDirsWithAll()
 				q_add->Bind(cvol);
 				q_add->Bind(new_flags);
 				q_add->Bind(index_group);
+				q_add->Bind(getStartTokenFacet());
 				q_add->Write();
 				q_add->Reset();
 			}
@@ -3008,55 +3012,28 @@ void IndexThread::setResultFinished(unsigned int id)
 
 std::vector<std::string> IndexThread::getAllSettingsFns(const std::string& clientsubname)
 {
-	std::string base = "settings";
-	if (!clientsubname.empty())
-	{
-		base = "settings_" + conv_filename(clientsubname);
-	}
-
 	std::vector<std::string> ret;
-	ret.push_back("urbackup/data/" + base + ".cfg");
-
-	std::string prefix = base + "_srv_";
-	std::vector<SFile> files = getFiles(os_file_prefix("urbackup/data"));
-	for (size_t i = 0; i < files.size(); ++i)
+	std::vector<int> facet_ids = ServerList::getFacetIds();
+	for (size_t i = 0; i < facet_ids.size(); ++i)
 	{
-		const std::string& name = files[i].name;
-		if (!files[i].isdir
-			&& next(name, 0, prefix)
-			&& name.size() > prefix.size() + 4
-			&& name.substr(name.size() - 4) == ".cfg"
-			&& ServerIdentityMgr::checkServerIdentity(name.substr(prefix.size(), name.size() - prefix.size() - 4)))
-		{
-			ret.push_back("urbackup/data/" + name);
-		}
+		ret.push_back(ServerList::getSettingsFn(facet_ids[i], clientsubname));
 	}
 	return ret;
 }
 
+int IndexThread::getStartTokenFacet()
+{
+	return ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerTokenIdentity(starttoken));
+}
+
 void IndexThread::filterBackupDirsForServer()
 {
-	std::string server_ident = ServerIdentityMgr::getServerTokenIdentity(starttoken);
-	if (server_ident.empty())
-	{
-		return;
-	}
-
-	//Only the directories for the server this backup is for: chosen on the client, else
-	//the default directories of this server (and the ones added on the client)
-	ServerList::BackupDirServers dir_servers = ServerList::getBackupDirServers();
-	ServerList::BackupDirServers client_dir_servers = ServerList::getClientBackupDirServers();
+	//Only the directories of the facet of the server this backup is for
+	int facet_id = getStartTokenFacet();
 	for (size_t i = 0; i < backup_dirs.size();)
 	{
-		bool from_client;
-		std::vector<std::string> servers = ServerList::getServersOfBackupDir(client_dir_servers, dir_servers,
-			ServerList::backupDirKey(backup_dirs[i].group, backup_dirs[i].path), &from_client);
-		if (!backup_dirs[i].symlinked
-			&& !servers.empty()
-			&& std::find(servers.begin(), servers.end(), server_ident) == servers.end())
+		if (backup_dirs[i].facet != facet_id)
 		{
-			Server->Log("Not backing up \"" + backup_dirs[i].path + "\" for server " + server_ident
-				+ (from_client ? " (backed up to other servers)" : " (default directory of another server)"), LL_DEBUG);
 			backup_dirs.erase(backup_dirs.begin() + i);
 		}
 		else
@@ -4398,22 +4375,9 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-std::string IndexThread::getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident)
-{
-	if (!server_ident.empty())
-	{
-		std::string srv_settings_fn = ServerIdentityMgr::getServerSettingsFn(settings_fn, server_ident);
-		if (FileExists(srv_settings_fn))
-		{
-			return srv_settings_fn;
-		}
-	}
-	return settings_fn;
-}
-
 void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
-	bool& backup_dirs_optional, const std::string& server_ident)
+	bool& backup_dirs_optional, int facet_id)
 {
 	backup_dirs_optional = false;
 
@@ -4426,12 +4390,8 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 		include_pattern_key="continuous_include_files";
 	}
 
-	std::string settings_fn = "urbackup/data/settings.cfg";
-	if(!index_clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(index_clientsubname)+".cfg";
-	}
-	settings_fn = getServerSettingsFn(settings_fn, server_ident);
+	std::string settings_fn = ServerList::getSettingsFn(
+		facet_id != 0 ? facet_id : ServerList::getDefaultFacetId(), index_clientsubname);
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 	exclude_dirs.clear();
@@ -4833,7 +4793,7 @@ void IndexThread::start_filesrv(void)
 	}
 	else
 	{
-		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+		ISettingsReader *curr_settings=Server->createFileSettingsReader(ServerList::getDefaultSettingsFn());
 		if(curr_settings!=NULL)
 		{
 			std::string val;
@@ -4879,8 +4839,7 @@ void IndexThread::start_filesrv(void)
 
 	filesrv=filesrv_fak->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
 		backgroundBackupsEnabled(std::string()));
-	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data", std::string(), false);
-
+	//Each server gets the directory of its facet as share "urbackup" (ServerIdentityMgr)
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
 
@@ -5935,12 +5894,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 
 bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-
-	if(!clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
-	}
+	std::string settings_fn = ServerList::getDefaultSettingsFn(clientsubname);
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if(curr_settings.get()!=NULL)
@@ -6081,7 +6035,7 @@ void IndexThread::writeTokens()
 	}
 
 
-	write_file_only_admin(data, "urbackup"+os_file_sep()+"data"+os_file_sep()+"tokens_"+starttoken+".properties");
+	write_file_only_admin(data, ServerList::getFacetDir(getStartTokenFacet())+"/tokens_"+starttoken+".properties");
 }
 
 void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with_change, uint64 change_identicator, const std::string& extra)
@@ -8891,7 +8845,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& o
 
 	SBackupDir backup_dir;
 
-	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1);
+	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1, getStartTokenFacet());
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
@@ -8910,6 +8864,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& o
 	backup_dir.tname=name;
 	backup_dir.symlinked=true;
 	backup_dir.symlinked_confirmed=true;
+	backup_dir.facet=getStartTokenFacet();
 	backup_dir.server_default = index_server_default;
 
 	backup_dirs.push_back(backup_dir);
@@ -9596,11 +9551,7 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 
 void IndexThread::readSnapshotGroups()
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-	if (!index_clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
-	}
+	std::string settings_fn = ServerList::getSettingsFn(getStartTokenFacet(), index_clientsubname);
 
 	image_snapshot_groups.clear();
 	file_snapshot_groups.clear();
@@ -9867,13 +9818,7 @@ void IndexThread::initParallelHashing(const std::string & async_ticket)
 		delete phash_queue;
 	}
 
-	std::string settings_fn = "urbackup/data/settings.cfg";
-
-	if (!index_clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
-	}
-	settings_fn = getServerSettingsFn(settings_fn, ServerIdentityMgr::getServerTokenIdentity(starttoken));
+	std::string settings_fn = ServerList::getSettingsFn(getStartTokenFacet(), index_clientsubname);
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	size_t client_hash_threads = 1;

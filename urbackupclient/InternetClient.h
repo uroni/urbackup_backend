@@ -40,7 +40,7 @@ public:
 	static void destroy_mutex(void);
 	//A server connected via LAN. Pauses the internet connection to the same server
 	static void hasLANConnection(const std::string& server_ident);
-	//The internet server of server list entry server_id authenticated with identity server_ident
+	//The internet server of the client facet server_id authenticated with identity server_ident
 	static void setInternetServerIdentity(int server_id, const std::string& server_ident);
 	//True if any internet connection is established
 	static bool isConnected(void);
@@ -52,7 +52,7 @@ public:
 	//The server list or settings.cfg changed
 	static void updateSettings(void);
 
-	//Status of the connection to the default internet server (entry 0) or to entry server_id
+	//Status of the internet connection of the default facet or of the facet server_id
 	static std::string getStatusMsg();
 	static std::string getStatusMsg(int server_id);
 
@@ -63,7 +63,7 @@ public:
 	void operator()(void);
 
 	int getServerId() const { return server_id; }
-	//The server list entry was removed or its internet connection disabled
+	//The facet was removed or its internet connection disabled
 	bool isRetired();
 
 	void setHasConnection(bool b);

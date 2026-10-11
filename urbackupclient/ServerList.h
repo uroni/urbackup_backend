@@ -8,8 +8,9 @@
 class IMutex;
 class ISettingsReader;
 
-//A server this client is backed up by. A server can be reached via LAN (local),
-//via internet or both
+//A server this client is backed up by. Each server has a client facet (table client_facets)
+//with its own settings, backup paths and file lists in urbackup/data_<facet id>.
+//A server can be reached via LAN (local), via internet or both
 struct SServerEntry
 {
 	SServerEntry()
@@ -17,7 +18,7 @@ struct SServerEntry
 		internet_encrypt(true)
 	{}
 
-	//Stable id of the entry (entry 0 mirrors the internet settings in settings.cfg)
+	//Id of the client facet of the server
 	int id;
 	//Display name (empty: use endpoint or internet server host name)
 	std::string name;
@@ -27,6 +28,7 @@ struct SServerEntry
 	std::string endpoint;
 
 	bool local;
+	//The internet settings are the ones in the settings.cfg of the facet
 	bool internet;
 
 	std::string internet_server;
@@ -35,6 +37,16 @@ struct SServerEntry
 	std::string internet_authkey;
 	bool internet_compress;
 	bool internet_encrypt;
+
+	//The internet server (internet_server) that authenticated with the identity of this entry.
+	//While it differs from internet_server, the internet server may be another server
+	std::string internet_confirmed_server;
+
+	bool internetServerConfirmed() const
+	{
+		return !ident.empty() && !internet_server.empty()
+			&& internet_confirmed_server == internet_server;
+	}
 };
 
 class ServerList
@@ -45,70 +57,64 @@ public:
 
 	static std::vector<SServerEntry> getEntries();
 	//Replaces all entries (e.g. from the tray UI). Entries removed from the list lose their trust
+	//and their facet
 	static bool setEntries(const std::vector<SServerEntry>& entries);
 
 	static bool getEntryByIdent(const std::string& ident, SServerEntry& entry);
-	//Identity of the server given as identity, server list id or name (empty if unknown)
+	static bool getEntryById(int id, SServerEntry& entry);
+	//Identity of the server given as identity, facet id or name (empty if unknown)
 	static std::string resolveServer(const std::string& server);
+	//Facet of the server given as identity, facet id or name (0 if unknown)
+	static int resolveFacet(const std::string& server);
+
+	//Facet of the server with this identity (0 if it has none)
+	static int getFacetId(const std::string& ident);
+	//Facet of the server with this identity. If it has none the default facet
+	static int getFacetIdOrDefault(const std::string& ident);
+	//The facet with the lowest id. Settings that cannot differ between servers are taken from it
+	static int getDefaultFacetId();
+	static std::vector<int> getFacetIds();
+
+	//urbackup/data_<facet id>
+	static std::string getFacetDir(int facet_id);
+	//settings.cfg (or settings_<clientsubname>.cfg) of a facet
+	static std::string getSettingsFn(int facet_id, const std::string& clientsubname = std::string());
+	static std::string getDefaultSettingsFn(const std::string& clientsubname = std::string());
 
 	//Time (unix seconds) of the last successful backup a server did of this client (0: none yet)
 	static void setLastBackup(const std::string& ident, int64 backup_time);
 	static int64 getLastBackup(const std::string& ident);
-	static bool getEntryById(int id, SServerEntry& entry);
 
-	//Entry 0, whose internet settings are mirrored in settings.cfg
-	static std::string getDefaultInternetIdent();
-
-	//Called when a server identity becomes trusted. Adds a LAN entry if there is none
+	//Called when a server identity becomes trusted. Gives the server a facet if it has none
 	static void addTrustedIdent(const std::string& ident);
 
-	//Called when the server of internet entry id authenticated with its identity.
-	//Returns false if the entry belongs to another server
+	//Called when the server the internet connection of facet id connects to authenticated
+	//with its identity. Returns false if that is not possible
 	static bool setInternetIdent(int id, const std::string& ident);
 
 	static void setEndpoint(const std::string& ident, const std::string& endpoint);
 
-	//Update the internet settings of the entry of server ident from settings sent by that server.
-	//Returns true if they changed
-	static bool updateFromServerSettings(const std::string& ident, ISettingsReader* settings);
+	//The settings.cfg of a facet changed: read the internet settings again
+	static void settingsChanged();
 
-	//settings.cfg was changed locally (old tray UI, urbackupclientctl set-settings): update entry 0
-	static void updateFromLocalSettings(ISettingsReader* settings);
-
-	//Which servers configured a default backup directory (tgroup, path). Directories without an
-	//entry (e.g. added on the client) are backed up by all servers
-	typedef std::map<std::string, std::vector<std::string> > BackupDirServers;
-	static std::string backupDirKey(int tgroup, std::string path);
-	static BackupDirServers getBackupDirServers();
-	//Replace the entries with tgroup in [tgroup_min, tgroup_max]
-	static void setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
-	//Servers chosen on the client for a backup directory ("Add/Remove backup paths"). Takes
-	//precedence over getBackupDirServers(). Directories without an entry go to all servers
-	static BackupDirServers getClientBackupDirServers();
-	static void setClientBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
-	//Servers that back up a directory: chosen on the client, else the servers that configured it.
-	//Empty: all servers. from_client is set if the servers were chosen on the client
-	static std::vector<std::string> getServersOfBackupDir(const BackupDirServers& client_dir_servers,
-		const BackupDirServers& dir_servers, const std::string& key, bool* from_client = NULL);
-
-	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>"), used for
-	//server_list.cfg and for the tray UI (with_status adds read-only status fields)
+	//Serialization as key=value lines ("count=N", "<n>.<field>=<value>") for the tray UI
+	//(with_status adds read-only status fields)
 	//with_authkey: false for callers that are not allowed to see the internet auth keys
 	static std::string toText(const std::vector<SServerEntry>& entries, bool with_status, bool with_authkey = true);
 	static bool fromText(const std::string& text, std::vector<SServerEntry>& entries);
 
 private:
 	static void load();
-	static bool save();
-	static void migrate();
-	//Sets entry 0 from the internet settings in settings.cfg. Returns true if it changed
-	static bool updateEntry0(ISettingsReader* settings);
+	static void readInternetSettings(SServerEntry& entry);
+	static bool writeInternetSettings(const SServerEntry& entry);
+	static void readFacetInfo(SServerEntry& entry);
+	static bool writeFacetInfo(const SServerEntry& entry);
+	static int addFacet(const std::string& ident);
+	static void removeFacet(int id);
+	static void setFacetIdent(int id, const std::string& ident);
+	static void createFacetDir(int id);
 	static SServerEntry* findIdent(const std::string& ident);
 	static SServerEntry* findId(int id);
-	static int nextId();
-
-	static BackupDirServers readDirServers(const std::string& fn);
-	static void writeDirServers(const std::string& fn, int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers);
 
 	static IMutex* mutex;
 	static bool loaded;

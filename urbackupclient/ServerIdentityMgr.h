@@ -101,8 +101,9 @@ public:
 	static bool isServerOnline(const std::string& server_ident);
 	static void removeServerIdentity(const std::string& server_ident);
 
-	//Settings file holding the settings of one server (e.g. urbackup/data/settings_srv_<ident>.cfg)
-	static std::string getServerSettingsFn(const std::string& settings_fn, const std::string& server_ident);
+	//Shares the directory of the facet of each server as "urbackup" for that server.
+	//To be called when the facet of a server changed
+	static void updateFacetShares();
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -115,6 +116,7 @@ public:
 	static std::string calcFingerprint(const SPublicKeys& pPublicKeys);
 
 private:
+	static void shareFacetDir(const std::string& pIdentity, const std::string& server_ident);
 	static void writeServerIdentities(void);
 	static void writeSessionIdentities();
 	static bool write_file_admin_atomic(const std::string& data, const std::string& fn);

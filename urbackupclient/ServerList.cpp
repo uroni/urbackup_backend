@@ -1,9 +1,12 @@
 #include "ServerList.h"
 #include "ServerIdentityMgr.h"
 #include "file_permissions.h"
+#include "database.h"
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/SettingsReader.h"
+#include "../Interface/Database.h"
+#include "../Interface/Query.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include <memory>
@@ -15,9 +18,8 @@ std::vector<SServerEntry> ServerList::entries;
 
 namespace
 {
-	const char* server_list_fn = "urbackup/data/server_list.cfg";
-	const char* settings_fn = "urbackup/data/settings.cfg";
-	const char* internet_server_ident_fn = "urbackup/data/internet_server_ident.txt";
+	const char* default_facet_name = "default";
+	const char* facet_info_fn = "server.cfg";
 
 	std::string boolStr(bool b)
 	{
@@ -34,124 +36,45 @@ namespace
 	{
 		return settings->getValue(key, &value) || settings->getValue(key + "_def", &value);
 	}
-}
 
-namespace
-{
-	const char* backupdir_servers_fn = "urbackup/data/backupdir_servers.cfg";
-	const char* backupdir_client_servers_fn = "urbackup/data/backupdir_client_servers.cfg";
-}
-
-std::string ServerList::backupDirKey(int tgroup, std::string path)
-{
-	//Same normalization as ClientConnector::saveBackupDirs
-	if (!path.empty()
-		&& (path[path.size() - 1] == '\\' || path[path.size() - 1] == '/'))
+	bool isInternetKey(const std::string& key)
 	{
-		path.erase(path.size() - 1, 1);
-#ifndef _WIN32
-		if (path.empty())
-			path = "/";
-#endif
+		return key == "internet_mode_enabled" || key == "internet_server" || key == "internet_server_port"
+			|| key == "internet_server_proxy" || key == "internet_authkey" || key == "internet_compress"
+			|| key == "internet_encrypt";
 	}
-#ifdef _WIN32
-	path = strlower(path);
-#endif
-	return convert(tgroup) + "\t" + path;
-}
 
-ServerList::BackupDirServers ServerList::getBackupDirServers()
-{
-	return readDirServers(backupdir_servers_fn);
-}
-
-void ServerList::setBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
-{
-	writeDirServers(backupdir_servers_fn, tgroup_min, tgroup_max, dir_servers);
-}
-
-ServerList::BackupDirServers ServerList::getClientBackupDirServers()
-{
-	return readDirServers(backupdir_client_servers_fn);
-}
-
-void ServerList::setClientBackupDirServers(int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
-{
-	writeDirServers(backupdir_client_servers_fn, tgroup_min, tgroup_max, dir_servers);
-}
-
-std::vector<std::string> ServerList::getServersOfBackupDir(const BackupDirServers& client_dir_servers,
-	const BackupDirServers& dir_servers, const std::string& key, bool* from_client)
-{
-	if (from_client != NULL)
+	bool sameInternetSettings(const SServerEntry& a, const SServerEntry& b)
 	{
-		*from_client = false;
+		return a.internet == b.internet
+			&& a.internet_server == b.internet_server
+			&& a.internet_server_port == b.internet_server_port
+			&& a.internet_server_proxy == b.internet_server_proxy
+			&& a.internet_authkey == b.internet_authkey
+			&& a.internet_compress == b.internet_compress
+			&& a.internet_encrypt == b.internet_encrypt;
 	}
-	BackupDirServers::const_iterator it = client_dir_servers.find(key);
-	if (it != client_dir_servers.end())
-	{
-		if (from_client != NULL)
-		{
-			*from_client = true;
-		}
-		return it->second;
-	}
-	it = dir_servers.find(key);
-	if (it != dir_servers.end())
-	{
-		return it->second;
-	}
-	return std::vector<std::string>();
-}
 
-ServerList::BackupDirServers ServerList::readDirServers(const std::string& fn)
-{
-	IScopedLock lock(mutex);
-	BackupDirServers ret;
-	std::string data = getFile(fn);
-	int numl = linecount(data);
-	for (int i = 0; i <= numl; ++i)
+	void copyInternetSettings(const SServerEntry& src, SServerEntry& dst)
 	{
-		std::string l = getline(i, data);
-		if (!l.empty() && l[l.size() - 1] == '\r')
-			l.erase(l.size() - 1);
-		size_t last_tab = l.find_last_of('\t');
-		if (last_tab == std::string::npos || l.find('\t') == last_tab)
-			continue;
-		std::vector<std::string> idents;
-		Tokenize(l.substr(last_tab + 1), idents, ",");
-		ret[l.substr(0, last_tab)] = idents;
+		dst.internet = src.internet;
+		dst.internet_server = src.internet_server;
+		dst.internet_server_port = src.internet_server_port;
+		dst.internet_server_proxy = src.internet_server_proxy;
+		dst.internet_authkey = src.internet_authkey;
+		dst.internet_compress = src.internet_compress;
+		dst.internet_encrypt = src.internet_encrypt;
 	}
-	return ret;
-}
 
-void ServerList::writeDirServers(const std::string& fn, int tgroup_min, int tgroup_max, const BackupDirServers& dir_servers)
-{
-	IScopedLock lock(mutex);
-	std::string data = getFile(fn);
-	std::string new_data;
-	int numl = linecount(data);
-	for (int i = 0; i <= numl; ++i)
+	void clearInternetSettings(SServerEntry& entry)
 	{
-		std::string l = trim(getline(i, data));
-		if (l.empty())
-			continue;
-		int tgroup = watoi(getuntil("\t", l));
-		if (tgroup >= tgroup_min && tgroup <= tgroup_max)
-			continue;
-		new_data += l + "\n";
+		copyInternetSettings(SServerEntry(), entry);
 	}
-	for (BackupDirServers::const_iterator it = dir_servers.begin(); it != dir_servers.end(); ++it)
+
+	IDatabase* getDb()
 	{
-		std::string idents;
-		for (size_t i = 0; i < it->second.size(); ++i)
-		{
-			if (!idents.empty()) idents += ",";
-			idents += it->second[i];
-		}
-		new_data += it->first + "\t" + idents + "\n";
+		return Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	}
-	write_file_only_admin(new_data, fn);
 }
 
 void ServerList::init_mutex()
@@ -162,6 +85,25 @@ void ServerList::init_mutex()
 void ServerList::destroy_mutex()
 {
 	Server->destroy(mutex);
+}
+
+std::string ServerList::getFacetDir(int facet_id)
+{
+	return "urbackup/data_" + convert(facet_id);
+}
+
+std::string ServerList::getSettingsFn(int facet_id, const std::string& clientsubname)
+{
+	if (clientsubname.empty())
+	{
+		return getFacetDir(facet_id) + "/settings.cfg";
+	}
+	return getFacetDir(facet_id) + "/settings_" + conv_filename(clientsubname) + ".cfg";
+}
+
+std::string ServerList::getDefaultSettingsFn(const std::string& clientsubname)
+{
+	return getSettingsFn(getDefaultFacetId(), clientsubname);
 }
 
 std::string ServerList::toText(const std::vector<SServerEntry>& p_entries, bool with_status, bool with_authkey)
@@ -238,6 +180,187 @@ bool ServerList::fromText(const std::string& text, std::vector<SServerEntry>& p_
 	return true;
 }
 
+void ServerList::readInternetSettings(SServerEntry& entry)
+{
+	clearInternetSettings(entry);
+
+	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(getSettingsFn(entry.id)));
+	if (settings.get() == NULL)
+	{
+		return;
+	}
+
+	std::string val;
+	entry.internet = getSetting(settings.get(), "internet_mode_enabled", val) && val == "true";
+	if (getSetting(settings.get(), "internet_server", val)) entry.internet_server = val;
+	if (getSetting(settings.get(), "internet_server_port", val)) entry.internet_server_port = val;
+	if (getSetting(settings.get(), "internet_server_proxy", val)) entry.internet_server_proxy = val;
+	if (getSetting(settings.get(), "internet_authkey", val)) entry.internet_authkey = val;
+	entry.internet_compress = !(getSetting(settings.get(), "internet_compress", val) && val == "false");
+	entry.internet_encrypt = !(getSetting(settings.get(), "internet_encrypt", val) && val == "false");
+
+	//Servers send internet_mode_enabled=true without an internet server if none is configured
+	//on them. There is nothing to connect to then
+	if (entry.internet_server.empty())
+	{
+		entry.internet = false;
+	}
+}
+
+bool ServerList::writeInternetSettings(const SServerEntry& entry)
+{
+	std::string settings_fn = getSettingsFn(entry.id);
+	std::string data = getFile(settings_fn);
+	std::string new_data;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = trim(getline(i, data));
+		if (l.empty()
+			|| isInternetKey(trim(getuntil("=", l))))
+		{
+			continue;
+		}
+		new_data += l + "\n";
+	}
+	new_data += "internet_mode_enabled=" + boolStr(entry.internet) + "\n";
+	new_data += "internet_server=" + oneLine(entry.internet_server) + "\n";
+	new_data += "internet_server_port=" + oneLine(entry.internet_server_port) + "\n";
+	new_data += "internet_server_proxy=" + oneLine(entry.internet_server_proxy) + "\n";
+	new_data += "internet_authkey=" + oneLine(entry.internet_authkey) + "\n";
+	new_data += "internet_compress=" + boolStr(entry.internet_compress) + "\n";
+	new_data += "internet_encrypt=" + boolStr(entry.internet_encrypt) + "\n";
+
+	createFacetDir(entry.id);
+	if (!write_file_only_admin(new_data, settings_fn + ".new"))
+	{
+		return false;
+	}
+	return os_rename_file(settings_fn + ".new", settings_fn);
+}
+
+void ServerList::readFacetInfo(SServerEntry& entry)
+{
+	std::auto_ptr<ISettingsReader> info(Server->createFileSettingsReader(getFacetDir(entry.id) + "/" + facet_info_fn));
+	if (info.get() == NULL)
+	{
+		return;
+	}
+
+	entry.name = info->getValue("name", "");
+	entry.endpoint = info->getValue("endpoint", "");
+	entry.local = info->getValue("local", "true") != "false";
+	entry.internet_confirmed_server = info->getValue("internet_confirmed_server", "");
+}
+
+bool ServerList::writeFacetInfo(const SServerEntry& entry)
+{
+	std::string fn = getFacetDir(entry.id) + "/" + facet_info_fn;
+	std::string last_backup;
+	{
+		std::auto_ptr<ISettingsReader> info(Server->createFileSettingsReader(fn));
+		if (info.get() != NULL)
+		{
+			last_backup = info->getValue("last_backup", "");
+		}
+	}
+
+	std::string data = "name=" + oneLine(entry.name) + "\n"
+		"endpoint=" + oneLine(entry.endpoint) + "\n"
+		"local=" + boolStr(entry.local) + "\n"
+		"internet_confirmed_server=" + oneLine(entry.internet_confirmed_server) + "\n";
+	if (!last_backup.empty())
+	{
+		data += "last_backup=" + last_backup + "\n";
+	}
+
+	createFacetDir(entry.id);
+	return write_file_only_admin(data, fn);
+}
+
+void ServerList::createFacetDir(int id)
+{
+	std::string facet_dir = getFacetDir(id);
+	if (!os_directory_exists(facet_dir))
+	{
+		os_create_dir(facet_dir);
+#ifndef _DEBUG
+		change_file_permissions_admin_only(facet_dir);
+#endif
+	}
+}
+
+int ServerList::addFacet(const std::string& ident)
+{
+	IDatabase* db = getDb();
+	IQuery* q = db->Prepare("INSERT INTO client_facets (name, server_identity) VALUES (?, ?)", false);
+	if (q == NULL)
+	{
+		return 0;
+	}
+	q->Bind(entries.empty() ? std::string(default_facet_name) : std::string());
+	q->Bind(ident);
+	q->Write();
+	q->Reset();
+	db->destroyQuery(q);
+
+	int id = static_cast<int>(db->getLastInsertID());
+	if (!entries.empty())
+	{
+		db->Write("UPDATE client_facets SET name='server" + convert(id) + "' WHERE id=" + convert(id));
+	}
+
+	createFacetDir(id);
+
+	SServerEntry e;
+	e.id = id;
+	e.ident = ident;
+	entries.push_back(e);
+	return id;
+}
+
+void ServerList::removeFacet(int id)
+{
+	IDatabase* db = getDb();
+	db->Write("DELETE FROM backupdirs WHERE facet=" + convert(id));
+	db->Write("DELETE FROM virtual_client_group_offsets WHERE facet=" + convert(id));
+	db->Write("UPDATE fileaccess_tokens SET facet=NULL WHERE facet=" + convert(id));
+	db->Write("DELETE FROM client_facets WHERE id=" + convert(id));
+
+	os_remove_nonempty_dir(os_file_prefix(Server->getServerWorkingDir() + os_file_sep()
+		+ "urbackup" + os_file_sep() + "data_" + convert(id)));
+
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (entries[i].id == id)
+		{
+			entries.erase(entries.begin() + i);
+			break;
+		}
+	}
+}
+
+void ServerList::setFacetIdent(int id, const std::string& ident)
+{
+	IDatabase* db = getDb();
+	IQuery* q = db->Prepare("UPDATE client_facets SET server_identity=? WHERE id=?", false);
+	if (q == NULL)
+	{
+		return;
+	}
+	q->Bind(ident);
+	q->Bind(id);
+	q->Write();
+	q->Reset();
+	db->destroyQuery(q);
+
+	SServerEntry* e = findId(id);
+	if (e != NULL)
+	{
+		e->ident = ident;
+	}
+}
+
 void ServerList::load()
 {
 	if (loaded)
@@ -246,59 +369,34 @@ void ServerList::load()
 	}
 	loaded = true;
 
-	std::string data = getFile(server_list_fn);
-	if (data.empty()
-		|| !fromText(data, entries))
-	{
-		migrate();
-	}
-}
-
-bool ServerList::save()
-{
-	return write_file_only_admin(toText(entries, false), server_list_fn);
-}
-
-void ServerList::migrate()
-{
-	//First start with a server list: one entry for the internet server configured in
-	//settings.cfg (id 0) and one for each trusted server
 	entries.clear();
-
-	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(settings_fn));
-	std::string internet_server;
-	if (settings.get() != NULL
-		&& getSetting(settings.get(), "internet_server", internet_server)
-		&& !internet_server.empty())
+	db_results res = getDb()->Read("SELECT id, server_identity FROM client_facets ORDER BY id ASC");
+	for (size_t i = 0; i < res.size(); ++i)
 	{
 		SServerEntry e;
-		e.id = 0;
-		e.local = false;
-		e.ident = trim(getFile(internet_server_ident_fn));
+		e.id = watoi(res[i]["id"]);
+		e.ident = res[i]["server_identity"];
+		createFacetDir(e.id);
+		readFacetInfo(e);
+		readInternetSettings(e);
 		entries.push_back(e);
-		updateEntry0(settings.get());
 	}
 
-	std::vector<std::string> idents = ServerIdentityMgr::getServerIdentities();
-	for (size_t i = 0; i < idents.size(); ++i)
+	if (entries.empty())
 	{
-		SServerEntry* e = findIdent(idents[i]);
-		if (e != NULL)
-		{
-			e->local = true;
-			continue;
-		}
-
-		SServerEntry n;
-		n.id = nextId();
-		n.ident = idents[i];
-		n.local = true;
-		n.internet = false;
-		entries.push_back(n);
+		//There always is a facet, so the first server has something to take over
+		addFacet(std::string());
 	}
+}
 
-	Server->Log("Created server list with " + convert(entries.size()) + " servers", LL_INFO);
-	save();
+void ServerList::settingsChanged()
+{
+	IScopedLock lock(mutex);
+	load();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		readInternetSettings(entries[i]);
+	}
 }
 
 SServerEntry* ServerList::findIdent(const std::string& ident)
@@ -329,16 +427,6 @@ SServerEntry* ServerList::findId(int id)
 	return NULL;
 }
 
-int ServerList::nextId()
-{
-	int id = 1;
-	for (size_t i = 0; i < entries.size(); ++i)
-	{
-		id = (std::max)(id, entries[i].id + 1);
-	}
-	return id;
-}
-
 std::vector<SServerEntry> ServerList::getEntries()
 {
 	IScopedLock lock(mutex);
@@ -359,72 +447,6 @@ bool ServerList::getEntryByIdent(const std::string& ident, SServerEntry& entry)
 	return true;
 }
 
-namespace
-{
-	const char* server_last_backup_fn = "urbackup/data/server_last_backup.cfg";
-}
-
-void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
-{
-	if (ident.empty())
-	{
-		return;
-	}
-
-	IScopedLock lock(mutex);
-	std::string data = getFile(server_last_backup_fn);
-	std::string new_data;
-	int numl = linecount(data);
-	for (int i = 0; i <= numl; ++i)
-	{
-		std::string l = trim(getline(i, data));
-		if (!l.empty() && getuntil("=", l) != ident)
-		{
-			new_data += l + "\n";
-		}
-	}
-	new_data += ident + "=" + convert(backup_time) + "\n";
-	writestring(new_data, server_last_backup_fn);
-}
-
-int64 ServerList::getLastBackup(const std::string& ident)
-{
-	IScopedLock lock(mutex);
-	std::string data = getFile(server_last_backup_fn);
-	int numl = linecount(data);
-	for (int i = 0; i <= numl; ++i)
-	{
-		std::string l = trim(getline(i, data));
-		if (!l.empty() && getuntil("=", l) == ident)
-		{
-			return watoi64(getafter("=", l));
-		}
-	}
-	return 0;
-}
-
-std::string ServerList::resolveServer(const std::string& server)
-{
-	if (server.empty())
-	{
-		return std::string();
-	}
-
-	IScopedLock lock(mutex);
-	load();
-	for (size_t i = 0; i < entries.size(); ++i)
-	{
-		if (!entries[i].ident.empty()
-			&& (entries[i].ident == server
-				|| convert(entries[i].id) == server
-				|| (!entries[i].name.empty() && strlower(entries[i].name) == strlower(server))))
-		{
-			return entries[i].ident;
-		}
-	}
-	return std::string();
-}
-
 bool ServerList::getEntryById(int id, SServerEntry& entry)
 {
 	IScopedLock lock(mutex);
@@ -438,11 +460,121 @@ bool ServerList::getEntryById(int id, SServerEntry& entry)
 	return true;
 }
 
-std::string ServerList::getDefaultInternetIdent()
+int ServerList::getFacetId(const std::string& ident)
 {
 	IScopedLock lock(mutex);
 	load();
-	SServerEntry* e = findId(0);
+	SServerEntry* e = findIdent(ident);
+	return e != NULL ? e->id : 0;
+}
+
+int ServerList::getDefaultFacetId()
+{
+	IScopedLock lock(mutex);
+	load();
+	//Entries are ordered by id
+	return entries.empty() ? 1 : entries[0].id;
+}
+
+int ServerList::getFacetIdOrDefault(const std::string& ident)
+{
+	IScopedLock lock(mutex);
+	load();
+	SServerEntry* e = findIdent(ident);
+	if (e != NULL)
+	{
+		return e->id;
+	}
+	return entries.empty() ? 1 : entries[0].id;
+}
+
+std::vector<int> ServerList::getFacetIds()
+{
+	IScopedLock lock(mutex);
+	load();
+	std::vector<int> ret;
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		ret.push_back(entries[i].id);
+	}
+	return ret;
+}
+
+void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
+{
+	IScopedLock lock(mutex);
+	load();
+	SServerEntry* e = findIdent(ident);
+	if (e == NULL)
+	{
+		return;
+	}
+
+	std::string fn = getFacetDir(e->id) + "/" + facet_info_fn;
+	std::string data = getFile(fn);
+	std::string new_data;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = trim(getline(i, data));
+		if (!l.empty() && getuntil("=", l) != "last_backup")
+		{
+			new_data += l + "\n";
+		}
+	}
+	new_data += "last_backup=" + convert(backup_time) + "\n";
+	write_file_only_admin(new_data, fn);
+}
+
+int64 ServerList::getLastBackup(const std::string& ident)
+{
+	IScopedLock lock(mutex);
+	load();
+	SServerEntry* e = findIdent(ident);
+	if (e == NULL)
+	{
+		return 0;
+	}
+
+	std::auto_ptr<ISettingsReader> info(Server->createFileSettingsReader(getFacetDir(e->id) + "/" + facet_info_fn));
+	if (info.get() == NULL)
+	{
+		return 0;
+	}
+	return watoi64(info->getValue("last_backup", "0"));
+}
+
+int ServerList::resolveFacet(const std::string& server)
+{
+	if (server.empty())
+	{
+		return 0;
+	}
+
+	IScopedLock lock(mutex);
+	load();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if ((!entries[i].ident.empty() && entries[i].ident == server)
+			|| convert(entries[i].id) == server
+			|| (!entries[i].name.empty() && strlower(entries[i].name) == strlower(server)))
+		{
+			return entries[i].id;
+		}
+	}
+	return 0;
+}
+
+std::string ServerList::resolveServer(const std::string& server)
+{
+	int facet_id = resolveFacet(server);
+	if (facet_id == 0)
+	{
+		return std::string();
+	}
+
+	IScopedLock lock(mutex);
+	SServerEntry* e = findId(facet_id);
 	return e != NULL ? e->ident : std::string();
 }
 
@@ -453,62 +585,112 @@ void ServerList::addTrustedIdent(const std::string& ident)
 		return;
 	}
 
-	IScopedLock lock(mutex);
-	load();
-	if (findIdent(ident) != NULL)
 	{
-		return;
+		IScopedLock lock(mutex);
+		load();
+		if (findIdent(ident) != NULL)
+		{
+			return;
+		}
+
+		//The server takes over a facet that has no server yet (e.g. the facet of a new
+		//installation, or the one with the settings from before there were facets)
+		bool found = false;
+		for (size_t i = 0; i < entries.size(); ++i)
+		{
+			if (entries[i].ident.empty()
+				&& entries[i].local)
+			{
+				Server->Log("Client facet " + convert(entries[i].id) + " belongs to server " + ident, LL_INFO);
+				setFacetIdent(entries[i].id, ident);
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			int id = addFacet(ident);
+			Server->Log("New client facet " + convert(id) + " for server " + ident, LL_INFO);
+		}
 	}
 
-	SServerEntry e;
-	e.id = nextId();
-	e.ident = ident;
-	e.local = true;
-	e.internet = false;
-	entries.push_back(e);
-	save();
+	ServerIdentityMgr::updateFacetShares();
 }
 
 bool ServerList::setInternetIdent(int id, const std::string& ident)
 {
-	IScopedLock lock(mutex);
-	load();
-	SServerEntry* e = findId(id);
-	if (e == NULL || ident.empty())
 	{
-		return false;
-	}
-
-	if (e->ident == ident)
-	{
-		return true;
-	}
-
-	if (!e->ident.empty())
-	{
-		Server->Log("Internet server of server list entry " + convert(id) + " has identity " + ident
-			+ " but entry belongs to " + e->ident, LL_ERROR);
-		return false;
-	}
-
-	//The server may already have an entry (e.g. it was trusted via LAN). Merge it into this one
-	for (size_t i = 0; i < entries.size(); ++i)
-	{
-		if (entries[i].ident == ident
-			&& entries[i].id != id)
+		IScopedLock lock(mutex);
+		load();
+		SServerEntry* e = findId(id);
+		if (e == NULL || ident.empty())
 		{
-			e->local = e->local || entries[i].local;
-			if (e->name.empty()) e->name = entries[i].name;
-			if (e->endpoint.empty()) e->endpoint = entries[i].endpoint;
-			entries.erase(entries.begin() + i);
+			return false;
+		}
+
+		if (e->ident == ident)
+		{
+			if (e->internet_confirmed_server != e->internet_server)
+			{
+				e->internet_confirmed_server = e->internet_server;
+				writeFacetInfo(*e);
+			}
+			return true;
+		}
+
+		SServerEntry* other = findIdent(ident);
+		if (other == NULL
+			&& e->ident.empty())
+		{
+			Server->Log("Client facet " + convert(id) + " belongs to internet server " + ident, LL_INFO);
+			setFacetIdent(id, ident);
+			e->internet_confirmed_server = e->internet_server;
+			writeFacetInfo(*e);
+		}
+		else
+		{
+			//The internet server has (or gets) its own facet. The internet settings it
+			//authenticated with belong there
+			int other_id;
+			if (other != NULL)
+			{
+				other_id = other->id;
+			}
+			else
+			{
+				other_id = addFacet(ident);
+				if (other_id == 0)
+				{
+					return false;
+				}
+			}
 			e = findId(id);
-			break;
+			other = findId(other_id);
+
+			Server->Log("Internet server of client facet " + convert(id) + " has identity " + ident
+				+ ". Moving the internet settings to its facet " + convert(other_id), LL_INFO);
+
+			copyInternetSettings(*e, *other);
+			writeInternetSettings(*other);
+			other->internet_confirmed_server = other->internet_server;
+
+			if (e->ident.empty())
+			{
+				if (other->name.empty()) other->name = e->name;
+				writeFacetInfo(*other);
+				removeFacet(id);
+			}
+			else
+			{
+				writeFacetInfo(*other);
+				clearInternetSettings(*e);
+				writeInternetSettings(*e);
+			}
 		}
 	}
 
-	Server->Log("Server list entry " + convert(id) + " belongs to server " + ident, LL_INFO);
-	e->ident = ident;
-	save();
+	ServerIdentityMgr::updateFacetShares();
 	return true;
 }
 
@@ -525,115 +707,19 @@ void ServerList::setEndpoint(const std::string& ident, const std::string& endpoi
 	if (e != NULL && e->endpoint != endpoint)
 	{
 		e->endpoint = endpoint;
-		save();
+		writeFacetInfo(*e);
 	}
-}
-
-bool ServerList::updateFromServerSettings(const std::string& ident, ISettingsReader* settings)
-{
-	IScopedLock lock(mutex);
-	load();
-	SServerEntry* e = findIdent(ident);
-	if (e == NULL || e->id == 0)
-	{
-		//Entry 0 is kept in sync with settings.cfg
-		return false;
-	}
-
-	bool mod = false;
-	std::string val;
-	//Like the critical settings in settings.cfg: an empty value from the server does not
-	//replace a configured one
-	if (getSetting(settings, "internet_server", val) && !val.empty() && val != e->internet_server)
-	{
-		e->internet_server = val; mod = true;
-	}
-	if (getSetting(settings, "internet_server_port", val) && !val.empty() && val != e->internet_server_port)
-	{
-		e->internet_server_port = val; mod = true;
-	}
-	if (getSetting(settings, "internet_authkey", val) && !val.empty() && val != e->internet_authkey)
-	{
-		e->internet_authkey = val; mod = true;
-	}
-	if (getSetting(settings, "internet_server_proxy", val) && val != e->internet_server_proxy)
-	{
-		e->internet_server_proxy = val; mod = true;
-	}
-	if (getSetting(settings, "internet_compress", val) && (val != "false") != e->internet_compress)
-	{
-		e->internet_compress = val != "false"; mod = true;
-	}
-	if (getSetting(settings, "internet_encrypt", val) && (val != "false") != e->internet_encrypt)
-	{
-		e->internet_encrypt = val != "false"; mod = true;
-	}
-
-	if (mod)
-	{
-		save();
-	}
-	return mod;
-}
-
-void ServerList::updateFromLocalSettings(ISettingsReader* settings)
-{
-	IScopedLock lock(mutex);
-	load();
-	if (updateEntry0(settings))
-	{
-		save();
-	}
-}
-
-bool ServerList::updateEntry0(ISettingsReader* settings)
-{
-	SServerEntry* e = findId(0);
-	std::string internet_server;
-	getSetting(settings, "internet_server", internet_server);
-
-	if (e == NULL)
-	{
-		if (internet_server.empty())
-		{
-			return false;
-		}
-		SServerEntry n;
-		n.id = 0;
-		n.local = false;
-		entries.insert(entries.begin(), n);
-		e = &entries[0];
-	}
-
-	SServerEntry old = *e;
-
-	std::string val;
-	e->internet = getSetting(settings, "internet_mode_enabled", val) && val == "true";
-	e->internet_server = internet_server;
-	e->internet_server_port = getSetting(settings, "internet_server_port", val) ? val : std::string();
-	e->internet_server_proxy = getSetting(settings, "internet_server_proxy", val) ? val : std::string();
-	e->internet_authkey = getSetting(settings, "internet_authkey", val) ? val : std::string();
-	e->internet_compress = !(getSetting(settings, "internet_compress", val) && val == "false");
-	e->internet_encrypt = !(getSetting(settings, "internet_encrypt", val) && val == "false");
-
-	return old.internet != e->internet
-		|| old.internet_server != e->internet_server
-		|| old.internet_server_port != e->internet_server_port
-		|| old.internet_server_proxy != e->internet_server_proxy
-		|| old.internet_authkey != e->internet_authkey
-		|| old.internet_compress != e->internet_compress
-		|| old.internet_encrypt != e->internet_encrypt;
 }
 
 bool ServerList::setEntries(const std::vector<SServerEntry>& new_entries)
 {
 	std::vector<std::string> removed_idents;
-	SServerEntry entry0;
-	bool has_entry0 = false;
+	bool ok = true;
 	{
 		IScopedLock lock(mutex);
 		load();
 
+		std::vector<int> removed_ids;
 		for (size_t i = 0; i < entries.size(); ++i)
 		{
 			bool found = false;
@@ -645,44 +731,60 @@ bool ServerList::setEntries(const std::vector<SServerEntry>& new_entries)
 					break;
 				}
 			}
-			if (!found && !entries[i].ident.empty())
+			if (!found)
 			{
-				removed_idents.push_back(entries[i].ident);
+				removed_ids.push_back(entries[i].id);
+				if (!entries[i].ident.empty())
+				{
+					removed_idents.push_back(entries[i].ident);
+				}
 			}
 		}
 
-		std::vector<SServerEntry> result = new_entries;
-		for (size_t i = 0; i < result.size(); ++i)
+		for (size_t i = 0; i < removed_ids.size(); ++i)
 		{
+			removeFacet(removed_ids[i]);
+		}
+
+		for (size_t i = 0; i < new_entries.size(); ++i)
+		{
+			SServerEntry* e = findId(new_entries[i].id);
+			if (e == NULL)
+			{
+				//New server. It gets its identity when it connects
+				int id = addFacet(std::string());
+				if (id == 0)
+				{
+					ok = false;
+					continue;
+				}
+				e = findId(id);
+			}
+
 			//The identity of an entry is only set by the server itself
-			SServerEntry* old = findId(result[i].id);
-			result[i].ident = old != NULL ? old->ident : std::string();
-			result[i].endpoint = old != NULL ? old->endpoint : std::string();
-			if (old == NULL && result[i].id != 0)
+			bool info_mod = e->name != new_entries[i].name
+				|| e->local != new_entries[i].local;
+			e->name = new_entries[i].name;
+			e->local = new_entries[i].local;
+			if (info_mod
+				&& !writeFacetInfo(*e))
 			{
-				result[i].id = -1;
+				ok = false;
 			}
-		}
-		entries = result;
-		for (size_t i = 0; i < entries.size(); ++i)
-		{
-			if (entries[i].id < 0)
+
+			if (!sameInternetSettings(*e, new_entries[i]))
 			{
-				entries[i].id = 0;
-				entries[i].id = nextId();
+				copyInternetSettings(new_entries[i], *e);
+				if (!writeInternetSettings(*e))
+				{
+					ok = false;
+				}
 			}
 		}
 
-		SServerEntry* e0 = findId(0);
-		if (e0 != NULL)
+		if (entries.empty())
 		{
-			entry0 = *e0;
-			has_entry0 = true;
-		}
-
-		if (!save())
-		{
-			return false;
+			addFacet(std::string());
 		}
 	}
 
@@ -692,40 +794,7 @@ bool ServerList::setEntries(const std::vector<SServerEntry>& new_entries)
 		ServerIdentityMgr::removeServerIdentity(removed_idents[i]);
 	}
 
-	if (has_entry0)
-	{
-		//Mirror entry 0 into settings.cfg for components (and older tray versions) reading it there
-		std::string data = getFile(settings_fn);
-		std::string new_data;
-		int numl = linecount(data);
-		for (int i = 0; i <= numl; ++i)
-		{
-			std::string l = trim(getline(i, data));
-			std::string key = trim(getuntil("=", l));
-			if (key == "internet_mode_enabled" || key == "internet_server" || key == "internet_server_port"
-				|| key == "internet_server_proxy" || key == "internet_authkey" || key == "internet_compress"
-				|| key == "internet_encrypt")
-			{
-				continue;
-			}
-			if (!l.empty())
-			{
-				new_data += l + "\n";
-			}
-		}
-		new_data += "internet_mode_enabled=" + boolStr(entry0.internet) + "\n";
-		new_data += "internet_server=" + entry0.internet_server + "\n";
-		new_data += "internet_server_port=" + entry0.internet_server_port + "\n";
-		new_data += "internet_server_proxy=" + entry0.internet_server_proxy + "\n";
-		new_data += "internet_authkey=" + entry0.internet_authkey + "\n";
-		new_data += "internet_compress=" + boolStr(entry0.internet_compress) + "\n";
-		new_data += "internet_encrypt=" + boolStr(entry0.internet_encrypt) + "\n";
+	ServerIdentityMgr::updateFacetShares();
 
-		if (write_file_only_admin(new_data, std::string(settings_fn) + ".new"))
-		{
-			os_rename_file(std::string(settings_fn) + ".new", settings_fn);
-		}
-	}
-
-	return true;
+	return ok;
 }
