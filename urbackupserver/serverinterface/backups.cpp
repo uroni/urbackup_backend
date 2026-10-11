@@ -691,6 +691,21 @@ namespace backupaccess
 			}
 		}
 
+		bool restore_disabled_on_client = !can_restore
+			&& ServerStatus::isRestoreDisabled(clientname);
+		std::string client_os;
+		if (restore_disabled_on_client)
+		{
+			IQuery* q = db->Prepare("SELECT os_simple FROM clients WHERE id=?");
+			q->Bind(t_clientid);
+			db_results res_os = q->Read();
+			q->Reset();
+			if (!res_os.empty())
+			{
+				client_os = res_os[0]["os_simple"];
+			}
+		}
+
 		std::string path;
 		std::vector<std::string> t_path;
 		Tokenize(u_path, t_path, "/");
@@ -733,6 +748,11 @@ namespace backupaccess
 					{
 						ret.set("server_confirms_restore", true);
 					}
+				}
+				else if(restore_disabled_on_client)
+				{
+					ret.set("restore_disabled_on_client", true);
+					ret.set("client_os", client_os);
 				}
 				
 
