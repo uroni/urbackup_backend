@@ -2577,7 +2577,7 @@ void ClientMain::updateClientAccessKey()
 	ServerSettings::updateClient(clientid);
 
 	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",
-		"Error sending client access key", 10000, 10, false);
+		"Error sending client access key to client \"" + clientname + "\"", 10000, 10, false);
 }
 
 bool ClientMain::isDataplanOkay(bool file)
@@ -3456,7 +3456,7 @@ bool ClientMain::authenticatePubKeyInt(IECDHKeyExchange* ecdh_key_exchange)
 			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
 			"&session_identity="+identity +
 			session_key +
-			(clientsubname.empty() ? "" : "&clientsubname="+ EscapeParamString(clientsubname)), "ok", "Error sending server signature to client",
+			(clientsubname.empty() ? "" : "&clientsubname="+ EscapeParamString(clientsubname)), "ok", "Error sending server signature to client \"" + clientname + "\"",
 			10000, 10, true, LL_ERROR, NULL, NULL, false);
 
 		if(ret)
