@@ -53,42 +53,65 @@ if not os.path.exists(hive_path):
     exit(1)
 
 
-enableDrivers = ["atapi", "intelide", "pciide", "msahci", "iastorv"]
-    
+# Disk controller drivers that have to start at boot. msahci is the AHCI driver of Windows 7,
+# storahci the one since Windows 8, stornvme the NVMe driver (since Windows 8.1)
+enableDrivers = ["atapi", "intelide", "pciide", "msahci", "iastorv", "storahci", "stornvme"]
 
-print("Opening registry...")
-regedit = regedit_linux.regedit_linux(hive_path)
 
-print("Getting registry path...")
-selectedControlSet = regedit.list("Select");
+def enableBootDrivers(hive_path):
+    print("Opening registry...")
+    regedit = regedit_linux.regedit_linux(hive_path)
 
-v = selectedControlSet["Current"].value;
+    print("Getting registry path...")
+    selectedControlSet = regedit.list("Select");
 
-currentControlSet = "ControlSet"+padNum(v, 3);
+    v = selectedControlSet["Current"].value;
 
-print("Enumerating drivers...")
-servicesList = regedit.list(currentControlSet+"\\Services")
+    currentControlSet = "ControlSet"+padNum(v, 3);
 
-print("Found "+str(len(servicesList))+" drivers and services.")
+    print("Enumerating drivers...")
+    servicesList = regedit.list(currentControlSet+"\\Services")
 
-driverEnabled = False
+    print("Found "+str(len(servicesList))+" drivers and services.")
 
-for service in servicesList:
-    
-    servicePath = currentControlSet+"\\Services\\"+service
-    serviceVals = regedit.list(servicePath)
-    
-    if "Type" in serviceVals and "Start" in serviceVals:
-        if serviceVals["Type"].value==1 and serviceVals["Start"].value!=0:        
-            
-            if service.lower() in enableDrivers:
-                
-                print("Enabling driver "+service+"...")
-                regedit.edit(servicePath, "Start", "0")
-                driverEnabled=True
-                
-                
-if not driverEnabled:
+    driverEnabled = False
+
+    for service in servicesList:
+
+        if service.lower() not in enableDrivers:
+            continue
+
+        servicePath = currentControlSet+"\\Services\\"+service
+        serviceVals = regedit.list(servicePath)
+
+        if "Type" not in serviceVals or "Start" not in serviceVals:
+            continue
+
+        if serviceVals["Type"].value!=1:
+            continue
+
+        if serviceVals["Start"].value!=0:
+            print("Enabling driver "+service+"...")
+            regedit.edit(servicePath, "Start", "0")
+            driverEnabled=True
+
+        # Since Windows 8 a driver that was not needed to boot on the old hardware has a
+        # StartOverride value that keeps it from starting at boot, whatever "Start" says
+        if "StartOverride" in serviceVals and serviceVals["StartOverride"].key:
+            overridePath = servicePath+"\\StartOverride"
+            overrideVals = regedit.list(overridePath)
+
+            for name in overrideVals:
+                override = overrideVals[name]
+                if not override.key and override.value!=0:
+                    print("Removing the start override of driver "+service+"...")
+                    regedit.edit(overridePath, name, "0")
+                    driverEnabled=True
+
+    return driverEnabled
+
+
+if not enableBootDrivers(hive_path):
     print("No driver needed to be enabled. Changed nothing.")
 
 print("Syncing...")
