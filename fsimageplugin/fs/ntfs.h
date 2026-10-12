@@ -1,5 +1,6 @@
 #include "../../Interface/Types.h"
 #include "../filesystem.h"
+#include <vector>
 
 #ifndef sun
 #pragma pack(push)
@@ -141,6 +142,10 @@ public:
 
 	virtual std::string getType();
 
+	virtual int64 excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback);
+	//Same, clearing the clusters in target (FSNTFSWIN reads its bitmap through Windows and has no MFT parser)
+	int64 excludeMatchingFilesInto(const std::string& volume_root, IFsExcludeCallback* callback, Filesystem* target);
+
 private:
 
 	void init(bool check_mft_mirror, bool fix);
@@ -150,9 +155,17 @@ private:
 	_u32 sectorRead(int64 pos, char *buffer, _u32 bsize);
 	bool applyFixups(char *data, size_t datasize, char* fixups, size_t fixups_size);
 
+	class IMftRecordVisitor;
+	bool walkMft(IMftRecordVisitor& visitor);
+	bool readMftClusters(uint64 vcn, uint64 count, char* buf);
+
 	unsigned int sectorsize;
 	unsigned int clustersize;
 	uint64 drivesize;
+
+	unsigned int mftrecordsize;
+	uint64 mftsize;
+	std::vector<char> mftrunlist_data;
 
 	bool checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTFSFileRecord &mft, bool fix);
 };

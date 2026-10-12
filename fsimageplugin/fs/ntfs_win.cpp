@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "ntfs_win.h"
+#include "ntfs.h"
 #include <Windows.h>
 #include <algorithm>
 #include "../../Interface/Server.h"
@@ -378,4 +379,16 @@ int64 FSNTFSWIN::countSectors(int64 start, int64 count, char* fc_bitmap)
 std::string FSNTFSWIN::getType()
 {
 	return "ntfs_win";
+}
+
+int64 FSNTFSWIN::excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback)
+{
+	//The bitmap here comes from FSCTL_GET_VOLUME_BITMAP and the device handle is overlapped; the MFT walk
+	//lives in FSNTFS, which gets its own plain handle to the same device
+	FSNTFS mft(dev->getFilename(), IFSImageFactory::EReadaheadMode_None, false, NULL);
+	if(mft.hasError())
+	{
+		return -1;
+	}
+	return mft.excludeMatchingFilesInto(volume_root, callback, this);
 }

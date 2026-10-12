@@ -4328,6 +4328,28 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
+std::vector<std::string> IndexThread::readExcludePatterns(const std::string& clientsubname)
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+	if(!clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+	}
+
+	std::vector<std::string> exclude_dirs;
+	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
+	if(curr_settings!=NULL)
+	{
+		std::string val;
+		if(curr_settings->getValue("exclude_files", &val) || curr_settings->getValue("exclude_files_def", &val) )
+		{
+			exclude_dirs = parseExcludePatterns(val);
+		}
+		Server->destroy(curr_settings);
+	}
+	return exclude_dirs;
+}
+
 void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
 	bool& backup_dirs_optional)

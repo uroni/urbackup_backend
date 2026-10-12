@@ -17,6 +17,12 @@ public:
 	virtual void waitingForBlockCallback(int64 curr_block) = 0;
 };
 
+class IFsExcludeCallback
+{
+public:
+	virtual bool isExcluded(const std::string& path) = 0;
+};
+
 const int64 fs_error_read_timeout = -1;
 
 class IFilesystem : public IReadOnlyBitmap
@@ -53,6 +59,8 @@ public:
 	virtual bool excludeFile(const std::string& path) = 0;
 	virtual bool excludeSectors(int64 start, int64 count) = 0;
 	virtual bool excludeBlock(int64 block) = 0;
+	//Excludes the data of every file whose path (below volume_root) the callback rejects. Returns the excluded bytes, -1 if unsupported
+	virtual int64 excludeMatchingFiles(const std::string& volume_root, IFsExcludeCallback* callback) = 0;
 };
 
 class FsShutdownHelper
