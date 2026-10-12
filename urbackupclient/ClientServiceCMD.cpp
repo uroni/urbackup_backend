@@ -3907,34 +3907,68 @@ void ClientConnector::CMD_RESET_KEEP(str_map &params)
 
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
-	int group_offset = 0;
-	if (!virtual_client.empty())
+	//Each server (facet) has its own backup paths and its own group offsets of virtual clients.
+	//Without "server" the paths of all servers are reset
+	std::vector<int> facet_ids;
+	if (!params["server"].empty())
 	{
-		IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?", false);
-		q->Bind(virtual_client);
-		db_results res = q->Read();
-		db->destroyQuery(q);
-		
-		if (res.empty())
+		int server_facet_id = ServerList::resolveFacet(params["server"]);
+		if (server_facet_id == 0)
 		{
-			tcpstack.Send(pipe, "err_virtual_client_not_found");
+			tcpstack.Send(pipe, "err_server_not_found");
 			return;
 		}
-
-		group_offset = watoi(res[0]["group_offset"]);
+		facet_ids.push_back(server_facet_id);
 	}
-
-	IQuery* q = db->Prepare(std::string("UPDATE backupdirs SET reset_keep=1 WHERE tgroup=?")
-		+ (folder_name.empty() ? "" : " AND name=?"), false);
-	q->Bind(tgroup + group_offset);
-	if (!folder_name.empty())
+	else
 	{
-		q->Bind(folder_name);
+		facet_ids = ServerList::getFacetIds();
 	}
-	q->Write();
-	q->Reset();
 
-	if (db->getLastChanges() > 0)
+	IQuery* q_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet=?", false);
+	IQuery* q = db->Prepare(std::string("UPDATE backupdirs SET reset_keep=1 WHERE tgroup=? AND facet=?")
+		+ (folder_name.empty() ? "" : " AND name=?"), false);
+
+	bool found_virtual_client = virtual_client.empty();
+	int changes = 0;
+	for (size_t i = 0; i < facet_ids.size(); ++i)
+	{
+		int group_offset = 0;
+		if (!virtual_client.empty())
+		{
+			q_offset->Bind(virtual_client);
+			q_offset->Bind(facet_ids[i]);
+			db_results res = q_offset->Read();
+			q_offset->Reset();
+
+			if (res.empty())
+			{
+				continue;
+			}
+
+			found_virtual_client = true;
+			group_offset = watoi(res[0]["group_offset"]);
+		}
+
+		q->Bind(tgroup + group_offset);
+		q->Bind(facet_ids[i]);
+		if (!folder_name.empty())
+		{
+			q->Bind(folder_name);
+		}
+		q->Write();
+		q->Reset();
+		changes += db->getLastChanges();
+	}
+
+	db->destroyQuery(q_offset);
+	db->destroyQuery(q);
+
+	if (!found_virtual_client)
+	{
+		tcpstack.Send(pipe, "err_virtual_client_not_found");
+	}
+	else if (changes > 0)
 	{
 		tcpstack.Send(pipe, "OK");
 	}
@@ -3942,8 +3976,6 @@ void ClientConnector::CMD_RESET_KEEP(str_map &params)
 	{
 		tcpstack.Send(pipe, "err_backup_folder_not_found");
 	}
-
-	db->destroyQuery(q);
 }
 
 void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd)

@@ -816,7 +816,8 @@ SStatusDetails Connector::getStatusDetails()
 	}
 }
 
-std::string Connector::resetKeep(const std::string & virtualClient, const std::string & folderName, int tgroup)
+std::string Connector::resetKeep(const std::string & virtualClient, const std::string & folderName, int tgroup,
+	const std::string& server)
 {
 	std::string params;
 
@@ -835,6 +836,11 @@ std::string Connector::resetKeep(const std::string & virtualClient, const std::s
 	if (!params.empty()) params += "&";
 
 	params += "tgroup=" + convert(tgroup);
+
+	if (!server.empty())
+	{
+		params += "&server=" + EscapeParamString(server);
+	}
 
 	std::string d = getResponse("RESET KEEP", params, true);
 

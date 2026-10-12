@@ -1290,6 +1290,10 @@ int action_reset_keep(std::vector<std::string> args)
 		"Backup group index",
 		false, 0, "group index", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Only for the backups of this server (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -1297,7 +1301,8 @@ int action_reset_keep(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::string ret = Connector::resetKeep(virtual_client_arg.getValue(), backup_folder_arg.getValue(), group_arg.getValue());
+	std::string ret = Connector::resetKeep(virtual_client_arg.getValue(), backup_folder_arg.getValue(), group_arg.getValue(),
+		server_arg.getValue());
 
 	if (ret == "OK")
 	{
@@ -1312,6 +1317,11 @@ int action_reset_keep(std::vector<std::string> args)
 	{
 		std::cerr << "Error: Backup folder not found" << std::endl;
 		return 5;
+	}
+	else if (ret == "err_server_not_found")
+	{
+		std::cerr << "Error: Server not found" << std::endl;
+		return 7;
 	}
 	else
 	{

@@ -223,7 +223,9 @@ public:
 	static std::string getBackupQueue(const std::string& virtual_client);
 	static SStatusDetails getStatusDetails();
 
-	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup);
+	//server: only the backup paths of this server (id, name or identity as in list-servers)
+	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup,
+		const std::string& server = std::string());
 
 	//Image backups of restore_name or (if empty) of this client/its virtual client. Raw "id|timestamp|time|letter" lines
 	static std::string getImageBackupsList(const std::string& restore_name, const std::string& virtual_client, EAccessError& access_error);
