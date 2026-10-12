@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
 
 	tune_glibc_malloc();
 
-	if (argc > 0 &&
+	if (argc > 1 &&
 		std::string(argv[1]) == "--internal")
 	{
 		std::vector<std::string> real_args;
