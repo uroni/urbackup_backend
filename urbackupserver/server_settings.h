@@ -301,6 +301,7 @@ private:
 	void readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting);
 
 	void readStringClientSetting(IQuery* q_get_client_setting, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value=true);
+	void readFreqClientSetting(IQuery* q_get_client_setting, const std::string &name, std::string *output, bool allow_client_value=true);
 	static void readStringClientSetting(IQuery* q_get_client_setting, int clientid, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value = true);
 	std::string readValClientSetting(IQuery* q_get_client_setting, const std::string &name, bool allow_client_value);
 	void readBoolClientSetting(IQuery* q_get_client_setting, const std::string &name, bool *output, bool allow_client_value = true);
