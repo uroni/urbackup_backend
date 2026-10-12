@@ -756,3 +756,105 @@ std::string Connector::resetKeep(const std::string & virtualClient, const std::s
 
 	return d;
 }
+
+std::string Connector::getImageBackupsList(const std::string& restore_name, const std::string& virtual_client, EAccessError& access_error)
+{
+	access_error = EAccessError_Ok;
+
+	std::string params;
+	if (restore_name.empty()
+		&& !virtual_client.empty())
+	{
+		params = "virtual_client=" + EscapeParamString(virtual_client);
+	}
+
+	std::string list = getResponse("GET BACKUPIMAGES " + restore_name, params, false);
+
+	if (list.empty())
+	{
+		error = true;
+		return std::string();
+	}
+
+	if (list[0] != '1')
+	{
+		access_error = EAccessError_NoServer;
+		return std::string();
+	}
+
+	list = list.substr(1);
+
+	if (list.find("0|0|0|NO RIGHTS") != std::string::npos)
+	{
+		access_error = EAccessError_NoPermission;
+		return std::string();
+	}
+
+	return list;
+}
+
+bool Connector::loginForImageRestore(const std::string& username, const std::string& password, std::string& errmsg)
+{
+	for (int tries = 0; tries < 6; ++tries)
+	{
+		std::string r = getResponse("LOGIN FOR DOWNLOAD", "username=" + EscapeParamString(username)
+			+ "&plain_password=" + EscapeParamString(password), false);
+
+		if (r == "ok")
+		{
+			return true;
+		}
+
+		if (r.empty()
+			|| r == "no channels available")
+		{
+			//Client backend may not be connected to a server yet
+			errmsg = r.empty() ? "No response from client backend" : r;
+			Sleep(5000);
+			continue;
+		}
+
+		errmsg = r;
+		return false;
+	}
+
+	return false;
+}
+
+Connector::ENbdImageResult Connector::startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, int64& imgsize)
+{
+	std::string r = getResponse("NBD IMAGE", "detached=1&img_id=" + convert(img_id) + "&time=" + convert(img_time)
+		+ "&nbd_port=" + convert(static_cast<int>(port)) + "&nbd_localhost_only=" + (localhost_only ? "1" : "0"), false);
+
+	if (r.empty())
+	{
+		return ENbdImageResult_ConnectError;
+	}
+
+	imgsize = os_atoi64(r);
+
+	if (imgsize == -2)
+		return ENbdImageResult_NoServer;
+	else if (imgsize == -3)
+		return ENbdImageResult_NbdStartError;
+	else if (imgsize < 0)
+		return ENbdImageResult_Refused;
+
+	return ENbdImageResult_Ok;
+}
+
+Connector::ENbdImageResult Connector::stopNbdImage(unsigned short port)
+{
+	std::string r = getResponse("STOP NBD IMAGE", "nbd_port=" + convert(static_cast<int>(port)), false);
+
+	if (r.empty())
+	{
+		return ENbdImageResult_ConnectError;
+	}
+	else if (r != "ok")
+	{
+		return ENbdImageResult_NotFound;
+	}
+
+	return ENbdImageResult_Ok;
+}

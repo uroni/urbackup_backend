@@ -144,6 +144,15 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " remove-backupdir" << std::endl;
 	std::cout << "\t\t" "Remove directory from backup set" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " image-list" << std::endl;
+	std::cout << "\t\t" "List image backups" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " image-nbd-start" << std::endl;
+	std::cout << "\t\t" "Start serving an image backup read-only via NBD" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " image-nbd-stop" << std::endl;
+	std::cout << "\t\t" "Stop serving an image backup via NBD" << std::endl;
+	std::cout << std::endl;
 }
 
 const size_t c_speed_size = 15;
@@ -1619,6 +1628,288 @@ int action_wait_for_backend(std::vector<std::string> args)
 	return 1;
 }
 
+class ImageRestoreLoginCmd
+{
+public:
+	ImageRestoreLoginCmd(TCLAP::CmdLine& cmd)
+		: username_arg("u", "username",
+			"Server web interface user with image download rights (if server requires login)",
+			false, "", "username", cmd),
+		password_arg("", "password",
+			"Password of server web interface user (or set LOGIN_PASSWORD environment variable)",
+			false, "", "password", cmd)
+	{
+	}
+
+	bool login()
+	{
+		if (username_arg.getValue().empty())
+		{
+			return true;
+		}
+
+		std::string password = password_arg.getValue();
+		char* env_pw = getenv("LOGIN_PASSWORD");
+		if (password.empty() && env_pw != NULL)
+		{
+			password = env_pw;
+		}
+
+		std::string errmsg;
+		if (!Connector::loginForImageRestore(username_arg.getValue(), password, errmsg))
+		{
+			std::cerr << "Login failed: " << errmsg << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
+private:
+	TCLAP::ValueArg<std::string> username_arg;
+	TCLAP::ValueArg<std::string> password_arg;
+};
+
+Json::Value parse_image_backups(const std::string& data)
+{
+	Json::Value ret(Json::arrayValue);
+	std::vector<std::string> toks;
+	Tokenize(data, toks, "\n");
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		std::vector<std::string> t2;
+		Tokenize(toks[i], t2, "|");
+		if (t2.size() == 3 || (t2.size() == 4 && t2[0] != "#"))
+		{
+			Json::Value image;
+			image["id"] = atoi(t2[0].c_str());
+			image["time_s"] = static_cast<Json::Int64>(os_atoi64(t2[1]));
+			image["time_str"] = t2[2];
+			image["letter"] = t2.size() == 4 ? t2[3] : std::string();
+			ret.append(image);
+		}
+		else if (t2.size() == 4 && t2[0] == "#" && ret.size() > 0)
+		{
+			Json::Value image;
+			image["id"] = atoi(t2[1].c_str());
+			image["time_s"] = static_cast<Json::Int64>(os_atoi64(t2[2]));
+			image["time_str"] = t2[3];
+			ret[ret.size() - 1]["assoc"].append(image);
+		}
+	}
+	return ret;
+}
+
+bool get_image_backups(const std::string& restore_name, const std::string& virtual_client, Json::Value& images, int& rc)
+{
+	Connector::EAccessError access_error;
+	std::string list = Connector::getImageBackupsList(restore_name, virtual_client, access_error);
+
+	if (access_error == Connector::EAccessError_NoServer)
+	{
+		std::cerr << "Error getting image backups. No backup server found." << std::endl;
+		rc = 2;
+		return false;
+	}
+	else if (access_error == Connector::EAccessError_NoPermission)
+	{
+		std::cerr << "No permission to access image backups. Log in with a user with image download rights (--username)." << std::endl;
+		rc = 3;
+		return false;
+	}
+	else if (Connector::hasError())
+	{
+		std::cerr << "Error getting image backups" << std::endl;
+		rc = 1;
+		return false;
+	}
+
+	images = parse_image_backups(list);
+	rc = 0;
+	return true;
+}
+
+int action_image_list(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List image backups of this client (or of another client the server allows to restore)", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+	ImageRestoreLoginCmd login_cmd(cmd);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
+	TCLAP::ValueArg<std::string> client_name_arg("n", "client-name",
+		"Name of client on server of which to list image backups (default: this client)",
+		false, "", "client name", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	if (!login_cmd.login())
+	{
+		return 3;
+	}
+
+	Json::Value images;
+	int rc;
+	if (!get_image_backups(client_name_arg.getValue(), virtual_client_arg.getValue(), images, rc))
+	{
+		return rc;
+	}
+
+	Json::StyledWriter writer;
+	std::cout << writer.write(images);
+	return 0;
+}
+
+int action_image_nbd_start(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Start serving an image backup read-only via NBD from the client backend. Stop with image-nbd-stop", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+	ImageRestoreLoginCmd login_cmd(cmd);
+
+	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
+		"Id of image backup (see image-list)",
+		true, 0, "id", cmd);
+
+	TCLAP::ValueArg<std::string> time_arg("t", "time",
+		"Backup time (time_s in image-list). Looked up if not specified",
+		false, "", "unix timestamp", cmd);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name (for looking up backup time)",
+		false, "", "client name", cmd);
+
+	TCLAP::ValueArg<std::string> client_name_arg("n", "client-name",
+		"Name of client on server (for looking up backup time)",
+		false, "", "client name", cmd);
+
+	TCLAP::ValueArg<int> port_arg("o", "port",
+		"Port of NBD server",
+		false, 10809, "port", cmd);
+
+	TCLAP::SwitchArg bind_all_arg("a", "bind-all",
+		"Make NBD server reachable from network (default: localhost only)", cmd, false);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	if (!login_cmd.login())
+	{
+		return 3;
+	}
+
+	int64 img_time = 0;
+	if (time_arg.isSet())
+	{
+		img_time = os_atoi64(time_arg.getValue());
+	}
+	else
+	{
+		Json::Value images;
+		int rc;
+		if (!get_image_backups(client_name_arg.getValue(), virtual_client_arg.getValue(), images, rc))
+		{
+			return rc;
+		}
+
+		bool found = false;
+		for (Json::Value::ArrayIndex i = 0; i < images.size() && !found; ++i)
+		{
+			if (images[i]["id"].asInt() == backupid_arg.getValue())
+			{
+				img_time = images[i]["time_s"].asInt64();
+				found = true;
+			}
+
+			const Json::Value& assoc = images[i]["assoc"];
+			for (Json::Value::ArrayIndex j = 0; j < assoc.size() && !found; ++j)
+			{
+				if (assoc[j]["id"].asInt() == backupid_arg.getValue())
+				{
+					img_time = assoc[j]["time_s"].asInt64();
+					found = true;
+				}
+			}
+		}
+
+		if (!found)
+		{
+			std::cerr << "Image backup with id " << backupid_arg.getValue() << " not found" << std::endl;
+			return 4;
+		}
+	}
+
+	unsigned short port = static_cast<unsigned short>(port_arg.getValue());
+	int64 imgsize;
+	Connector::ENbdImageResult res = Connector::startNbdImage(backupid_arg.getValue(), img_time,
+		port, !bind_all_arg.getValue(), imgsize);
+
+	switch (res)
+	{
+	case Connector::ENbdImageResult_Ok:
+		std::cout << "Serving image backup (" << PrettyPrintBytes(imgsize) << ") read-only via NBD on port " << port
+			<< ". E.g. nbd-client localhost " << port << " /dev/nbd0 -readonly" << std::endl;
+		return 0;
+	case Connector::ENbdImageResult_NoServer:
+		std::cerr << "Client backend is not connected to a backup server" << std::endl;
+		return 2;
+	case Connector::ENbdImageResult_NbdStartError:
+		std::cerr << "Client backend could not start NBD server on port " << port << std::endl;
+		return 1;
+	case Connector::ENbdImageResult_Refused:
+		std::cerr << "Server refused random access image restore (image not found, no permission or server too old)" << std::endl;
+		return 3;
+	default:
+		std::cerr << "Error communicating with client backend" << std::endl;
+		return 1;
+	}
+}
+
+int action_image_nbd_stop(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Stop serving an image backup via NBD", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::ValueArg<int> port_arg("o", "port",
+		"Port of NBD server",
+		false, 10809, "port", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	Connector::ENbdImageResult res = Connector::stopNbdImage(static_cast<unsigned short>(port_arg.getValue()));
+
+	if (res == Connector::ENbdImageResult_Ok)
+	{
+		return 0;
+	}
+	else if (res == Connector::ENbdImageResult_NotFound)
+	{
+		std::cerr << "No NBD image restore running on port " << port_arg.getValue() << std::endl;
+		return 4;
+	}
+
+	std::cerr << "Error communicating with client backend" << std::endl;
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc==0)
@@ -1661,6 +1952,12 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_remove_backupdir);
 	actions.push_back("wait-for-backend");
 	action_funs.push_back(action_wait_for_backend);
+	actions.push_back("image-list");
+	action_funs.push_back(action_image_list);
+	actions.push_back("image-nbd-start");
+	action_funs.push_back(action_image_nbd_start);
+	actions.push_back("image-nbd-stop");
+	action_funs.push_back(action_image_nbd_stop);
 
 	bool has_help=false;
 	bool has_version=false;

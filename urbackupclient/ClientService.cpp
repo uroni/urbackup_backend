@@ -1314,7 +1314,7 @@ void ClientConnector::ReceivePacketsInt()
 			}
 			else if( cmd.find("GET BACKUPIMAGES ")==0 )
 			{
-				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
+				CMD_RESTORE_GET_BACKUPIMAGES(cmd, params); continue;
 			}
 			else if( cmd=="GET FILE BACKUPS" )
 			{
@@ -1343,6 +1343,10 @@ void ClientConnector::ReceivePacketsInt()
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
+			}
+			else if( cmd=="STOP NBD IMAGE" )
+			{
+				CMD_RESTORE_STOP_NBD_IMAGE(cmd, params); continue;
 			}
 			else if( cmd=="NBD IMAGE" )
 			{
@@ -3853,6 +3857,43 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 	return false;
 }
 
+std::string ClientConnector::getClientName(const std::string& virtual_client)
+{
+	std::auto_ptr<ISettingsReader> settings(
+		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+
+	std::string computername;
+	if (settings.get() == NULL
+		|| !settings->getValue("computername", &computername) )
+	{
+		if (settings.get() != NULL)
+		{
+			settings->getValue("computername_def", &computername);
+		}
+	}
+	if (computername.empty())
+	{
+		computername = IndexThread::getFileSrv()->getServerName();
+	}
+
+	if (!computername.empty()
+		&& !virtual_client.empty())
+	{
+		computername += "[" + virtual_client + "]";
+	}
+
+	return computername;
+}
+
+bool ClientConnector::isImageRestoreChannel(const SChannel& channel)
+{
+	//Image restore goes via the main client channel. The server allows the main client
+	//to restore its virtual clients' images. Channels of virtual clients would return
+	//duplicate results. Channels in use (e.g. by another image restore) cannot be messaged.
+	return channel.virtual_client.empty()
+		&& channel.state == SChannel::EChannelState_Idle;
+}
+
 std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client)
 {
     if(tokens.empty())
@@ -3909,26 +3950,10 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 
 	if(with_clientname)
 	{
-		std::auto_ptr<ISettingsReader> settings(
-			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
-
-		std::string computername;
-        if( !settings->getValue("computername", &computername) )
-        {
-            settings->getValue("computername_def", &computername);
-        }
-        if(computername.empty())
-        {
-            computername = IndexThread::getFileSrv()->getServerName();
-        }
+		std::string computername = getClientName(virtual_client);
 
         if(!computername.empty())
         {
-			if (!virtual_client.empty())
-			{
-				computername += "[" + virtual_client + "]";
-			}
-
             ret+="&clientname="+EscapeParamString(computername);
 		}
 	}

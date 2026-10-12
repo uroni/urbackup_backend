@@ -247,7 +247,7 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *
 	}
 
 	bool has_ok = false;
-	tcpstack.Send(c, "GET SALT#pw="+pw+"&username="+username);
+	tcpstack.Send(c, "GET SALT#pw="+pw+"&username="+EscapeParamString(username));
 	std::string r=getResponse(c);
 	if(r.empty() )
 	{
@@ -322,7 +322,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	std::string auth_str;
 	if(!username.empty())
 	{
-		auth_str="&username="+username;
+		auth_str="&username="+EscapeParamString(username);
 
 		for(size_t i=0;i<salts.size();++i)
 		{
@@ -1088,6 +1088,21 @@ namespace
 {
 	volatile sig_atomic_t nbd_image_stop = 0;
 
+	LoginData getParamLoginData()
+	{
+		LoginData login_data;
+		login_data.has_login_data = true;
+		login_data.username = Server->getServerParameter("username");
+		login_data.password = Server->getServerParameter("password");
+
+		char* pw = getenv("LOGIN_PASSWORD");
+		if (pw != NULL)
+		{
+			login_data.password = pw;
+		}
+		return login_data;
+	}
+
 	void nbd_image_stop_handler(int signum)
 	{
 		nbd_image_stop = 1;
@@ -1235,16 +1250,7 @@ void do_restore(void)
 	}
 	else if (cmd == "login")
 	{
-		LoginData login_data;
-		login_data.has_login_data = true;
-		login_data.username = Server->getServerParameter("username");
-		login_data.password = Server->getServerParameter("password");
-
-		char* pw = getenv("LOGIN_PASSWORD");
-		if (pw != NULL)
-		{
-			login_data.password = pw;
-		}
+		LoginData login_data = getParamLoginData();
 		if (do_login(login_data))
 		{
 			exit(0);
@@ -1286,12 +1292,12 @@ void do_restore(void)
 		Server->Log("restore_cmd commands are...", LL_INFO);
 		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
 		Server->Log("get_clientnames", LL_INFO);
-		Server->Log("get_backupimages(restore_name)", LL_INFO);
-		Server->Log("get_backupimages_json(restore_name)", LL_INFO);
+		Server->Log("get_backupimages([restore_name|virtual_client_name])", LL_INFO);
+		Server->Log("get_backupimages_json([restore_name|virtual_client_name])", LL_INFO);
 		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
-		Server->Log("nbd_image(restore_img_id,restore_time|restore_token,[nbd_port],[nbd_localhost_only])", LL_INFO);
+		Server->Log("nbd_image(restore_img_id,restore_time|restore_token,[nbd_port],[nbd_localhost_only],[username,password])", LL_INFO);
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
@@ -1340,7 +1346,15 @@ void do_restore(void)
 	else if(cmd=="get_backupimages"
 		|| cmd == "get_backupimages_json")
 	{
-		tcpstack.Send(c, "GET BACKUPIMAGES "+Server->getServerParameter("restore_name")+"#pw="+pw);
+		std::string restore_name = Server->getServerParameter("restore_name");
+		std::string virtual_client_param;
+		if (restore_name.empty())
+		{
+			//Client service lists images of this client (or of one of its virtual clients)
+			virtual_client_param = "&virtual_client=" + EscapeParamString(Server->getServerParameter("virtual_client_name"));
+		}
+
+		tcpstack.Send(c, "GET BACKUPIMAGES "+restore_name+"#pw="+pw+virtual_client_param);
 		std::string r=getResponse(c);
 		if(r.empty() )
 		{
@@ -1395,6 +1409,26 @@ void do_restore(void)
 	{
 		std::string dl_args;
 		std::string restore_token = Server->getServerParameter("restore_token");
+
+		if (restore_token.empty()
+			&& !Server->getServerParameter("username").empty())
+		{
+			//Login on the channels before reading the image (e.g. when restoring via a normal client)
+			Server->destroy(c);
+			LoginData login_data = getParamLoginData();
+			if (!do_login(login_data))
+			{
+				Server->Log("Login failed", LL_ERROR);
+				exit(3);
+			}
+
+			c = Server->ConnectStream("localhost", 35623, 60000);
+			if (c == NULL)
+			{
+				Server->Log("Error connecting to client service -2", LL_ERROR);
+				exit(1);
+			}
+		}
 		if (!restore_token.empty())
 		{
 			dl_args = "&token=" + EscapeParamString(restore_token);

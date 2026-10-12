@@ -858,6 +858,11 @@ void ServerChannelThread::GET_BACKUPCLIENTS(void)
 	std::string clients;
 	for(size_t i=0;i<res.size();++i)
 	{
+		if (!has_restore_permission(res[i]["name"], watoi(res[i]["id"])))
+		{
+			continue;
+		}
+
 		clients+=(res[i]["id"])+"|"+(res[i]["name"])+"\n";
 	}
 	tcpstack.Send(input, clients);

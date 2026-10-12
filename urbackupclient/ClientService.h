@@ -282,6 +282,10 @@ private:
 
 	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client);
 
+	static std::string getClientName(const std::string& virtual_client);
+
+	static bool isImageRestoreChannel(const SChannel& channel);
+
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 
 	static int64 getLastBackupTime();
@@ -328,13 +332,14 @@ private:
 	void CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok);
 	void CMD_MBR(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd);
-	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);
+	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd);
 	void CMD_RESTORE_GET_FILE_BACKUPS_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &params);
+	void CMD_RESTORE_STOP_NBD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
 	void CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params);

@@ -50,6 +50,9 @@
 
 #include <stdlib.h>
 #include <limits.h>
+#include <mutex>
+#include <map>
+#include <atomic>
 
 
 #ifndef _WIN32
@@ -2018,6 +2021,11 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
 		std::string clients;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (!isImageRestoreChannel(channel_pipes[i]))
+			{
+				continue;
+			}
+
             sendChannelPacket(channel_pipes[i], "GET BACKUPCLIENTS");
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
@@ -2036,9 +2044,17 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
 	}
 }
 
-void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd)
+void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
+
+	std::string restore_name = cmd.substr(17);
+	if (restore_name.empty())
+	{
+		//Restore images of this client (or one of its virtual clients)
+		restore_name = getClientName(params["virtual_client"]);
+	}
+
 	IScopedLock lock(backup_mutex);
 	waitForPings(&lock);
 	if(channel_pipes.size()==0)
@@ -2050,7 +2066,12 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd)
 		std::string imgs;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], cmd);
+			if (!isImageRestoreChannel(channel_pipes[i]))
+			{
+				continue;
+			}
+
+            sendChannelPacket(channel_pipes[i], "GET BACKUPIMAGES " + restore_name);
             std::string nc=receivePacket(channel_pipes[i]);
 			if(!nc.empty())
 			{
@@ -2476,19 +2497,43 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 
 namespace
 {
+	class NbdImageThread;
+
+	std::mutex detached_nbd_mutex;
+	std::map<unsigned short, NbdImageThread*> detached_nbd_sessions;
+
 	/**
 	* Keeps a random access image restore session (NBD server reading the image via the channel) alive
 	* and stops it once the local restore process closes its connection or the channel breaks.
+	* Detached sessions (local_pipe==NULL, e.g. started via urbackupclientctl) run until stopped via STOP NBD IMAGE.
 	* Owns local_pipe, image_file and nbd_service. The channel is reset afterwards.
 	*/
 	class NbdImageThread : public IThread
 	{
 	public:
 		NbdImageThread(IPipe* local_pipe, IPipe* channel_pipe,
-			ImageReadFile* image_file, IService* nbd_service)
+			ImageReadFile* image_file, IService* nbd_service, unsigned short port)
 			: local_pipe(local_pipe), channel_pipe(channel_pipe),
-			image_file(image_file), nbd_service(nbd_service)
+			image_file(image_file), nbd_service(nbd_service),
+			port(port), stop(false)
 		{
+			if (local_pipe == NULL)
+			{
+				std::lock_guard<std::mutex> lock(detached_nbd_mutex);
+				detached_nbd_sessions[port] = this;
+			}
+		}
+
+		static bool stopDetached(unsigned short port)
+		{
+			std::lock_guard<std::mutex> lock(detached_nbd_mutex);
+			std::map<unsigned short, NbdImageThread*>::iterator it = detached_nbd_sessions.find(port);
+			if (it == detached_nbd_sessions.end())
+			{
+				return false;
+			}
+			it->second->stop = true;
+			return true;
 		}
 
 		void operator()()
@@ -2500,21 +2545,33 @@ namespace
 
 			while (true)
 			{
-				if (local_pipe->isReadable(500))
+				if (local_pipe == NULL)
 				{
-					char ch;
-					if (local_pipe->Read(&ch, 1, 0) > 0
-						|| local_pipe->hasError())
+					if (stop)
 					{
-						Server->Log("Local restore process ended random access image restore", LL_DEBUG);
+						Server->Log("Detached random access image restore on port " + convert(port) + " stopped", LL_DEBUG);
 						break;
 					}
+					Server->wait(500);
 				}
-
-				if (local_pipe->hasError())
+				else
 				{
-					Server->Log("Local restore process connection closed", LL_DEBUG);
-					break;
+					if (local_pipe->isReadable(500))
+					{
+						char ch;
+						if (local_pipe->Read(&ch, 1, 0) > 0
+							|| local_pipe->hasError())
+						{
+							Server->Log("Local restore process ended random access image restore", LL_DEBUG);
+							break;
+						}
+					}
+
+					if (local_pipe->hasError())
+					{
+						Server->Log("Local restore process connection closed", LL_DEBUG);
+						break;
+					}
 				}
 
 				if (!image_file->keepalive())
@@ -2522,6 +2579,12 @@ namespace
 					Server->Log("Channel broken during random access image restore", LL_ERROR);
 					break;
 				}
+			}
+
+			if (local_pipe == NULL)
+			{
+				std::lock_guard<std::mutex> lock(detached_nbd_mutex);
+				detached_nbd_sessions.erase(port);
 			}
 
 			stopNbdImage(nbd_service, image_file);
@@ -2546,7 +2609,21 @@ namespace
 		IPipe* channel_pipe;
 		ImageReadFile* image_file;
 		IService* nbd_service;
+		unsigned short port;
+		std::atomic<bool> stop;
 	};
+
+	//Detached sessions get the image size (or negative error code) as packet, otherwise as raw little endian int64
+	bool sendNbdImageResult(IPipe* pipe, CTCPStack& tcpstack, bool detached, _i64 imgsize)
+	{
+		if (detached)
+		{
+			return tcpstack.Send(pipe, convert(imgsize)) > 0;
+		}
+
+		_i64 imgsize_le = little_endian(imgsize);
+		return pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000);
+	}
 }
 
 void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &params)
@@ -2554,11 +2631,12 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 	lasttime=Server->getTimeMS();
 	Server->Log("Starting random access image restore via NBD...", LL_DEBUG);
 
+	const bool detached = params["detached"] == "1";
+
 	if (image_fak == NULL)
 	{
 		Server->Log("fsimageplugin not loaded", LL_ERROR);
-		_i64 imgsize_le = little_endian(static_cast<_i64>(-1));
-		pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000);
+		sendNbdImageResult(pipe, tcpstack, detached, -1);
 		do_quit = true;
 		return;
 	}
@@ -2588,7 +2666,7 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 	for (size_t i = 0; i < channel_pipes.size(); ++i)
 	{
 		SChannel& chan = channel_pipes[i];
-		if (chan.state != SChannel::EChannelState_Idle)
+		if (!isImageRestoreChannel(chan))
 		{
 			continue;
 		}
@@ -2643,8 +2721,7 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 
 		Server->Log("Serving image volume via NBD on port " + convert(port), LL_INFO);
 
-		_i64 imgsize_le = little_endian(r);
-		if (!pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000))
+		if (!sendNbdImageResult(pipe, tcpstack, detached, r))
 		{
 			Server->Log("Could not write image size to local restore process", LL_ERROR);
 			NbdImageThread::stopNbdImage(nbd_service, image_file);
@@ -2653,7 +2730,14 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 			return;
 		}
 
-		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service), "nbd image restore");
+		if (detached)
+		{
+			Server->getThreadPool()->execute(new NbdImageThread(NULL, c, image_file, nbd_service, port), "nbd image restore");
+			do_quit = true;
+			return;
+		}
+
+		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service, port), "nbd image restore");
 		state = CCSTATE_FILESERV;
 		do_quit = true;
 		want_receive = false;
@@ -2665,9 +2749,28 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 		Server->Log("No channel found for random access image restore", LL_DEBUG);
 	}
 
-	_i64 imgsize_le = little_endian(imgsize);
-	pipe->Write(reinterpret_cast<char*>(&imgsize_le), sizeof(imgsize_le), 60000);
+	sendNbdImageResult(pipe, tcpstack, detached, imgsize);
 	do_quit = true;
+}
+
+void ClientConnector::CMD_RESTORE_STOP_NBD_IMAGE(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+
+	unsigned short port = 10809;
+	if (!params["nbd_port"].empty())
+	{
+		port = static_cast<unsigned short>(watoi(params["nbd_port"]));
+	}
+
+	if (NbdImageThread::stopDetached(port))
+	{
+		tcpstack.Send(pipe, "ok");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "not found");
+	}
 }
 
 void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params)
@@ -2789,6 +2892,41 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 	}
 }
 
+namespace
+{
+	//Computes the login password hash from a channel's SALT response (ok;salt;rnd[;pbkdf2_rounds])
+	bool loginPasswordFromSalt(const std::string& salt_response, const std::string& password, std::string& ret)
+	{
+		std::vector<std::string> toks;
+		Tokenize(salt_response, toks, ";");
+
+		if (toks.size() < 3
+			|| toks[0] != "ok"
+			|| toks[1].empty()
+			|| toks[2].empty())
+		{
+			return false;
+		}
+
+		std::string pw_md5 = Server->GenerateHexMD5(toks[1] + password);
+
+		int pbkdf2_rounds = toks.size() > 3 ? watoi(toks[3]) : 0;
+		if (pbkdf2_rounds > 0)
+		{
+			if (crypto_fak == NULL)
+			{
+				Server->Log("Cryptoplugin not loaded. Cannot compute password hash", LL_ERROR);
+				return false;
+			}
+
+			pw_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pw_md5), toks[1], pbkdf2_rounds));
+		}
+
+		ret = Server->GenerateHexMD5(toks[2] + pw_md5);
+		return true;
+	}
+}
+
 void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
@@ -2802,17 +2940,49 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 	{
 		bool one_ok=false;
 		std::string errors;
+		//Index into the salts returned by GET SALT (same channel selection)
+		size_t login_idx = 0;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (!isImageRestoreChannel(channel_pipes[i]))
+			{
+				continue;
+			}
+
 			if(params["username"].empty())
 			{
                 sendChannelPacket(channel_pipes[i], "LOGIN username=&password=");
 			}
 			else
 			{
-                sendChannelPacket(channel_pipes[i], "LOGIN username="+(params["username"])
-														+"&password="+(params["password"+convert(i)]));
+				std::string password;
+				if (params.find("plain_password") != params.end())
+				{
+					//Caller (e.g. urbackupclientctl) cannot hash the password. Get salt from this channel and hash here.
+					sendChannelPacket(channel_pipes[i], "SALT username=" + EscapeParamString(params["username"]));
+					std::string salt_response = receivePacket(channel_pipes[i]);
+
+					if (!loginPasswordFromSalt(salt_response, params["plain_password"], password))
+					{
+						Server->Log("Client " + convert(i) + "/" + convert(channel_pipes.size()) + " SALT ERROR: --" + salt_response + "--", LL_ERROR);
+						if (!errors.empty())
+						{
+							errors += " -- ";
+						}
+						errors += salt_response.empty() ? std::string("err") : salt_response;
+						++login_idx;
+						continue;
+					}
+				}
+				else
+				{
+					password = params["password" + convert(login_idx)];
+				}
+
+                sendChannelPacket(channel_pipes[i], "LOGIN username="+EscapeParamString(params["username"])
+														+"&password="+EscapeParamString(password));
 			}
+			++login_idx;
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
@@ -2842,6 +3012,10 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 		{
 			tcpstack.Send(pipe, "ok");
 		}
+		else if(login_idx==0)
+		{
+			tcpstack.Send(pipe, "no channels available");
+		}
 		else
 		{
 			tcpstack.Send(pipe, errors);
@@ -2863,7 +3037,12 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 		std::string salts;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], "SALT username="+(params["username"]));
+			if (!isImageRestoreChannel(channel_pipes[i]))
+			{
+				continue;
+			}
+
+            sendChannelPacket(channel_pipes[i], "SALT username="+EscapeParamString(params["username"]));
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
@@ -2875,12 +3054,13 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 
 			Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
 
+			if(!salts.empty())
+			{
+				salts+="/";
+			}
+
 			if(nc.find("ok;")==0)
 			{
-				if(!salts.empty())
-				{
-					salts+="/";
-				}
 				salts+=nc;
 			}
 			else

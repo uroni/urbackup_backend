@@ -182,7 +182,18 @@ public:
 	{
 		EAccessError_Ok,
 		EAccessError_NoServer,
-		EAccessError_NoTokens
+		EAccessError_NoTokens,
+		EAccessError_NoPermission
+	};
+
+	enum ENbdImageResult
+	{
+		ENbdImageResult_Ok = 0,
+		ENbdImageResult_ConnectError = 1,
+		ENbdImageResult_NoServer = 2,
+		ENbdImageResult_Refused = 3,
+		ENbdImageResult_NbdStartError = 4,
+		ENbdImageResult_NotFound = 5
 	};
 
 	static std::string getFileBackupsList(const std::string& virtual_client, EAccessError& access_error);
@@ -195,6 +206,17 @@ public:
 	static SStatusDetails getStatusDetails();
 
 	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup);
+
+	//Image backups of restore_name or (if empty) of this client/its virtual client. Raw "id|timestamp|time|letter" lines
+	static std::string getImageBackupsList(const std::string& restore_name, const std::string& virtual_client, EAccessError& access_error);
+
+	//Logs in on the server(s) for image restore. The client backend hashes the password
+	static bool loginForImageRestore(const std::string& username, const std::string& password, std::string& errmsg);
+
+	//Starts serving an image backup read-only via NBD in the client backend. Runs until stopNbdImage
+	static ENbdImageResult startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, int64& imgsize);
+
+	static ENbdImageResult stopNbdImage(unsigned short port);
 
 	static void setPWFile(const std::string &pPWFile);
 	static void setPWFileChange(const std::string &pPWFile);
