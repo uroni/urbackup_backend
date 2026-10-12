@@ -132,8 +132,9 @@ TasksMax=infinity
 WantedBy=multi-user.target
 EOF
 
-mkdir -p $PREFIX/var/urbackup/data
-cat << EOF > $PREFIX/var/urbackup/data/settings.cfg
+# Directory of the first client facet
+mkdir -p $PREFIX/var/urbackup/data_1
+cat << EOF > $PREFIX/var/urbackup/data_1/settings.cfg
 internet_mode_enabled=true
 internet_server=$SERVER_NAME
 internet_server_port=$SERVER_PORT
