@@ -80,8 +80,6 @@ public:
 	//settings.cfg (or settings_<clientsubname>.cfg) of a facet
 	static std::string getSettingsFn(int facet_id, const std::string& clientsubname = std::string());
 	static std::string getDefaultSettingsFn(const std::string& clientsubname = std::string());
-	//Exists while the settings in the facet are not the ones of its server yet (see seedFacet)
-	static std::string getSettingsPendingFn(int facet_id);
 
 	//Time (unix seconds) of the last successful backup a server did of this client (0: none yet)
 	static void setLastBackup(const std::string& ident, int64 backup_time);

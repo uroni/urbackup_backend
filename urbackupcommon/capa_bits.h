@@ -17,7 +17,5 @@ const int DONT_ALLOW_COMPONENT_CONFIG = 1 << 15;
 const int STATUS_NO_COMPONENTS = 1 << 16;
 const int DONT_ALLOW_STARTING_INCR_IMAGE_BACKUPS = 1 << 17;
 const int DONT_ALLOW_CONFIG_MAX_BACKUPS = 1 << 18;
-//The server sends its settings when the client asks for them on the channel ("SEND SETTINGS")
-const int SERVER_SEND_SETTINGS = 1 << 19;
 //The server does not do file backups (its "Do not do file backups" setting)
-const int DONT_DO_FILE_BACKUPS = 1 << 20;
+const int DONT_DO_FILE_BACKUPS = 1 << 19;

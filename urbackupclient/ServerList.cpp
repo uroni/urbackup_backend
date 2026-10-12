@@ -101,11 +101,6 @@ std::string ServerList::getSettingsFn(int facet_id, const std::string& clientsub
 	return getFacetDir(facet_id) + "/settings_" + conv_filename(clientsubname) + ".cfg";
 }
 
-std::string ServerList::getSettingsPendingFn(int facet_id)
-{
-	return getFacetDir(facet_id) + os_file_sep() + "server_settings_pending";
-}
-
 std::string ServerList::getDefaultSettingsFn(const std::string& clientsubname)
 {
 	return getSettingsFn(getDefaultFacetId(), clientsubname);
@@ -387,8 +382,6 @@ void ServerList::seedFacet(int src_id, int dst_id)
 			write_file_only_admin(new_data, dst_fn);
 		}
 	}
-
-	write_file_only_admin("", getSettingsPendingFn(dst_id));
 
 	IDatabase* db = getDb();
 	std::string str_src = convert(src_id);

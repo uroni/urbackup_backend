@@ -1639,24 +1639,6 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		int capa = watoi(params["capa"]);
 		token = params["token"];
 
-		if (capa & SERVER_SEND_SETTINGS)
-		{
-			//Ask for the server's settings if this client has none of this server yet (or only
-			//the ones it took over from another server).
-			//Older servers close the channel on unknown messages, so only if the server supports it
-			std::string channel_server_ident = ServerIdentityMgr::getServerIdentity(identity);
-			int channel_facet_id = ServerList::getFacetId(channel_server_ident);
-			if (channel_facet_id != 0)
-			{
-				if (!FileExists(ServerList::getSettingsFn(channel_facet_id, params["virtual_client"]))
-					|| (params["virtual_client"].empty() && FileExists(ServerList::getSettingsPendingFn(channel_facet_id))))
-				{
-					Server->Log("Asking server " + channel_server_ident + " for its settings", LL_INFO);
-					tcpstack.Send(pipe, "SEND SETTINGS");
-				}
-			}
-		}
-
 		if (params["startup"] == "1")
 		{
 			tcpstack.Send(pipe, "STARTUP timestamp=" + convert(startup_timestamp));
