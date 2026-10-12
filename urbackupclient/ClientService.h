@@ -193,6 +193,7 @@ struct SAsyncFileList
 };
 
 struct SVolumesCache;
+struct SServerEntry;
 class RestoreFiles;
 
 const unsigned int x_pingtimeout=180000;
@@ -321,6 +322,9 @@ private:
 	static int64 getLastBackupTime();
 
 	static std::string getHasNoRecentBackup();
+	//1: the last backup by this server is older than the backup interval it sent, 0: it is not,
+	//-1: not known (the server did not send its backup interval yet or is switched off)
+	static int getServerHasNoRecentBackup(const SServerEntry& entry, int64 client_last_backup);
 
 	static std::string getCurrRunningJob(bool reset_done, int& pcdone);
 

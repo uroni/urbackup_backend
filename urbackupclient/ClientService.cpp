@@ -4362,6 +4362,37 @@ void ClientConnector::requestRestoreRestart()
 	status_updated=true;
 }
 
+int ClientConnector::getServerHasNoRecentBackup(const SServerEntry& entry, int64 client_last_backup)
+{
+	if (entry.ident.empty()
+		|| (!entry.local && !entry.internet))
+	{
+		return -1;
+	}
+
+	int server_backup_interval = ServerList::getBackupInterval(entry.ident);
+	if (server_backup_interval <= 0)
+	{
+		return -1;
+	}
+
+	int64 last_backup_time = ServerList::getLastBackup(entry.ident);
+	if (last_backup_time == 0
+		&& entry.id == ServerList::getDefaultFacetId())
+	{
+		//Backups from before the client kept the time per server
+		last_backup_time = client_last_backup;
+	}
+
+	if (last_backup_time == 0
+		|| Server->getTimeSeconds() - last_backup_time > server_backup_interval)
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
 std::string ClientConnector::getHasNoRecentBackup()
 {
 	IScopedLock lock(backup_mutex);
@@ -4392,6 +4423,28 @@ std::string ClientConnector::getHasNoRecentBackup()
 	}
 
 	if(Server->getTimeMS()-service_starttime<backup_alert_delay)
+	{
+		return "NOA";
+	}
+
+	//Each server has its own backup interval: no recent backup if one of them is overdue.
+	//Servers that did not send their interval yet are not taken into account
+	bool has_server_interval = false;
+	std::vector<SServerEntry> entries = ServerList::getEntries();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		int no_recent = getServerHasNoRecentBackup(entries[i], last_backup_time);
+		if (no_recent > 0)
+		{
+			return "NO_RECENT";
+		}
+		else if (no_recent == 0)
+		{
+			has_server_interval = true;
+		}
+	}
+
+	if (has_server_interval)
 	{
 		return "NOA";
 	}

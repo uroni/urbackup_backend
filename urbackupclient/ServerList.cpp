@@ -262,11 +262,13 @@ bool ServerList::writeFacetInfo(const SServerEntry& entry)
 {
 	std::string fn = getFacetDir(entry.id) + "/" + facet_info_fn;
 	std::string last_backup;
+	std::string backup_interval;
 	{
 		std::auto_ptr<ISettingsReader> info(Server->createFileSettingsReader(fn));
 		if (info.get() != NULL)
 		{
 			last_backup = info->getValue("last_backup", "");
+			backup_interval = info->getValue("backup_interval", "");
 		}
 	}
 
@@ -277,6 +279,10 @@ bool ServerList::writeFacetInfo(const SServerEntry& entry)
 	if (!last_backup.empty())
 	{
 		data += "last_backup=" + last_backup + "\n";
+	}
+	if (!backup_interval.empty())
+	{
+		data += "backup_interval=" + backup_interval + "\n";
 	}
 
 	createFacetDir(entry.id);
@@ -557,7 +563,7 @@ std::vector<int> ServerList::getFacetIds()
 	return ret;
 }
 
-void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
+void ServerList::setFacetInfoValue(const std::string& ident, const std::string& key, const std::string& value)
 {
 	IScopedLock lock(mutex);
 	load();
@@ -574,31 +580,54 @@ void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
 	for (int i = 0; i <= numl; ++i)
 	{
 		std::string l = trim(getline(i, data));
-		if (!l.empty() && getuntil("=", l) != "last_backup")
+		if (!l.empty() && getuntil("=", l) != key)
 		{
 			new_data += l + "\n";
 		}
 	}
-	new_data += "last_backup=" + convert(backup_time) + "\n";
+	new_data += key + "=" + value + "\n";
 	write_file_only_admin(new_data, fn);
 }
 
-int64 ServerList::getLastBackup(const std::string& ident)
+std::string ServerList::getFacetInfoValue(const std::string& ident, const std::string& key)
 {
 	IScopedLock lock(mutex);
 	load();
 	SServerEntry* e = findIdent(ident);
 	if (e == NULL)
 	{
-		return 0;
+		return std::string();
 	}
 
 	std::auto_ptr<ISettingsReader> info(Server->createFileSettingsReader(getFacetDir(e->id) + "/" + facet_info_fn));
 	if (info.get() == NULL)
 	{
-		return 0;
+		return std::string();
 	}
-	return watoi64(info->getValue("last_backup", "0"));
+	return info->getValue(key, "");
+}
+
+void ServerList::setLastBackup(const std::string& ident, int64 backup_time)
+{
+	setFacetInfoValue(ident, "last_backup", convert(backup_time));
+}
+
+int64 ServerList::getLastBackup(const std::string& ident)
+{
+	return watoi64(getFacetInfoValue(ident, "last_backup"));
+}
+
+void ServerList::setBackupInterval(const std::string& ident, int backup_interval)
+{
+	if (getBackupInterval(ident) != backup_interval)
+	{
+		setFacetInfoValue(ident, "backup_interval", convert(backup_interval));
+	}
+}
+
+int ServerList::getBackupInterval(const std::string& ident)
+{
+	return watoi(getFacetInfoValue(ident, "backup_interval"));
 }
 
 int ServerList::resolveFacet(const std::string& server)

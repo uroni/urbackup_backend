@@ -87,6 +87,11 @@ public:
 	static void setLastBackup(const std::string& ident, int64 backup_time);
 	static int64 getLastBackup(const std::string& ident);
 
+	//Time (seconds) after which the server expects the next backup at the latest. Each server
+	//sends its own (0: the server did not send one yet)
+	static void setBackupInterval(const std::string& ident, int backup_interval);
+	static int getBackupInterval(const std::string& ident);
+
 	//Called when a server identity becomes trusted. Gives the server a facet if it has none
 	static void addTrustedIdent(const std::string& ident);
 
@@ -111,6 +116,9 @@ private:
 	static bool writeInternetSettings(const SServerEntry& entry);
 	static void readFacetInfo(SServerEntry& entry);
 	static bool writeFacetInfo(const SServerEntry& entry);
+	//Values in the facet info that are not part of SServerEntry (last_backup, backup_interval)
+	static void setFacetInfoValue(const std::string& ident, const std::string& key, const std::string& value);
+	static std::string getFacetInfoValue(const std::string& ident, const std::string& key);
 	static int addFacet(const std::string& ident);
 	static void removeFacet(int id);
 	//The server of facet dst_id was backed up with the settings and paths of facet src_id

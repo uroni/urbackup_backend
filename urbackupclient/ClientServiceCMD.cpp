@@ -837,6 +837,13 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 		}
 
 		int new_interval=atoi(intervall.c_str());
+		Server->Log("Server " + (server_ident.empty() ? std::string("(unknown)") : server_ident)
+			+ " sent backup interval \"" + intervall + "\"", LL_INFO);
+		//Each server has its own backup interval (see getHasNoRecentBackup)
+		if (new_interval > 0 && !server_ident.empty())
+		{
+			ServerList::setBackupInterval(server_ident, new_interval);
+		}
 		if(new_interval!=0 && new_interval!=backup_interval)
 		{			
 			update_db=true;
@@ -3822,6 +3829,11 @@ void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change
 			}
 		}
 	}
+	int64 client_last_backup;
+	{
+		IScopedLock lock(backup_mutex);
+		client_last_backup = getLastBackupTime();
+	}
 	for (size_t i = 0; i < entries.size(); ++i)
 	{
 		if (entries[i].internet)
@@ -3830,6 +3842,13 @@ void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change
 		}
 		if (!entries[i].ident.empty())
 		{
+			//Missing: the server did not send its backup interval yet
+			int no_recent = getServerHasNoRecentBackup(entries[i], client_last_backup);
+			if (no_recent >= 0)
+			{
+				data += convert(i) + ".backup_interval=" + convert(ServerList::getBackupInterval(entries[i].ident)) + "\n";
+				data += convert(i) + ".no_recent_backup=" + convert(no_recent) + "\n";
+			}
 			//Web interface of the server (for "Access/restore backups")
 			data += convert(i) + ".server_url=" + getServerUrl(entries[i].ident) + "\n";
 			data += convert(i) + ".last_backup=" + convert(getServerLastBackup(entries[i].ident)) + "\n";
