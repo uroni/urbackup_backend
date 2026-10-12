@@ -1507,7 +1507,7 @@ void do_restore(void)
 		Server->Log("Stopping NBD server", LL_INFO);
 		if (!c->hasError())
 		{
-			c->Write("x", 1, 10000);
+			c->Write("x", static_cast<size_t>(1), 10000);
 		}
 		Server->destroy(c);
 		exit(0);
