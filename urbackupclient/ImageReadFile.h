@@ -2,10 +2,14 @@
 #include "../Interface/File.h"
 #include "../Interface/Mutex.h"
 #include "../urbackupcommon/image_read_protocol.h"
+#include <deque>
 
 /**
 * Read-only file backed by random access reads of an image backup on the server
 * (see image_read_protocol.h), sent via the channel pipe.
+* Sequential reads are pipelined by queuing read-ahead requests. If a read does
+* not match the next queued read-ahead request, the queued responses are drained
+* before the actual read is requested.
 */
 class ImageReadFile : public IFile
 {
@@ -52,10 +56,35 @@ private:
 	//Sends request and receives the response header. Mutex must be locked.
 	bool request(const SImageReadRequest& req, int* err);
 
+	//Sends the requests without waiting for responses. Mutex must be locked.
+	bool sendRequests(const SImageReadRequest* reqs, size_t n);
+
+	//Receives the next response header. Mutex must be locked.
+	bool receiveResponse(int* err);
+
+	//Queues read-ahead requests of len bytes following the queued ones (or read_end if none are queued). Mutex must be locked.
+	bool queueReadahead(int64 read_end, _u32 len);
+
+	//Receives and discards responses of queued read-ahead requests. Mutex must be locked.
+	bool drainReadahead();
+
 	IPipe* pipe;
 	int64 size;
 	int64 pos;
 	IMutex* mutex;
 	bool connection_error;
 	int64 last_request;
+
+	//Sent read-ahead requests whose responses were not received yet, in order
+	std::deque<SImageReadRequest> readahead;
+	//Response header of the first read-ahead request was received and its data partially consumed
+	bool readahead_partial;
+	int64 readahead_bytes;
+	int64 readahead_window;
+	int64 last_read_end;
+	//Number of consecutive reads continuing the previous read
+	int sequential_reads;
+	//Heuristic: reads are sequential, so do read-ahead
+	bool read_sequential;
+	int64 last_read_time;
 };
