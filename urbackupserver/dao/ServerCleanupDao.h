@@ -142,6 +142,7 @@ public:
 	CondInt findFileBackup(int clientid, const std::string& path);
 	CondInt64 getUsedStorage(int clientid);
 	void cleanupBackupLogs(void);
+	void saveCleanupLog(int errors, int warnings, int infos);
 	void cleanupAuthLog(void);
 	std::vector<SIncompleteFileBackup> getIncompleteFileBackups(void);
 	std::vector<SIncompleteFileBackup> getDeletePendingFileBackups(void);
@@ -208,6 +209,7 @@ private:
 	IQuery* q_findFileBackup;
 	IQuery* q_getUsedStorage;
 	IQuery* q_cleanupBackupLogs;
+	IQuery* q_saveCleanupLog;
 	IQuery* q_cleanupAuthLog;
 	IQuery* q_getIncompleteFileBackups;
 	IQuery* q_getDeletePendingFileBackups;
