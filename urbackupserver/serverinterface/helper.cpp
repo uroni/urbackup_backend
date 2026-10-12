@@ -526,7 +526,7 @@ void Helper::startLogin(const std::string& remote_addr, const std::string& usern
 
 	if (!username.empty())
 	{
-		while (logging_in_usernames.find(username) != logging_in_addrs.end())
+		while (logging_in_usernames.find(username) != logging_in_usernames.end())
 		{
 			login_wait_username_cond->wait(&lock);
 		}
