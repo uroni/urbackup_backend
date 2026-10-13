@@ -649,7 +649,8 @@ bool CowFile::loadBitmap(const std::string& bitmap_fn)
 void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 {
 	uint64 block_start = offset_start/blocksize;
-	uint64 block_end = offset_end/blocksize;
+	//Set blocks that are partially written. Clear only up to the last complete block
+	uint64 block_end = v ? (offset_end+blocksize-1)/blocksize : offset_end/blocksize;
 	for(;block_start<block_end;++block_start)
 	{
 		setBitmapBit(block_start*blocksize, v);
