@@ -907,13 +907,16 @@ std::string VHDXFile::getFilename(void)
 
 bool VHDXFile::has_sector(_i64 sector_size)
 {
-	if (!has_sector_int(spos))
-	{
-		if (parent.get() != NULL)
-			return parent->has_sector_int(spos);
-	}
-	
-	return true;
+	return has_sector_chain(spos);
+}
+
+bool VHDXFile::has_sector_chain(int64 spos)
+{
+	if (has_sector_int(spos))
+		return true;
+
+	return parent.get() != NULL
+		&& parent->has_sector_chain(spos);
 }
 
 bool VHDXFile::this_has_sector(_i64 sector_size)

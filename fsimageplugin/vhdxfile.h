@@ -111,6 +111,8 @@ private:
 	bool syncInt(bool full);
 
 	bool has_sector_int(int64 spos);
+	//Block present in this file or a parent
+	bool has_sector_chain(int64 spos);
 
 	struct LogSequence
 	{
