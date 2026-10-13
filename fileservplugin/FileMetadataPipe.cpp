@@ -863,7 +863,8 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 		}
 
 		if(curr_stream->dwStreamId==BACKUP_DATA
-			|| curr_stream->dwStreamId==BACKUP_SPARSE_BLOCK)
+			|| curr_stream->dwStreamId==BACKUP_SPARSE_BLOCK
+			|| (curr_stream->dwStreamId==BACKUP_REPARSE_DATA && skip_reparse_data) )
 		{
 			//skip
 			LARGE_INTEGER seeked;
@@ -931,9 +932,14 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 	return false;
 }
 
+#ifndef IO_REPARSE_TAG_DEDUP
+#define IO_REPARSE_TAG_DEDUP (0x80000013L)
+#endif
+
 bool FileMetadataPipe::openFileHandle()
 {
 	backup_read_context = NULL;
+	skip_reparse_data = false;
 	hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ | ACCESS_SYSTEM_SECURITY | READ_CONTROL, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
@@ -944,6 +950,21 @@ bool FileMetadataPipe::openFileHandle()
 	{
 		hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ| READ_CONTROL, FILE_SHARE_READ, NULL,
 			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+	}
+
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		/* Data Deduplication keeps an optimized file's content in the volume's chunk store
+		   and marks the file with a reparse point. The file data is transferred normally,
+		   so the dedup data can be omitted: restoring it would also turn the file into a
+		   stub referring to chunks that may not exist. */
+		FILE_ATTRIBUTE_TAG_INFO tag_info;
+		if (GetFileInformationByHandleEx(hFile, FileAttributeTagInfo, &tag_info, sizeof(tag_info))
+			&& (tag_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+			&& tag_info.ReparseTag == IO_REPARSE_TAG_DEDUP)
+		{
+			skip_reparse_data = true;
+		}
 	}
 
 	return hFile != INVALID_HANDLE_VALUE;
