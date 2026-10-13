@@ -2503,18 +2503,53 @@ namespace
 	std::map<std::string, NbdImageThread*> detached_nbd_sessions;
 
 	/**
+	* Reconnects random access image reads via another channel if the channel breaks
+	*/
+	class ImageReadChannel : public IImageReadChannel
+	{
+	public:
+		ImageReadChannel(const std::string& read_params)
+			: read_params(read_params)
+		{
+		}
+
+		virtual IPipe* reopen(int64 size)
+		{
+			_i64 imgsize;
+			IPipe* pipe = ClientConnector::startImageRead(read_params, imgsize);
+			if (pipe != NULL
+				&& imgsize != size)
+			{
+				Server->Log("Image volume size changed from " + convert(size) + " to " + convert(imgsize) + " after reconnect", LL_ERROR);
+				release(pipe);
+				return NULL;
+			}
+			return pipe;
+		}
+
+		virtual void release(IPipe* pipe)
+		{
+			ClientConnector::releaseChannelPipe(pipe, SChannel::EChannelState_Exit);
+		}
+
+	private:
+		std::string read_params;
+	};
+
+	/**
 	* Keeps a random access image restore session (NBD server reading the image via the channel) alive
-	* and stops it once the local restore process closes its connection or the channel breaks.
+	* and stops it once the local restore process closes its connection or the channel breaks
+	* (and reconnecting fails).
 	* Detached sessions (local_pipe==NULL, e.g. started via urbackupclientctl) run until stopped via STOP NBD IMAGE.
 	* Owns local_pipe, image_file and nbd_service. The channel is reset afterwards.
 	*/
 	class NbdImageThread : public IThread
 	{
 	public:
-		NbdImageThread(IPipe* local_pipe, IPipe* channel_pipe,
-			ImageReadFile* image_file, IService* nbd_service, const std::string& endpoint)
-			: local_pipe(local_pipe), channel_pipe(channel_pipe),
-			image_file(image_file), nbd_service(nbd_service),
+		NbdImageThread(IPipe* local_pipe,
+			std::unique_ptr<ImageReadFile> image_file, IService* nbd_service, const std::string& endpoint)
+			: local_pipe(local_pipe),
+			image_file(std::move(image_file)), nbd_service(nbd_service),
 			endpoint(endpoint), stop(false)
 		{
 			if (local_pipe == NULL)
@@ -2587,27 +2622,33 @@ namespace
 				detached_nbd_sessions.erase(endpoint);
 			}
 
-			stopNbdImage(nbd_service, image_file);
+			stopNbdImage(nbd_service, std::move(image_file));
 
 			Server->Log("Random access image restore finished", LL_INFO);
 
 			delete local_pipe;
-			ClientConnector::releaseChannelPipe(channel_pipe, SChannel::EChannelState_Exit);
 			ClientConnector::removeRunningProcess(process_id, true);
 			delete this;
 		}
 
-		static void stopNbdImage(IService* nbd_service, ImageReadFile* image_file)
+		//Stops the NBD server and resets the channel. Must not be called with backup_mutex locked
+		//(reads may wait for it while reconnecting).
+		static void stopNbdImage(IService* nbd_service, std::unique_ptr<ImageReadFile> image_file)
 		{
+			image_file->cancelReconnect();
 			Server->StopCustomStreamService(nbd_service);
 			image_file->close();
-			delete image_file;
+			IPipe* channel_pipe = image_file->getPipe();
+			image_file.reset();
+			if (channel_pipe != NULL)
+			{
+				ClientConnector::releaseChannelPipe(channel_pipe, SChannel::EChannelState_Exit);
+			}
 		}
 
 	private:
 		IPipe* local_pipe;
-		IPipe* channel_pipe;
-		ImageReadFile* image_file;
+		std::unique_ptr<ImageReadFile> image_file;
 		IService* nbd_service;
 		std::string endpoint;
 		std::atomic<bool> stop;
@@ -2678,16 +2719,71 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 #endif
 	}
 
-	IScopedLock lock(backup_mutex);
-	waitForPings(&lock);
-
 	std::string token_param;
 	if (params.find("token") != params.end())
 	{
 		token_param = "&token=" + EscapeParamString(params["token"]);
 	}
 
-	_i64 imgsize = -2;
+	const std::string read_params = "img_id=" + params["img_id"] + "&time=" + params["time"] + token_param;
+
+	_i64 imgsize;
+	const IPipe* c = startImageRead(read_params, imgsize);
+
+	if (c == NULL)
+	{
+		if (imgsize == -2)
+		{
+			Server->Log("No channel found for random access image restore", LL_DEBUG);
+		}
+
+		sendNbdImageResult(pipe, tcpstack, detached, imgsize);
+		do_quit = true;
+		return;
+	}
+
+	std::unique_ptr<ImageReadFile> image_file(new ImageReadFile(c, imgsize,
+		std::unique_ptr<IImageReadChannel>(new ImageReadChannel(read_params))));
+	IService* nbd_service = image_fak->createNbdService(image_file.get(), true);
+
+	if (!Server->StartCustomStreamService(nbd_service, service_name, port, -1, bind_target))
+	{
+		Server->Log("Error starting NBD server on " + endpoint, LL_ERROR);
+		NbdImageThread::stopNbdImage(nbd_service, std::move(image_file));
+		sendNbdImageResult(pipe, tcpstack, detached, -3);
+		do_quit = true;
+		return;
+	}
+
+	Server->Log("Serving image volume via NBD on " + endpoint, LL_INFO);
+
+	if (!sendNbdImageResult(pipe, tcpstack, detached, imgsize))
+	{
+		Server->Log("Could not write image size to local restore process", LL_ERROR);
+		NbdImageThread::stopNbdImage(nbd_service, std::move(image_file));
+		do_quit = true;
+		return;
+	}
+
+	if (detached)
+	{
+		Server->getThreadPool()->execute(new NbdImageThread(NULL, std::move(image_file), nbd_service, endpoint), "nbd image restore");
+		do_quit = true;
+		return;
+	}
+
+	Server->getThreadPool()->execute(new NbdImageThread(pipe, std::move(image_file), nbd_service, endpoint), "nbd image restore");
+	state = CCSTATE_FILESERV;
+	do_quit = true;
+	want_receive = false;
+}
+
+IPipe* ClientConnector::startImageRead(const std::string& read_params, _i64& imgsize)
+{
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+
+	imgsize = -2;
 	for (size_t i = 0; i < channel_pipes.size(); ++i)
 	{
 		SChannel& chan = channel_pipes[i];
@@ -2706,7 +2802,7 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 		chan.state = SChannel::EChannelState_Used;
 		IPipe* c = chan.pipe;
 
-		if (!sendChannelPacket(chan, "READ IMAGE img_id=" + params["img_id"] + "&time=" + params["time"] + token_param))
+		if (!sendChannelPacket(chan, "READ IMAGE " + read_params))
 		{
 			removeChannelpipe(c);
 			continue;
@@ -2724,58 +2820,20 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 
 		if (r < 0)
 		{
+			//Channel stays usable after the refusal
 			Server->Log("Server refused random access image restore on channel " + convert((int)i), LL_INFO);
-			removeChannelpipe(c);
+			chan.state = SChannel::EChannelState_Idle;
 			imgsize = -1;
 			continue;
 		}
 
 		Server->Log("Image volume size " + convert(r), LL_DEBUG);
 
-		ImageReadFile* image_file = new ImageReadFile(c, r);
-		IService* nbd_service = image_fak->createNbdService(image_file, true);
-
-		if (!Server->StartCustomStreamService(nbd_service, service_name, port, -1, bind_target))
-		{
-			Server->Log("Error starting NBD server on " + endpoint, LL_ERROR);
-			NbdImageThread::stopNbdImage(nbd_service, image_file);
-			removeChannelpipe(c);
-			imgsize = -3;
-			break;
-		}
-
-		Server->Log("Serving image volume via NBD on " + endpoint, LL_INFO);
-
-		if (!sendNbdImageResult(pipe, tcpstack, detached, r))
-		{
-			Server->Log("Could not write image size to local restore process", LL_ERROR);
-			NbdImageThread::stopNbdImage(nbd_service, image_file);
-			removeChannelpipe(c);
-			do_quit = true;
-			return;
-		}
-
-		if (detached)
-		{
-			Server->getThreadPool()->execute(new NbdImageThread(NULL, c, image_file, nbd_service, endpoint), "nbd image restore");
-			do_quit = true;
-			return;
-		}
-
-		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service, endpoint), "nbd image restore");
-		state = CCSTATE_FILESERV;
-		do_quit = true;
-		want_receive = false;
-		return;
+		imgsize = r;
+		return c;
 	}
 
-	if (imgsize == -2)
-	{
-		Server->Log("No channel found for random access image restore", LL_DEBUG);
-	}
-
-	sendNbdImageResult(pipe, tcpstack, detached, imgsize);
-	do_quit = true;
+	return NULL;
 }
 
 void ClientConnector::CMD_RESTORE_STOP_NBD_IMAGE(const std::string &cmd, str_map &params)

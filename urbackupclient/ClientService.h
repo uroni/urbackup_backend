@@ -240,6 +240,11 @@ public:
 
 	static void releaseChannelPipe(IPipe* cp, SChannel::EChannelState new_state);
 
+	//Starts random access image reads (READ IMAGE) on an idle image restore channel.
+	//Returns the channel pipe (state used) and sets imgsize, or returns NULL and sets imgsize
+	//to -1 (refused/error) or -2 (no channel).
+	static IPipe* startImageRead(const std::string& read_params, _i64& imgsize);
+
 	static void timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool& has_backup, int64& starttime);
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
@@ -262,9 +267,9 @@ private:
 	bool sendMBR(std::string dl, std::string &errmsg);
     std::string receivePacket(const SChannel& channel, int64 timeoutms = 60000);
 	void downloadImage(str_map params, IScopedLock& backup_mutex_lock);
-	void removeChannelpipe(IPipe *cp);
-	void waitForPings(IScopedLock *lock);
-	bool hasChannelPing();
+	static void removeChannelpipe(IPipe *cp);
+	static void waitForPings(IScopedLock *lock);
+	static bool hasChannelPing();
 	bool writeUpdateFile(IFile *datafile, std::string outfn);
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
@@ -275,7 +280,7 @@ private:
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
 	void sendStatus();
-    bool sendChannelPacket(const SChannel& channel, const std::string& msg);
+    static bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
 	int parseVersion(const std::string& version, std::vector<std::string>& features);
 	int64 readSettingsUpdateVersion(const std::string& virtual_client);

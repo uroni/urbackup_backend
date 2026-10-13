@@ -21,6 +21,7 @@
 #include "../stringtools.h"
 #include <algorithm>
 #include <vector>
+#include <utility>
 
 namespace
 {
@@ -32,11 +33,15 @@ namespace
 	const int64 readahead_idle_drain = 5000;
 	//Number of consecutive reads continuing the previous one before reads are considered sequential
 	const int sequential_reads_min = 2;
+	//Give up reconnecting after the connection to the server failed for this long
+	const int64 reconnect_timeout = 5 * 60 * 1000;
+	const unsigned int reconnect_retry_wait = 1000;
 }
 
-ImageReadFile::ImageReadFile(IPipe* pipe, int64 size)
+ImageReadFile::ImageReadFile(IPipe* pipe, int64 size, std::unique_ptr<IImageReadChannel> channel)
 	: pipe(pipe), size(size), pos(0), mutex(Server->createMutex()),
-	connection_error(false), last_request(Server->getTimeMS()),
+	connection_error(false), connection_error_time(0), closed(false),
+	reconnect_cancelled(false), channel(std::move(channel)), last_request(Server->getTimeMS()),
 	readahead_partial(false), readahead_bytes(0), readahead_window(0), last_read_end(-1),
 	sequential_reads(0), read_sequential(false),
 	last_read_time(Server->getTimeMS())
@@ -77,7 +82,8 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 {
 	IScopedLock lock(mutex);
 
-	if (connection_error)
+	if (connection_error
+		&& !reconnect())
 	{
 		if (has_error) *has_error = true;
 		return 0;
@@ -134,6 +140,7 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 				readahead_window = 0;
 				if (!drainReadahead())
 				{
+					if (reconnect()) continue;
 					if (has_error) *has_error = true;
 					return done;
 				}
@@ -141,6 +148,7 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 
 			if (!sendRequests(&req, 1))
 			{
+				if (reconnect()) continue;
 				if (has_error) *has_error = true;
 				return done;
 			}
@@ -153,6 +161,7 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 
 			if (!queueReadahead(req.offset + req.len, (std::min)(bsize, image_read_max_len)))
 			{
+				if (reconnect()) continue;
 				if (has_error) *has_error = true;
 				return done;
 			}
@@ -163,6 +172,7 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 			int err;
 			if (!receiveResponse(&err))
 			{
+				if (reconnect()) continue;
 				if (has_error) *has_error = true;
 				return done;
 			}
@@ -200,7 +210,8 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 		if (!image_read_full(pipe, buffer + done, req.len, read_timeout))
 		{
 			Server->Log("Error receiving image data", LL_ERROR);
-			connection_error = true;
+			setConnectionError();
+			if (reconnect()) continue;
 			if (has_error) *has_error = true;
 			return done;
 		}
@@ -274,41 +285,60 @@ bool ImageReadFile::keepalive()
 {
 	IScopedLock lock(mutex);
 
-	if (connection_error)
+	if (closed)
 	{
 		return false;
 	}
 
-	if (!readahead.empty()
-		&& Server->getTimeMS() - last_read_time > readahead_idle_drain)
+	if (!connection_error)
 	{
-		readahead_window = 0;
-		if (!drainReadahead())
+		if (!readahead.empty()
+			&& Server->getTimeMS() - last_read_time > readahead_idle_drain)
 		{
-			return false;
+			readahead_window = 0;
+			drainReadahead();
+		}
+
+		if (!connection_error)
+		{
+			if (Server->getTimeMS() - last_request < image_read_keepalive_interval
+				|| !readahead.empty())
+			{
+				//Idle or server is still sending read-ahead responses
+				return true;
+			}
+
+			SImageReadRequest req = {};
+			req.cmd = image_read_cmd_keepalive;
+			int err;
+			if (request(req, &err))
+			{
+				return true;
+			}
 		}
 	}
 
-	if (Server->getTimeMS() - last_request < image_read_keepalive_interval)
+	//Reconnect while idle, so reads do not have to wait for it
+	if (tryReconnect())
 	{
 		return true;
 	}
 
-	if (!readahead.empty())
-	{
-		//Server is still sending read-ahead responses
-		return true;
-	}
-
-	SImageReadRequest req = {};
-	req.cmd = image_read_cmd_keepalive;
-	int err;
-	return request(req, &err);
+	return channel
+		&& !reconnect_cancelled
+		&& Server->getTimeMS() - connection_error_time <= reconnect_timeout;
 }
 
 void ImageReadFile::close()
 {
 	IScopedLock lock(mutex);
+
+	if (closed)
+	{
+		return;
+	}
+
+	closed = true;
 
 	if (connection_error)
 	{
@@ -325,7 +355,88 @@ void ImageReadFile::close()
 	char req_buf[image_read_request_size];
 	image_read_encode_request(req, req_buf);
 	pipe->Write(req_buf, sizeof(req_buf), 30000);
-	connection_error = true;
+	setConnectionError();
+}
+
+void ImageReadFile::cancelReconnect()
+{
+	reconnect_cancelled = true;
+}
+
+IPipe* ImageReadFile::getPipe()
+{
+	IScopedLock lock(mutex);
+	return pipe;
+}
+
+void ImageReadFile::setConnectionError()
+{
+	if (!connection_error)
+	{
+		connection_error = true;
+		connection_error_time = Server->getTimeMS();
+	}
+}
+
+bool ImageReadFile::tryReconnect()
+{
+	if (!channel
+		|| closed
+		|| reconnect_cancelled)
+	{
+		return false;
+	}
+
+	if (pipe != NULL)
+	{
+		Server->Log("Connection to server broken during random access image restore. Reconnecting...", LL_WARNING);
+		channel->release(pipe);
+		pipe = NULL;
+	}
+
+	IPipe* new_pipe = channel->reopen(size);
+	if (new_pipe == NULL)
+	{
+		return false;
+	}
+
+	pipe = new_pipe;
+	connection_error = false;
+	connection_error_time = 0;
+	readahead.clear();
+	readahead_bytes = 0;
+	readahead_partial = false;
+	readahead_window = 0;
+	last_request = Server->getTimeMS();
+
+	Server->Log("Reconnected random access image restore", LL_INFO);
+	return true;
+}
+
+bool ImageReadFile::reconnect()
+{
+	while (true)
+	{
+		if (tryReconnect())
+		{
+			return true;
+		}
+
+		if (!channel
+			|| closed
+			|| reconnect_cancelled)
+		{
+			return false;
+		}
+
+		if (Server->getTimeMS() - connection_error_time > reconnect_timeout)
+		{
+			Server->Log("Reconnecting random access image restore timed out", LL_ERROR);
+			return false;
+		}
+
+		Server->wait(reconnect_retry_wait);
+	}
 }
 
 bool ImageReadFile::request(const SImageReadRequest& req, int* err)
@@ -345,7 +456,7 @@ bool ImageReadFile::sendRequests(const SImageReadRequest* reqs, size_t n)
 	if (!pipe->Write(req_buf.data(), req_buf.size(), 30000))
 	{
 		Server->Log("Error sending image read request", LL_ERROR);
-		connection_error = true;
+		setConnectionError();
 		return false;
 	}
 
@@ -359,7 +470,7 @@ bool ImageReadFile::receiveResponse(int* err)
 	if (!image_read_full(pipe, resp_buf, sizeof(resp_buf), read_timeout))
 	{
 		Server->Log("Error receiving image read response", LL_ERROR);
-		connection_error = true;
+		setConnectionError();
 		return false;
 	}
 
@@ -428,7 +539,7 @@ bool ImageReadFile::drainReadahead()
 		if (!image_read_full(pipe, buf.data(), req.len, read_timeout))
 		{
 			Server->Log("Error receiving read-ahead image data", LL_ERROR);
-			connection_error = true;
+			setConnectionError();
 			return false;
 		}
 	}
