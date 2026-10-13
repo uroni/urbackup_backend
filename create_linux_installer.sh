@@ -111,7 +111,7 @@ fi
 }
 
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
-for arch in armv6-linux-engeabihf x86_64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
+for arch in armv6-linux-engeabihf x86_64-linux-glibc aarch64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
 do
 	ORIG_PATH="$PATH"
 	echo "Compiling for architecture $arch..."
@@ -127,6 +127,22 @@ do
 		sed -i 's@-lzstd@/usr/lib/x86_64-linux-gnu/libzstd.a@g' Makefile.am
 		./configure --enable-headless --enable-clientupdate --enable-embedded-cryptopp --enable-embedded-zstd CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto -DCRYPTOPP_DISABLE_SSSE3" LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os -DOPENSSL_SEARCH_CA" AR=gcc-ar RANLIB=gcc-ranlib
 		STRIP_CMD="strip"
+	elif [ $arch = aarch64-linux-glibc ]
+	then
+		# Debian multiarch build host: g++-aarch64-linux-gnu, binutils-aarch64-linux-gnu,
+		# pkg-config and arm64 development packages for OpenSSL, libcurl and zlib.
+		# Build against the oldest glibc version supported by the release.
+		sed -i 's@$(OPENSSL_LIBS)@/usr/lib/aarch64-linux-gnu/libssl.a /usr/lib/aarch64-linux-gnu/libcrypto.a@g' Makefile.am
+		# Restrict dependency discovery to ARM64; do not use the host curl-config.
+		PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig \
+		ac_cv_path__libcurl_config= LIBCURL="-lcurl" \
+		./configure --build="$(./config.guess)" --host=aarch64-linux-gnu \
+			--enable-headless --enable-clientupdate --enable-embedded-cryptopp --enable-embedded-zstd \
+			CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto" \
+			LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXXFLAGS="-ggdb -Os -DOPENSSL_SEARCH_CA" \
+			CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
+			AR=aarch64-linux-gnu-gcc-ar RANLIB=aarch64-linux-gnu-gcc-ranlib
+		STRIP_CMD="aarch64-linux-gnu-strip"
 	else
 		build_ndk $arch
 	fi
