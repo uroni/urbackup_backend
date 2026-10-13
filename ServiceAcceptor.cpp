@@ -141,6 +141,11 @@ CServiceAcceptor::~CServiceAcceptor()
 	if (s_v6 != SOCKET_ERROR)
 		closesocket(s_v6);
 
+#ifndef _WIN32
+	if (!unix_socket_path.empty())
+		unlink(unix_socket_path.c_str());
+#endif
+
 	if(has_error)
 	{
 		//Accept thread was not started
@@ -458,6 +463,13 @@ bool CServiceAcceptor::init_socket_unix()
 	struct sockaddr_un addr;
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
+	if (path.size() >= sizeof(addr.sun_path))
+	{
+		Server->Log(name + ": Unix socket path " + path + " is too long", LL_ERROR);
+		closesocket(s);
+		s = SOCKET_ERROR;
+		return false;
+	}
 	size_t max_size = (std::min)(sizeof(addr.sun_path) - 1, path.size());
 	memcpy(addr.sun_path, path.c_str(), max_size);
 
@@ -474,10 +486,13 @@ bool CServiceAcceptor::init_socket_unix()
 	if (rc != 0)
 	{
 		Server->Log(name + ": Error chaning unix socket permissions at path " + path + ". Errno: " + convert(errno), LL_ERROR);
+		unlink(path.c_str());
 		closesocket(s);
 		s = SOCKET_ERROR;
 		return false;
 	}
+
+	unix_socket_path = path;
 #endif
 
 	listen(s, 10000);

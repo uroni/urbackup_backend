@@ -1297,7 +1297,7 @@ void do_restore(void)
 		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
-		Server->Log("nbd_image(restore_img_id,restore_time|restore_token,[nbd_port],[nbd_localhost_only],[username,password])", LL_INFO);
+		Server->Log("nbd_image(restore_img_id,restore_time|restore_token,[nbd_port],[nbd_localhost_only],[nbd_unix_socket (absolute path)],[username,password])", LL_INFO);
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
@@ -1444,6 +1444,16 @@ void do_restore(void)
 			nbd_port = "10809";
 		}
 
+		std::string nbd_endpoint = "port " + nbd_port;
+		std::string nbd_client_example = "nbd-client localhost " + nbd_port + " /dev/nbd0 -readonly";
+		std::string nbd_unix_socket = Server->getServerParameter("nbd_unix_socket");
+		if (!nbd_unix_socket.empty())
+		{
+			nbd_endpoint = "unix socket " + nbd_unix_socket;
+			nbd_client_example = "nbd-client -unix " + nbd_unix_socket + " /dev/nbd0 -readonly";
+			dl_args += "&nbd_unix_socket=" + EscapeParamString(nbd_unix_socket);
+		}
+
 		tcpstack.Send(c, "NBD IMAGE#pw="+pw+dl_args+"&nbd_port="+EscapeParamString(nbd_port)
 			+"&nbd_localhost_only="+(Server->getServerParameter("nbd_localhost_only")=="0" ? "0" : "1"));
 
@@ -1462,7 +1472,7 @@ void do_restore(void)
 		}
 		else if (imgsize == -3)
 		{
-			Server->Log("Client service could not start NBD server on port " + nbd_port, LL_ERROR);
+			Server->Log("Client service could not start NBD server on " + nbd_endpoint, LL_ERROR);
 			exit(1);
 		}
 		else if (imgsize < 0)
@@ -1471,8 +1481,8 @@ void do_restore(void)
 			exit(1);
 		}
 
-		Server->Log("Client service serves image backup (" + PrettyPrintBytes(imgsize) + ") read-only via NBD on port " + nbd_port
-			+ ". E.g. nbd-client localhost " + nbd_port + " /dev/nbd0 -readonly. Stop with SIGINT/SIGTERM.", LL_INFO);
+		Server->Log("Client service serves image backup (" + PrettyPrintBytes(imgsize) + ") read-only via NBD on " + nbd_endpoint
+			+ ". E.g. " + nbd_client_example + ". Stop with SIGINT/SIGTERM.", LL_INFO);
 
 		signal(SIGINT, nbd_image_stop_handler);
 		signal(SIGTERM, nbd_image_stop_handler);

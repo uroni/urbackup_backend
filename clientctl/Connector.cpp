@@ -821,10 +821,16 @@ bool Connector::loginForImageRestore(const std::string& username, const std::str
 	return false;
 }
 
-Connector::ENbdImageResult Connector::startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, int64& imgsize)
+Connector::ENbdImageResult Connector::startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, const std::string& unix_socket, int64& imgsize)
 {
-	std::string r = getResponse("NBD IMAGE", "detached=1&img_id=" + convert(img_id) + "&time=" + convert(img_time)
-		+ "&nbd_port=" + convert(static_cast<int>(port)) + "&nbd_localhost_only=" + (localhost_only ? "1" : "0"), false);
+	std::string params = "detached=1&img_id=" + convert(img_id) + "&time=" + convert(img_time)
+		+ "&nbd_port=" + convert(static_cast<int>(port)) + "&nbd_localhost_only=" + (localhost_only ? "1" : "0");
+	if (!unix_socket.empty())
+	{
+		params += "&nbd_unix_socket=" + EscapeParamString(unix_socket);
+	}
+
+	std::string r = getResponse("NBD IMAGE", params, false);
 
 	if (r.empty())
 	{
@@ -843,9 +849,15 @@ Connector::ENbdImageResult Connector::startNbdImage(int img_id, int64 img_time, 
 	return ENbdImageResult_Ok;
 }
 
-Connector::ENbdImageResult Connector::stopNbdImage(unsigned short port)
+Connector::ENbdImageResult Connector::stopNbdImage(unsigned short port, const std::string& unix_socket)
 {
-	std::string r = getResponse("STOP NBD IMAGE", "nbd_port=" + convert(static_cast<int>(port)), false);
+	std::string params = "nbd_port=" + convert(static_cast<int>(port));
+	if (!unix_socket.empty())
+	{
+		params += "&nbd_unix_socket=" + EscapeParamString(unix_socket);
+	}
+
+	std::string r = getResponse("STOP NBD IMAGE", params, false);
 
 	if (r.empty())
 	{

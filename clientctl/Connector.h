@@ -214,9 +214,10 @@ public:
 	static bool loginForImageRestore(const std::string& username, const std::string& password, std::string& errmsg);
 
 	//Starts serving an image backup read-only via NBD in the client backend. Runs until stopNbdImage
-	static ENbdImageResult startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, int64& imgsize);
+	//Serves via unix socket instead of port if unix_socket is not empty (absolute path)
+	static ENbdImageResult startNbdImage(int img_id, int64 img_time, unsigned short port, bool localhost_only, const std::string& unix_socket, int64& imgsize);
 
-	static ENbdImageResult stopNbdImage(unsigned short port);
+	static ENbdImageResult stopNbdImage(unsigned short port, const std::string& unix_socket);
 
 	static void setPWFile(const std::string &pPWFile);
 	static void setPWFileChange(const std::string &pPWFile);

@@ -1309,6 +1309,11 @@ IPipe * CServer::ConnectUnixStream(const std::string & pPath, unsigned int pTime
 	struct sockaddr_un server;
 	memset(&server, 0, sizeof(server));
 	server.sun_family = AF_UNIX;
+	if (pPath.size() >= sizeof(server.sun_path))
+	{
+		Log("Unix socket path " + pPath + " is too long", LL_ERROR);
+		return NULL;
+	}
 	size_t max_size = (std::min)(sizeof(server.sun_path) - 1, pPath.size());
 	memcpy(server.sun_path, pPath.c_str(), max_size);
 

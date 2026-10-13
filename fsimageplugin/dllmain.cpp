@@ -1783,9 +1783,23 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			bind_target = IServer::BindTarget_Localhost;
 		}
 
-		Server->Log("Serving \"" + nbd_serve + "\" (" + PrettyPrintBytes(backing_file->Size()) + ") via NBD on port " + convert(port));
+		std::string service_name = "NBD";
+		std::string endpoint = "port " + convert(port);
+		std::string unix_socket = Server->getServerParameter("nbd_unix_socket");
+		if (!unix_socket.empty())
+		{
+			bind_target = IServer::BindTarget_UnixSocket;
+			service_name = unix_socket;
+			endpoint = "unix socket " + unix_socket;
+		}
 
-		Server->StartCustomStreamService(new NbdService(backing_file), "NBD", port, -1, bind_target);
+		Server->Log("Serving \"" + nbd_serve + "\" (" + PrettyPrintBytes(backing_file->Size()) + ") via NBD on " + endpoint);
+
+		if (!Server->StartCustomStreamService(new NbdService(backing_file), service_name, port, -1, bind_target))
+		{
+			Server->Log("Error starting NBD server on " + endpoint, LL_ERROR);
+			exit(1);
+		}
 
 #ifndef _WIN32
 		signal(SIGINT, nbd_serve_stop_handler);
@@ -1799,6 +1813,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		Server->Log("Stopping NBD server");
 		backing_file->Sync();
+		if (!unix_socket.empty())
+		{
+			Server->deleteFile(unix_socket);
+		}
 		exit(0);
 	}
 

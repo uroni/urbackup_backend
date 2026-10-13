@@ -34,6 +34,7 @@ private:
 	SOCKET s_v6;
 
 	std::string name;
+	std::string unix_socket_path;
 
 	IService * service;
 	IPipe *exitpipe;

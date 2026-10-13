@@ -2500,7 +2500,7 @@ namespace
 	class NbdImageThread;
 
 	std::mutex detached_nbd_mutex;
-	std::map<unsigned short, NbdImageThread*> detached_nbd_sessions;
+	std::map<std::string, NbdImageThread*> detached_nbd_sessions;
 
 	/**
 	* Keeps a random access image restore session (NBD server reading the image via the channel) alive
@@ -2512,22 +2512,22 @@ namespace
 	{
 	public:
 		NbdImageThread(IPipe* local_pipe, IPipe* channel_pipe,
-			ImageReadFile* image_file, IService* nbd_service, unsigned short port)
+			ImageReadFile* image_file, IService* nbd_service, const std::string& endpoint)
 			: local_pipe(local_pipe), channel_pipe(channel_pipe),
 			image_file(image_file), nbd_service(nbd_service),
-			port(port), stop(false)
+			endpoint(endpoint), stop(false)
 		{
 			if (local_pipe == NULL)
 			{
 				std::lock_guard<std::mutex> lock(detached_nbd_mutex);
-				detached_nbd_sessions[port] = this;
+				detached_nbd_sessions[endpoint] = this;
 			}
 		}
 
-		static bool stopDetached(unsigned short port)
+		static bool stopDetached(const std::string& endpoint)
 		{
 			std::lock_guard<std::mutex> lock(detached_nbd_mutex);
-			std::map<unsigned short, NbdImageThread*>::iterator it = detached_nbd_sessions.find(port);
+			std::map<std::string, NbdImageThread*>::iterator it = detached_nbd_sessions.find(endpoint);
 			if (it == detached_nbd_sessions.end())
 			{
 				return false;
@@ -2549,7 +2549,7 @@ namespace
 				{
 					if (stop)
 					{
-						Server->Log("Detached random access image restore on port " + convert(port) + " stopped", LL_DEBUG);
+						Server->Log("Detached random access image restore on " + endpoint + " stopped", LL_DEBUG);
 						break;
 					}
 					Server->wait(500);
@@ -2584,7 +2584,7 @@ namespace
 			if (local_pipe == NULL)
 			{
 				std::lock_guard<std::mutex> lock(detached_nbd_mutex);
-				detached_nbd_sessions.erase(port);
+				detached_nbd_sessions.erase(endpoint);
 			}
 
 			stopNbdImage(nbd_service, image_file);
@@ -2609,7 +2609,7 @@ namespace
 		IPipe* channel_pipe;
 		ImageReadFile* image_file;
 		IService* nbd_service;
-		unsigned short port;
+		std::string endpoint;
 		std::atomic<bool> stop;
 	};
 
@@ -2651,6 +2651,31 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 	if (params["nbd_localhost_only"] == "0")
 	{
 		bind_target = IServer::BindTarget_All;
+	}
+
+	std::string service_name = "NBD image restore";
+	std::string endpoint = "port " + convert(port);
+	const std::string unix_socket = params["nbd_unix_socket"];
+	if (!unix_socket.empty())
+	{
+#ifdef _WIN32
+		Server->Log("NBD via unix socket is not supported on Windows", LL_ERROR);
+		sendNbdImageResult(pipe, tcpstack, detached, -3);
+		do_quit = true;
+		return;
+#else
+		//Client service has a different working directory than the caller
+		if (unix_socket[0] != '/')
+		{
+			Server->Log("NBD unix socket path \"" + unix_socket + "\" is not absolute", LL_ERROR);
+			sendNbdImageResult(pipe, tcpstack, detached, -3);
+			do_quit = true;
+			return;
+		}
+		bind_target = IServer::BindTarget_UnixSocket;
+		service_name = unix_socket;
+		endpoint = "unix socket " + unix_socket;
+#endif
 	}
 
 	IScopedLock lock(backup_mutex);
@@ -2710,16 +2735,16 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 		ImageReadFile* image_file = new ImageReadFile(c, r);
 		IService* nbd_service = image_fak->createNbdService(image_file, true);
 
-		if (!Server->StartCustomStreamService(nbd_service, "NBD image restore", port, -1, bind_target))
+		if (!Server->StartCustomStreamService(nbd_service, service_name, port, -1, bind_target))
 		{
-			Server->Log("Error starting NBD server on port " + convert(port), LL_ERROR);
+			Server->Log("Error starting NBD server on " + endpoint, LL_ERROR);
 			NbdImageThread::stopNbdImage(nbd_service, image_file);
 			removeChannelpipe(c);
 			imgsize = -3;
 			break;
 		}
 
-		Server->Log("Serving image volume via NBD on port " + convert(port), LL_INFO);
+		Server->Log("Serving image volume via NBD on " + endpoint, LL_INFO);
 
 		if (!sendNbdImageResult(pipe, tcpstack, detached, r))
 		{
@@ -2732,12 +2757,12 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 
 		if (detached)
 		{
-			Server->getThreadPool()->execute(new NbdImageThread(NULL, c, image_file, nbd_service, port), "nbd image restore");
+			Server->getThreadPool()->execute(new NbdImageThread(NULL, c, image_file, nbd_service, endpoint), "nbd image restore");
 			do_quit = true;
 			return;
 		}
 
-		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service, port), "nbd image restore");
+		Server->getThreadPool()->execute(new NbdImageThread(pipe, c, image_file, nbd_service, endpoint), "nbd image restore");
 		state = CCSTATE_FILESERV;
 		do_quit = true;
 		want_receive = false;
@@ -2763,7 +2788,13 @@ void ClientConnector::CMD_RESTORE_STOP_NBD_IMAGE(const std::string &cmd, str_map
 		port = static_cast<unsigned short>(watoi(params["nbd_port"]));
 	}
 
-	if (NbdImageThread::stopDetached(port))
+	std::string endpoint = "port " + convert(port);
+	if (!params["nbd_unix_socket"].empty())
+	{
+		endpoint = "unix socket " + params["nbd_unix_socket"];
+	}
+
+	if (NbdImageThread::stopDetached(endpoint))
 	{
 		tcpstack.Send(pipe, "ok");
 	}

@@ -1768,6 +1768,24 @@ int action_image_list(std::vector<std::string> args)
 	return 0;
 }
 
+namespace
+{
+	//Client backend has a different working directory. Socket does not exist yet, so resolve its directory
+	std::string nbdUnixSocketPath(const std::string& path)
+	{
+		if (path.empty() || path[0] == '/')
+		{
+			return path;
+		}
+		std::string dir = ExtractFilePath(path);
+		if (dir.empty())
+		{
+			dir = ".";
+		}
+		return os_get_final_path(dir) + os_file_sep() + ExtractFileName(path);
+	}
+}
+
 int action_image_nbd_start(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Start serving an image backup read-only via NBD from the client backend. Stop with image-nbd-stop", ' ', cmdline_version);
@@ -1797,6 +1815,10 @@ int action_image_nbd_start(std::vector<std::string> args)
 
 	TCLAP::SwitchArg bind_all_arg("a", "bind-all",
 		"Make NBD server reachable from network (default: localhost only)", cmd, false);
+
+	TCLAP::ValueArg<std::string> unix_socket_arg("s", "unix-socket",
+		"Serve via unix socket at this path instead of port",
+		false, "", "path", cmd);
 
 	cmd.parse(args);
 
@@ -1852,21 +1874,30 @@ int action_image_nbd_start(std::vector<std::string> args)
 	}
 
 	unsigned short port = static_cast<unsigned short>(port_arg.getValue());
+	std::string unix_socket = nbdUnixSocketPath(unix_socket_arg.getValue());
+	std::string endpoint = "port " + convert(port);
+	std::string nbd_client_example = "nbd-client localhost " + convert(port) + " /dev/nbd0 -readonly";
+	if (!unix_socket.empty())
+	{
+		endpoint = "unix socket " + unix_socket;
+		nbd_client_example = "nbd-client -unix " + unix_socket + " /dev/nbd0 -readonly";
+	}
+
 	int64 imgsize;
 	Connector::ENbdImageResult res = Connector::startNbdImage(backupid_arg.getValue(), img_time,
-		port, !bind_all_arg.getValue(), imgsize);
+		port, !bind_all_arg.getValue(), unix_socket, imgsize);
 
 	switch (res)
 	{
 	case Connector::ENbdImageResult_Ok:
-		std::cout << "Serving image backup (" << PrettyPrintBytes(imgsize) << ") read-only via NBD on port " << port
-			<< ". E.g. nbd-client localhost " << port << " /dev/nbd0 -readonly" << std::endl;
+		std::cout << "Serving image backup (" << PrettyPrintBytes(imgsize) << ") read-only via NBD on " << endpoint
+			<< ". E.g. " << nbd_client_example << std::endl;
 		return 0;
 	case Connector::ENbdImageResult_NoServer:
 		std::cerr << "Client backend is not connected to a backup server" << std::endl;
 		return 2;
 	case Connector::ENbdImageResult_NbdStartError:
-		std::cerr << "Client backend could not start NBD server on port " << port << std::endl;
+		std::cerr << "Client backend could not start NBD server on " << endpoint << std::endl;
 		return 1;
 	case Connector::ENbdImageResult_Refused:
 		std::cerr << "Server refused random access image restore (image not found, no permission or server too old)" << std::endl;
@@ -1887,6 +1918,10 @@ int action_image_nbd_stop(std::vector<std::string> args)
 		"Port of NBD server",
 		false, 10809, "port", cmd);
 
+	TCLAP::ValueArg<std::string> unix_socket_arg("s", "unix-socket",
+		"Unix socket path of NBD server (instead of port)",
+		false, "", "path", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -1894,7 +1929,8 @@ int action_image_nbd_stop(std::vector<std::string> args)
 		return 3;
 	}
 
-	Connector::ENbdImageResult res = Connector::stopNbdImage(static_cast<unsigned short>(port_arg.getValue()));
+	std::string unix_socket = nbdUnixSocketPath(unix_socket_arg.getValue());
+	Connector::ENbdImageResult res = Connector::stopNbdImage(static_cast<unsigned short>(port_arg.getValue()), unix_socket);
 
 	if (res == Connector::ENbdImageResult_Ok)
 	{
@@ -1902,7 +1938,10 @@ int action_image_nbd_stop(std::vector<std::string> args)
 	}
 	else if (res == Connector::ENbdImageResult_NotFound)
 	{
-		std::cerr << "No NBD image restore running on port " << port_arg.getValue() << std::endl;
+		if (!unix_socket.empty())
+			std::cerr << "No NBD image restore running on unix socket " << unix_socket << std::endl;
+		else
+			std::cerr << "No NBD image restore running on port " << port_arg.getValue() << std::endl;
 		return 4;
 	}
 
