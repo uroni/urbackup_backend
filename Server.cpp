@@ -1370,12 +1370,12 @@ IPipe * CServer::ConnectUnixStream(const std::string & pPath, unsigned int pTime
 	}
 	else
 	{
-		return new CStreamPipe(s);
+		return new CStreamPipe(s, "unix " + pPath);
 	}
 #else
 	if (rc != SOCKET_ERROR)
 	{
-		return new CStreamPipe(s);
+		return new CStreamPipe(s, "unix " + pPath);
 	}
 #endif
 
@@ -1423,7 +1423,7 @@ IPipe * CServer::ConnectUnixStream(const std::string & pPath, unsigned int pTime
 			setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
 			setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
 #endif
-			return new CStreamPipe(s);
+			return new CStreamPipe(s, "unix " + pPath);
 		}
 	}
 	else
