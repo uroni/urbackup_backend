@@ -1019,8 +1019,8 @@ bool VHDXFile::makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback)
 			{
 				Seek(i);
 
-				if (!has_block(false)
-					&& has_block(true))
+				if (!has_block(i, false)
+					&& has_block(i, true))
 				{
 					bool has_error = false;
 					if (Read(buffer.data(), sector_size) != sector_size)
@@ -1044,6 +1044,22 @@ bool VHDXFile::makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback)
 				n_ntfs_blocks * bitmap_blocksize);
 
 			write_callback->emptyVHDBlock(block_pos, max_block_pos);
+		}
+	}
+
+	//All used sectors are copied now. Blocks cannot be partially present without parent
+	{
+		IScopedLock lock(log_mutex.get());
+		for (int64 pos = 0; pos < dst_size; pos += block_size)
+		{
+			_u32 block = getBatEntry(pos, block_size, sector_size);
+			VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
+
+			if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
+			{
+				bat_entry->State = PAYLOAD_BLOCK_FULLY_PRESENT;
+				pending_bat_entries.insert(block);
+			}
 		}
 	}
 
@@ -2928,12 +2944,22 @@ bool VHDXFile::check_if_compressed()
 	return magic == std::string(header_magic);
 }
 
-bool VHDXFile::has_block(bool use_parent)
+bool VHDXFile::has_block(int64 spos, bool use_parent)
 {
+	if (spos < dst_size)
+	{
+		_u32 block = getBatEntry(spos, block_size, sector_size);
+		VhdxBatEntry* bat_entry = reinterpret_cast<VhdxBatEntry*>(bat_buf.data()) + block;
+
+		//Sectors of partially present blocks may be in this file or in the parents
+		if (bat_entry->State == PAYLOAD_BLOCK_PARTIALLY_PRESENT)
+			return use_parent;
+	}
+
 	if (!has_sector_int(spos))
 	{
 		if (use_parent && parent.get() != NULL)
-			return parent->has_block(true);
+			return parent->has_block(spos, true);
 
 		return false;
 	}

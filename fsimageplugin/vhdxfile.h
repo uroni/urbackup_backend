@@ -142,7 +142,7 @@ private:
 
 	bool check_if_compressed();
 
-	bool has_block(bool use_parent);
+	bool has_block(int64 spos, bool use_parent);
 
 	void check_bat_buf();
 
