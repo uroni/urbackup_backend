@@ -3113,8 +3113,16 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 
 	ScopedRemoveRunningBackup remove_running_backup(local_backup_running_id);
 
+	bool refused = false;
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
+		//As with the other restore commands. A server with users has no login on the
+		//channels of the virtual clients and does not send the image there.
+		if (!isImageRestoreChannel(channel_pipes[i]))
+		{
+			continue;
+		}
+
 		SChannel::EChannelState orig_state = channel_pipes[i].state;
 		channel_pipes[i].state = SChannel::EChannelState_Used;
 
@@ -3149,17 +3157,9 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		if(imgsize==-1)
 		{
 			Server->Log("Error reading size", LL_ERROR);
-			if(i+1<channel_pipes.size())
-			{
-				removeChannelpipe(c);
-				continue;
-			}
-			else
-			{
-				pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
-				removeChannelpipe(c);
-				return;
-			}
+			removeChannelpipe(c);
+			refused = true;
+			continue;
 		}
 
 		backup_mutex_lock.relock(NULL);
@@ -3311,7 +3311,7 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		channel_pipes[i].state = orig_state;
 		return;
 	}
-	imgsize=-2;
+	imgsize = refused ? -1 : -2;
 	pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
 }
 
