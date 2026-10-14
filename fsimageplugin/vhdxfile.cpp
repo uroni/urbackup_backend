@@ -1108,6 +1108,10 @@ bool VHDXFile::setUnused(_i64 unused_start, _i64 unused_end)
 			unused_start + block_size <= unused_end)
 		{
 			bat_entry->State = PAYLOAD_BLOCK_ZERO;
+			{
+				IScopedLock lock(log_mutex.get());
+				pending_bat_entries.insert(block);
+			}
 			unused_start += block_size;
 			continue;
 		}
