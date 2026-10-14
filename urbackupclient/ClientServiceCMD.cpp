@@ -1369,9 +1369,15 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 	{
 		IScopedLock lock(process_mutex);
 
-		SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
-
-		img_download_running = proc != NULL;
+		//NBD image restores need new channels to reconnect
+		for (size_t i = 0; i < running_processes.size(); ++i)
+		{
+			if (running_processes[i].action == RUNNING_RESTORE_IMAGE
+				&& !running_processes[i].nbd_image)
+			{
+				img_download_running = true;
+			}
+		}
 	}
 
 	if(!img_download_running)
@@ -2576,6 +2582,7 @@ namespace
 			SRunningProcess proc;
 			proc.action = RUNNING_RESTORE_IMAGE;
 			proc.pcdone = -1;
+			proc.nbd_image = true;
 			int64 process_id = ClientConnector::addNewProcess(proc);
 
 			while (true)
@@ -2728,7 +2735,7 @@ void ClientConnector::CMD_RESTORE_NBD_IMAGE(const std::string &cmd, str_map &par
 	const std::string read_params = "img_id=" + params["img_id"] + "&time=" + params["time"] + token_param;
 
 	_i64 imgsize;
-	const IPipe* c = startImageRead(read_params, imgsize);
+	IPipe* c = startImageRead(read_params, imgsize);
 
 	if (c == NULL)
 	{

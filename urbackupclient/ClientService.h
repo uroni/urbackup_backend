@@ -67,7 +67,8 @@ struct SRunningProcess
 		total_bytes(-1),
 		done_bytes(0),
 		speed_bpms(0),
-		refs(0)
+		refs(0),
+		nbd_image(false)
 	{}
 
 	int64 id;
@@ -83,6 +84,8 @@ struct SRunningProcess
 	int64 done_bytes;
 	double speed_bpms;
 	size_t refs;
+	//Random access image restore via NBD (RUNNING_RESTORE_IMAGE)
+	bool nbd_image;
 };
 
 struct SFinishedProcess
