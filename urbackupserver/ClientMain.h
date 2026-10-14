@@ -52,7 +52,7 @@ struct SProtocolVersions
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
 				async_index_version(0), restore_version(0),
-				filesrvtunnel(0), incr_sysvol_version(0)
+				filesrvtunnel(0), incr_sysvol_version(0), channel_version(0)
 			{
 
 			}
@@ -80,6 +80,7 @@ struct SProtocolVersions
 	std::string os_simple;
 	int restore_version;
 	int filesrvtunnel;
+	int channel_version;
 };
 
 struct SRunningBackup
@@ -210,6 +211,11 @@ public:
 		return protocol_versions;
 	}
 
+	int getChannelVersion()
+	{
+		return protocol_versions.channel_version;
+	}
+
 	int64 getSettingsUpdateVersion()
 	{
 		IScopedLock lock(clientaddr_mutex);
@@ -299,6 +305,9 @@ private:
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
 	bool isImageGroupQueued(const std::string& letter, bool full);
+	void loadBackupQueue();
+	bool isStartIdQueued(int64 start_id);
+	void removeStartedQueueEntry(int64 start_id);
 	bool isRunningFileBackup(int group, bool queue_only=true);	
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
@@ -416,6 +425,13 @@ private:
 	bool do_incr_image_now;
 	bool do_update_access_key;
 	bool cdp_needs_sync;
+	bool do_load_backup_queue;
+
+	//Ids of the backup queue entries which set the do_*_now flags above (0 if none)
+	int64 full_backup_start_id;
+	int64 incr_backup_start_id;
+	int64 full_image_start_id;
+	int64 incr_image_start_id;
 
 	static int running_backups;
 	static int running_file_backups;

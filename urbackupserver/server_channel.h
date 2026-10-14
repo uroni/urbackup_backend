@@ -73,6 +73,8 @@ private:
 	void RESTORE_PERCENT( str_map params );
 	void RESTORE_DONE( str_map params );
 	void STARTUP(str_map& params);
+	void GET_BACKUP_QUEUE(void);
+	std::string START_BACKUP(const std::string& backup_type);
 
 	void reset();
 

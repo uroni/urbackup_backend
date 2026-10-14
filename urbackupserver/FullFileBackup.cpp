@@ -39,9 +39,9 @@ extern std::string server_identity;
 
 FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
 	LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots,
-	std::string server_token, std::string details, bool scheduled)
+	std::string server_token, std::string details, bool scheduled, int64 start_id)
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group,
-	use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled)
+	use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled, start_id)
 {
 
 }
@@ -158,7 +158,7 @@ bool FullFileBackup::doFileBackup()
 
 	getTokenFile(fc, hashed_transfer, false);
 
-	if (!backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS() - indexing_start_time, group))
+	if (!backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS() - indexing_start_time, group, start_id))
 	{
 		ServerLogger::Log(logid, "Error creating new backup row in database", LL_ERROR);
 		has_early_error = true;

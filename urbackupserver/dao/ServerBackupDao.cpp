@@ -18,6 +18,7 @@
 
 #include "ServerBackupDao.h"
 #include "../../stringtools.h"
+#include "../../Interface/Server.h"
 #include <assert.h>
 #include <string.h>
 
@@ -603,7 +604,7 @@ void ServerBackupDao::updateSetting(const std::string& value, const std::string&
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateSettingAll
 * @sql
-*      UPDATE settings_db.settings SET value=:value(string), value_client=:value_client(string, use=:use(int), use_last_modified=:use_lm(int64) WHERE key=:key(string) AND clientid=:clientid(int)
+*      UPDATE settings_db.settings SET value=:value(string), value_client=:value_client(string), use=:use(int), use_last_modified=:use_lm(int64) WHERE key=:key(string) AND clientid=:clientid(int)
 */
 void ServerBackupDao::updateSettingAll(const std::string& value, const std::string& value_client, int use, int64 use_lm, const std::string& key, int clientid)
 {
@@ -703,14 +704,14 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 * @-SQLGenAccess
 * @func bool ServerBackupDao::newFileBackup
 * @sql
-*       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
-*		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int) )
+*       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup, start_id)
+*		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int), :start_id(int64) )
 */
-bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup)
+bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int64 start_id)
 {
 	if(q_newFileBackup==NULL)
 	{
-		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ? )", false);
+		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup, start_id) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ?, ? )", false);
 	}
 	q_newFileBackup->Bind(incremental);
 	q_newFileBackup->Bind(clientid);
@@ -718,6 +719,7 @@ bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::st
 	q_newFileBackup->Bind(resumed);
 	q_newFileBackup->Bind(indexing_time_ms);
 	q_newFileBackup->Bind(tgroup);
+	q_newFileBackup->Bind(start_id);
 	bool ret = q_newFileBackup->Write();
 	q_newFileBackup->Reset();
 	return ret;
@@ -1063,15 +1065,15 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int im
 * @-SQLGenAccess
 * @func bool ServerBackupDao::newImageBackup
 * @sql
-*       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime, archived)
+*       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime, archived, start_id)
 *			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP,
-*					0, :image_version(int), :letter(string), datetime(:backuptime(int64), 'unixepoch'), 0 )
+*					0, :image_version(int), :letter(string), datetime(:backuptime(int64), 'unixepoch'), 0, :start_id(int64) )
 */
-bool ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime)
+bool ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime, int64 start_id)
 {
 	if(q_newImageBackup==NULL)
 	{
-		q_newImageBackup=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime, archived) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, ?, ?, datetime(?, 'unixepoch'), 0 )", false);
+		q_newImageBackup=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime, archived, start_id) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, ?, ?, datetime(?, 'unixepoch'), 0, ? )", false);
 	}
 	q_newImageBackup->Bind(clientid);
 	q_newImageBackup->Bind(path);
@@ -1080,6 +1082,7 @@ bool ServerBackupDao::newImageBackup(int clientid, const std::string& path, int 
 	q_newImageBackup->Bind(image_version);
 	q_newImageBackup->Bind(letter);
 	q_newImageBackup->Bind(backuptime);
+	q_newImageBackup->Bind(start_id);
 	bool ret = q_newImageBackup->Write();
 	q_newImageBackup->Reset();
 	return ret;
@@ -2045,6 +2048,101 @@ void ServerBackupDao::updateClientWithHashes(int with_hashes, int clientid)
 	q_updateClientWithHashes->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func bool ServerBackupDao::addBackupQueueEntryIfNotQueued
+* @sql
+*		INSERT INTO backup_queue (clientid, backup_type, created)
+*		SELECT :clientid(int), :backup_type(string), :created(int64)
+*		WHERE NOT EXISTS (SELECT id FROM backup_queue WHERE clientid=:clientid(int) AND backup_type=:backup_type(string))
+*/
+bool ServerBackupDao::addBackupQueueEntryIfNotQueued(int clientid, const std::string& backup_type, int64 created)
+{
+	if(q_addBackupQueueEntryIfNotQueued==NULL)
+	{
+		q_addBackupQueueEntryIfNotQueued=db->Prepare("INSERT INTO backup_queue (clientid, backup_type, created) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT id FROM backup_queue WHERE clientid=? AND backup_type=?)", false);
+	}
+	q_addBackupQueueEntryIfNotQueued->Bind(clientid);
+	q_addBackupQueueEntryIfNotQueued->Bind(backup_type);
+	q_addBackupQueueEntryIfNotQueued->Bind(created);
+	q_addBackupQueueEntryIfNotQueued->Bind(clientid);
+	q_addBackupQueueEntryIfNotQueued->Bind(backup_type);
+	bool ret = q_addBackupQueueEntryIfNotQueued->Write();
+	q_addBackupQueueEntryIfNotQueued->Reset();
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::getBackupQueueId
+* @return int64 id
+* @sql
+*		SELECT id FROM backup_queue WHERE clientid=:clientid(int) AND backup_type=:backup_type(string) ORDER BY id ASC LIMIT 1
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::getBackupQueueId(int clientid, const std::string& backup_type)
+{
+	if(q_getBackupQueueId==NULL)
+	{
+		q_getBackupQueueId=db->Prepare("SELECT id FROM backup_queue WHERE clientid=? AND backup_type=? ORDER BY id ASC LIMIT 1", false);
+	}
+	q_getBackupQueueId->Bind(clientid);
+	q_getBackupQueueId->Bind(backup_type);
+	db_results res=q_getBackupQueueId->Read();
+	q_getBackupQueueId->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0]["id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<SQueuedBackup> ServerBackupDao::getQueuedBackups
+* @return int64 id, int clientid, string backup_type, int64 created
+* @sql
+*		SELECT id, clientid, backup_type, created FROM backup_queue WHERE clientid=:clientid(int) ORDER BY id ASC
+*/
+std::vector<ServerBackupDao::SQueuedBackup> ServerBackupDao::getQueuedBackups(int clientid)
+{
+	if(q_getQueuedBackups==NULL)
+	{
+		q_getQueuedBackups=db->Prepare("SELECT id, clientid, backup_type, created FROM backup_queue WHERE clientid=? ORDER BY id ASC", false);
+	}
+	q_getQueuedBackups->Bind(clientid);
+	db_results res=q_getQueuedBackups->Read();
+	q_getQueuedBackups->Reset();
+	std::vector<ServerBackupDao::SQueuedBackup> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi64(res[i]["id"]);
+		ret[i].clientid=watoi(res[i]["clientid"]);
+		ret[i].backup_type=res[i]["backup_type"];
+		ret[i].created=watoi64(res[i]["created"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteQueuedBackup
+* @sql
+*		DELETE FROM backup_queue WHERE id=:id(int64)
+*/
+void ServerBackupDao::deleteQueuedBackup(int64 id)
+{
+	if(q_deleteQueuedBackup==NULL)
+	{
+		q_deleteQueuedBackup=db->Prepare("DELETE FROM backup_queue WHERE id=?", false);
+	}
+	q_deleteQueuedBackup->Bind(id);
+	q_deleteQueuedBackup->Write();
+	q_deleteQueuedBackup->Reset();
+}
+
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -2137,6 +2235,10 @@ void ServerBackupDao::prepareQueries( void )
 	q_getCapa=NULL;
 	q_getClientWithHashes=NULL;
 	q_updateClientWithHashes=NULL;
+	q_addBackupQueueEntryIfNotQueued=NULL;
+	q_getBackupQueueId=NULL;
+	q_getQueuedBackups=NULL;
+	q_deleteQueuedBackup=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2230,6 +2332,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getCapa);
 	db->destroyQuery(q_getClientWithHashes);
 	db->destroyQuery(q_updateClientWithHashes);
+	db->destroyQuery(q_addBackupQueueEntryIfNotQueued);
+	db->destroyQuery(q_getBackupQueueId);
+	db->destroyQuery(q_getQueuedBackups);
+	db->destroyQuery(q_deleteQueuedBackup);
 }
 
 
@@ -2243,4 +2349,15 @@ void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& ke
 	{
 		insertSetting(key, value, value_client, use, use_lm, clientid);
 	}
+}
+
+int64 ServerBackupDao::enqueueBackup(int clientid, const std::string& backup_type)
+{
+	if (!addBackupQueueEntryIfNotQueued(clientid, backup_type, Server->getTimeSeconds()))
+	{
+		return 0;
+	}
+
+	CondInt64 id = getBackupQueueId(clientid, backup_type);
+	return id.exists ? id.value : 0;
 }

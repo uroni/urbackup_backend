@@ -136,6 +136,11 @@ ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::str
 	do_incr_image_now=false;
 	do_update_access_key = false;
 	cdp_needs_sync=true;
+	do_load_backup_queue=true;
+	full_backup_start_id=0;
+	incr_backup_start_id=0;
+	full_image_start_id=0;
+	incr_image_start_id=0;
 
 	can_backup_images=true;
 
@@ -489,6 +494,8 @@ void ClientMain::operator ()(void)
 	ServerStatus::setStatusError(clientname, se_none);
 	limit_startup.finishStartup();
 
+	loadBackupQueue();
+
 	if( server_settings->getSettings()->startup_backup_delay>0
 		&& (!do_full_backup_now && !do_incr_backup_now
 			&& !do_incr_backup_now && !do_full_image_now) )
@@ -506,6 +513,11 @@ void ClientMain::operator ()(void)
 		if(!skip_checking)
 		{
 			timeoutRestores();
+
+			if (do_load_backup_queue)
+			{
+				loadBackupQueue();
+			}
 
 			bool send_logdata = false;
 
@@ -549,7 +561,7 @@ void ClientMain::operator ()(void)
 									SRunningBackup backup;
 									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
 										ibackup->isIncrementalBackup(), letter, curr_server_token, letter, false,
-										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime(), ibackup->isScheduled());
+										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime(), ibackup->isScheduled(), ibackup->getStartId());
 									backup.backup = idep;
 									backup.letter = letter;
 
@@ -819,12 +831,14 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
+					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now,
+					full_backup_start_id);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
 
 				do_full_backup_now=false;
+				full_backup_start_id=0;
 			}
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
@@ -835,12 +849,14 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
+					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now,
+					incr_backup_start_id);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
 
 				do_incr_backup_now=false;
+				incr_backup_start_id=0;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_full_image_now)
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
@@ -862,14 +878,24 @@ void ClientMain::operator ()(void)
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_full_image_now);
+							false, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_full_image_now,
+							full_image_start_id);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
 					}
 				}
 
+				if (do_full_image_now
+					&& full_image_start_id != 0
+					&& !isStartIdQueued(full_image_start_id))
+				{
+					//No image backup created (e.g. all volumes already queued)
+					backup_dao->deleteQueuedBackup(full_image_start_id);
+				}
+
 				do_full_image_now=false;
+				full_image_start_id=0;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_incr_image_now)
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
@@ -890,14 +916,24 @@ void ClientMain::operator ()(void)
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_incr_image_now ?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_incr_image_now);
+							true, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_incr_image_now,
+							incr_image_start_id);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
 					}
 				}
 
+				if (do_incr_image_now
+					&& incr_image_start_id != 0
+					&& !isStartIdQueued(incr_image_start_id))
+				{
+					//No image backup created (e.g. all volumes already queued)
+					backup_dao->deleteQueuedBackup(incr_image_start_id);
+				}
+
 				do_incr_image_now=false;
+				incr_image_start_id=0;
 			}
 			else if(protocol_versions.cdp_version>0 && cdp_needs_sync && !isRunningFileBackup(filebackup_group_offset + c_group_continuous))
 			{
@@ -963,7 +999,9 @@ void ClientMain::operator ()(void)
 								}
 
 								backup_queue[i].client_group = group_id;
+								int64 start_id = backup_queue[i].backup->getStartId();
 								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, tname);
+								removeStartedQueueEntry(start_id);
 								started_job=true;
 							}
 							else
@@ -994,11 +1032,8 @@ void ClientMain::operator ()(void)
 			do_exit_now=true;
 			break;
 		}
-		else if(msg=="START BACKUP INCR") do_incr_backup_now=true;
-		else if(msg=="START BACKUP FULL") do_full_backup_now=true;
+		else if(msg=="START QUEUED") do_load_backup_queue=true;
 		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
-		else if(msg=="START IMAGE INCR" && can_backup_images ) do_incr_image_now=true;
-		else if(msg=="START IMAGE FULL" && can_backup_images) do_full_image_now=true;
 		else if (msg == "UPDATE ACCESS KEY") do_update_access_key = true;
 		else if(next(msg, 0, "address"))
 		{
@@ -1846,19 +1881,31 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			protocol_versions.filesrvtunnel = watoi(it->second);
 		}
+		it = params.find("CHANNEL_VER");
+		if (it != params.end())
+		{
+			protocol_versions.channel_version = watoi(it->second);
+		}
 		it = params.find("BACKUP");
 		if (it != params.end())
 		{
+			std::string backup_type;
 			if (it->second == "incr-file")
-				do_incr_backup_now = true;
+				backup_type = "incr_file";
 			else if (it->second == "full-file")
-				do_full_backup_now = true;
+				backup_type = "full_file";
 			else if (it->second == "incr-image")
-				do_incr_image_now = true;
+				backup_type = "incr_image";
 			else if (it->second == "full-image")
-				do_full_image_now = true;
+				backup_type = "full_image";
 			else
 				Server->Log("Unknown immediate backup type \"" + it->second + "\"", LL_WARNING);
+
+			if (!backup_type.empty())
+			{
+				backup_dao->enqueueBackup(clientid, backup_type);
+				do_load_backup_queue = true;
+			}
 		}
 
 		bool update_settings = false;
@@ -3706,6 +3753,92 @@ bool ClientMain::createDirectoryForClient()
 		return false;
 	}
 	return true;
+}
+
+void ClientMain::loadBackupQueue()
+{
+	do_load_backup_queue = false;
+
+	std::vector<ServerBackupDao::SQueuedBackup> queued = backup_dao->getQueuedBackups(clientid);
+
+	for (size_t i = 0; i < queued.size(); ++i)
+	{
+		const ServerBackupDao::SQueuedBackup& entry = queued[i];
+
+		if (isStartIdQueued(entry.id))
+		{
+			//Backup already created. Waiting for free backup slot
+			continue;
+		}
+
+		bool is_image = entry.backup_type == "full_image" || entry.backup_type == "incr_image";
+
+		if (is_image && !can_backup_images)
+		{
+			ServerLogger::Log(logid, "Removing queued " + entry.backup_type + " backup with start id " + convert(entry.id) + " because client cannot do image backups", LL_WARNING);
+			backup_dao->deleteQueuedBackup(entry.id);
+			continue;
+		}
+
+		bool* do_now;
+		int64* start_id;
+		if (entry.backup_type == "full_file")
+		{
+			do_now = &do_full_backup_now;
+			start_id = &full_backup_start_id;
+		}
+		else if (entry.backup_type == "incr_file")
+		{
+			do_now = &do_incr_backup_now;
+			start_id = &incr_backup_start_id;
+		}
+		else if (entry.backup_type == "full_image")
+		{
+			do_now = &do_full_image_now;
+			start_id = &full_image_start_id;
+		}
+		else if (entry.backup_type == "incr_image")
+		{
+			do_now = &do_incr_image_now;
+			start_id = &incr_image_start_id;
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Removing queued backup with start id " + convert(entry.id) + " with unknown type \"" + entry.backup_type + "\"", LL_WARNING);
+			backup_dao->deleteQueuedBackup(entry.id);
+			continue;
+		}
+
+		if (*start_id == 0)
+		{
+			*do_now = true;
+			*start_id = entry.id;
+		}
+	}
+}
+
+bool ClientMain::isStartIdQueued(int64 start_id)
+{
+	for (size_t i = 0; i < backup_queue.size(); ++i)
+	{
+		if (backup_queue[i].ticket == ILLEGAL_THREADPOOL_TICKET
+			&& backup_queue[i].backup->getStartId() == start_id)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void ClientMain::removeStartedQueueEntry(int64 start_id)
+{
+	//Image backups of multiple volumes share the same start id.
+	//Remove the queue entry once the last one has started
+	if (start_id != 0
+		&& !isStartIdQueued(start_id))
+	{
+		backup_dao->deleteQueuedBackup(start_id);
+	}
 }
 
 bool ClientMain::isRunningImageBackup(const std::string& letter)

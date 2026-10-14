@@ -2817,6 +2817,11 @@ void ServerCleanupThread::deleteClientSQL(IDatabase * db, int clientid)
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
+	//queued backups
+	q = db->Prepare("DELETE FROM backup_queue WHERE clientid=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
 	//client
 	q = db->Prepare("DELETE FROM clients WHERE id=?", false);
 	q->Bind(clientid); q->Write(); q->Reset();

@@ -55,12 +55,12 @@ namespace
 }
 
 Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
-	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details, bool scheduled)
+	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details, bool scheduled, int64 start_id)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
 	server_token(server_token), details(details), num_issues(0), stop_backup_running(true), scheduled(scheduled),
-	allow_remove_backup_folder(true)
+	allow_remove_backup_folder(true), start_id(start_id)
 {
 	
 }
@@ -112,6 +112,11 @@ void Backup::operator()()
 			status_id = ServerStatus::startProcess(clientname, sa_full_image, details, logid, true);
 		}
 		ServerStatus::setProcessPcDone(clientname, status_id, 0);
+	}
+
+	if (start_id != 0)
+	{
+		ServerStatus::setProcessStartId(clientname, status_id, start_id);
 	}
 
 	createDirectoryForClient();

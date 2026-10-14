@@ -63,7 +63,7 @@ struct SProcess
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
 		speed_bpms(0), can_stop(false), total_bytes(-1),
-		done_bytes(0), detail_pc(-1), paused(false)
+		done_bytes(0), detail_pc(-1), paused(false), start_id(0)
 	{
 
 	}
@@ -86,6 +86,7 @@ struct SProcess
 	int64 total_bytes;
 	int64 done_bytes;
 	bool paused;
+	int64 start_id;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -184,6 +185,9 @@ public:
 
 	static void setProcessPcDone(const std::string &clientname, size_t id,
 		int pcdone);
+
+	static void setProcessStartId(const std::string &clientname, size_t id,
+		int64 start_id);
 
 	static void setProcessTotalBytes(const std::string &clientname, size_t id,
 		int64 total_bytes);

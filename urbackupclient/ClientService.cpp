@@ -1288,6 +1288,10 @@ void ClientConnector::ReceivePacketsInt()
 			{
 				CMD_STATUS_DETAIL(cmd); continue;
 			}
+			else if(cmd=="GET BACKUP QUEUE")
+			{
+				CMD_GET_BACKUP_QUEUE(params); continue;
+			}
 			else if(cmd=="START BACKUP INCR" )
 			{
 				CMD_TOCHANNEL_START_INCR_FILEBACKUP(cmd, params); continue;			
@@ -2267,6 +2271,7 @@ bool ClientConnector::sendFullImage(void)
 			new_proc.pcdone = 0;
 			new_proc.details = image_inf.orig_image_letter;
 			new_proc.server_id = image_inf.server_status_id;
+			new_proc.start_id = image_inf.start_id;
 			new_proc.refs = 1;
 			local_backup_running_id = addNewProcess(new_proc);
 		}
@@ -2307,6 +2312,7 @@ bool ClientConnector::sendIncrImage(void)
 			new_proc.pcdone = 0;
 			new_proc.details = image_inf.orig_image_letter;
 			new_proc.server_id = image_inf.server_status_id;
+			new_proc.start_id = image_inf.start_id;
 
 			local_backup_running_id = addNewProcess(new_proc);
 		}
@@ -3373,7 +3379,7 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 	lasttime=Server->getTimeMS();
 	if (getActiveProcess(x_pingtimeout) != NULL)
 	{
-		tcpstack.Send(pipe, "RUNNING");
+		tcpstack.Send(pipe, "{\"status\":\"RUNNING\"}");
 	}
 	else
 	{
@@ -3389,25 +3395,59 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 		}
 
 		bool ok=false;
+		std::string server_result;
 		if(selidx<channel_pipes.size())
 		{
-			CTCPStack tmpstack(channel_pipes[selidx].internet_connection);
-			_u32 rc=(_u32)tmpstack.Send(channel_pipes[selidx].pipe, ts);
-			if(rc!=0)
-				ok=true;
+			//Servers with channel version >= 1 respond with the start id (we send CHANNEL_VER=1)
+			//The response must be read, otherwise the channel would see it as a command
+			bool with_result = channel_pipes[selidx].channel_version >= 1;
+			if (with_result)
+			{
+				IPipe* sel_pipe = channel_pipes[selidx].pipe;
+				waitForPings(&lock);
+
+				selidx = std::string::npos;
+				for (size_t i = 0; i < channel_pipes.size(); ++i)
+				{
+					if (channel_pipes[i].pipe == sel_pipe)
+					{
+						selidx = i;
+						break;
+					}
+				}
+			}
+
+			if (selidx < channel_pipes.size()
+				&& (!with_result || channel_pipes[selidx].state == SChannel::EChannelState_Idle) )
+			{
+				CTCPStack tmpstack(channel_pipes[selidx].internet_connection);
+				_u32 rc = (_u32)tmpstack.Send(channel_pipes[selidx].pipe, ts);
+				if (rc != 0)
+					ok = true;
+
+				if (ok && with_result)
+				{
+					server_result = receivePacket(channel_pipes[selidx]);
+					if (server_result.empty() || server_result[0] != '{')
+					{
+						server_result.clear();
+					}
+				}
+			}
 
 			if(!ok)
 			{
-				tcpstack.Send(pipe, "FAILED");
+				tcpstack.Send(pipe, "{\"status\":\"FAILED\"}");
 			}
 			else
 			{
-				tcpstack.Send(pipe, "OK");
+				tcpstack.Send(pipe, "{\"status\":\"OK\""
+					+ (server_result.empty() ? std::string() : ",\"result\":" + server_result) + "}");
 			}
 		}
 		else
 		{
-			tcpstack.Send(pipe, "NO SERVER");
+			tcpstack.Send(pipe, "{\"status\":\"NO SERVER\"}");
 		}
 		
 	}

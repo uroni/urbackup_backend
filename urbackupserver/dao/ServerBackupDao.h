@@ -82,6 +82,13 @@ public:
 		int partition;
 		int clientid;
 	};
+	struct SQueuedBackup
+	{
+		int64 id;
+		int clientid;
+		std::string backup_type;
+		int64 created;
+	};
 	struct SReportSettings
 	{
 		bool exists;
@@ -128,7 +135,7 @@ public:
 	void addMiscValue(const std::string& tkey, const std::string& tvalue);
 	void delMiscValue(const std::string& tkey);
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
-	bool newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
+	bool newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup, int64 start_id);
 	void updateFileBackupRunning(int backupid);
 	void setFileBackupDone(int backupid);
 	void setFileBackupSynced(int backupid);
@@ -143,7 +150,7 @@ public:
 	CondString formatUnixtime(int64 unixtime);
 	SImageBackup getLastFullImage(int clientid, int image_version, const std::string& letter);
 	SImageBackup getLastImage(int clientid, int image_version, const std::string& letter);
-	bool newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime);
+	bool newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime, int64 start_id);
 	void setImageSize(int64 size_bytes, int backupid);
 	void addImageSizeToClient(int clientid, int64 add_size);
 	void setImageBackupSynctime(int backupid);
@@ -187,9 +194,18 @@ public:
 	CondInt getCapa(int clientid);
 	CondInt getClientWithHashes(int clientid);
 	void updateClientWithHashes(int with_hashes, int clientid);
+	bool addBackupQueueEntryIfNotQueued(int clientid, const std::string& backup_type, int64 created);
+	CondInt64 getBackupQueueId(int clientid, const std::string& backup_type);
+	std::vector<SQueuedBackup> getQueuedBackups(int clientid);
+	void deleteQueuedBackup(int64 id);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value, const std::string& value_client, int use, int64 use_lm);
+
+	//Queues a backup of type backup_type (full_file, incr_file, full_image, incr_image).
+	//If a backup of the same type is already queued for the client its id is returned.
+	//Returns 0 on error
+	int64 enqueueBackup(int clientid, const std::string& backup_type);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}
@@ -287,6 +303,10 @@ private:
 	IQuery* q_getCapa;
 	IQuery* q_getClientWithHashes;
 	IQuery* q_updateClientWithHashes;
+	IQuery* q_addBackupQueueEntryIfNotQueued;
+	IQuery* q_getBackupQueueId;
+	IQuery* q_getQueuedBackups;
+	IQuery* q_deleteQueuedBackup;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

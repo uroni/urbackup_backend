@@ -275,7 +275,7 @@ void ServerChannelThread::run()
 				curr_ident = client_main->getIdentity();
 				tcpstack.reset();
 				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=2&startup=1&virtual_client="+EscapeParamString(virtual_client)+
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=2&channel_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client)+
 					"&settings_update_version="+convert(client_main->getSettingsUpdateVersion()));
 
 				lasttime=Server->getTimeMS();
@@ -391,11 +391,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(msg=="START BACKUP INCR")
 	{
-		client_main->sendToPipe("START BACKUP INCR");
+		return START_BACKUP("incr_file");
 	}
 	else if(msg=="START BACKUP FULL")
 	{
-		client_main->sendToPipe("START BACKUP FULL");
+		return START_BACKUP("full_file");
 	}
 	else if(msg=="PING")
 	{
@@ -408,11 +408,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(msg=="START IMAGE FULL")
 	{
-		client_main->sendToPipe("START IMAGE FULL");
+		return START_BACKUP("full_image");
 	}
 	else if(msg=="START IMAGE INCR")
 	{
-		client_main->sendToPipe("START IMAGE INCR");
+		return START_BACKUP("incr_image");
 	}
 	else if (msg == "UPDATE ACCESS KEY")
 	{
@@ -614,6 +614,10 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 		STARTUP(params);
+	}
+	else if (msg == "GET BACKUP QUEUE")
+	{
+		GET_BACKUP_QUEUE();
 	}
 	else
 	{
@@ -1918,6 +1922,51 @@ void ServerChannelThread::STARTUP(str_map& params)
 		}
 		startup_timestamp = curr_timestamp;
 	}
+}
+
+std::string ServerChannelThread::START_BACKUP(const std::string& backup_type)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	int64 start_id = backup_dao.enqueueBackup(clientid, backup_type);
+	if (start_id != 0)
+	{
+		client_main->sendToPipe("START QUEUED");
+	}
+
+	//Older clients do not read a response
+	if (client_main->getChannelVersion() < 1)
+	{
+		return std::string();
+	}
+
+	JSON::Object ret;
+	ret.set("ok", start_id != 0);
+	ret.set("start_id", start_id);
+	return ret.stringify(false);
+}
+
+void ServerChannelThread::GET_BACKUP_QUEUE(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	std::vector<ServerBackupDao::SQueuedBackup> queued = backup_dao.getQueuedBackups(clientid);
+
+	JSON::Array j_queue;
+	for (size_t i = 0; i < queued.size(); ++i)
+	{
+		JSON::Object obj;
+		obj.set("start_id", queued[i].id);
+		obj.set("backup_type", queued[i].backup_type);
+		obj.set("created", queued[i].created);
+		j_queue.add(obj);
+	}
+
+	JSON::Object ret;
+	ret.set("queued_backups", j_queue);
+	tcpstack.Send(input, ret.stringify(false));
 }
 
 void ServerChannelThread::reset()

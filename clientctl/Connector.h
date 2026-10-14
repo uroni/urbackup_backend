@@ -86,6 +86,7 @@ struct SRunningProcess
 	int detail_pc;
 	int64 process_id;
 	int64 server_status_id;
+	int64 start_id;
 	int64 total_bytes;
 	int64 done_bytes;
 	double speed_bpms;
@@ -99,6 +100,7 @@ struct SRunningProcess
 			&& detail_pc == other.detail_pc
 			&& process_id == other.process_id
 			&& server_status_id == other.server_status_id
+			&& start_id == other.start_id
 			&& total_bytes == other.total_bytes
 			&& done_bytes == other.done_bytes
 			&& speed_bpms == other.speed_bpms;
@@ -171,8 +173,8 @@ public:
 	static std::string getStatusRaw();
 	static std::string getStatusRawNoWait();
 	static SStatus getStatus(void);
-	static int startBackup(const std::string& virtual_client, bool full);
-	static int startImage(const std::string& virtual_client, bool full);
+	static int startBackup(const std::string& virtual_client, bool full, int64* start_id = NULL);
+	static int startImage(const std::string& virtual_client, bool full, int64* start_id = NULL);
 	static bool updateSettings(const std::string &sdata, bool& no_perm);
 	static std::vector<SLogEntry> getLogEntries(void);
 	static std::vector<SLogLine> getLogdata(int logid, int loglevel);
@@ -203,6 +205,7 @@ public:
 		bool ignore_other_fs, bool follow_symlinks);
 
 	static std::string getStatusDetailsRaw();
+	static std::string getBackupQueue(const std::string& virtual_client);
 	static SStatusDetails getStatusDetails();
 
 	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup);
@@ -230,6 +233,7 @@ private:
 	static bool readTokens();
 
 	static std::string getResponse(const std::string &cmd, const std::string &args, bool change_command);
+	static std::string parseStartResponse(const std::string& d, int64* start_id);
 	static std::string pw;
 	static std::string pwfile;
 	static std::string pwfile_change;

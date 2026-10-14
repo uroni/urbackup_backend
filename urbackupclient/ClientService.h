@@ -68,7 +68,8 @@ struct SRunningProcess
 		done_bytes(0),
 		speed_bpms(0),
 		refs(0),
-		nbd_image(false)
+		nbd_image(false),
+		start_id(0)
 	{}
 
 	int64 id;
@@ -86,6 +87,8 @@ struct SRunningProcess
 	size_t refs;
 	//Random access image restore via NBD (RUNNING_RESTORE_IMAGE)
 	bool nbd_image;
+	//Id of the server backup queue entry which started this backup (0 if unknown)
+	int64 start_id;
 };
 
 struct SFinishedProcess
@@ -129,6 +132,7 @@ struct ImageInformation
 	std::string clientsubname;
 	int64 running_process_id;
 	int64 server_status_id;
+	int64 start_id = 0;
 };
 
 struct SRestoreToken
@@ -150,10 +154,10 @@ struct SChannel
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
 		  token(token), make_conn(make_conn), server_identity(server_identity),
 		state(EChannelState_Idle), capa(capa), restore_version(restore_version),
-		virtual_client(virtual_client) {}
+		virtual_client(virtual_client), channel_version(0) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_conn(NULL),
-		state(EChannelState_Idle), capa(0), restore_version(0) {}
+		state(EChannelState_Idle), capa(0), restore_version(0), channel_version(0) {}
 
 	IPipe *pipe;
 	bool internet_connection;
@@ -164,6 +168,7 @@ struct SChannel
 	std::string server_identity;
 	int restore_version;
 	std::string virtual_client;
+	int channel_version;
 
 	enum EChannelState
 	{
@@ -321,6 +326,7 @@ private:
 	void CMD_BACKUP_FAILED(const std::string& cmd);
 	void CMD_STATUS(const std::string &cmd);
 	void CMD_STATUS_DETAIL(const std::string &cmd);
+	void CMD_GET_BACKUP_QUEUE(str_map &params);
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);
 	void CMD_PING_RUNNING(const std::string &cmd);
 	void CMD_PING_RUNNING2(const std::string &cmd);

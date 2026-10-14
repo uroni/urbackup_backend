@@ -123,6 +123,9 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " status" << std::endl;
 	std::cout << "\t\t" "Get current backup status" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " list-queue" << std::endl;
+	std::cout << "\t\t" "List backups queued on the backup server" << std::endl;
+	std::cout << std::endl;
 	std::cout << "\t" << cmd << " browse" << std::endl;
 	std::cout << "\t\t" "Browse backups and files/folders in backups" << std::endl;
 	std::cout << std::endl;
@@ -379,6 +382,143 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 	return 0;
 }
 
+int follow_status(bool restore, int64 process_id);
+
+bool is_start_id_queued(int64 start_id, const std::string& virtual_client)
+{
+	std::string queue = Connector::getBackupQueue(virtual_client);
+
+	Json::Value root;
+	Json::Reader reader;
+	if (queue.empty()
+		|| !reader.parse(queue, root, false))
+	{
+		return false;
+	}
+
+	Json::Value servers = root["servers"];
+	for (Json::Value::ArrayIndex i = 0; i < servers.size(); ++i)
+	{
+		Json::Value queued_backups = servers[i]["result"]["queued_backups"];
+		for (Json::Value::ArrayIndex j = 0; j < queued_backups.size(); ++j)
+		{
+			if (queued_backups[j].get("start_id", 0).asInt64() == start_id)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+//Waits for a running process with the start id which was not followed yet.
+//Waits indefinitely while the backup is queued on the server
+int64 wait_for_start_id_process(int64 start_id, const std::string& virtual_client,
+	const std::vector<int64>& followed, int timeout_s, bool show_waiting)
+{
+	std::string message = "Waiting for server to start backup... ";
+	bool printed = false;
+	bool queued = false;
+	int waited_s = 0;
+
+	for (int i = 0; waited_s < timeout_s; ++i)
+	{
+		int tries = 20;
+		SStatusDetails sd = Connector::getStatusDetails();
+
+		while (!sd.ok && tries>0)
+		{
+			--tries;
+			wait(100);
+			sd = Connector::getStatusDetails();
+		}
+
+		if (!sd.ok)
+		{
+			return 0;
+		}
+
+		for (size_t j = 0; j < sd.running_processes.size(); ++j)
+		{
+			if (sd.running_processes[j].start_id == start_id
+				&& std::find(followed.begin(), followed.end(), sd.running_processes[j].process_id) == followed.end())
+			{
+				if (printed)
+				{
+					std::cout << "\r" << message << "done" << std::endl;
+				}
+				return sd.running_processes[j].process_id;
+			}
+		}
+
+		if (i % 5 == 0)
+		{
+			queued = is_start_id_queued(start_id, virtual_client);
+		}
+
+		if (queued)
+		{
+			message = "Backup queued on server. Waiting for it to start... ";
+			waited_s = 0;
+		}
+		else
+		{
+			++waited_s;
+		}
+
+		if (show_waiting || queued)
+		{
+			std::cout << "\r" << message << spinner[i%spinner.size()];
+			std::cout.flush();
+			printed = true;
+		}
+
+		wait(1000);
+	}
+
+	if (printed)
+	{
+		std::cout << "\r" << message << "done" << std::endl;
+	}
+	return 0;
+}
+
+//Follows all processes belonging to the start id (e.g. multiple volumes of an image backup)
+int follow_start_id(int64 start_id, const std::string& virtual_client)
+{
+	std::vector<int64> followed;
+	int rc = 0;
+
+	while (true)
+	{
+		int64 process_id = wait_for_start_id_process(start_id, virtual_client, followed,
+			followed.empty() ? 60 : 10, followed.empty());
+
+		if (process_id == 0)
+		{
+			if (followed.empty())
+			{
+				std::cerr << "Timeout while waiting for server to start backup" << std::endl;
+				return 4;
+			}
+			return rc;
+		}
+
+		followed.push_back(process_id);
+
+		int curr_rc = follow_status(false, process_id);
+		if (curr_rc == 3)
+		{
+			return curr_rc;
+		}
+		else if (curr_rc != 0)
+		{
+			rc = curr_rc;
+		}
+	}
+}
+
 int follow_status(bool restore, int64 process_id)
 {
 	bool found_once = false;
@@ -547,20 +687,21 @@ int action_start(std::vector<std::string> args)
 
 	std::string type;
 	int rc;
+	int64 start_id = 0;
 #ifdef _WIN32
 	if(file_backup.getValue())
 	{
 #endif
 		type = full_backup.getValue() ? "FULL" : "INCR";
 
-		rc = Connector::startBackup(virtual_client_arg.getValue(), full_backup.getValue());
+		rc = Connector::startBackup(virtual_client_arg.getValue(), full_backup.getValue(), &start_id);
 #ifdef _WIN32
 	}
 	else
 	{
 		type = full_backup.getValue() ? "FULLI" : "INCRI";
 
-		rc = Connector::startImage(virtual_client_arg.getValue(), full_backup.getValue());
+		rc = Connector::startImage(virtual_client_arg.getValue(), full_backup.getValue(), &start_id);
 	}
 #endif
 
@@ -574,10 +715,20 @@ int action_start(std::vector<std::string> args)
 		if (non_blocking_arg.getValue())
 		{
 			std::cout << "Backup started" << std::endl;
+			if (start_id != 0)
+			{
+				std::cout << "Start id: " << start_id << std::endl;
+			}
 			return 0;
 		}
 		else
 		{
+			if (start_id != 0)
+			{
+				std::cout << "Start id: " << start_id << std::endl;
+				return follow_start_id(start_id, virtual_client_arg.getValue());
+			}
+
 			int64 new_process = wait_for_new_process(type, current_processes);
 
 			if (new_process == 0)
@@ -636,6 +787,39 @@ int action_status(std::vector<std::string> args)
 	{
 		return follow_status(false, follow_arg.getValue());
 	}	
+}
+
+int action_list_queue(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List backups queued on the backup server(s) for this client", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string queue = Connector::getBackupQueue(virtual_client_arg.getValue());
+
+	Json::Value root;
+	Json::Reader reader;
+	if (queue.empty()
+		|| !reader.parse(queue, root, false))
+	{
+		std::cerr << "Error getting backup queue" << std::endl;
+		return 1;
+	}
+
+	Json::StyledWriter writer;
+	std::cout << writer.write(root);
+	return 0;
 }
 
 int action_browse(std::vector<std::string> args)
@@ -1975,6 +2159,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_start);
 	actions.push_back("status");
 	action_funs.push_back(action_status);
+	actions.push_back("list-queue");
+	action_funs.push_back(action_list_queue);
 	actions.push_back("browse");
 	action_funs.push_back(action_browse);
 	actions.push_back("restore-start");

@@ -354,7 +354,24 @@ SStatus Connector::getStatus(void)
 	return ret;
 }
 
-int Connector::startBackup(const std::string& virtual_client, bool full)
+//Response is {"status": ..., "result": {"ok": ..., "start_id": ...}} ("result" only if server supports it)
+std::string Connector::parseStartResponse(const std::string& d, int64* start_id)
+{
+	if (start_id != NULL)
+		*start_id = 0;
+
+	Json::Value root;
+	Json::Reader reader;
+	if (!reader.parse(d, root, false))
+		return std::string();
+
+	if (start_id != NULL)
+		*start_id = root["result"].get("start_id", 0).asInt64();
+
+	return root.get("status", "").asString();
+}
+
+int Connector::startBackup(const std::string& virtual_client, bool full, int64* start_id)
 {
 	std::string s;
 	if(full)
@@ -363,6 +380,7 @@ int Connector::startBackup(const std::string& virtual_client, bool full)
 		s="START BACKUP INCR";
 
 	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client),false);
+	d = parseStartResponse(d, start_id);
 
 	if(d=="RUNNING")
 		return 2;
@@ -374,7 +392,7 @@ int Connector::startBackup(const std::string& virtual_client, bool full)
 		return 1;
 }
 
-int Connector::startImage(const std::string& virtual_client, bool full)
+int Connector::startImage(const std::string& virtual_client, bool full, int64* start_id)
 {
 	std::string s;
 	if(full)
@@ -383,6 +401,7 @@ int Connector::startImage(const std::string& virtual_client, bool full)
 		s="START IMAGE INCR";
 
 	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client=" + EscapeParamString(virtual_client),false);
+	d = parseStartResponse(d, start_id);
 
 	if(d=="RUNNING")
 		return 2;
@@ -655,6 +674,17 @@ std::string Connector::startRestore( const std::string& path, int backupid, cons
 	}
 }
 
+std::string Connector::getBackupQueue(const std::string& virtual_client)
+{
+	std::string params;
+	if (!virtual_client.empty())
+	{
+		params = "virtual_client=" + EscapeParamString(virtual_client);
+	}
+
+	return getResponse("GET BACKUP QUEUE", params, false);
+}
+
 std::string Connector::getStatusDetailsRaw()
 {
 	return getResponse("STATUS DETAIL", "", false);
@@ -695,6 +725,7 @@ SStatusDetails Connector::getStatusDetails()
 
 			ret.running_processes[i].process_id = json_running_processes[i].get("process_id", 0).asInt64();
 			ret.running_processes[i].server_status_id = json_running_processes[i].get("server_status_id", 0).asInt64();
+			ret.running_processes[i].start_id = json_running_processes[i].get("start_id", 0).asInt64();
 
 			ret.running_processes[i].speed_bpms = json_running_processes[i].get("speed_bpms", 0).asDouble();
 		}

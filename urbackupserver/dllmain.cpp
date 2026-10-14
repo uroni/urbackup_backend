@@ -2526,6 +2526,17 @@ bool upgrade68_69()
 	return updateArchiveSettingsExternal(0, db);
 }
 
+bool upgrade69_70()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = db->Write("CREATE TABLE backup_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, clientid INTEGER, backup_type TEXT, created INTEGER)");
+	b &= db->Write("CREATE INDEX backup_queue_clientid_idx ON backup_queue(clientid)");
+	b &= db->Write("ALTER TABLE backups ADD start_id INTEGER DEFAULT 0");
+	b &= db->Write("ALTER TABLE backup_images ADD start_id INTEGER DEFAULT 0");
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2547,7 +2558,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=69;
+	int max_v=70;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2969,6 +2980,13 @@ void upgrade(void)
 				break;
 			case 68:
 				if (!upgrade68_69())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 69:
+				if (!upgrade69_70())
 				{
 					has_error = true;
 				}

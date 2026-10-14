@@ -325,6 +325,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	}
 
 	int64 server_id = watoi64(params["status_id"]);
+	int64 start_id = watoi64(params["start_id"]);
 	std::string resume = params["resume"];
 	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
@@ -441,6 +442,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	new_proc.action = action;
 	new_proc.server_id = server_id;
+	new_proc.start_id = start_id;
 	new_proc.id = ++curr_backup_running_id;
 	new_proc.server_token = server_token;
 
@@ -509,6 +511,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	}
 
 	int64 server_id = watoi64(params["status_id"]);
+	int64 start_id = watoi64(params["start_id"]);
 	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
 	if(!sha_version_str.empty())
@@ -602,6 +605,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	new_proc.action = RUNNING_FULL_FILE;
 	new_proc.server_id = server_id;
+	new_proc.start_id = start_id;
 	new_proc.id = ++curr_backup_running_id;
 	new_proc.server_token = server_token;
 
@@ -1130,6 +1134,11 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 		obj.set("process_id", running_processes[i].id);
 		obj.set("server_status_id", running_processes[i].server_id);
 
+		if (running_processes[i].start_id != 0)
+		{
+			obj.set("start_id", running_processes[i].start_id);
+		}
+
 		obj.set("speed_bpms", running_processes[i].speed_bpms);
 
 		j_running_processes.add(obj);
@@ -1470,8 +1479,10 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 
 		g_lock->relock(backup_mutex);
 
-		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
-			&make_conn, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
+		SChannel new_channel(pipe, internet_conn, endpoint_name, token,
+			&make_conn, identity, capa, watoi(params["restore_version"]), params["virtual_client"]);
+		new_channel.channel_version = watoi(params["channel_version"]);
+		channel_pipes.push_back(new_channel);
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -1689,6 +1700,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		image_inf.image_letter=(params["letter"]);
 		image_inf.orig_image_letter = image_inf.image_letter;
 		image_inf.server_status_id = watoi(params["status_id"]);
+		image_inf.start_id = watoi64(params["start_id"]);
 		image_inf.shadowdrive=(params["shadowdrive"]);
 		if(params.find("start")!=params.end())
 		{
@@ -1807,6 +1819,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.image_letter=(params["letter"]);
 			image_inf.shadowdrive=(params["shadowdrive"]);
 			image_inf.server_status_id = watoi(params["status_id"]);
+			image_inf.start_id = watoi64(params["start_id"]);
 			if(params.find("start")!=params.end())
 			{
 				image_inf.startpos=watoi64(params["start"]);
@@ -2011,6 +2024,46 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 		r.addString((errmsg));
 		tcpstack.Send(pipe, r);
 	}
+}
+
+void ClientConnector::CMD_GET_BACKUP_QUEUE(str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+
+	std::string virtual_client = params["virtual_client"];
+
+	//Server responds with JSON object, which is passed through as "result"
+	std::string servers;
+	for(size_t i=0;i<channel_pipes.size();++i)
+	{
+		SChannel& chan = channel_pipes[i];
+		if (chan.virtual_client != virtual_client
+			|| chan.channel_version < 1
+			|| chan.state != SChannel::EChannelState_Idle)
+		{
+			continue;
+		}
+
+		sendChannelPacket(chan, "GET BACKUP QUEUE");
+		std::string nc=receivePacket(chan);
+
+		if(nc.empty() || nc[0]!='{')
+		{
+			continue;
+		}
+
+		if(!servers.empty())
+		{
+			servers+=",";
+		}
+		servers+="{\"name\":"+JSON::Value(chan.endpoint_name).stringify(true)
+			+",\"internet_connection\":"+(chan.internet_connection ? "true" : "false")
+			+",\"result\":"+nc+"}";
+	}
+
+	tcpstack.Send(pipe, "{\"servers\":["+servers+"]}");
 }
 
 void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
@@ -3344,7 +3397,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE=windows"
 		"&INCR_SYSVOL=1&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
@@ -3375,7 +3428,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
 		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
-		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }

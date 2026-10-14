@@ -417,6 +417,17 @@ void ServerStatus::setProcessPcDone( const std::string &clientname, size_t id, i
 	}
 }
 
+void ServerStatus::setProcessStartId(const std::string &clientname, size_t id, int64 start_id)
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if (proc != NULL)
+	{
+		proc->start_id = start_id;
+	}
+}
+
 void ServerStatus::setProcessTotalBytes(const std::string & clientname, size_t id, int64 total_bytes)
 {
 	IScopedLock lock(mutex);

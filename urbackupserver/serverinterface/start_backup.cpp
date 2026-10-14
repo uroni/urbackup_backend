@@ -19,24 +19,29 @@
 #include "action_header.h"
 #include "../../Interface/Pipe.h"
 #include "../server_status.h"
+#include "../dao/ServerBackupDao.h"
 #include <algorithm>
 
 namespace
 {
-	bool client_start_backup(IPipe *comm_pipe, std::string backup_type)
+	int64 client_start_backup(ServerBackupDao& backup_dao, IPipe *comm_pipe, int clientid, std::string backup_type)
 	{
-		if(backup_type=="full_file")
-			comm_pipe->Write("START BACKUP FULL");
-		else if(backup_type=="incr_file")
-			comm_pipe->Write("START BACKUP INCR");
-		else if(backup_type=="full_image")
-			comm_pipe->Write("START IMAGE FULL");
-		else if(backup_type=="incr_image")
-			comm_pipe->Write("START IMAGE INCR");
-		else
-			return false;
+		if(backup_type!="full_file"
+			&& backup_type!="incr_file"
+			&& backup_type!="full_image"
+			&& backup_type!="incr_image")
+		{
+			return 0;
+		}
 
-		return true;
+		int64 start_id = backup_dao.enqueueBackup(clientid, backup_type);
+
+		if(start_id!=0)
+		{
+			comm_pipe->Write("START QUEUED");
+		}
+
+		return start_id;
 	}
 }
 
@@ -67,6 +72,7 @@ ACTION_IMPL(start_backup)
 	if(session!=NULL && !s_start_client.empty() && helper.getRights("start_backup")=="all")
 	{
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
+		ServerBackupDao backup_dao(db);
 
 		std::vector<std::string> sv_start_client;
 		Tokenize(s_start_client, sv_start_client, ",");
@@ -102,9 +108,11 @@ ACTION_IMPL(start_backup)
 					}
 					else
 					{
-						if(client_start_backup(client_status[i].comm_pipe, start_type) )
+						int64 start_id = client_start_backup(backup_dao, client_status[i].comm_pipe, start_clientid, start_type);
+						if(start_id!=0)
 						{
 							obj.set("start_ok", true);
+							obj.set("start_id", start_id);
 						}
 						else
 						{

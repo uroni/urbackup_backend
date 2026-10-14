@@ -111,8 +111,8 @@ namespace
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
 	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details,
-	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo, int64 backup_starttime, bool scheduled)
-	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details, scheduled),
+	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo, int64 backup_starttime, bool scheduled, int64 start_id)
+	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details, scheduled, start_id),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false),
 	set_complete(set_complete), snapshot_id(snapshot_id), mutex(Server->createMutex()),
 	snapshot_group_loginfo(snapshot_group_loginfo), backup_starttime(backup_starttime)
@@ -194,7 +194,7 @@ bool ImageBackup::doBackup()
 
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-			incr_sysvol, "SYSVOL", server_token, "SYSVOL", false, 0, std::string(), 0, scheduled);
+			incr_sysvol, "SYSVOL", server_token, "SYSVOL", false, 0, std::string(), 0, scheduled, start_id);
 		sysvol_backup.setStopBackupRunning(false);
 		sysvol_backup();
 
@@ -217,7 +217,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-				incr_sysvol, "ESP", server_token, "ESP", false, 0, std::string(), 0, scheduled);
+				incr_sysvol, "ESP", server_token, "ESP", false, 0, std::string(), 0, scheduled, start_id);
 			esp_backup.setStopBackupRunning(false);
 			esp_backup();
 
@@ -579,6 +579,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	chksum_str += "&status_id=" + convert(status_id);
 
+	if (start_id != 0)
+	{
+		chksum_str += "&start_id=" + convert(start_id);
+	}
+
 	std::string identity = client_main->getIdentity();
 
 	chksum_str += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
@@ -834,6 +839,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&start="+convert(continue_block)
 						+"&shadowid="+convert(snapshot_id)+ "&status_id=" + convert(status_id)+"&token="+ server_token;
+					if (start_id != 0)
+					{
+						cmd += "&start_id=" + convert(start_id);
+					}
 					if(transfer_bitmap)
 					{
 						cmd+="&bitmap=1";
@@ -862,6 +871,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					std::string ts = "INCR IMAGE letter="+pLetter+"&start=" + convert(continue_block) + "&shadowid=" + convert(snapshot_id) + "&hashsize="
 						+ convert(parenthashfile->Size()) + "&status_id=" + convert(status_id) + "&token=" + server_token;
+					if (start_id != 0)
+					{
+						ts += "&start_id=" + convert(start_id);
+					}
 					if(transfer_bitmap)
 					{
 						ts+="&bitmap=1";
@@ -2602,14 +2615,14 @@ bool ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::str
 
 	if (pParentvhd.empty())
 	{
-		if (!backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter, backup_starttime))
+		if (!backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter, backup_starttime, start_id))
 		{
 			return false;
 		}
 	}
 	else
 	{
-		if (!backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter, backup_starttime))
+		if (!backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter, backup_starttime, start_id))
 		{
 			return false;
 		}

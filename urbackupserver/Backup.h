@@ -40,7 +40,7 @@ class Backup : public IThread
 public:
 	Backup(ClientMain* client_main, int clientid, std::string clientname,
 		std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental,
-		std::string server_token, std::string details, bool scheduled);
+		std::string server_token, std::string details, bool scheduled, int64 start_id);
 	virtual ~Backup() {}
 
 	virtual void operator()();
@@ -86,6 +86,11 @@ public:
 		return scheduled;
 	}
 
+	int64 getStartId()
+	{
+		return start_id;
+	}
+
 protected:
 	virtual bool doBackup() = 0;
 
@@ -129,4 +134,7 @@ protected:
 	std::string server_token;
 
 	bool stop_backup_running;
+
+	//Id of the backup queue entry which started this backup (0 if none)
+	int64 start_id;
 };
