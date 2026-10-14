@@ -42,7 +42,7 @@ ImageReadFile::ImageReadFile(IPipe* pipe, int64 size, std::unique_ptr<IImageRead
 	: pipe(pipe), size(size), pos(0), mutex(Server->createMutex()),
 	connection_error(false), connection_error_time(0), closed(false),
 	reconnect_cancelled(false), channel(std::move(channel)), last_request(Server->getTimeMS()),
-	readahead_partial(false), readahead_bytes(0), readahead_window(0), last_read_end(-1),
+	readahead_partial(false), readahead_partial_zero(false), readahead_bytes(0), readahead_window(0), last_read_end(-1),
 	sequential_reads(0), read_sequential(false),
 	last_read_time(Server->getTimeMS())
 {
@@ -167,6 +167,9 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 			}
 		}
 
+		//Range is not present in the image and no data follows
+		bool zero = from_readahead && readahead_partial && readahead_partial_zero;
+
 		if (!from_readahead || !readahead_partial)
 		{
 			int err;
@@ -177,7 +180,10 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 				return done;
 			}
 
-			if (err != image_read_err_ok)
+			zero = err == image_read_resp_zero;
+
+			if (err != image_read_err_ok
+				&& !zero)
 			{
 				if (from_readahead)
 				{
@@ -199,6 +205,7 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 				front.offset += req.len;
 				front.len -= req.len;
 				readahead_partial = true;
+				readahead_partial_zero = zero;
 			}
 			else
 			{
@@ -207,7 +214,11 @@ _u32 ImageReadFile::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 			}
 		}
 
-		if (!image_read_full(pipe, buffer + done, req.len, read_timeout))
+		if (zero)
+		{
+			memset(buffer + done, 0, req.len);
+		}
+		else if (!image_read_full(pipe, buffer + done, req.len, read_timeout))
 		{
 			Server->Log("Error receiving image data", LL_ERROR);
 			setConnectionError();
@@ -520,6 +531,11 @@ bool ImageReadFile::drainReadahead()
 		{
 			//Response header was already received
 			readahead_partial = false;
+
+			if (readahead_partial_zero)
+			{
+				continue;
+			}
 		}
 		else
 		{

@@ -117,6 +117,8 @@ private:
 	std::deque<SImageReadRequest> readahead;
 	//Response header of the first read-ahead request was received and its data partially consumed
 	bool readahead_partial;
+	//Partially consumed read-ahead response is image_read_resp_zero (has no data)
+	bool readahead_partial_zero;
 	int64 readahead_bytes;
 	int64 readahead_window;
 	int64 last_read_end;

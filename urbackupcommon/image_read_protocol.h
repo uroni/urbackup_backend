@@ -19,8 +19,10 @@
 *   uint64 offset
 *
 * Response:
-*   int32 err (0 on success, otherwise NBD style errno)
+*   int32 err (0 on success, image_read_resp_zero, otherwise NBD style errno)
 *   len bytes of data if cmd==image_read_cmd_read and err==0
+*   no data if err==image_read_resp_zero (no block of the range is present in the
+*   image, the range reads as zeroes)
 *
 * image_read_cmd_close has no response.
 */
@@ -37,6 +39,8 @@ const unsigned int image_read_max_len = 4 * 1024 * 1024;
 const int image_read_err_ok = 0;
 const int image_read_err_io = 5;
 const int image_read_err_inval = 22;
+//Success, but the range is not present in the image. No data follows, the range reads as zeroes
+const int image_read_resp_zero = -1;
 
 //Client sends keepalive if idle for this long
 const int64 image_read_keepalive_interval = 60000;

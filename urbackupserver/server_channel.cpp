@@ -1494,6 +1494,7 @@ void ServerChannelThread::READ_IMAGE(str_map& params)
 	std::vector<char> buffer;
 	int64 last_update_time = Server->getTimeMS();
 	int64 transferred_bytes = 0;
+	int64 zero_bytes = 0;
 
 	while(true)
 	{
@@ -1528,7 +1529,8 @@ void ServerChannelThread::READ_IMAGE(str_map& params)
 
 		if(req.cmd==image_read_cmd_close)
 		{
-			Server->Log("Random access image restore finished. Transferred "+PrettyPrintBytes(transferred_bytes), LL_INFO);
+			Server->Log("Random access image restore finished. Transferred "+PrettyPrintBytes(transferred_bytes)
+				+" ("+PrettyPrintBytes(zero_bytes)+" not present in image)", LL_INFO);
 			restore_done.set_ok();
 			return;
 		}
@@ -1550,15 +1552,21 @@ void ServerChannelThread::READ_IMAGE(str_map& params)
 			}
 			else
 			{
-				buffer.resize(image_read_response_header_size + req.len);
-
-				if(!vhdfile->Seek(skip + req.offset))
+				//Answer ranges not present in the image without data
+				if(!vhd_range_has_sector(vhdfile, skip + req.offset, req.len))
+				{
+					err = image_read_resp_zero;
+					zero_bytes += req.len;
+				}
+				else if(!vhdfile->Seek(skip + req.offset))
 				{
 					Server->Log("Error seeking to "+convert(skip + req.offset)+" in image", LL_ERROR);
 					err = image_read_err_io;
 				}
 				else
 				{
+					buffer.resize(image_read_response_header_size + req.len);
+
 					size_t pos = 0;
 					while(pos<req.len)
 					{

@@ -38,3 +38,23 @@ public:
 	virtual bool setUnused(_i64 unused_start, _i64 unused_end) = 0;
 	virtual bool setBackingFileSize(_i64 fsize) = 0;
 };
+
+//Returns true if any block of [start, start+len) is present in the image (has_sector()). Changes the position
+inline bool vhd_range_has_sector(IVHDFile* vhdfile, _i64 start, _i64 len)
+{
+	const _i64 blocksize = vhdfile->getBlocksize();
+	if (blocksize <= 0)
+	{
+		return true;
+	}
+
+	for (_i64 bpos = start; bpos < start + len; bpos = (bpos / blocksize + 1)*blocksize)
+	{
+		if (!vhdfile->Seek(bpos)
+			|| vhdfile->has_sector())
+		{
+			return true;
+		}
+	}
+	return false;
+}
