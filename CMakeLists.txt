@@ -326,6 +326,7 @@ if(URBACKUP_BUILD_CLIENT)
 	include(cmake/client.cmake)
 	list(APPEND URBACKUP_COMPONENT_NAMES client)
 endif()
+include(cmake/sqlgen.cmake)
 
 #
 # Source package (replaces "make dist"): cmake --build <dir> --target package_source
