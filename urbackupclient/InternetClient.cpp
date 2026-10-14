@@ -270,6 +270,12 @@ void InternetClient::operator()(void)
 
 void InternetClient::doUpdateSettings(void)
 {
+	// remember which server the connections go to, so it can be found again in the new list
+	SServerConnectionSettings prev_server;
+	bool has_prev_server = server_settings.selected_server < server_settings.servers.size();
+	if (has_prev_server)
+		prev_server = server_settings.servers[server_settings.selected_server];
+
 	server_settings.servers.clear();
 
 	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
@@ -357,6 +363,23 @@ void InternetClient::doUpdateSettings(void)
 				connection_settings.proxy = server_proxies[server_proxies.size()-1];
 
 			server_settings.servers.push_back(connection_settings);
+		}
+
+		// The list may have changed (e.g. the server sent its addresses). New connections go to
+		// servers[selected_server], so keep that pointing to the server we are connected to.
+		if (has_prev_server)
+		{
+			server_settings.selected_server = 0;
+			for (size_t i = 0; i < server_settings.servers.size(); ++i)
+			{
+				if (server_settings.servers[i].hostname == prev_server.hostname
+					&& server_settings.servers[i].port == prev_server.port
+					&& server_settings.servers[i].proxy == prev_server.proxy)
+				{
+					server_settings.selected_server = i;
+					break;
+				}
+			}
 		}
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
