@@ -89,6 +89,14 @@ option(URBACKUP_PACKAGING "Install for packaging (no user creation/chown during 
 
 # Client options
 option(URBACKUP_CLIENT_UPDATE "Enable the internal client update functionality" OFF)
+# O_NOATIME only works for the owner of a file (or root). On Android the client does not run as root
+# and the files belong to the media provider, so it would make every open fail.
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+	set(_urbackup_client_noatime_default OFF)
+else()
+	set(_urbackup_client_noatime_default ON)
+endif()
+option(URBACKUP_CLIENT_NOATIME "Client: open files for backups with O_NOATIME (needs root, off by default on Android)" ${_urbackup_client_noatime_default})
 option(URBACKUP_WITH_C_ARES "Use c-ares for DNS resolution instead of the system libc" OFF)
 option(URBACKUP_WITH_OPENSSL "Use OpenSSL if available (web socket/https proxy support)" ON)
 option(URBACKUP_INSTALL_DEBIAN_INITD "Install the Debian init.d file (client)" OFF)
