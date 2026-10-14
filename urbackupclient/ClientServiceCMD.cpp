@@ -3407,10 +3407,20 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 
 #ifdef __APPLE__
 	std::string os_simple = "osx";
+#elif defined(__ANDROID__)
+	std::string os_simple = "android";
 #elif __linux__
 	std::string os_simple = "linux";
 #else
 	std::string os_simple = "unknown";
+#endif
+
+#ifdef __ANDROID__
+	// The Android app is only connected for a short time: it connects, the server starts the backups
+	// that are due and the app disconnects again. A startup backup delay would skip them.
+	std::string skip_startup_delay = "&SKIP_STARTUP_DELAY=1";
+#else
+	std::string skip_startup_delay;
 #endif
 
 	std::string all_volumes;
@@ -3433,7 +3443,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
 		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
 		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
+		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args + skip_startup_delay);
 #endif
 }
 
