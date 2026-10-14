@@ -529,7 +529,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		serviceport_bind_target = IServer::BindTarget_Localhost;
 	}
 
-	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, -1, serviceport_bind_target);
+	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, 1, serviceport_bind_target);
 
 	unsigned short sambaredir_port = default_sambaredir_port;
 	if (!Server->getServerParameter("smabaredir_port").empty())
