@@ -496,11 +496,11 @@ void ClientMain::operator ()(void)
 
 	loadBackupQueue();
 
-	if( server_settings->getSettings()->startup_backup_delay>0
+	if( getStartupBackupDelay()>0
 		&& (!do_full_backup_now && !do_incr_backup_now
 			&& !do_incr_backup_now && !do_full_image_now) )
 	{
-		pipe->isReadable(server_settings->getSettings()->startup_backup_delay*1000);
+		pipe->isReadable(getStartupBackupDelay()*1000);
 		skip_checking=true;
 	}
 
@@ -1613,6 +1613,16 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	return ok;
 }
 
+int ClientMain::getStartupBackupDelay()
+{
+	// e.g. the Android client, which is only connected for a short time
+	if (protocol_versions.skip_startup_delay > 0)
+	{
+		return 0;
+	}
+	return server_settings->getSettings()->startup_backup_delay;
+}
+
 void ClientMain::sendClientBackupIncrIntervall(void)
 {
 	SSettings* settings = server_settings->getSettings();
@@ -1633,7 +1643,7 @@ void ClientMain::sendClientBackupIncrIntervall(void)
 	{
 		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqImageFull()*settings->backup_ok_mod_image));
 	}
-	int curr_startup_backup_delay = settings->startup_backup_delay;
+	int curr_startup_backup_delay = getStartupBackupDelay();
 	if(incr_freq!=INT_MAX && (incr_freq!=last_incr_freq || curr_startup_backup_delay!=last_startup_backup_delay) )
 	{
 		std::string delay_str;
@@ -1875,6 +1885,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		if(it != params.end())
 		{
 			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
+		}
+		it = params.find("SKIP_STARTUP_DELAY");
+		if (it != params.end())
+		{
+			protocol_versions.skip_startup_delay = watoi(it->second);
 		}
 		it = params.find("FILESRVTUNNEL");
 		if (it != params.end())
@@ -2369,6 +2384,16 @@ bool ClientMain::sendMailToAdmins(const std::string& subj, const std::string& me
 
 void ClientMain::checkClientVersion(void)
 {
+	if (!protocol_versions.os_simple.empty()
+		&& protocol_versions.os_simple != "windows"
+		&& protocol_versions.os_simple != "osx"
+		&& protocol_versions.os_simple != "linux")
+	{
+		// No client update for this OS (e.g. the Android app is updated through the app store).
+		// Without this it would get the Windows version and installer below.
+		return;
+	}
+
 	std::string version;
 	if (protocol_versions.os_simple == "osx")
 	{

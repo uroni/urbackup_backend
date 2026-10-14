@@ -52,7 +52,8 @@ struct SProtocolVersions
 				wtokens_version(0), update_vols(0),
 				update_capa_interval(0), require_previous_cbitmap(0),
 				async_index_version(0), restore_version(0),
-				filesrvtunnel(0), incr_sysvol_version(0), channel_version(0)
+				filesrvtunnel(0), incr_sysvol_version(0), channel_version(0),
+				skip_startup_delay(0)
 			{
 
 			}
@@ -81,6 +82,7 @@ struct SProtocolVersions
 	int restore_version;
 	int filesrvtunnel;
 	int channel_version;
+	int skip_startup_delay;
 };
 
 struct SRunningBackup
@@ -310,6 +312,7 @@ private:
 	void removeStartedQueueEntry(int64 start_id);
 	bool isRunningFileBackup(int group, bool queue_only=true);	
 	void checkClientVersion(void);
+	int getStartupBackupDelay();
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	bool isBackupsRunningOkay(bool file, bool incr=false);	
 	bool updateCapabilities(bool* needs_restart);
