@@ -1152,6 +1152,10 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 		JSON::Object obj;
 		obj.set("process_id", finished_processes[i].id);
 		obj.set("success", finished_processes[i].success);
+		if (finished_processes[i].start_id != 0)
+		{
+			obj.set("start_id", finished_processes[i].start_id);
+		}
 		j_finished_processes.add(obj);
 	}
 

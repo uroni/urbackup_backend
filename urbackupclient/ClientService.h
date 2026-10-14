@@ -94,16 +94,17 @@ struct SRunningProcess
 struct SFinishedProcess
 {
 	SFinishedProcess()
-		:id(0), success(false)
+		:id(0), success(false), start_id(0)
 	{
 	}
 
-	SFinishedProcess(int64 id, bool success)
-		: id(id), success(success)
+	SFinishedProcess(int64 id, bool success, int64 start_id)
+		: id(id), success(success), start_id(start_id)
 	{}
 
 	int64 id;
 	bool success;
+	int64 start_id;
 };
 
 enum RestoreOkStatus

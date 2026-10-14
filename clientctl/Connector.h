@@ -110,18 +110,20 @@ struct SRunningProcess
 struct SFinishedProcess
 {
 	SFinishedProcess()
-		:id(0), success(false)
+		:id(0), success(false), start_id(0)
 	{
 	}
 
 	bool operator==(const SFinishedProcess& other) const
 	{
 		return id == other.id
-			&& success == other.success;
+			&& success == other.success
+			&& start_id == other.start_id;
 	}
 
 	int64 id;
 	bool success;
+	int64 start_id;
 };
 
 struct SUrBackupServer

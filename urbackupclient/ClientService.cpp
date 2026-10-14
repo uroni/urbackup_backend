@@ -4433,7 +4433,7 @@ bool ClientConnector::removeRunningProcess(int64 id, bool success, bool consider
 			if (!consider_refs || curr.refs == 0)
 			{
 				Server->Log("Removing running process (1) id " + convert(curr.id) + " server_id " + convert(curr.server_id) + " token " + curr.server_token + " action " + convert((int)curr.action), LL_DEBUG);
-				finished_processes.push_back(SFinishedProcess(id, success));
+				finished_processes.push_back(SFinishedProcess(id, success, curr.start_id));
 				while (finished_processes.size() > 20)
 				{
 					finished_processes.erase(finished_processes.begin());

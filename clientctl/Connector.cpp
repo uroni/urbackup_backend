@@ -736,6 +736,7 @@ SStatusDetails Connector::getStatusDetails()
 		{
 			ret.finished_processes[i].id = json_finished_processes[i]["process_id"].asInt64();
 			ret.finished_processes[i].success = json_finished_processes[i]["success"].asBool();
+			ret.finished_processes[i].start_id = json_finished_processes[i].get("start_id", 0).asInt64();
 		}
 
 		std::vector<SUrBackupServer> servers;

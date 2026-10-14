@@ -452,6 +452,20 @@ int64 wait_for_start_id_process(int64 start_id, const std::string& virtual_clien
 			}
 		}
 
+		//Process might have finished between two status queries (e.g. small backups)
+		for (size_t j = 0; j < sd.finished_processes.size(); ++j)
+		{
+			if (sd.finished_processes[j].start_id == start_id
+				&& std::find(followed.begin(), followed.end(), sd.finished_processes[j].id) == followed.end())
+			{
+				if (printed)
+				{
+					std::cout << "\r" << message << "done" << std::endl;
+				}
+				return sd.finished_processes[j].id;
+			}
+		}
+
 		if (i % 5 == 0)
 		{
 			queued = is_start_id_queued(start_id, virtual_client);
