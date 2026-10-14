@@ -991,7 +991,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 #if defined(O_CLOEXEC)
 				flags |= O_CLOEXEC;
 #endif
-#if defined(O_NOATIME)
+#if defined(O_NOATIME) && !defined(URB_NO_NOATIME)
 				if(backup_semantics)
 					flags |= O_NOATIME;
 #endif
@@ -1902,7 +1902,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 #if defined(O_CLOEXEC)
 		flags |= O_CLOEXEC;
 #endif
-#if defined(O_NOATIME)
+#if defined(O_NOATIME) && !defined(URB_NO_NOATIME)
 		if(backup_semantics)
 			flags |= O_NOATIME;
 #endif
@@ -2163,7 +2163,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 #if defined(O_CLOEXEC)
 	flags |= O_CLOEXEC;
 #endif
-#if defined(O_NOATIME)
+#if defined(O_NOATIME) && !defined(URB_NO_NOATIME)
 	if(backup_semantics)
 		flags |= O_NOATIME;
 #endif

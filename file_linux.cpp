@@ -193,7 +193,7 @@ bool File::Open(std::string pfn, int mode)
 #if defined(O_CLOEXEC)
 	flags |= O_CLOEXEC;
 #endif
-#if defined(O_NOATIME)
+#if defined(O_NOATIME) && !defined(URB_NO_NOATIME)
 	if (mode == MODE_READ_SEQUENTIAL_BACKUP)
 	{
 		flags |= O_NOATIME;
