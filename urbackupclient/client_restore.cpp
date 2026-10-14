@@ -38,6 +38,7 @@
 #include <sys/ioctl.h>
 #else
 #include <ws2tcpip.h>
+#include <winioctl.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
 #include "../fileservplugin/settings.h"
@@ -1188,6 +1189,140 @@ namespace restore
 		return watoi64(s);
 	}
 
+	_u32 gpt_crc32(const char* data, size_t len)
+	{
+		_u32 crc = 0xFFFFFFFF;
+		for (size_t i = 0; i < len; ++i)
+		{
+			crc ^= static_cast<unsigned char>(data[i]);
+			for (int k = 0; k < 8; ++k)
+				crc = (crc >> 1) ^ (0xEDB88320 & (0 - (crc & 1)));
+		}
+		return ~crc;
+	}
+
+	template<typename T>
+	T gpt_get(const std::string& buf, size_t off)
+	{
+		T ret;
+		memcpy(&ret, buf.data() + off, sizeof(T));
+		return little_endian(ret);
+	}
+
+	template<typename T>
+	void gpt_set(std::string& buf, size_t off, T val)
+	{
+		val = little_endian(val);
+		memcpy(&buf[off], &val, sizeof(T));
+	}
+
+	void gpt_update_header_crc(std::string& hdr, _u32 hdr_size)
+	{
+		gpt_set<_u32>(hdr, 16, 0);
+		gpt_set<_u32>(hdr, 16, gpt_crc32(hdr.data(), hdr_size));
+	}
+
+	int64 get_device_size(IFsFile* dev)
+	{
+#ifdef _WIN32
+		GET_LENGTH_INFORMATION li;
+		DWORD r_bytes;
+		if (DeviceIoControl(dev->getOsHandle(), IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &li, sizeof(li), &r_bytes, NULL))
+		{
+			return li.Length.QuadPart;
+		}
+#endif
+		return dev->Size();
+	}
+
+	/**
+	* The GPT from the backup describes the original disk. If the disk restored to has
+	* a different size, move the backup partition table and header to the end of this disk and
+	* adjust the primary header (and the protective MBR) to it. Returns false if this
+	* is not possible, e.g. because the partitions do not fit onto the disk.
+	*/
+	bool fit_gpt_to_disk(SMBRData& mbrdata, int64 disk_size)
+	{
+		std::string& hdr = mbrdata.gpt_header;
+		int64 sector_size = mbrdata.gpt_header_pos;
+		if (sector_size != 512 && sector_size != 4096)
+			return false;
+
+		if (hdr.size() < 92 || hdr.compare(0, 8, "EFI PART") != 0)
+			return false;
+
+		_u32 hdr_size = gpt_get<_u32>(hdr, 12);
+		if (hdr_size < 92 || hdr_size > hdr.size())
+			return false;
+
+		int64 disk_sectors = disk_size / sector_size;
+		int64 alt_lba = disk_sectors - 1;
+		if (gpt_get<int64>(hdr, 32) == alt_lba)
+			return true;
+
+		_u32 num_entries = gpt_get<_u32>(hdr, 80);
+		_u32 entry_size = gpt_get<_u32>(hdr, 84);
+		const std::string& table = mbrdata.gpt_table;
+		if (entry_size < 128 || static_cast<int64>(num_entries) * entry_size > static_cast<int64>(table.size()))
+			return false;
+
+		int64 table_sectors = (static_cast<int64>(num_entries) * entry_size + sector_size - 1) / sector_size;
+		int64 backup_table_lba = alt_lba - table_sectors;
+		int64 last_usable = backup_table_lba - 1;
+
+		int64 max_end = 0;
+		for (_u32 i = 0; i < num_entries; ++i)
+		{
+			size_t off = static_cast<size_t>(i) * entry_size;
+			if (gpt_get<int64>(table, off) == 0 && gpt_get<int64>(table, off + 8) == 0)
+				continue; //unused entry
+			max_end = (std::max)(max_end, gpt_get<int64>(table, off + 40));
+		}
+
+		if (max_end > last_usable
+			|| gpt_get<int64>(hdr, 72) + table_sectors > gpt_get<int64>(hdr, 40))
+		{
+			Server->Log("Partitions do not fit onto the disk (last partition ends at sector "
+				+ convert(max_end) + ", last usable sector " + convert(last_usable) + ")", LL_WARNING);
+			return false;
+		}
+
+		Server->Log("Disk has " + convert(disk_sectors) + " sectors, GPT was for "
+			+ convert(gpt_get<int64>(hdr, 32) + 1) + ". Moving backup GPT to the end of the disk.", LL_INFO);
+
+		gpt_set<int64>(hdr, 32, alt_lba);
+		gpt_set<int64>(hdr, 48, last_usable);
+		gpt_update_header_crc(hdr, hdr_size);
+
+		std::string backup_hdr = hdr;
+		gpt_set<int64>(backup_hdr, 24, alt_lba);
+		gpt_set<int64>(backup_hdr, 32, 1);
+		gpt_set<int64>(backup_hdr, 72, backup_table_lba);
+		gpt_update_header_crc(backup_hdr, hdr_size);
+
+		mbrdata.backup_gpt_header = backup_hdr;
+		mbrdata.backup_gpt_header_pos = alt_lba * sector_size;
+		mbrdata.backup_gpt_table = table;
+		mbrdata.backup_gpt_table_pos = backup_table_lba * sector_size;
+
+		//protective MBR: the 0xEE partition covers the whole disk (up to 2 TiB)
+		std::string& mbr = mbrdata.mbr_data;
+		if (mbr.size() >= 512)
+		{
+			for (size_t i = 0; i < 4; ++i)
+			{
+				size_t off = 446 + i * 16;
+				if (static_cast<unsigned char>(mbr[off + 4]) == 0xEE
+					&& gpt_get<_u32>(mbr, off + 8) == 1)
+				{
+					gpt_set<_u32>(mbr, off + 12, static_cast<_u32>((std::min)(disk_sectors - 1, static_cast<int64>(0xFFFFFFFF))));
+				}
+			}
+		}
+
+		return true;
+	}
+
 	bool do_restore_write_mbr(const std::string& mbr_filename, const std::string& out_device,
 		bool fix_gpt, std::string& errmsg)
 	{
@@ -1211,12 +1346,22 @@ namespace restore
 			return false;
 		}
 
-		IFile *dev=Server->openFile(out_device, MODE_RW);
+		IFsFile *dev=Server->openFile(out_device, MODE_RW);
 		if(dev==nullptr)
 		{
 			errmsg = "Could not open device file for writing";
 			delete []buf;
 			return false;
+		}
+
+		if (mbrdata.gpt_style)
+		{
+			int64 disk_size = get_device_size(dev);
+			if (disk_size <= 0
+				|| !fit_gpt_to_disk(mbrdata, disk_size))
+			{
+				Server->Log("Could not adjust GPT to the size of the disk (" + convert(disk_size) + " bytes). Writing it unchanged.", LL_WARNING);
+			}
 		}
 		dev->Seek(0);
 		Server->Log("Writing MBR data...", LL_INFO);
