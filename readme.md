@@ -36,6 +36,10 @@ cd client && git checkout BRANCH
 and use the `client` (with GUI, needs wxWidgets and its `wx-config`) or `client-headless` presets
 (`client-system`/`client-headless-system` with system libraries).
 
+The client backend for Android (used by the Android app) is built with the `client-android-arm64`
+and `client-android-x64` presets. They need the Android NDK (r27 or newer) in `ANDROID_NDK_HOME`
+and target Android 11 (API level 30).
+
 Binaries end up in `out/build/<preset>`. Install with
 `cmake --install out/build/<preset> --prefix /usr/local`, create a source tarball
 with `cmake --build --preset <preset> --target package_source`.
