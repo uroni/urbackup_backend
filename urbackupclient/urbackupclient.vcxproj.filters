@@ -39,6 +39,9 @@
     <ClCompile Include="client_restore.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="client_restore_http.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
     <ClCompile Include="clientdao.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -219,6 +222,12 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="ClientService.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="client_restore.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="client_restore_http.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="ImageReadFile.h">

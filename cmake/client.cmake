@@ -63,7 +63,7 @@ add_executable(urbackupclientbackend
 	${URBACKUP_FSIMAGEPLUGIN_SOURCES}
 	${URBACKUP_FILESERVPLUGIN_SOURCES}
 	urbackupclient/dllmain.cpp urbackupclient/clientdao.cpp urbackupclient/client.cpp
-	urbackupclient/ClientService.cpp urbackupclient/ClientSend.cpp urbackupclient/client_restore.cpp
+	urbackupclient/ClientService.cpp urbackupclient/ClientSend.cpp urbackupclient/client_restore.cpp urbackupclient/client_restore_http.cpp
 	urbackupclient/ServerIdentityMgr.cpp urbackupclient/ClientServiceCMD.cpp urbackupclient/ImageReadFile.cpp urbackupclient/ImageThread.cpp
 	urbackupclient/InternetClient.cpp urbackupclient/file_permissions.cpp urbackupclient/lin_ver.cpp
 	urbackupclient/lin_tokens.cpp urbackupclient/common_tokens.cpp urbackupclient/FileMetadataDownloadThread.cpp
@@ -83,6 +83,17 @@ if(URBACKUP_WITH_C_ARES)
 endif()
 if(NOT URBACKUP_CLIENT_NOATIME)
 	target_compile_definitions(urbackupclientbackend PRIVATE URB_NO_NOATIME)
+endif()
+# The restore code uses C++11 (lambdas, std::thread). Apple clang defaults to C++98.
+if(APPLE)
+	set_source_files_properties(urbackupclient/client_restore.cpp urbackupclient/client_restore_http.cpp
+		PROPERTIES COMPILE_OPTIONS "-std=c++14")
+endif()
+if(URBACKUP_CLIENT_RESTORE_HTTP)
+	target_sources(urbackupclientbackend PRIVATE
+		httpserver/dllmain.cpp httpserver/IndexFiles.cpp httpserver/HTTPAction.cpp httpserver/HTTPFile.cpp
+		httpserver/HTTPService.cpp httpserver/HTTPClient.cpp httpserver/HTTPProxy.cpp httpserver/MIMEType.cpp
+		httpserver/HTTPSocket.cpp)
 endif()
 if(URBACKUP_CLIENT_UPDATE)
 	target_compile_definitions(urbackupclientbackend PRIVATE $<$<COMPILE_LANGUAGE:CXX>:URB_WITH_CLIENTUPDATE>)

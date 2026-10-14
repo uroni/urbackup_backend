@@ -534,6 +534,7 @@ int restoreclient_main(int argc, char* argv[])
 
 		TCLAP::SwitchArg restore_wizard_arg("e", "restore-wizard", "Start restore wizard");
 		TCLAP::SwitchArg restore_client_arg("n", "restore-client", "Start restore client");
+		TCLAP::SwitchArg restore_http_arg("x", "restore-http", "Start restore http server");
 
 		TCLAP::ValueArg<std::string> ping_server_arg("p", "ping-server",
 			"Ping server to notify it of client",
@@ -566,6 +567,7 @@ int restoreclient_main(int argc, char* argv[])
 		xorArgs.push_back(&restore_image_arg);
 		xorArgs.push_back(&restore_wizard_arg);
 		xorArgs.push_back(&restore_client_arg);
+		xorArgs.push_back(&restore_http_arg);
 		xorArgs.push_back(&ping_server_arg);
 		xorArgs.push_back(&image_download_progress_arg);
 		xorArgs.push_back(&mbr_download_arg);
@@ -658,6 +660,20 @@ int restoreclient_main(int argc, char* argv[])
 			real_args.push_back("--no-server");
 			real_args.push_back("--restore_mode");
 			real_args.push_back("true");
+		}
+		else if (restore_http_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore_http");
+			real_args.push_back("true");
+			real_args.push_back("--http_server");
+			real_args.push_back("true");
+			real_args.push_back("--http_root");
+			real_args.push_back("restorewww");
+#ifndef RESTORE_MODE_DEV
+			real_args.push_back("--http_localhost_only");
+			real_args.push_back("1");
+#endif
 		}
 		else if (ping_server_arg.isSet())
 		{

@@ -62,6 +62,7 @@
     <ClCompile Include="ClientServiceCMD.cpp" />
     <ClCompile Include="ImageReadFile.cpp" />
     <ClCompile Include="client_restore.cpp" />
+    <ClCompile Include="client_restore_http.cpp" />
     <ClCompile Include="client_winvss.cpp" />
     <ClCompile Include="cmdline_preprocessor.cpp" />
     <ClCompile Include="common_tokens.cpp" />
@@ -122,6 +123,8 @@
     <ClInclude Include="ClientHash.h" />
     <ClInclude Include="ClientSend.h" />
     <ClInclude Include="ClientService.h" />
+    <ClInclude Include="client_restore.h" />
+    <ClInclude Include="client_restore_http.h" />
     <ClInclude Include="ImageReadFile.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
