@@ -57,6 +57,42 @@ jobs:
     - name: Install
       run: DESTDIR="$PWD/destdir" cmake --install out/build/${{ matrix.preset }}
 
+  # The client backend for the Android app. The NDK is preinstalled on GitHub's Ubuntu runners
+  # (ANDROID_NDK_HOME), so nothing has to be downloaded for it.
+  android:
+    name: ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [client-android-arm64, client-android-x64]
+    environment: build
+    env:
+      # Without the secret (e.g. act or pull requests from forks), vcpkg uses its default local binary cache
+      VCPKG_BINARY_SOURCES: ${{ secrets.VCPKG_WEBDAV_PW && format('clear;http,https://vcpkg2:{0}@vcpkg.urbackup.org,readwrite', secrets.VCPKG_WEBDAV_PW) || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends cmake ninja-build pkg-config python3           git curl zip unzip tar autoconf autoconf-archive automake libtool bison
+
+    - name: Set up vcpkg
+      run: |
+        git clone --filter=blob:none https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+    - name: Configure
+      run: |
+        echo "NDK: $ANDROID_NDK_HOME"
+        cmake --preset ${{ matrix.preset }}
+
+    - name: Build
+      run: cmake --build --preset ${{ matrix.preset }}
+
   # Builds the server and the client (UrBackupBackend.sln contains both)
   windows:
     runs-on: windows-2022
