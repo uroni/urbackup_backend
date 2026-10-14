@@ -296,7 +296,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 {
 	size_t block = static_cast<size_t>(offset/blocksize);
 
-	if(block>=blockOffsets.size())
+	if(block>=numBlockOffsets)
 	{
 		if(errorMsg)
 		{
@@ -312,13 +312,17 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 		return false;
 	}
 
-	if(blockOffsets[block]==-1)
+	int64 blockDataOffset;
+	{
+		IScopedLock lock(mutex.get());
+		blockDataOffset = block < blockOffsets.size() ? blockOffsets[block] : -1;
+	}
+
+	if(blockDataOffset==-1)
 	{
 		memset(buf, 0, blocksize);
 		return true;
 	}
-
-	const __int64 blockDataOffset = blockOffsets[block];	
 
 	char blockheaderBuf[2*sizeof(_u32)];
 	if(readFromFile(blockDataOffset, blockheaderBuf, sizeof(blockheaderBuf), has_error)!=sizeof(blockheaderBuf))
@@ -430,6 +434,9 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize, bool *has_error)
 		error=false;
 		return 0;
 	}
+
+	//Block is in the index from now on, also while it is being evicted
+	numBlockOffsets = (std::max)(numBlockOffsets, static_cast<size_t>(currentPosition/blocksize) + 1);
 
 	hotCache->put(currentPosition, buffer, write);
 	currentPosition += write;
@@ -548,7 +555,6 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 		}
 	}
 
-	numBlockOffsets = (std::max)(numBlockOffsets, blockIdx + 1);
 	blockOffsets[blockIdx] = blockOffset;
 }
 
@@ -579,6 +585,9 @@ void CompressedFile::writeHeader()
 void CompressedFile::writeIndex()
 {
 	index_offset = uncompressedFile->Size();
+
+	if (blockOffsets.size() < numBlockOffsets)
+		blockOffsets.resize(numBlockOffsets, -1);
 
 	if (blockOffsets.empty())
 	{

@@ -141,8 +141,8 @@ void LRUMemCache::operator()()
 		lock.relock(mutex.get());
 		lruItemBuffers.push_back(item.buffer);
 		--n_threads_working;
-		if(wait_work)
-			cond_wait->notify_all();
+		evictingOffsets.erase(item.offset);
+		cond_wait->notify_all();
 	}	
 	--n_threads;
 	cond_wait->notify_all();
@@ -180,6 +180,7 @@ char* LRUMemCache::evict( SCacheItem& item, bool deleteBuffer )
 		else
 		{
 			evictedItems.push_back(item);
+			evictingOffsets.insert(item.offset);
 			cond->notify_one();
 			return getLruItemBuffer(lock);
 		}
@@ -235,8 +236,21 @@ void LRUMemCache::waitThreadWork()
 	wait_work = false;
 }
 
+void LRUMemCache::waitEvicted(__int64 offset)
+{
+	IScopedLock lock(mutex.get());
+	while (evictingOffsets.find(offset) != evictingOffsets.end())
+	{
+		cond_wait->wait(&lock);
+	}
+}
+
 SCacheItem LRUMemCache::createInt( __int64 offset )
 {
+	//Item may still be evicted (written) by the threads. Wait for it, otherwise
+	//old data would be read and the evictions could finish in the wrong order
+	waitEvicted(offset - offset % buffersize);
+
 	char* buffer=NULL;
 	if(lruItems.size()>=nbuffers)
 	{

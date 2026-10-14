@@ -7,6 +7,7 @@
 #include "CompressedFile.h"
 
 #include <vector>
+#include <set>
 #include <memory>
 
 class LRUMemCache : public IThread
@@ -30,6 +31,8 @@ public:
 private:
 	void finishThreads();
 	void waitThreadWork();
+	//Waits until the item at offset is not being evicted by the threads anymore
+	void waitEvicted(__int64 offset);
 
 	SCacheItem createInt(__int64 offset);
 
@@ -41,6 +44,8 @@ private:
 
 	std::vector<SCacheItem> lruItems;
 	std::vector<SCacheItem> evictedItems;
+	//Offsets of evicted items queued for or being processed by the threads
+	std::set<__int64> evictingOffsets;
 	std::vector<char*> lruItemBuffers;
 
 	std::auto_ptr<IMutex> mutex;
