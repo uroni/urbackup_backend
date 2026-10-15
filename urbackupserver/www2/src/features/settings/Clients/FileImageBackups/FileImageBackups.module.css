@@ -22,6 +22,15 @@
   --repel-wrap: nowrap;
 }
 
+.backup-summary {
+  display: grid;
+  gap: 0.5em;
+
+  & p + p {
+    margin-block-start: 0.25em;
+  }
+}
+
 .checkbox-wrapper:has([type="checkbox"]) {
   --margin-inline-start: 0;
 
