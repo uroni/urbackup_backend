@@ -636,7 +636,8 @@ my sub client_status {
 }
 
 # Asks the server (via the client) to start a backup of the virtual client: an image backup, or
-# else a file backup. Returns the exit code of urbackupclientctl.
+# else a file backup. Returns the exit code of urbackupclientctl and the start id the server gave
+# the request (0 for a server that does not give one).
 my sub request_backup {
     my ($self, $vc, $image, $full) = @_;
 
@@ -652,12 +653,46 @@ my sub request_backup {
     die "urbackupclientctl failed - $@" if $@;
 
     # 0: asked the server
+    # 1: the client could not pass the request on, e.g. while the server reconnects the channel
+    #    of the virtual client
     # 2: the client is busy with another backup
     # 3: no server is connected to the virtual client (yet, e.g. first backup of this guest)
-    return $rc if $rc == 0 || $rc == 2 || $rc == 3;
+    if ($rc == 0 || $rc == 2 || $rc == 3
+        || ($rc == 1 && ($err // '') =~ m/^Error starting backup\.$/m)) {
+        my ($start_id) = ($out // '') =~ m/^Start id: (\d+)$/m;
+        return ($rc, $start_id // 0);
+    }
 
     die "unable to start the backup of $vc (urbackupclientctl exit code $rc): $err\n";
 }
+
+# Whether the server has a backup of the virtual client queued that has not started yet: an
+# image backup, or else a file backup (see "urbackupclientctl list-queue"). undef if it cannot be
+# asked at the moment.
+my sub queued_backup {
+    my ($self, $vc, $image) = @_;
+
+    my ($rc, $json) = eval {
+        $self->{'storage-plugin'}->clientctl($self->{scfg}, ['list-queue', '--virtual-client', $vc]);
+    };
+    return undef if $@ || !defined($rc) || $rc != 0;
+
+    my $queue = eval { decode_json($json) };
+    return undef if ref($queue) ne 'HASH' || ref($queue->{servers}) ne 'ARRAY';
+
+    my $type = $image ? qr/_image$/ : qr/_file$/;
+    for my $server ($queue->{servers}->@*) {
+        my $queued = $server->{result}->{queued_backups};
+        next if ref($queued) ne 'ARRAY';
+        return 1 if grep { ($_->{backup_type} // '') =~ $type } $queued->@*;
+    }
+    return 0;
+}
+
+# How long the server may have neither a queued nor a running backup of the virtual client
+# before it is asked again: a queued backup leaves the queue when the server starts it, a bit
+# before the client shows it
+my $REQUEST_AGAIN_AFTER = 60;
 
 # Starts the image backup of the virtual client and waits until all its volumes are backed up.
 #
@@ -689,10 +724,12 @@ my sub run_image_backup {
     };
 
     my $procs = {}; # process id => volume
+    my $requested = 0; # 1: asked a server that gives start ids, 2: an older one
     my $next_request = 0;
+    my $idle_since = time();
+    my $next_queue_check = 0;
     my $last_rc = -1;
     my $next_progress = time() + 60;
-    my $request_interval = 120;
     my $status_errors = 0;
 
     while ($pending->%*) {
@@ -724,7 +761,6 @@ my sub run_image_backup {
                 $procs->{$id} = $volume;
             }
             $running->{$id} = $proc;
-            $next_request = time() + $request_interval;
         }
 
         for my $proc ($status->{finished_processes}->@*) {
@@ -735,7 +771,7 @@ my sub run_image_backup {
 
             $old->{$id} = 1;
             delete $procs->{$id};
-            $next_request = time() + $request_interval;
+            $idle_since = time();
 
             if (!$proc->{success}) {
                 # After the client was restarted during a backup, the server continues the image
@@ -744,6 +780,7 @@ my sub run_image_backup {
                 if (!-e "$volume.snapshot") {
                     log_info($self, "the UrBackup server could not continue an earlier image"
                         . " backup of " . $name->($volume) . " - asking for a new one");
+                    $requested = 0;
                     $next_request = 0;
                     next;
                 }
@@ -764,22 +801,39 @@ my sub run_image_backup {
 
         last if !$pending->%*;
 
-        # Ask (again) while no volume is being backed up for some time. The server ignores the
-        # request while it does not know that the virtual client can do image backups, and a
-        # backup that fails on the server before it gets to the client cannot be seen here. A
-        # request for a backup that is already waiting on the server changes nothing.
-        if (!$running->%* && time() >= $next_request) {
-            my $rc = request_backup($self, $vc, 1, $full);
+        # Ask again if the server has neither queued nor started an image backup of the virtual
+        # client for some time: it drops the request if it does not know (yet) that the virtual
+        # client can do image backups, and a backup that fails on the server before it gets to
+        # the client cannot be seen here. An older server, which does not queue requests, is
+        # asked once only, as it starts the backup of each volume again when it is asked again.
+        $idle_since = time() if $running->%*;
+        if ($requested == 1 && !$running->%* && time() >= $next_queue_check) {
+            $idle_since = time() if queued_backup($self, $vc, 1) // 1;
+            $next_queue_check = time() + 10;
+            if (time() - $idle_since >= $REQUEST_AGAIN_AFTER) {
+                log_info($self, "the UrBackup server has no image backup of $vc queued or running"
+                    . " - asking again");
+                $requested = 0;
+            }
+        }
+
+        if (!$requested && !$running->%* && time() >= $next_request) {
+            my ($rc, $start_id) = request_backup($self, $vc, 1, $full);
             if ($rc == 0) {
                 log_info($self, "asked the UrBackup server to back up $vc");
+                $requested = $start_id ? 1 : 2;
+                $idle_since = time();
+                $next_queue_check = time() + 10;
             } elsif ($rc != $last_rc) {
+                log_info($self, "the UrBackup client could not pass the request on to the server"
+                    . " - trying again") if $rc == 1;
                 log_info($self, "the UrBackup client is busy with another backup - waiting")
                     if $rc == 2;
                 log_info($self, "waiting for the UrBackup server to connect to virtual client $vc")
                     if $rc == 3;
             }
             $last_rc = $rc;
-            $next_request = time() + ($rc == 0 ? $request_interval : 30);
+            $next_request = time() + 30;
         }
 
         if (time() >= $next_progress) {
@@ -862,9 +916,12 @@ my sub run_file_backup {
     my $next_check = 0;
     my $next_progress = time() + 60;
     my $status_errors = 0;
-    # The server does a second file backup if it is asked again while the first one waits, so
-    # only ask again after a long time without a backup (it may have failed on the server
-    # before it got to the client)
+    my $idle_since = time();
+    my $next_queue_check = 0;
+    my $queues = 0; # the server gives start ids
+    # An older server does a second file backup if it is asked again while the first one waits,
+    # so it is only asked again after a long time without a backup (it may have failed on the
+    # server before it got to the client)
     my $request_interval = 600;
 
     while (1) {
@@ -898,6 +955,7 @@ my sub run_file_backup {
             }
             $running->{$id} = $proc;
             $next_request = time() + $request_interval;
+            $idle_since = time();
         }
 
         for my $proc ($status->{finished_processes}->@*) {
@@ -909,6 +967,7 @@ my sub run_file_backup {
             $old->{$id} = 1;
             delete $procs->{$id};
             $next_request = time() + $request_interval;
+            $idle_since = time();
 
             die "file backup of $vc failed - see the logs of the UrBackup server\n"
                 if !$proc->{success};
@@ -949,13 +1008,30 @@ my sub run_file_backup {
             next;
         }
 
+        # A server that gives start ids is asked again if it has neither queued nor started a
+        # file backup of the virtual client for some time
+        if ($requested && $queues && !$finished && !$running->%* && time() >= $next_queue_check) {
+            $idle_since = time() if queued_backup($self, $vc, 0) // 1;
+            $next_queue_check = time() + 10;
+            if (time() - $idle_since >= $REQUEST_AGAIN_AFTER) {
+                log_info($self, "the UrBackup server has no file backup of $vc queued or running"
+                    . " - asking again");
+                $next_request = 0;
+            }
+        }
+
         if (!$running->%* && time() >= $next_request) {
-            my $rc = request_backup($self, $vc, 0, 0);
+            my ($rc, $start_id) = request_backup($self, $vc, 0, 0);
             if ($rc == 0) {
                 log_info($self, "asked the UrBackup server to back up $vc");
                 $requested = 1;
                 $finished = 0;
+                $queues = $start_id ? 1 : 0;
+                $idle_since = time();
+                $next_queue_check = time() + 10;
             } elsif ($rc != $last_rc) {
+                log_info($self, "the UrBackup client could not pass the request on to the server"
+                    . " - trying again") if $rc == 1;
                 log_info($self, "the UrBackup client is busy with another backup - waiting")
                     if $rc == 2;
                 log_info($self, "waiting for the UrBackup server to connect to virtual client $vc")

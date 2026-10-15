@@ -40,8 +40,9 @@ the images take on the server.
   volume of finished image backups in `urbackupclientctl status`, images of whole disks with
   `urbackup/data/disk_<virtual client>_<disk>.zip`, the changed parts of a volume from its
   snapshot script with `CBT=type=extents`).
-- An UrBackup server that does not start a second image backup of a volume while one is
-  waiting or running.
+- An UrBackup server that queues requested backups and gives them start ids
+  (`urbackupclientctl list-queue`). The plugin asks again if the server has dropped the request.
+  An older server is asked once only for an image backup.
 - For VMs, the `nbd` kernel module with enough devices (`nbds_max=128`), which the installation
   sets up.
 - For VMs, fleecing: Proxmox VE needs it for backup providers, e.g. in `/etc/vzdump.conf`:
