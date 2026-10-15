@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Field as FUIField,
   Input,
@@ -93,6 +93,7 @@ export function CheckboxTextDropdown({
   field,
   validationMessage,
   initialFormState,
+  onValueChange,
 }: {
   name: string;
   checkboxLabel?: string;
@@ -100,6 +101,12 @@ export function CheckboxTextDropdown({
   field: Field<string>;
   initialFormState: InitialFormState;
   validationMessage?: string;
+  // Value shown in the input (in the units of the input) and whether it is enabled
+  onValueChange?: (
+    name: string,
+    value: SettingValue | undefined,
+    enabled: boolean,
+  ) => void;
 }) {
   const nameUse = `${name}.use`;
 
@@ -110,6 +117,10 @@ export function CheckboxTextDropdown({
       isEnabled: checkboxLabel ? undefined : true,
     }),
   );
+
+  useEffect(() => {
+    onValueChange?.(name, formData.value, formData.enabled);
+  }, [name, formData.value, formData.enabled, onValueChange]);
 
   const checky = {
     checkbox: {
