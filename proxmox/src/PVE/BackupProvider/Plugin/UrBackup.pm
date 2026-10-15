@@ -1392,9 +1392,18 @@ my sub find_backup {
     my (undef, $name, $vmid) = $plugin->parse_volname($volname);
     my ($type, $time) = $name =~ m!/(\w+)-(\d+)$!;
 
-    my $backups = $type eq 'lxc'
-        ? $plugin->container_backups($self->{scfg}, $vmid)
-        : $plugin->vm_backups($self->{scfg}, $self->{storeid}, $vmid);
+    # The client asks the server over a connection of the server to it. The server closes it
+    # after an image was read from it and takes a few seconds to connect again, and until then
+    # the server seems to have no backups of the guest (e.g. right after another restore).
+    my $backups;
+    my $deadline = time() + $RESTORE_CONNECTION_TIMEOUT;
+    while (1) {
+        $backups = $type eq 'lxc'
+            ? $plugin->container_backups($self->{scfg}, $vmid)
+            : $plugin->vm_backups($self->{scfg}, $self->{storeid}, $vmid);
+        last if $backups->@* || time() >= $deadline;
+        sleep(2);
+    }
     for my $backup ($backups->@*) {
         return ($vmid, $backup) if $backup->{time} == $time;
     }
