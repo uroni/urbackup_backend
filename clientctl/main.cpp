@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <stdlib.h>
 #include <stdio.h>
@@ -155,6 +156,12 @@ void action_help(std::string cmd)
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " image-nbd-stop" << std::endl;
 	std::cout << "\t\t" "Stop serving an image backup via NBD" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " list-servers" << std::endl;
+	std::cout << "\t\t" "List the servers this client is backed up by" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " set-servers" << std::endl;
+	std::cout << "\t\t" "Replace the server list" << std::endl;
 	std::cout << std::endl;
 }
 
@@ -691,9 +698,15 @@ int action_start(std::vector<std::string> args)
 		"Virtual client name",
 		false, "", "client name", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Start the backup on this server (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	PwClientCmd pw_client_cmd(cmd, false);
 
 	cmd.parse(args);
+
+	Connector::server_filter = server_arg.getValue();
 
 	if (!pw_client_cmd.set())
 	{
@@ -853,7 +866,13 @@ int action_browse(std::vector<std::string> args)
 		"Virtual client name",
 		false, "", "client name", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Only use the backups of this server (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	cmd.parse(args);
+
+	Connector::server_filter = server_arg.getValue();
 
 	if (!pw_client_cmd.set())
 	{
@@ -1007,7 +1026,13 @@ int action_start_restore(std::vector<std::string> args)
 		"Virtual client name",
 		false, "", "client name", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Only use the backups of this server (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	cmd.parse(args);
+
+	Connector::server_filter = server_arg.getValue();
 
 	if (map_from_arg.getValue().size() != map_to_arg.getValue().size())
 	{
@@ -1121,6 +1146,10 @@ int action_set_settings(std::vector<std::string> args)
 		"Server authentication key for client",
 		false, "", "string", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Change the settings of this server only (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	TCLAP::ValueArg<std::string> proxy_arg("", "proxy",
 		"HTTP CONNECT proxy to use to connect to server",
 		false, "", "url", cmd);
@@ -1222,6 +1251,7 @@ int action_set_settings(std::vector<std::string> args)
 	}
 
 	bool no_perm;
+	Connector::server_filter = server_arg.getValue();
 	bool b = Connector::updateSettings(s_settings, no_perm);
 
 	if (!b)
@@ -1260,6 +1290,10 @@ int action_reset_keep(std::vector<std::string> args)
 		"Backup group index",
 		false, 0, "group index", cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Only for the backups of this server (name, id or identity as shown by list-servers)",
+		false, "", "server", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -1267,7 +1301,8 @@ int action_reset_keep(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::string ret = Connector::resetKeep(virtual_client_arg.getValue(), backup_folder_arg.getValue(), group_arg.getValue());
+	std::string ret = Connector::resetKeep(virtual_client_arg.getValue(), backup_folder_arg.getValue(), group_arg.getValue(),
+		server_arg.getValue());
 
 	if (ret == "OK")
 	{
@@ -1282,6 +1317,11 @@ int action_reset_keep(std::vector<std::string> args)
 	{
 		std::cerr << "Error: Backup folder not found" << std::endl;
 		return 5;
+	}
+	else if (ret == "err_server_not_found")
+	{
+		std::cerr << "Error: Server not found" << std::endl;
+		return 7;
 	}
 	else
 	{
@@ -1397,6 +1437,10 @@ int action_add_backupdir(std::vector<std::string> args)
 		"Keep deleted files and directories during incremental backups. DO NOT USE",
 		cmd);
 
+	TCLAP::ValueArg<std::string> server_arg("", "server",
+		"Back up this path to these servers only, comma separated (name, id or identity as shown by list-servers). Default: all servers",
+		false, "", "servers", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -1472,6 +1516,17 @@ int action_add_backupdir(std::vector<std::string> args)
 	if (name_arg.getValue().empty())
 	{
 		new_dir.name = getDefaultDirname(backup_dirs, new_dir.path);
+
+		//A path that is already backed up to other servers has the same name for all servers
+		for (size_t i = 0; i < backup_dirs.size(); ++i)
+		{
+			if (backup_dirs[i].path == new_dir.path
+				&& backup_dirs[i].virtual_client == virtual_client_arg.getValue())
+			{
+				new_dir.name = backup_dirs[i].name;
+				break;
+			}
+		}
 	}
 	else
 	{
@@ -1483,7 +1538,13 @@ int action_add_backupdir(std::vector<std::string> args)
 	new_dir.flags = flags;
 
 	new_dir.virtual_client = virtual_client_arg.getValue();
-	
+
+	if (!server_arg.getValue().empty())
+	{
+		Tokenize(server_arg.getValue(), new_dir.servers, ",");
+		new_dir.servers_from_client = true;
+	}
+
 	backup_dirs.push_back(new_dir);
 	
 	if (!Connector::saveSharedPaths(backup_dirs))
@@ -1605,6 +1666,7 @@ int action_list_backupdirs(std::vector<std::string> args)
 	bool has_virtual_client = false;
 	bool has_group = false;
 	bool has_server_default = false;
+	bool has_servers = false;
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
@@ -1618,6 +1680,34 @@ int action_list_backupdirs(std::vector<std::string> args)
 		}
 		if (backup_dirs[i].server_default)
 			has_server_default = true;
+		if (!backup_dirs[i].servers.empty())
+			has_servers = true;
+	}
+
+	//Server identity -> name, for the SERVERS column
+	std::map<std::string, std::string> server_names;
+	if (has_servers)
+	{
+		std::string data = Connector::getServerList();
+		std::map<std::string, std::string> values;
+		int numl = linecount(data);
+		for (int i = 0; i <= numl; ++i)
+		{
+			std::string l = getline(i, data);
+			if (l.find("=") != std::string::npos)
+				values[getuntil("=", l)] = getafter("=", l);
+		}
+		int count = watoi(values["count"]);
+		for (int i = 0; i < count; ++i)
+		{
+			std::string p = convert(i) + ".";
+			//Same name as in list-servers. A server that did not connect yet is listed by its id
+			std::string name = values[p + "name"];
+			if (name.empty()) name = values[p + "endpoint"];
+			if (name.empty()) name = values[p + "internet_server"];
+			std::string key = values[p + "ident"].empty() ? values[p + "id"] : values[p + "ident"];
+			server_names[key] = name.empty() ? key : name;
+		}
 	}
 
 	std::vector<std::vector<std::string> > tab;
@@ -1637,6 +1727,10 @@ int action_list_backupdirs(std::vector<std::string> args)
 	if (has_server_default)
 	{
 		tab_header.push_back("CONFIGURED ON SERVER");
+	}
+	if (has_servers)
+	{
+		tab_header.push_back("SERVERS");
 	}
 
 	tab.push_back(tab_header);
@@ -1684,10 +1778,173 @@ int action_list_backupdirs(std::vector<std::string> args)
 			}
 		}
 
+		if (has_servers)
+		{
+			std::string servers;
+			for (size_t j = 0; j < backup_dirs[i].servers.size(); ++j)
+			{
+				if (!servers.empty()) servers += ", ";
+				std::map<std::string, std::string>::iterator it = server_names.find(backup_dirs[i].servers[j]);
+				servers += it != server_names.end() ? it->second : backup_dirs[i].servers[j];
+			}
+			row.push_back(servers.empty() ? "all" : servers);
+		}
+
 		tab.push_back(row);
 	}
 
 	display_table(tab);
+
+	return 0;
+}
+
+int action_list_servers(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List the servers this client is backed up by", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::SwitchArg raw_arg("r", "raw",
+		"Return the raw server list (input format of set-servers)", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	//The raw list is the input of set-servers, so it includes the auth keys if the
+	//administrator password is readable (set-servers keeps the keys of entries without one)
+	bool with_authkeys = raw_arg.getValue() && !trim(getFile(PWFILE_CHANGE)).empty();
+	if (with_authkeys)
+	{
+		Connector::setPWFileChange(PWFILE_CHANGE);
+	}
+	std::string data = Connector::getServerList(with_authkeys);
+	if (data.empty() || Connector::hasError())
+	{
+		std::cerr << "Error retrieving server list from backend" << std::endl;
+		return 1;
+	}
+
+	if (raw_arg.getValue())
+	{
+		std::cout << data;
+		std::cout.flush();
+		return 0;
+	}
+
+	std::map<std::string, std::string> values;
+	int numl = linecount(data);
+	for (int i = 0; i <= numl; ++i)
+	{
+		std::string l = getline(i, data);
+		size_t eq = l.find('=');
+		if (eq != std::string::npos)
+		{
+			values[l.substr(0, eq)] = trim(l.substr(eq + 1));
+		}
+	}
+
+	std::vector<std::vector<std::string> > tab;
+	std::vector<std::string> tab_header;
+	tab_header.push_back("ID");
+	tab_header.push_back("NAME");
+	tab_header.push_back("LOCAL");
+	tab_header.push_back("INTERNET");
+	tab_header.push_back("INTERNET SERVER");
+	tab_header.push_back("STATUS");
+	tab_header.push_back("FINGERPRINT");
+	tab.push_back(tab_header);
+
+	int count = atoi(values["count"].c_str());
+	for (int i = 0; i < count; ++i)
+	{
+		std::string p = convert(i) + ".";
+		std::vector<std::string> row;
+		row.push_back(values[p + "id"]);
+		std::string name = values[p + "name"];
+		if (name.empty()) name = values[p + "endpoint"];
+		if (name.empty()) name = values[p + "internet_server"];
+		row.push_back(name.empty() ? "-" : name);
+		row.push_back(values[p + "local"] == "true" ? "Yes" : "No");
+		row.push_back(values[p + "internet"] == "true" ? "Yes" : "No");
+		std::string internet_server = values[p + "internet_server"];
+		if (!internet_server.empty() && !values[p + "internet_server_port"].empty())
+			internet_server += ":" + values[p + "internet_server_port"];
+		row.push_back(internet_server.empty() ? "-" : internet_server);
+		std::string status;
+		std::string internet_status = values[p + "internet_status"];
+		if (values[p + "local"] != "true" && values[p + "internet"] != "true") status = "disabled";
+		else if (values[p + "local"] == "true" && values[p + "online"] == "true" && internet_status != "connected") status = "connected (LAN)";
+		if (!internet_status.empty())
+		{
+			if (!status.empty()) status += ", ";
+			status += "internet " + internet_status;
+		}
+		row.push_back(status.empty() ? "-" : status);
+		std::string fingerprint = values[p + "fingerprint"];
+		if (fingerprint.empty()) fingerprint = values[p + "ident"].empty() ? "(not connected yet)" : values[p + "ident"];
+		row.push_back(fingerprint);
+		tab.push_back(row);
+	}
+
+	display_table(tab);
+
+	int pending_count = atoi(values["pending_count"].c_str());
+	for (int i = 0; i < pending_count; ++i)
+	{
+		std::cout << "Untrusted server tried to connect: " << values["pending." + convert(i)] << std::endl;
+	}
+
+	return 0;
+}
+
+int action_set_servers(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Replace the server list (format as printed by list-servers --raw). "
+		"Servers removed from the list are no longer trusted.", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::ValueArg<std::string> file_arg("f", "file",
+		"File with the new server list (- for stdin)",
+		true, "", "path", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string data;
+	if (file_arg.getValue() == "-")
+	{
+		std::string line;
+		while (std::getline(std::cin, line))
+		{
+			data += line + "\n";
+		}
+	}
+	else
+	{
+		data = getFile(file_arg.getValue());
+	}
+
+	if (data.empty())
+	{
+		std::cerr << "Server list is empty" << std::endl;
+		return 2;
+	}
+
+	std::string ret = Connector::setServerList(data);
+	if (ret != "OK")
+	{
+		std::cerr << "Setting server list failed: " << (ret.empty() ? "no response from backend" : ret) << std::endl;
+		return 1;
+	}
 
 	return 0;
 }
@@ -2188,6 +2445,10 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_list_backupdirs);
 	actions.push_back("remove-backupdir");
 	action_funs.push_back(action_remove_backupdir);
+	actions.push_back("list-servers");
+	action_funs.push_back(action_list_servers);
+	actions.push_back("set-servers");
+	action_funs.push_back(action_set_servers);
 	actions.push_back("wait-for-backend");
 	action_funs.push_back(action_wait_for_backend);
 	actions.push_back("image-list");

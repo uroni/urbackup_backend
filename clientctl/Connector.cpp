@@ -230,6 +230,18 @@ std::string Connector::getSharedPathsRaw()
 	return getResponse("GET BACKUP DIRS", "", false);
 }
 
+std::string Connector::getServerList(bool use_change_pw)
+{
+	return getResponse("GET SERVER LIST", "", use_change_pw);
+}
+
+std::string Connector::setServerList(const std::string &data)
+{
+	std::string edata = data;
+	escapeClientMessage(edata);
+	return getResponse("SET SERVER LIST " + edata, "", true);
+}
+
 std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 {
 	std::vector<SBackupDir> ret;
@@ -268,6 +280,13 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 					dir["flags"].asString(),
 					dir["server_default"].asInt());
 
+			Json::Value servers = dir.get("servers", Json::Value(Json::arrayValue));
+			for (Json::Value::ArrayIndex j = 0; j < servers.size(); ++j)
+			{
+				rdir.servers.push_back(servers[j].asString());
+			}
+			rdir.servers_from_client = dir.get("servers_from_client", false).asBool();
+
 			ret.push_back(rdir);
 		}
 	}
@@ -280,7 +299,7 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
-	std::string args="all_virtual_clients=1&enable_client_paths_use=1";
+	std::string args="all_virtual_clients=1&enable_client_paths_use=1&with_servers=1";
 	size_t idx = 0;
 	for (size_t i = 0; i<res.size(); ++i)
 	{
@@ -306,10 +325,27 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 			args += "&dir_" + convert(idx) + "_virtual_client=" + EscapeParamString(res[i].virtual_client);
 		}
 
+		if (res[i].servers_from_client && !res[i].servers.empty())
+		{
+			std::string servers;
+			for (size_t j = 0; j < res[i].servers.size(); ++j)
+			{
+				if (!servers.empty()) servers += ",";
+				servers += res[i].servers[j];
+			}
+			args += "&dir_" + convert(idx) + "_servers=" + EscapeParamString(servers);
+		}
+
 		++idx;
 	}
 
 	std::string d = getResponse("SAVE BACKUP DIRS", args, true);
+
+	if (next(d, 0, "UNKNOWN SERVER "))
+	{
+		std::cerr << "Unknown server \"" << d.substr(15) << "\" (see list-servers)" << std::endl;
+		return false;
+	}
 
 	if (d != "OK")
 		return false;
@@ -379,7 +415,10 @@ int Connector::startBackup(const std::string& virtual_client, bool full, int64* 
 	else
 		s="START BACKUP INCR";
 
-	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client),false);
+	std::string params = virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client);
+	if (!server_filter.empty())
+		params += (params.empty() ? "" : "&") + std::string("server=") + EscapeParamString(server_filter);
+	std::string d=getResponse(s, params,false);
 	d = parseStartResponse(d, start_id);
 
 	if(d=="RUNNING")
@@ -400,7 +439,10 @@ int Connector::startImage(const std::string& virtual_client, bool full, int64* s
 	else
 		s="START IMAGE INCR";
 
-	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client=" + EscapeParamString(virtual_client),false);
+	std::string params = virtual_client.empty() ? "" : "virtual_client=" + EscapeParamString(virtual_client);
+	if (!server_filter.empty())
+		params += (params.empty() ? "" : "&") + std::string("server=") + EscapeParamString(server_filter);
+	std::string d=getResponse(s, params,false);
 	d = parseStartResponse(d, start_id);
 
 	if(d=="RUNNING")
@@ -419,7 +461,7 @@ bool Connector::updateSettings(const std::string &ndata, bool& no_perm)
 
 	std::string data=ndata;
 	escapeClientMessage(data);
-	std::string d=getResponse("UPDATE SETTINGS "+data,"", true);
+	std::string d=getResponse("UPDATE SETTINGS "+data, server_filter.empty() ? std::string() : "server="+EscapeParamString(server_filter), true);
 
 	if (d != "OK" && d != "NOSERVER")
 	{
@@ -505,6 +547,16 @@ void Connector::setClient(const std::string &pClient)
 	client=pClient;
 }
 
+std::string Connector::server_filter;
+
+namespace
+{
+	std::string serverParam()
+	{
+		return Connector::server_filter.empty() ? std::string() : "&server=" + EscapeParamString(Connector::server_filter);
+	}
+}
+
 std::string Connector::getFileBackupsList(const std::string& virtual_client, EAccessError& access_error)
 {
 	access_error = EAccessError_Ok;
@@ -516,7 +568,7 @@ std::string Connector::getFileBackupsList(const std::string& virtual_client, EAc
 	}
 
 	std::string list = getResponse("GET FILE BACKUPS TOKENS", "tokens="+
-		tokens+(virtual_client.empty() ? "" : "&virtual_client="+EscapeParamString(virtual_client)), false);
+		tokens+(virtual_client.empty() ? "" : "&virtual_client="+EscapeParamString(virtual_client))+serverParam(), false);
 
 	if(!list.empty())
 	{
@@ -594,7 +646,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, cons
 	}
 
 	std::string list = getResponse("GET FILE LIST TOKENS",
-		params, false);
+		params+serverParam(), false);
 
 	if(!list.empty())
 	{
@@ -650,7 +702,7 @@ std::string Connector::startRestore( const std::string& path, int backupid, cons
 	params += std::string("&follow_symlinks=") + (follow_symlinks ? "1" : "0");
 
 	std::string res = getResponse("DOWNLOAD FILES TOKENS",
-		params, false);
+		params+serverParam(), false);
 
 	if(!res.empty())
 	{
@@ -764,7 +816,8 @@ SStatusDetails Connector::getStatusDetails()
 	}
 }
 
-std::string Connector::resetKeep(const std::string & virtualClient, const std::string & folderName, int tgroup)
+std::string Connector::resetKeep(const std::string & virtualClient, const std::string & folderName, int tgroup,
+	const std::string& server)
 {
 	std::string params;
 
@@ -783,6 +836,11 @@ std::string Connector::resetKeep(const std::string & virtualClient, const std::s
 	if (!params.empty()) params += "&";
 
 	params += "tgroup=" + convert(tgroup);
+
+	if (!server.empty())
+	{
+		params += "&server=" + EscapeParamString(server);
+	}
 
 	std::string d = getResponse("RESET KEEP", params, true);
 

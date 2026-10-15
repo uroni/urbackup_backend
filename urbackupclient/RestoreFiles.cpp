@@ -36,6 +36,8 @@
 #include <assert.h>
 #include "../common/data.h"
 #include "tokens.h"
+#include "ServerList.h"
+#include "ServerIdentityMgr.h"
 #include <algorithm>
 
 namespace
@@ -375,7 +377,7 @@ void RestoreFiles::operator()()
 
 		bool backup_dirs_optional;
 		IndexThread::readPatterns(tgroup, clientsubname, exclude_dirs,
-			include_dirs, backup_dirs_optional);
+			include_dirs, backup_dirs_optional, getFacetId());
 
 		std::map<std::string, IFsFile*> open_files;
 		if (restore_flags & restore_flag_open_all_files_first)
@@ -1227,8 +1229,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							if (!clientsubname.empty())
 							{
 								db_tgroup = -1;
-								IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?", false);
+								IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet=?", false);
 								q->Bind(clientsubname);
+								q->Bind(getFacetId());
 								db_results res = q->Read();
 								db->destroyQuery(q);
 
@@ -1244,9 +1247,10 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 							if (db_tgroup >= 0)
 							{
-								IQuery* q = db->Prepare("SELECT optional FROM backupdirs WHERE name=? AND tgroup=?", false);
+								IQuery* q = db->Prepare("SELECT optional FROM backupdirs WHERE name=? AND tgroup=? AND facet=?", false);
 								q->Bind(data.name);
 								q->Bind(db_tgroup);
+								q->Bind(getFacetId());
 								db_results res = q->Read();
 								db->destroyQuery(q);
 
@@ -1862,6 +1866,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
     }
 
     return !has_error;
+}
+
+int RestoreFiles::getFacetId()
+{
+	return ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerTokenIdentity(server_token));
 }
 
 void RestoreFiles::log( const std::string& msg, int loglevel )

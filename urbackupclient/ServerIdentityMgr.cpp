@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include <algorithm>
@@ -26,6 +27,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
+const unsigned int recent_online_timeout=5*60*1000; //Session used in the last 5min
 
 extern ICryptoFactory* crypto_fak;
 
@@ -34,6 +36,7 @@ IMutex *ServerIdentityMgr::mutex=NULL;
 IFileServ *ServerIdentityMgr::filesrv=NULL;
 std::vector<std::string> ServerIdentityMgr::new_identities;
 std::vector<SSessionIdentity> ServerIdentityMgr::session_identities;
+std::map<std::string, std::string> ServerIdentityMgr::server_token_identities;
 
 #ifdef _WIN32
 const std::string server_ident_file="server_idents.txt";
@@ -57,14 +60,75 @@ void ServerIdentityMgr::destroy_mutex(void)
 
 void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SPublicKeys& pPublicKey)
 {
+	{
+		IScopedLock lock(mutex);
+		loadServerIdentities();
+		identities.push_back(SIdentity(pIdentity, pPublicKey));
+		if(pPublicKey.empty())
+		{
+			filesrv->addIdentity("#I"+pIdentity+"#", false);
+		}
+		writeServerIdentities();
+	}
+	ServerList::addTrustedIdent(pIdentity);
+}
+
+std::vector<std::string> ServerIdentityMgr::getServerIdentities()
+{
+	IScopedLock lock(mutex);
+	std::vector<std::string> ret;
+	for(size_t i=0;i<identities.size();++i)
+	{
+		ret.push_back(identities[i].ident);
+	}
+	return ret;
+}
+
+bool ServerIdentityMgr::isServerOnline(const std::string& server_ident)
+{
+	IScopedLock lock(mutex);
+	int64 ctime=Server->getTimeMS();
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		if(session_identities[i].server_ident==server_ident
+			&& session_identities[i].onlinetime>0
+			&& ctime-session_identities[i].onlinetime<recent_online_timeout)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void ServerIdentityMgr::removeServerIdentity(const std::string& server_ident)
+{
 	IScopedLock lock(mutex);
 	loadServerIdentities();
-	identities.push_back(SIdentity(pIdentity, pPublicKey));
-	if(pPublicKey.empty())
+	std::vector<SIdentity>::iterator it=std::find(identities.begin(), identities.end(), SIdentity(server_ident));
+	if(it==identities.end())
 	{
-		filesrv->addIdentity("#I"+pIdentity+"#", false);
+		return;
 	}
+	identities.erase(it);
+	filesrv->removeIdentity("#I" + server_ident + "#");
+	filesrv->removeDir("urbackup", "#I" + server_ident + "#");
+
+	for(size_t i=0;i<session_identities.size();)
+	{
+		if(session_identities[i].server_ident==server_ident)
+		{
+			filesrv->removeIdentity("#I" + session_identities[i].ident + "#");
+			filesrv->removeDir("urbackup", "#I" + session_identities[i].ident + "#");
+			session_identities.erase(session_identities.begin()+i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+
 	writeServerIdentities();
+	writeSessionIdentities();
 }
 
 bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity, const std::string& endpoint, std::string& secret_key)
@@ -94,6 +158,85 @@ bool ServerIdentityMgr::checkServerIdentity(const std::string &pIdentity)
 	IScopedLock lock(mutex);
 
 	return std::find(identities.begin(), identities.end(), SIdentity(pIdentity))!=identities.end();
+}
+
+std::string ServerIdentityMgr::getServerIdentity(const std::string &pIdentity)
+{
+	if(pIdentity.empty())
+	{
+		return std::string();
+	}
+
+	IScopedLock lock(mutex);
+
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		if(session_identities[i].ident==pIdentity)
+		{
+			return session_identities[i].server_ident;
+		}
+	}
+
+	if(std::find(identities.begin(), identities.end(), SIdentity(pIdentity))!=identities.end())
+	{
+		return pIdentity;
+	}
+
+	return std::string();
+}
+
+void ServerIdentityMgr::setServerTokenIdentity(const std::string& server_token, const std::string& server_ident)
+{
+	if(server_token.empty() || server_ident.empty())
+	{
+		return;
+	}
+
+	IScopedLock lock(mutex);
+	server_token_identities[server_token] = server_ident;
+}
+
+void ServerIdentityMgr::shareFacetDir(const std::string& pIdentity, const std::string& server_ident)
+{
+	if(filesrv==NULL)
+	{
+		return;
+	}
+
+	//Each server sees the settings and file lists of its own facet as "urbackup"
+	int facet_id = ServerList::getFacetId(server_ident);
+	if(facet_id==0)
+	{
+		filesrv->removeDir("urbackup", "#I"+pIdentity+"#");
+		return;
+	}
+
+	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data_"+convert(facet_id),
+		"#I"+pIdentity+"#", false);
+}
+
+void ServerIdentityMgr::updateFacetShares()
+{
+	IScopedLock lock(mutex);
+	for(size_t i=0;i<identities.size();++i)
+	{
+		shareFacetDir(identities[i].ident, identities[i].ident);
+	}
+	for(size_t i=0;i<session_identities.size();++i)
+	{
+		shareFacetDir(session_identities[i].ident, session_identities[i].server_ident);
+	}
+}
+
+std::string ServerIdentityMgr::getServerTokenIdentity(const std::string& server_token)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, std::string>::iterator it = server_token_identities.find(server_token);
+	if(it!=server_token_identities.end())
+	{
+		return it->second;
+	}
+	return std::string();
 }
 
 void ServerIdentityMgr::loadServerIdentities(void)
@@ -139,6 +282,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 				filesrv->addIdentity("#I"+l+"#", false);
 			}
 			identities.push_back(SIdentity(l, pubkeys));
+			shareFacetDir(l, l);
 			std::vector<SIdentity>::iterator it=std::find(old_identities.begin(), old_identities.end(), SIdentity(l));
 			if(it!=old_identities.end())
 			{
@@ -176,11 +320,19 @@ void ServerIdentityMgr::loadServerIdentities(void)
 
 			l = l.substr(0, hashpos);
 
+			if(params["server_ident"].empty())
+			{
+				//Session from a client version that did not record the server. Let the server
+				//authenticate again, so its settings can be kept separately from other servers
+				continue;
+			}
+
 			std::string secret_key = base64_decode_dash(params["secret_key"]);
-			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key);
+			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS(), secret_key, params["server_ident"]);
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I" + l + "#", !secret_key.empty());
+			shareFacetDir(l, params["server_ident"]);
 
 			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), SSessionIdentity(session_ident));
 			if(it!=old_session_identities.end())
@@ -335,12 +487,14 @@ bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity, bool count_f
 	return false;
 }
 
-void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key)
+void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint, std::string secret_key,
+	const std::string& server_ident)
 {
 	IScopedLock lock(mutex);
-	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key);
+	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS(), secret_key, server_ident);
 	session_identities.push_back(session_ident);
 	filesrv->addIdentity("#I" + pIdentity + "#", !secret_key.empty());
+	shareFacetDir(pIdentity, server_ident);
 	writeSessionIdentities();
 }
 
@@ -369,6 +523,10 @@ void ServerIdentityMgr::writeSessionIdentities()
 			idents+=session_identities[i].ident;
 			idents+="#endpoint="+session_identities[i].endpoint;
 			idents += "&secret_key=" + base64_encode_dash(session_identities[i].secret_key);
+			if(!session_identities[i].server_ident.empty())
+			{
+				idents += "&server_ident=" + session_identities[i].server_ident;
+			}
 
 			++written;
 			if(written>=max_session_identities)

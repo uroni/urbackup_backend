@@ -40,7 +40,7 @@ void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data, num, generation FROM files WHERE name=? AND tgroup=?", false);
 	q_add_files=db->Prepare("INSERT OR REPLACE INTO files (name, tgroup, num, data, generation) VALUES (?,?,?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep FROM backupdirs ORDER BY id ASC", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep, facet FROM backupdirs ORDER BY id ASC", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=?, generation=? WHERE name=? AND tgroup=? AND generation=?", false);
@@ -386,6 +386,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.symlinked=(res[i]["symlinked"]=="1");
 		dir.symlinked_confirmed=false;
 		dir.reset_keep = (res[i]["reset_keep"] == "1");
+		dir.facet = watoi(res[i]["facet"]);
 
 		if(dir.tname!="*")
 		{
@@ -839,16 +840,16 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 * @func void ClientDAO::addBackupDir
 * @sql
 *    INSERT INTO backupdirs
-*		(name, path, server_default, optional, tgroup, symlinked)
+*		(name, path, server_default, optional, tgroup, symlinked, facet)
 *    VALUES
 *       (:name(string), :path(string), :server_default(int), :flags(int), :tgroup(int),
 *        :symlinked(int) )
 **/
-void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked)
+void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked, int facet)
 {
 	if(q_addBackupDir==NULL)
 	{
-		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked) VALUES (?, ?, ?, ?, ?, ? )", false);
+		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked, facet) VALUES (?, ?, ?, ?, ?, ?, ? )", false);
 	}
 	q_addBackupDir->Bind(name);
 	q_addBackupDir->Bind(path);
@@ -856,6 +857,7 @@ void ClientDAO::addBackupDir(const std::string& name, const std::string& path, i
 	q_addBackupDir->Bind(flags);
 	q_addBackupDir->Bind(tgroup);
 	q_addBackupDir->Bind(symlinked);
+	q_addBackupDir->Bind(facet);
 	q_addBackupDir->Write();
 	q_addBackupDir->Reset();
 }

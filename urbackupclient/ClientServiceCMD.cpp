@@ -22,6 +22,7 @@
 #include "ClientService.h"
 #include "InternetClient.h"
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/escape.h"
@@ -83,6 +84,16 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 		}
 		else
 		{
+			SServerEntry lan_entry;
+			if( !internet_conn
+				&& ServerList::getEntryByIdent(identity, lan_entry)
+				&& !lan_entry.local )
+			{
+				Server->Log("Server " + identity + " tried to connect via LAN, but LAN is disabled for it", LL_DEBUG);
+				tcpstack.Send(pipe, "failed");
+				return;
+			}
+
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
@@ -99,7 +110,20 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 
 			const bool alwaysAcceptInternetIdent = Server->getServerParameter("always_accept_internet_ident") != "false";
 
-			if( ServerIdentityMgr::numServerIdentities()==0 || (internet_conn && alwaysAcceptInternetIdent ) )
+			SServerEntry entry;
+			if( internet_conn
+				&& ServerList::getEntryById(internet_server_id, entry)
+				&& entry.ident.empty() )
+			{
+				//The internet connection of this client facet authenticated with its authkey,
+				//so this is the server configured for the entry
+				Server->Log("Trusting identity " + identity + " of the internet server of client facet "
+					+ convert(internet_server_id), LL_INFO);
+				InternetClient::setInternetServerIdentity(internet_server_id, identity);
+				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
+				tcpstack.Send(pipe, "OK");
+			}
+			else if( ServerIdentityMgr::numServerIdentities()==0 || (internet_conn && alwaysAcceptInternetIdent ) )
 			{
 				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
@@ -162,7 +186,8 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::
 	if (!internet_conn)
 	{
 		std::auto_ptr<ISettingsReader> settings(
-			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+			Server->createFileSettingsReader(ServerList::getSettingsFn(
+				ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerIdentity(identity)))));
 
 		local_encrypted = settings->getValue("local_encrypt", true);
 		local_compressed = settings->getValue("local_compress", true);
@@ -283,7 +308,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 			}
 
 			ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name,
-				secret_session_key_decrypted);
+				secret_session_key_decrypted, identity);
 			
 			tcpstack.Send(pipe, "ok");
 			Server->destroy(challenge_it->second.shared_key_exchange);
@@ -812,6 +837,13 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 		}
 
 		int new_interval=atoi(intervall.c_str());
+		Server->Log("Server " + (server_ident.empty() ? std::string("(unknown)") : server_ident)
+			+ " sent backup interval \"" + intervall + "\"", LL_INFO);
+		//Each server has its own backup interval (see getHasNoRecentBackup)
+		if (new_interval > 0 && !server_ident.empty())
+		{
+			ServerList::setBackupInterval(server_ident, new_interval);
+		}
 		if(new_interval!=0 && new_interval!=backup_interval)
 		{			
 			update_db=true;
@@ -837,20 +869,52 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id, name, path, tgroup, optional, server_default FROM backupdirs WHERE symlinked=0");
+	IQuery *q=db->Prepare("SELECT id, name, path, tgroup, optional, server_default, facet FROM backupdirs WHERE symlinked=0 ORDER BY id ASC");
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
 
-	IQuery* q_get_virtual_client = db->Prepare("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=?");
+	IQuery* q_get_virtual_client = db->Prepare("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=? AND facet=?");
+
+	//Each server (facet) has its own backup directories. A directory several servers back up
+	//is listed once, with those servers
+	std::map<int, std::string> facet_servers;
+	{
+		std::vector<SServerEntry> entries = ServerList::getEntries();
+		for (size_t i = 0; i < entries.size(); ++i)
+		{
+			facet_servers[entries[i].id] = entries[i].ident.empty() ? convert(entries[i].id) : entries[i].ident;
+		}
+	}
 
 	if(timeoutms==0)
 	{
 		JSON::Object ret;
 
+		std::vector<std::string> virtual_clients(res.size());
+		std::vector<bool> merged(res.size());
+		for (size_t i = 0; i < res.size(); ++i)
+		{
+			int tgroup = watoi(res[i]["tgroup"]);
+			if (tgroup >= c_group_size)
+			{
+				int offset = (tgroup / c_group_size)*c_group_size;
+				q_get_virtual_client->Bind(offset);
+				q_get_virtual_client->Bind(watoi(res[i]["facet"]));
+				db_results res_vc = q_get_virtual_client->Read();
+				q_get_virtual_client->Reset();
+
+				if (!res_vc.empty())
+				{
+					virtual_clients[i] = res_vc[0]["virtual_client"];
+				}
+			}
+		}
+
 		JSON::Array dirs;
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(res[i]["name"]=="*") continue;
+			if(merged[i]) continue;
 
 			JSON::Object cdir;
 
@@ -859,22 +923,59 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			cdir.set("path", res[i]["path"]);
 			int tgroup = watoi(res[i]["tgroup"]);
 			cdir.set("group", tgroup%c_group_size);
-			cdir.set("server_default", watoi(res[i]["server_default"]));
+			int server_default = watoi(res[i]["server_default"]);
+			cdir.set("server_default", server_default);
 
 			if (tgroup < 0) continue;
-			
-			if (tgroup >= c_group_size)
-			{
-				int offset = (tgroup / c_group_size)*c_group_size;
-				q_get_virtual_client->Bind(offset);
-				db_results res_vc = q_get_virtual_client->Read();
-				q_get_virtual_client->Reset();
 
-				if (!res_vc.empty())
+			if (!virtual_clients[i].empty())
+			{
+				cdir.set("virtual_client", virtual_clients[i]);
+			}
+
+			//The servers that back up this directory. Directories added on the client and
+			//default directories of servers are listed separately
+			JSON::Array j_servers;
+			for (size_t j = i; j < res.size(); ++j)
+			{
+				if (merged[j]
+					|| res[j]["path"] != res[i]["path"]
+					|| watoi(res[j]["tgroup"]) % c_group_size != tgroup % c_group_size
+					|| virtual_clients[j] != virtual_clients[i]
+					|| (watoi(res[j]["server_default"]) == 0) != (server_default == 0))
 				{
-					cdir.set("virtual_client", res_vc[0]["virtual_client"]);
+					continue;
+				}
+
+				merged[j] = true;
+				std::map<int, std::string>::iterator it_server = facet_servers.find(watoi(res[j]["facet"]));
+				if (it_server != facet_servers.end())
+				{
+					j_servers.add(it_server->second);
 				}
 			}
+			cdir.set("servers", j_servers);
+			cdir.set("servers_from_client", server_default == 0);
+
+			//Servers that back up the same path, but have it in the other of the two lists
+			JSON::Array j_also_servers;
+			for (size_t j = 0; j < res.size(); ++j)
+			{
+				if (res[j]["path"] != res[i]["path"]
+					|| watoi(res[j]["tgroup"]) % c_group_size != tgroup % c_group_size
+					|| virtual_clients[j] != virtual_clients[i]
+					|| (watoi(res[j]["server_default"]) == 0) == (server_default == 0))
+				{
+					continue;
+				}
+
+				std::map<int, std::string>::iterator it_server = facet_servers.find(watoi(res[j]["facet"]));
+				if (it_server != facet_servers.end())
+				{
+					j_also_servers.add(it_server->second);
+				}
+			}
+			cdir.set("also_servers", j_also_servers);
 
 			int flags = watoi(res[i]["optional"]);
 			
@@ -918,7 +1019,116 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 		return;
 	}
 
-	if(saveBackupDirs(params, false, 0))
+	//Each server (facet) has its own backup directories. "server" selects one server, with
+	//"with_servers" each directory has the servers it is for (dir_N_servers: names, facet
+	//ids or identities; none: all servers). Otherwise the directories are for all servers
+	std::vector<int> facet_ids = ServerList::getFacetIds();
+	if (!params["server"].empty())
+	{
+		int server_facet_id = ServerList::resolveFacet(params["server"]);
+		if (server_facet_id == 0)
+		{
+			tcpstack.Send(pipe, "UNKNOWN SERVER " + params["server"]);
+			return;
+		}
+		facet_ids.clear();
+		facet_ids.push_back(server_facet_id);
+	}
+
+	const bool with_servers = params["with_servers"] == "1";
+
+	size_t num_dirs = 0;
+	while (params.find("dir_" + convert(num_dirs)) != params.end()
+		&& !params["dir_" + convert(num_dirs)].empty())
+	{
+		++num_dirs;
+	}
+
+	std::vector<std::vector<int> > dir_facets(num_dirs);
+	for (size_t i = 0; with_servers && i < num_dirs; ++i)
+	{
+		std::vector<std::string> servers;
+		Tokenize(params["dir_" + convert(i) + "_servers"], servers, ",");
+		for (size_t j = 0; j < servers.size(); ++j)
+		{
+			std::string server = trim(servers[j]);
+			if (server.empty())
+				continue;
+			int server_facet_id = ServerList::resolveFacet(server);
+			if (server_facet_id == 0)
+			{
+				tcpstack.Send(pipe, "UNKNOWN SERVER " + server);
+				return;
+			}
+			dir_facets[i].push_back(server_facet_id);
+		}
+	}
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	bool ok = true;
+	for (size_t f = 0; f < facet_ids.size(); ++f)
+	{
+		//Default directories of the server stay as they are
+		db_results res_default = db->Read("SELECT path FROM backupdirs WHERE symlinked=0 AND server_default!=0 AND facet=" + convert(facet_ids[f]));
+
+		str_map facet_params;
+		for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+		{
+			if (!next(it->first, 0, "dir_"))
+			{
+				facet_params.insert(*it);
+			}
+		}
+
+		size_t facet_num_dirs = 0;
+		for (size_t i = 0; i < num_dirs; ++i)
+		{
+			if (!dir_facets[i].empty()
+				&& std::find(dir_facets[i].begin(), dir_facets[i].end(), facet_ids[f]) == dir_facets[i].end())
+			{
+				continue;
+			}
+
+			std::string src = "dir_" + convert(i);
+
+			bool is_default = false;
+			for (size_t j = 0; with_servers && j < res_default.size(); ++j)
+			{
+				if (res_default[j]["path"] == params[src])
+				{
+					is_default = true;
+					break;
+				}
+			}
+			if (is_default)
+			{
+				continue;
+			}
+
+			std::string dst = "dir_" + convert(facet_num_dirs);
+			for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+			{
+				if (it->first == src)
+				{
+					facet_params[dst] = it->second;
+				}
+				else if (next(it->first, 0, src + "_")
+					&& it->first != src + "_servers")
+				{
+					facet_params[dst + it->first.substr(src.size())] = it->second;
+				}
+			}
+			++facet_num_dirs;
+		}
+
+		if (!saveBackupDirs(facet_params, false, 0, facet_ids[f]))
+		{
+			ok = false;
+		}
+	}
+
+	if(ok)
 	{
 		tcpstack.Send(pipe, "OK");
 	}
@@ -928,6 +1138,7 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 {
 	updateLastBackup();
+	ServerList::setLastBackup(server_ident, Server->getTimeSeconds());
 	tcpstack.Send(pipe, "OK");
 
 	{
@@ -957,6 +1168,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	ParseParamStrHttp(params_str, &params);
 
 	updateLastBackup();
+	ServerList::setLastBackup(server_ident, Server->getTimeSeconds());
 	tcpstack.Send(pipe, "OK");
 
 	std::string server_token = params["server_token"];
@@ -1437,11 +1649,14 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		int64 curr_settings_update_version;
 		{
 			IScopedLock lock(backup_mutex);
-			std::map<std::string, int64>::iterator it = settings_update_versions.find(params["virtual_client"]);
+			//The settings (and their version) are per server
+			int version_facet_id = facet_id != 0 ? facet_id : ServerList::getDefaultFacetId();
+			std::string version_key = settingsVersionKey(version_facet_id, params["virtual_client"]);
+			std::map<std::string, int64>::iterator it = settings_update_versions.find(version_key);
 			if (it == settings_update_versions.end())
 			{
-				curr_settings_update_version = readSettingsUpdateVersion(params["virtual_client"]);
-				settings_update_versions[params["virtual_client"]] = curr_settings_update_version;
+				curr_settings_update_version = readSettingsUpdateVersion(version_facet_id, params["virtual_client"]);
+				settings_update_versions[version_key] = curr_settings_update_version;
 			}
 			else
 			{
@@ -1525,26 +1740,39 @@ void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string
 
 void ClientConnector::CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_FILE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_INCR_FILE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_FILE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_FULL_FILE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_IMAGE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_FULL_IMAGE, params["virtual_client"], params["server"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"]);
+	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"], params["server"]);
 }
 
-void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params)
 {
+	//The settings are the ones of a server (given as identity, facet id or name).
+	//Without one the server of the default facet
+	int target_facet_id = ServerList::getDefaultFacetId();
+	if (!params["server"].empty())
+	{
+		target_facet_id = ServerList::resolveFacet(params["server"]);
+		if (target_facet_id == 0)
+		{
+			tcpstack.Send(pipe, "UNKNOWN SERVER");
+			return;
+		}
+	}
+
 	std::string s_settings = cmd.substr(16);
 	unescapeMessage(s_settings);
 
@@ -1592,12 +1820,16 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 
 	
 	lasttime=Server->getTimeMS();
-	replaceSettings( s_settings );
+	replaceSettings( s_settings, target_facet_id );
 
 	IScopedLock lock(backup_mutex);
 	bool ok=false;
 	for(size_t o=0;o<channel_pipes.size();++o)
 	{
+		if (ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerIdentity(channel_pipes[o].server_identity)) != target_facet_id)
+		{
+			continue;
+		}
 		CTCPStack tmpstack(channel_pipes[o].internet_connection);
 		_u32 rc=(_u32)tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
 		if(rc!=0)
@@ -1650,10 +1882,18 @@ void ClientConnector::CMD_PAUSE(const std::string &cmd)
 	else   tcpstack.Send(pipe, "FAILED");
 }
 
-void ClientConnector::CMD_GET_LOGPOINTS(const std::string &cmd)
+void ClientConnector::CMD_GET_LOGPOINTS(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
-	tcpstack.Send(pipe, getLogpoints() );
+	//server: only the logs of this server (and the ones without a server)
+	std::string server = params["server"];
+	if (!server.empty())
+	{
+		std::string ident = ServerList::resolveServer(server);
+		tcpstack.Send(pipe, getLogpoints(ident.empty() ? server : ident));
+		return;
+	}
+	tcpstack.Send(pipe, getLogpoints(std::string()) );
 }
 
 void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
@@ -1662,7 +1902,7 @@ void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
 	int logid=watoi(params["logid"]);
 	int loglevel=watoi(params["loglevel"]);
 	std::string ret;
-	getLogLevel(logid, loglevel, ret);
+	getLogLevel(logid, loglevel, ret, params["with_time"] == "1");
 	tcpstack.Send(pipe, ret);
 }
 
@@ -2224,7 +2464,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if (channel_pipes[i].virtual_client != virtual_client)
+			if (channel_pipes[i].virtual_client != virtual_client
+				|| !channelMatchesServer(channel_pipes[i], params["server"]))
 			{
 				continue;
 			}
@@ -2263,6 +2504,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				if(!nc.empty() && nc!="err")
 				{
 					channel_pipes[i].last_tokens = utf8_tokens;
+
+					nc = addServerToJsonArray(nc, channel_pipes[i]);
 
 					if(!filebackups.empty())
 					{
@@ -2340,7 +2583,8 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if (channel_pipes[i].virtual_client != virtual_client)
+			if (channel_pipes[i].virtual_client != virtual_client
+				|| !channelMatchesServer(channel_pipes[i], params["server"]))
 			{
 				continue;
 			}
@@ -2456,10 +2700,16 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	}
 	
 	accessparams+="&backupid="+EscapeParamString(it_backupid->second);
-	
+
+	//The backup ids in the backup list have the server's id offset if there are several servers.
+	//The server applies the offset for restores only if asked to (unlike for listing files)
 	if(!multipleChannelServers())
 	{
 		accessparams+="&with_id_offset=false";
+	}
+	else
+	{
+		accessparams+="&with_id_offset=true";
 	}
 
 	std::string restore_token_binary;
@@ -2514,9 +2764,11 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	std::string virtual_client = params["virtual_client"];
 	bool has_token_params=false;
 	std::string last_err;
+	std::string restore_err;
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		if (channel_pipes[i].virtual_client != virtual_client)
+		if (channel_pipes[i].virtual_client != virtual_client
+			|| !channelMatchesServer(channel_pipes[i], params["server"]))
 		{
 			continue;
 		}
@@ -2552,12 +2804,26 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 			sendChannelPacket(channel_pipes[i], cmd+accessparams);
 
 			last_err=receivePacket(channel_pipes[i]);
-			if(!last_err.empty() && last_err!="err")
+			bool restore_error = last_err.find("\"err\"") != std::string::npos
+				&& last_err.find("\"ok\"") == std::string::npos;
+			if(!last_err.empty() && last_err!="err" && !restore_error)
 			{
 				channel_pipes[i].last_tokens = utf8_tokens;
 
 				tcpstack.Send(pipe, "0" + last_err);
 				return;
+			}
+			else if(restore_error)
+			{
+				//With several servers, the backup is on one of them. The others cannot access it
+				//(error 4). Try the next server, but report another error if there is one
+				channel_pipes[i].last_tokens = utf8_tokens;
+				if (restore_err.empty()
+					|| last_err.find("\"err\": 4") == std::string::npos)
+				{
+					restore_err = last_err;
+				}
+				break;
 			}
 			else if(!has_token_params)
 			{
@@ -2566,8 +2832,14 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 			else
 			{
 				break;
-			}		
+			}
 		}
+	}
+
+	if (!restore_err.empty())
+	{
+		tcpstack.Send(pipe, "0" + restore_err);
+		return;
 	}
 
 	tcpstack.Send(pipe, last_err);
@@ -3428,7 +3700,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&FACET=1&OS_SIMPLE=windows"
 		"&INCR_SYSVOL=1&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup + "&USERS="+EscapeParamString(users));
 #else
 
@@ -3503,7 +3775,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
 		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
-		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&FACET=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args + skip_startup_delay + def_args);
 #endif
 }
@@ -3522,6 +3794,112 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	}
 }
 
+void ClientConnector::CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change_ok)
+{
+	std::vector<SServerEntry> entries = ServerList::getEntries();
+	//Also used by the (not elevated) tray icon. Only administrators get the auth keys
+	std::string data = ServerList::toText(entries, true, pw_change_ok);
+	//The default facet. Settings that cannot differ between servers are taken from it
+	{
+		int default_facet_id = ServerList::getDefaultFacetId();
+		data += "default_id=" + convert(default_facet_id) + "\n";
+		for (size_t i = 0; i < entries.size(); ++i)
+		{
+			if (entries[i].id == default_facet_id)
+			{
+				data += "primary=" + entries[i].ident + "\n";
+			}
+		}
+	}
+	int64 client_last_backup;
+	{
+		IScopedLock lock(backup_mutex);
+		client_last_backup = getLastBackupTime();
+	}
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (entries[i].internet)
+		{
+			data += convert(i) + ".internet_status=" + InternetClient::getStatusMsg(entries[i].id) + "\n";
+		}
+		if (!entries[i].ident.empty())
+		{
+			//Missing: the server did not send its backup interval yet
+			int no_recent = getServerHasNoRecentBackup(entries[i], client_last_backup);
+			if (no_recent >= 0)
+			{
+				data += convert(i) + ".backup_interval=" + convert(ServerList::getBackupInterval(entries[i].ident)) + "\n";
+				data += convert(i) + ".no_recent_backup=" + convert(no_recent) + "\n";
+			}
+			//Web interface of the server (for "Access/restore backups")
+			data += convert(i) + ".server_url=" + getServerUrl(entries[i].ident) + "\n";
+			data += convert(i) + ".last_backup=" + convert(getServerLastBackup(entries[i].ident)) + "\n";
+			//What the server allows/does (capa_bits.h), from its channel. Missing: not connected
+			IScopedLock lock(backup_mutex);
+			for (size_t j = 0; j < channel_pipes.size(); ++j)
+			{
+				if (channel_pipes[j].virtual_client.empty()
+					&& channelMatchesServer(channel_pipes[j], entries[i].ident))
+				{
+					data += convert(i) + ".capa=" + convert(channel_pipes[j].capa) + "\n";
+					break;
+				}
+			}
+		}
+	}
+
+	{
+		//Servers that tried to connect but are not trusted yet
+		IScopedLock lock(ident_mutex);
+		data += "pending_count=" + convert(new_server_idents.size()) + "\n";
+		for (size_t i = 0; i < new_server_idents.size(); ++i)
+		{
+			data += "pending." + convert(i) + "=" + new_server_idents[i] + "\n";
+		}
+	}
+
+	tcpstack.Send(pipe, data);
+}
+
+void ClientConnector::CMD_SET_SERVER_LIST(const std::string &cmd)
+{
+	std::string data = cmd.substr(16);
+	unescapeMessage(data);
+
+	std::vector<SServerEntry> entries;
+	if (!ServerList::fromText(data, entries))
+	{
+		tcpstack.Send(pipe, "INVALID");
+		return;
+	}
+
+	//Keep the auth key of entries that were sent without one (e.g. listed without
+	//administrator rights)
+	std::vector<SServerEntry> old_entries = ServerList::getEntries();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		if (data.find(convert(i) + ".internet_authkey=") != std::string::npos)
+			continue;
+		for (size_t j = 0; j < old_entries.size(); ++j)
+		{
+			if (old_entries[j].id == entries[i].id)
+			{
+				entries[i].internet_authkey = old_entries[j].internet_authkey;
+				break;
+			}
+		}
+	}
+
+	if (!ServerList::setEntries(entries))
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
+	InternetClient::updateSettings();
+	tcpstack.Send(pipe, "OK");
+}
+
 void ClientConnector::CMD_RESET_KEEP(str_map &params)
 {
 	std::string virtual_client = params["virtual_client"];
@@ -3530,34 +3908,68 @@ void ClientConnector::CMD_RESET_KEEP(str_map &params)
 
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
-	int group_offset = 0;
-	if (!virtual_client.empty())
+	//Each server (facet) has its own backup paths and its own group offsets of virtual clients.
+	//Without "server" the paths of all servers are reset
+	std::vector<int> facet_ids;
+	if (!params["server"].empty())
 	{
-		IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?", false);
-		q->Bind(virtual_client);
-		db_results res = q->Read();
-		db->destroyQuery(q);
-		
-		if (res.empty())
+		int server_facet_id = ServerList::resolveFacet(params["server"]);
+		if (server_facet_id == 0)
 		{
-			tcpstack.Send(pipe, "err_virtual_client_not_found");
+			tcpstack.Send(pipe, "err_server_not_found");
 			return;
 		}
-
-		group_offset = watoi(res[0]["group_offset"]);
+		facet_ids.push_back(server_facet_id);
 	}
-
-	IQuery* q = db->Prepare(std::string("UPDATE backupdirs SET reset_keep=1 WHERE tgroup=?")
-		+ (folder_name.empty() ? "" : " AND name=?"), false);
-	q->Bind(tgroup + group_offset);
-	if (!folder_name.empty())
+	else
 	{
-		q->Bind(folder_name);
+		facet_ids = ServerList::getFacetIds();
 	}
-	q->Write();
-	q->Reset();
 
-	if (db->getLastChanges() > 0)
+	IQuery* q_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet=?", false);
+	IQuery* q = db->Prepare(std::string("UPDATE backupdirs SET reset_keep=1 WHERE tgroup=? AND facet=?")
+		+ (folder_name.empty() ? "" : " AND name=?"), false);
+
+	bool found_virtual_client = virtual_client.empty();
+	int changes = 0;
+	for (size_t i = 0; i < facet_ids.size(); ++i)
+	{
+		int group_offset = 0;
+		if (!virtual_client.empty())
+		{
+			q_offset->Bind(virtual_client);
+			q_offset->Bind(facet_ids[i]);
+			db_results res = q_offset->Read();
+			q_offset->Reset();
+
+			if (res.empty())
+			{
+				continue;
+			}
+
+			found_virtual_client = true;
+			group_offset = watoi(res[0]["group_offset"]);
+		}
+
+		q->Bind(tgroup + group_offset);
+		q->Bind(facet_ids[i]);
+		if (!folder_name.empty())
+		{
+			q->Bind(folder_name);
+		}
+		q->Write();
+		q->Reset();
+		changes += db->getLastChanges();
+	}
+
+	db->destroyQuery(q_offset);
+	db->destroyQuery(q);
+
+	if (!found_virtual_client)
+	{
+		tcpstack.Send(pipe, "err_virtual_client_not_found");
+	}
+	else if (changes > 0)
 	{
 		tcpstack.Send(pipe, "OK");
 	}
@@ -3565,8 +3977,6 @@ void ClientConnector::CMD_RESET_KEEP(str_map &params)
 	{
 		tcpstack.Send(pipe, "err_backup_folder_not_found");
 	}
-
-	db->destroyQuery(q);
 }
 
 void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd)
@@ -3601,13 +4011,25 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 
 	std::string tokens=params["tokens"];
 
-	std::auto_ptr<ISettingsReader> settings(
-		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
-
 	std::string server_url;
-	if( (!settings->getValue("server_url", &server_url)
-		&& !settings->getValue("server_url_def", &server_url) ) 
-		|| server_url.empty())
+	if (!params["server"].empty())
+	{
+		//Web interface of the selected server
+		std::string server_ident = ServerList::resolveServer(params["server"]);
+		if (!server_ident.empty())
+		{
+			server_url = getServerUrl(server_ident);
+		}
+	}
+	else
+	{
+		std::auto_ptr<ISettingsReader> settings(
+			Server->createFileSettingsReader(ServerList::getDefaultSettingsFn()));
+		if (!settings->getValue("server_url", &server_url))
+			settings->getValue("server_url_def", &server_url);
+	}
+
+	if(server_url.empty())
 	{
 		Server->Log("Server url empty", LL_ERROR);
 		tcpstack.Send(pipe, "");
