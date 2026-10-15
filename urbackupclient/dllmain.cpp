@@ -78,6 +78,7 @@ extern IServer* Server;
 
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/WalCheckpointThread.h"
+#include "client_restore_http.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include <miniz/miniz.h>
@@ -118,6 +119,8 @@ void restore_wizard(void);
 void upgrade(void);
 bool upgrade_client(void);
 void parse_devnum_test();
+
+#define ADD_ACTION(x) Server->AddAction( new Actions::x );
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -341,6 +344,43 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		restore_wizard();
 		exit(10);
+		return;
+	}
+
+	if (Server->getServerParameter("restore_http") == "true")
+	{
+		ADD_ACTION(status);
+		ADD_ACTION(login);
+		ADD_ACTION(get_clientnames);
+		ADD_ACTION(get_backupimages);
+		ADD_ACTION(start_download);
+		ADD_ACTION(download_progress);
+		ADD_ACTION(has_network_device);
+		ADD_ACTION(ping_server);
+		ADD_ACTION(has_internet_connection);
+		ADD_ACTION(configure_server);
+		ADD_ACTION(get_disks);
+		ADD_ACTION(get_is_disk_mbr);
+		ADD_ACTION(write_mbr);
+		ADD_ACTION(get_partition);
+		ADD_ACTION(restart);
+		ADD_ACTION(get_keyboard_layouts);
+		ADD_ACTION(set_keyboard_layout);
+		ADD_ACTION(get_connection_settings);
+		ADD_ACTION(get_spill_disks);
+		ADD_ACTION(test_spill_disks);
+		ADD_ACTION(setup_spill_disks);
+		ADD_ACTION(cleanup_spill_disks);
+		ADD_ACTION(resize_disk);
+		ADD_ACTION(restore_finished);
+		ADD_ACTION(resize_part);
+		ADD_ACTION(capabilities);
+		ADD_ACTION(get_tmpfn);
+		ADD_ACTION(get_timezone_data);
+		ADD_ACTION(get_timezone_areas);
+		ADD_ACTION(get_timezone_cities);
+		ADD_ACTION(set_timezone);
+		Server->Log("Started UrBackup Restore HTTP backend...", LL_INFO);
 		return;
 	}
 

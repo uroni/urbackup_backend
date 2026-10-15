@@ -25,16 +25,20 @@
 #include "../common/data.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "client_restore.h"
+#include "client_restore_http.h"
 #include <iostream>
 #include <stdlib.h>
 #include <memory.h>
 #include <algorithm>
+#include <thread>
 #include "../urbackupcommon/fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
 #include <sys/ioctl.h>
 #else
 #include <ws2tcpip.h>
+#include <winioctl.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
 #include "../fileservplugin/settings.h"
@@ -61,6 +65,8 @@
 #endif
 
 #endif
+
+using namespace restore;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -98,133 +104,131 @@ namespace
 #endif
 		return ret;
 	}
-
-struct LoginData
-{
-	LoginData() : has_login_data(false) {}
-
-	bool has_login_data;
-	std::string username;
-	std::string password;
-	std::string token;
-};
-
-std::string trim2(const std::string &str)
-{
-    size_t startpos=str.find_first_not_of(" \t\n");
-    size_t endpos=str.find_last_not_of(" \t\n");
-    if( std::string::npos == startpos || std::string::npos==endpos)
-    {
-        return "";
-    }
-    else
-    {
-		return str.substr( startpos, endpos-startpos+1);
-    }
 }
 
-std::string getResponse(IPipe *c)
+namespace restore
 {
-	CTCPStack tcpstack;
-	char *resp=NULL;
-	char buffer[1024];
-	size_t packetsize;
-	while(resp==NULL)
+	std::string trim2(const std::string& str)
 	{
-		size_t rc=c->Read(buffer, 1024, 60000);
-		if(rc==0)
+		size_t startpos = str.find_first_not_of(" \t\n");
+		size_t endpos = str.find_last_not_of(" \t\n");
+		if (std::string::npos == startpos || std::string::npos == endpos)
 		{
 			return "";
-		}
-		tcpstack.AddData(buffer, rc );
-
-		resp=tcpstack.getPacket(&packetsize);
-		if(resp!=NULL && packetsize==0)
-		{
-			delete []resp;
-			return "";
-		}
-	}
-
-	std::string ret;
-	ret.resize(packetsize);
-	memcpy(&ret[0], resp, packetsize);
-	delete []resp;
-	return ret;
-}
-
-std::vector<std::string> getBackupclients(int *ec)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<std::string> ret;
-	*ec=0;
-
-	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		*ec=10;
-		return ret;
-	}
-
-	tcpstack.Send(c, "GET BACKUPCLIENTS#pw="+pw);
-	std::string r=getResponse(c);
-	if(r.empty() )
-	{
-		Server->Log("No response from ClientConnector", LL_ERROR);
-		*ec=1;
-	}
-	else
-	{
-		if(r[0]=='0')
-		{
-			Server->Log("No backupserver found", LL_ERROR);
-			*ec=2;
 		}
 		else
 		{
-			std::vector<std::string> toks;
-			std::string t=r.substr(1);
-			Tokenize(t, toks, "\n");
-			for(size_t i=0;i<toks.size();++i)
+			return str.substr(startpos, endpos - startpos + 1);
+		}
+	}
+
+	std::string getResponse(IPipe* c)
+	{
+		CTCPStack tcpstack;
+		char* resp = nullptr;
+		char buffer[1024];
+		size_t packetsize;
+		while (resp == nullptr)
+		{
+			size_t rc = c->Read(buffer, 1024, 60000);
+			if (rc == 0)
 			{
-				std::string nam=trim2(getafter("|", toks[i]));
-				if(!nam.empty())
+				return "";
+			}
+			tcpstack.AddData(buffer, rc);
+
+			resp = tcpstack.getPacket(&packetsize);
+			if (resp != nullptr && packetsize == 0)
+			{
+				delete[]resp;
+				return "";
+			}
+		}
+
+		std::string ret;
+		ret.resize(packetsize);
+		memcpy(&ret[0], resp, packetsize);
+		delete[]resp;
+		return ret;
+	}
+
+	std::string restorePw()
+	{
+		return getFile(pw_file);
+	}
+
+	std::vector<std::string> getBackupclients(int& ec)
+	{
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<std::string> ret;
+		ec = 0;
+
+		IPipe* c = Server->ConnectStream("localhost", 35623, 60000);
+		if (c == nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			ec = 10;
+			return ret;
+		}
+
+		tcpstack.Send(c, "GET BACKUPCLIENTS#pw=" + pw);
+		std::string r = getResponse(c);
+		if (r.empty())
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			ec = 1;
+		}
+		else
+		{
+			if (r[0] == '0')
+			{
+				Server->Log("No backupserver found", LL_ERROR);
+				ec = 2;
+			}
+			else
+			{
+				std::vector<std::string> toks;
+				std::string t = r.substr(1);
+				Tokenize(t, toks, "\n");
+				for (size_t i = 0; i < toks.size(); ++i)
 				{
-					bool found=false;
-					for(size_t i=0;i<ret.size();++i)
+					std::string nam = trim2(getafter("|", toks[i]));
+					if (!nam.empty())
 					{
-						if(ret[i]==nam)
+						if (std::find(ret.begin(), ret.end(), nam) == ret.end())
 						{
-							found=true;
-							break;
+							ret.push_back(nam);
 						}
-					}
-					if(!found)
-					{
-						ret.push_back(nam);
 					}
 				}
 			}
 		}
+		Server->destroy(c);
+		return ret;
 	}
-	Server->destroy(c);
-	return ret;
-}
 
-IPipe* connectToService(int *ec)
-{
-	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	IPipe* connectToService(int& ec)
 	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		*ec=10;
-		return NULL;
+		IPipe* c = Server->ConnectStream("localhost", 35623, 60000);
+		if (c == nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			ec = 10;
+			return nullptr;
+		}
+
+		return c;
 	}
 
-	return c;
+	IPipe* connectToService()
+	{
+		int ec = 0;
+		return connectToService(ec);
+	}
 }
+
+
 
 struct SPasswordSalt
 {
@@ -240,8 +244,8 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *
 	*ec=0;
 	std::vector<SPasswordSalt> ret;
 
-	IPipe *c=connectToService(ec);
-	if(c==NULL)
+	IPipe *c=connectToService(*ec);
+	if(c==nullptr)
 	{
 		return ret;
 	}
@@ -313,8 +317,8 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	CTCPStack tcpstack;
 	*ec=0;
 
-	IPipe *c=connectToService(ec);
-	if(c==NULL)
+	IPipe *c=connectToService(*ec);
+	if(c==nullptr)
 	{
 		return false;
 	}
@@ -390,20 +394,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	return ret;
 }
 
-struct SImage
-{
-	bool operator<(const SImage &other) const
-	{
-		return other.time_s<time_s;
-	}
-	std::string time_str;
-	_i64 time_s;
-	int id;
-	std::vector<SImage> assoc;
-	std::string letter;
-};
 
-std::vector<SImage> parse_backup_images_output(const std::string& data);
 
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 {
@@ -413,7 +404,7 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	*ec=0;
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
@@ -463,7 +454,7 @@ std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
 	*ec=0;
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		*ec=10;
@@ -511,364 +502,337 @@ std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
 
 volatile bool restore_retry_ok=false;
 
-enum EDownloadResult
+namespace restore
 {
-	EDownloadResult_Ok = 0,
-	EDownloadResult_ConnectError = 10,
-	EDownloadResult_OpenError = 2,
-	EDownloadResult_SizeReadError = 3,
-	EDownloadResult_TimeoutError2 = 4,
-	EDownloadResult_TimeoutError1 = 5,
-	EDownloadResult_WriteFailed = 6,
-	EDownloadResult_DeviceTooSmall = 11
-};
-
-struct DownloadStatus
-{
-	DownloadStatus()
-		: offset(-1),
-		received(0) {}
-
-	int64 offset;
-	int64 received;
-};
-
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, 
-	DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
-
-bool do_login(LoginData& login_data);
-
-EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, 
-	bool mbr, LoginData login_data, DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
-{
-	if(recur_depth==0)
+	EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile,
+		bool mbr, LoginData login_data, DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 	{
-		Server->Log("Read Timeout: Retrying -1", LL_WARNING);
-
-		int total_tries = 20;
-		int tries= total_tries;
-		EDownloadResult rc;
-		do
+		if (recur_depth == 0)
 		{
-			Server->wait(30000);
-			int64 starttime = Server->getTimeMS();
-			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, dl_status, recur_depth+1, o_imgsize, o_output_file_size);
-			if(rc== EDownloadResult_Ok)
-			{
-				return rc;
-			}
-			--tries;
-			if (Server->getTimeMS() - starttime > 180000)
-			{
-				tries = total_tries;
-			}
+			Server->Log("Read Timeout: Retrying -1", LL_WARNING);
 
-			if (rc== EDownloadResult_SizeReadError)
+			int total_tries = 20;
+			int tries = total_tries;
+			EDownloadResult rc;
+			do
 			{
-				do_login(login_data);
-				Server->wait(10000);
-			}
+				Server->wait(30000);
+				int64 starttime = Server->getTimeMS();
+				rc = downloadImage(img_id, img_time, outfile, mbr, login_data, dl_status, recur_depth + 1, o_imgsize, o_output_file_size);
+				if (rc == EDownloadResult_Ok)
+				{
+					return rc;
+				}
+				--tries;
+				if (Server->getTimeMS() - starttime > 180000)
+				{
+					tries = total_tries;
+				}
+
+				if (rc == EDownloadResult_SizeReadError)
+				{
+					do_login(login_data);
+					Server->wait(10000);
+				}
+			} while (tries > 0);
 		}
-		while(tries>0);
-	}
-	Server->Log("Read Timeout.", LL_ERROR);
-	return errrc;
-}
-
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
-	DownloadStatus& dl_status, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<SImage> ret;
-
-	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==NULL)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		return EDownloadResult_ConnectError;
+		Server->Log("Read Timeout.", LL_ERROR);
+		return errrc;
 	}
 
-	std::string s_offset;
-	if(dl_status.offset!=-1)
+	EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
+		DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 	{
-		s_offset="&offset="+convert(dl_status.offset)+"&received_bytes="+convert(dl_status.received);
-	}
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<SImage> ret;
 
-	std::string dl_args;
-	if (img_id != 0 || !img_time.empty())
-	{
-		dl_args = "&img_id="+convert(img_id)+"&time="+img_time;
-	}
-	else if (login_data.has_login_data
-		&& !login_data.token.empty())
-	{
-		dl_args = "&token=" + EscapeParamString(login_data.token);
-	}
-
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+ dl_args + "&mbr="+convert(mbr)+s_offset);
-
-	std::string restore_out=outfile;
-	Server->Log("Restoring to "+restore_out);
-	std::auto_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
-	if(out_file.get()==NULL)
-	{
-		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
-		return EDownloadResult_OpenError;
-	}
-	else if (o_output_file_size != NULL)
-	{
-		*o_output_file_size = out_file->Size();
-	}
-
-	_i64 imgsize=-1;
-	client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
-
-	if (o_imgsize != NULL)
-	{
-		*o_imgsize = imgsize;
-	}
-
-	if(imgsize==-1)
-	{
-		Server->Log("Error reading size", LL_ERROR);
-		return EDownloadResult_SizeReadError;
-	}
-	if(imgsize==-2)
-	{
-		Server->Log("Connection timeout", LL_ERROR);
-		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, 
-			outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-		return rc;
-	}
-
-	if (!mbr && imgsize > out_file->Size())
-	{
-		Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = "+convert(imgsize), LL_ERROR);
-		return EDownloadResult_DeviceTooSmall;
-	}
-
-	const size_t c_buffer_size=32768;
-	const unsigned int c_block_size=4096;
-
-	char buf[c_buffer_size];
-	if(mbr==true)
-	{
-		_i64 read=0;
-		while(read<imgsize)
+		std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+		if (client_pipe.get() == nullptr)
 		{
-			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
-			if(c_read==0)
-			{
-				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, 
-					mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-				return rc;
-			}
-			out_file->Write(buf, (_u32)c_read);
-			read+=c_read;
-		}
-		return EDownloadResult_Ok;
-	}
-	else
-	{
-		_i64 read=0;
-		unsigned int blockleft=0;
-		unsigned int off=0;
-		char blockdata[c_block_size];
-		bool first=true;
-		bool has_data=false;
-		_i64 pos=0;
-		while(pos<imgsize)
-		{
-			size_t r=client_pipe->Read(&buf[off], c_buffer_size-off, 180000);
-			if(r!=0)
-				r+=off;
-			off=0;
-			if( r==0 )
-			{
-				Server->Log("Read Timeout: Retrying", LL_WARNING);
-				client_pipe.reset(NULL);
-				out_file.reset(NULL);
-				if(has_data)
-				{
-					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
-						outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
-				}
-				else
-				{
-					Server->Log("Read Timeout: No data", LL_ERROR);
-					return EDownloadResult_TimeoutError2;
-				}
-			}
-			while(true)
-			{
-				if( blockleft==0 )
-				{
-					if(!first)
-					{
-						//Only write one block
-						_u32 tw=c_block_size;
-						//Don't write over blockdev boundary
-						if(imgsize>=pos && imgsize-pos<c_block_size)
-							tw=(_u32)(imgsize-pos);
-
-						//Write to blockdev
-						_u32 woff=0;
-						do
-						{
-							bool has_write_error = false;
-							_u32 w=out_file->Write(&blockdata[woff], tw-woff, &has_write_error);
-							if(w==0)
-							{
-								Server->Log("Writing to output file failed", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							if (has_write_error)
-							{
-								Server->Log("Writing to output file failed -2", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							woff+=w;
-						}
-						while(tw-woff>0);
-
-						if (pos > dl_status.offset)
-						{
-							dl_status.offset = pos;
-						}
-
-						has_data=true;
-					}
-					else
-					{
-						first=false;
-
-						if(pos!=-1 && !restore_retry_ok)
-						{
-							restore_retry_ok=true;
-						}
-					}
-
-					if(r-off>=sizeof(_i64) )
-					{
-						blockleft=c_block_size;
-						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
-						if (*s == 0x7fffffffffffffffLL)
-						{
-							Server->Log("Restore finished", LL_INFO);
-							pos = *s;
-							break;
-						}
-						if(*s>imgsize)
-						{
-							Server->Log("Invalid seek value: "+convert(*s), LL_ERROR);
-							//TODO return error code here after deprecation period
-							pos=*s;
-							break;
-						}
-						else if(*s<pos)
-						{
-							Server->Log("Position out of order!", LL_ERROR);
-						}
-						else
-						{
-							if (!out_file->Seek(*s))
-							{
-								Server->Log("Seeking in output file failed (to position "+convert(*s)+")", LL_ERROR);
-								return EDownloadResult_WriteFailed;
-							}
-							pos=*s;
-						}
-						off+=sizeof(_i64);
-					}
-					else if(r-off>0)
-					{
-						memmove(buf, &buf[off], r-off);
-						off=(_u32)r-off;
-						break;
-					}
-					else
-					{
-						off=0;
-						break;
-					}
-				}
-				else
-				{
-					unsigned int available=(std::min)((unsigned int)r-off, blockleft);
-					if(available>0)
-					{
-						memcpy(&blockdata[c_block_size-blockleft], &buf[off], (_u32)available );
-					}
-					read+=available;
-					blockleft-=available;
-					off+=available;
-					dl_status.received+= available;
-					if(off>=r)
-					{
-						off=0;
-						break;
-					}
-				}
-			}
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			return EDownloadResult_ConnectError;
 		}
 
-		return EDownloadResult_Ok;
-	}
-	return EDownloadResult_Ok;
-}
-
-int downloadFiles(int backupid, std::string backup_time)
-{
-	std::string pw=getFile(pw_file);
-	CTCPStack tcpstack;
-	std::vector<SImage> ret;
-
-	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
-	if(client_pipe.get()==NULL)
-	{
-		Server->Log("Error connecting to client service -1", LL_ERROR);
-		return 10;
-	}
-
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD FILES#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
-	int64 starttime = Server->getTimeMS();
-
-	while(Server->getTimeMS()-starttime<60000)
-	{
-		std::string msg;
-		if(client_pipe->Read(&msg, 60000)>0)
+		std::string s_offset;
+		if (dl_status.offset != -1)
 		{
-			tcpstack.AddData(&msg[0], msg.size());
+			s_offset = "&offset=" + convert(dl_status.offset) + "&received_bytes=" + convert(dl_status.received);
+		}
 
-			if(tcpstack.getPacket(msg) )
+		std::string dl_args;
+		if (img_id != 0 || !img_time.empty())
+		{
+			dl_args = "&img_id=" + convert(img_id) + "&time=" + img_time;
+		}
+		else if (login_data.has_login_data
+			&& !login_data.token.empty())
+		{
+			dl_args = "&token=" + EscapeParamString(login_data.token);
+		}
+
+		tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw=" + pw + dl_args + "&mbr=" + convert(mbr) + s_offset);
+
+		std::string restore_out = outfile;
+		Server->Log("Restoring to " + restore_out);
+		std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
+		if (out_file.get() == nullptr)
+		{
+			Server->Log("Could not open \"" + restore_out + "\" for writing. "+os_last_error_str(), LL_ERROR);
+			return EDownloadResult_OpenError;
+		}
+		else if (o_output_file_size != nullptr)
+		{
+			*o_output_file_size = out_file->Size();
+		}
+
+		_i64 imgsize = -1;
+		client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
+
+		if (o_imgsize != nullptr)
+		{
+			*o_imgsize = imgsize;
+		}
+
+		if (imgsize == -1)
+		{
+			Server->Log("Error reading size", LL_ERROR);
+			return EDownloadResult_SizeReadError;
+		}
+		if (imgsize == -2)
+		{
+			Server->Log("Connection timeout", LL_ERROR);
+			EDownloadResult rc = retryDownload(EDownloadResult_TimeoutError1, img_id, img_time,
+				outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+			return rc;
+		}
+
+		if (!mbr && imgsize > out_file->Size())
+		{
+			Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = " + convert(imgsize), LL_ERROR);
+			return EDownloadResult_DeviceTooSmall;
+		}
+
+		const size_t c_buffer_size = 32768;
+		const unsigned int c_block_size = 4096;
+
+		char buf[c_buffer_size];
+		if (mbr == true)
+		{
+			_i64 read = 0;
+			while (read < imgsize)
 			{
-				if(msg=="ok")
+				size_t c_read = client_pipe->Read(buf, c_buffer_size, 180000);
+				if (c_read == 0)
 				{
-					return 0;
+					EDownloadResult rc = retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile,
+						mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+					return rc;
 				}
-				else
-				{
-					Server->Log("Error: "+msg, LL_ERROR);
-					return 1;
-				}
-
-				break;
+				out_file->Write(buf, (_u32)c_read);
+				read += c_read;
 			}
+			return EDownloadResult_Ok;
 		}
 		else
 		{
-			break;
+			_i64 read = 0;
+			unsigned int blockleft = 0;
+			unsigned int off = 0;
+			char blockdata[c_block_size];
+			bool first = true;
+			bool has_data = false;
+			_i64 pos = 0;
+			while (pos < imgsize)
+			{
+				size_t r = client_pipe->Read(&buf[off], c_buffer_size - off, 180000);
+				if (r != 0)
+					r += off;
+				off = 0;
+				if (r == 0)
+				{
+					Server->Log("Read Timeout: Retrying", LL_WARNING);
+					client_pipe.reset(nullptr);
+					out_file.reset(nullptr);
+					if (has_data)
+					{
+						return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
+							outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
+					}
+					else
+					{
+						Server->Log("Read Timeout: No data", LL_ERROR);
+						return EDownloadResult_TimeoutError2;
+					}
+				}
+				while (true)
+				{
+					if (blockleft == 0)
+					{
+						if (!first)
+						{
+							//Only write one block
+							_u32 tw = c_block_size;
+							//Don't write over blockdev boundary
+							if (imgsize >= pos && imgsize - pos < c_block_size)
+								tw = (_u32)(imgsize - pos);
+
+							//Write to blockdev
+							_u32 woff = 0;
+							do
+							{
+								bool has_write_error = false;
+								_u32 w = out_file->Write(&blockdata[woff], tw - woff, &has_write_error);
+								if (w == 0)
+								{
+									Server->Log("Writing to output file failed", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								if (has_write_error)
+								{
+									Server->Log("Writing to output file failed -2", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								woff += w;
+							} while (tw - woff > 0);
+
+							if (pos > dl_status.offset)
+							{
+								dl_status.offset = pos;
+							}
+
+							has_data = true;
+						}
+						else
+						{
+							first = false;
+
+							if (pos != -1 && !restore_retry_ok)
+							{
+								restore_retry_ok = true;
+							}
+						}
+
+						if (r - off >= sizeof(_i64))
+						{
+							blockleft = c_block_size;
+							_i64* s = reinterpret_cast<_i64*>(&buf[off]);
+							if (*s == 0x7fffffffffffffffLL)
+							{
+								Server->Log("Restore finished", LL_INFO);
+								pos = *s;
+								break;
+							}
+							if (*s > imgsize)
+							{
+								Server->Log("Invalid seek value: " + convert(*s), LL_ERROR);
+								//TODO return error code here after deprecation period
+								pos = *s;
+								break;
+							}
+							else if (*s < pos)
+							{
+								Server->Log("Position out of order!", LL_ERROR);
+							}
+							else
+							{
+								if (!out_file->Seek(*s))
+								{
+									Server->Log("Seeking in output file failed (to position " + convert(*s) + ")", LL_ERROR);
+									return EDownloadResult_WriteFailed;
+								}
+								pos = *s;
+							}
+							off += sizeof(_i64);
+						}
+						else if (r - off > 0)
+						{
+							memmove(buf, &buf[off], r - off);
+							off = (_u32)r - off;
+							break;
+						}
+						else
+						{
+							off = 0;
+							break;
+						}
+					}
+					else
+					{
+						unsigned int available = (std::min)((unsigned int)r - off, blockleft);
+						if (available > 0)
+						{
+							memcpy(&blockdata[c_block_size - blockleft], &buf[off], (_u32)available);
+						}
+						read += available;
+						blockleft -= available;
+						off += available;
+						dl_status.received += available;
+						if (off >= r)
+						{
+							off = 0;
+							break;
+						}
+					}
+				}
+			}
+
+			return EDownloadResult_Ok;
 		}
+		return EDownloadResult_Ok;
 	}
 
-	Server->Log("Timeout", LL_ERROR);
-	return 2;
-}
+	int downloadFiles(int backupid, std::string backup_time)
+	{
+		std::string pw=getFile(pw_file);
+		CTCPStack tcpstack;
+		std::vector<SImage> ret;
 
-} //unnamed namespace
+		std::unique_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+		if(client_pipe.get()==nullptr)
+		{
+			Server->Log("Error connecting to client service -1", LL_ERROR);
+			return 10;
+		}
 
-namespace
+		tcpstack.Send(client_pipe.get(), "DOWNLOAD FILES#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
+		int64 starttime = Server->getTimeMS();
+
+		while(Server->getTimeMS()-starttime<60000)
+		{
+			std::string msg;
+			if(client_pipe->Read(&msg, 60000)>0)
+			{
+				tcpstack.AddData(&msg[0], msg.size());
+
+				if(tcpstack.getPacket(msg) )
+				{
+					if(msg=="ok")
+					{
+						return 0;
+					}
+					else
+					{
+						Server->Log("Error: "+msg, LL_ERROR);
+						return 1;
+					}
+
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		Server->Log("Timeout", LL_ERROR);
+		return 2;
+	}
+
+} //namespace restore
+
+namespace restore
 {
 
 	bool LookupBlocking(std::string pServer, in_addr *dest)
@@ -888,7 +852,7 @@ namespace
 			hints.ai_socktype = SOCK_STREAM;
 
 			addrinfo* hp;
-			if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
+			if(getaddrinfo(host, nullptr, &hints, &hp)==0 && hp!=nullptr)
 			{
 				if(hp->ai_addrlen<=sizeof(sockaddr_in))
 				{
@@ -955,18 +919,9 @@ namespace
 		return true;
 	}
 	
-	struct SLsblk
-	{
-		std::string maj_min;
-		std::string model;
-		std::string size;
-		std::string type;
-		std::string path;
-	};
-	
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
-		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
+		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE,PATH -P "+dev+" 1> out").c_str());
 		
 		std::vector<SLsblk> ret;
 		
@@ -986,18 +941,10 @@ namespace
 			c.model = getbetween("MODEL=\"", "\"", lines[i]);
 			c.size = getbetween("SIZE=\"", "\"", lines[i]);
 			c.type = getbetween("TYPE=\"", "\"", lines[i]);
+			c.path = getbetween("PATH=\"", "\"", lines[i]);
 			
-			rc = system(("udevadm info --query=property --path=/sys/dev/block/"+greplace(":", "\\:", c.maj_min)+
-					" | grep \"DEVNAME=\" | sed 's/DEVNAME=//' - 1> out").c_str());
-			
-			if(rc==0)
-			{
-			    c.path = trim(getuntil("\n", getFile("out")));
-			}
-			else
-			{
-				Server->Log("Error getting name of device "+c.maj_min, LL_ERROR);
-			}
+			if(next(c.path, 0, "/dev/fd"))
+				continue;
 			
 			ret.push_back(c);
 		}
@@ -1005,23 +952,49 @@ namespace
 		return ret;
 	}
 	
-	std::string getPartitionPath(const std::string& dev, int partnum)
+	std::string getPartitionPath(const std::string& dev, int partnum, const bool linux_vol)
 	{
 		std::vector<SLsblk> parts = lsblk(dev);
+
+		std::map<size_t, SLsblk> parts_maj_min;
+
+		for(auto& it: parts)
+		{
+			if(it.type=="part") 
+			{
+				int maj = watoi(getuntil(":", it.maj_min));
+				int min = watoi(getafter(":", it.maj_min));
+				parts_maj_min[maj*100000ULL + min] = it;
+
+				if(linux_vol)
+				{
+					if(it.path == dev + std::to_string(partnum))
+					{
+						return it.path;
+					}
+					else if(it.path == dev + "p" + std::to_string(partnum))
+					{
+						return it.path;
+					}
+				}
+			}
+		}
+
+		int idx=1;
+		for(auto it: parts_maj_min)
+		{
+			if(idx==partnum)
+			{
+				return it.second.path;
+			}
+			++idx;
+		}
 		
-		if(partnum<parts.size() &&
-			parts[partnum].type=="part")
-		{
-			return parts[partnum].path;
-		}
-		else
-		{
-			return std::string();
-		}
+		return std::string();
 	}
 }
 
-namespace
+namespace restore
 {
 	std::vector<SImage> parse_backup_images_output(const std::string& data)
 	{
@@ -1044,19 +1017,24 @@ namespace
 				}
 				ret.push_back(si);
 			}
-			else if (t2.size() == 4 && t2[0] == "#" && !ret.empty())
+			else if ( (t2.size() == 4 || t2.size() == 5) &&
+				t2[0] == "#" && !ret.empty())
 			{
 				SImage si;
 				si.id = atoi(t2[1].c_str());
 				si.time_s = os_atoi64(t2[2]);
 				si.time_str = t2[3];
+				if (t2.size() == 5)
+				{
+					si.letter = t2[4];
+				}
 				ret[ret.size() - 1].assoc.push_back(si);
 			}
 		}
 		return ret;
 	}
 
-	std::string backup_images_output_to_json(const std::string& data)
+	JSON::Array backup_images_output_to_json(const std::string& data)
 	{
 		std::vector<SImage> images = parse_backup_images_output(data);
 
@@ -1069,24 +1047,478 @@ namespace
 			image.set("time_str", images[i].time_str);
 			image.set("letter", images[i].letter);
 
-			if (!images[i].assoc.empty())
+			JSON::Array assoc;
+			for (size_t j = 0; j < images[i].assoc.size(); ++j)
 			{
-				JSON::Array assoc;
-				for (size_t j = 0; j < images[i].assoc.size(); ++j)
-				{
-					JSON::Object image_assoc;
-					image_assoc.set("id", images[i].assoc[j].id);
-					image_assoc.set("time_s", images[i].assoc[j].time_s);
-					image_assoc.set("time_str", images[i].assoc[j].time_str);
-					image_assoc.set("letter", images[i].assoc[j].letter);
-					assoc.add(image_assoc);
-				}
-				image.set("assoc", assoc);
+				JSON::Object image_assoc;
+				image_assoc.set("id", images[i].assoc[j].id);
+				image_assoc.set("time_s", images[i].assoc[j].time_s);
+				image_assoc.set("time_str", images[i].assoc[j].time_str);
+				image_assoc.set("letter", images[i].assoc[j].letter);
+				assoc.add(image_assoc);
 			}
+			image.set("assoc", assoc);
+
 			ret.add(image);
 		}
 
-		return ret.stringify(false);
+		return ret;
+	}
+
+	std::string backup_images_output_to_json_str(const std::string& data)
+	{
+		return backup_images_output_to_json(data).stringify(false);
+	}
+
+	struct SgdiskPart
+	{
+		size_t number;
+		int64 start;
+		int64 end;
+		std::string size;
+		std::string code;
+		std::string type_name;
+		std::string part_guid;
+		std::string unique_guid;
+		std::string name;
+		std::string flags;
+	};
+
+	std::vector<SgdiskPart> getSgdiskParts(const std::string& dev)
+	{
+		std::vector<SgdiskPart> ret;
+		std::string out;
+		int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+		if(rc!=0)
+			return ret;
+
+		if(out.find("Number")==std::string::npos)
+			return ret;
+
+		std::string table = getafter("\n", getafter("Number", out));
+
+		std::vector<std::string> lines;
+		Tokenize(table, lines, "\n");
+
+		for(auto& line: lines)
+		{
+			std::vector<std::string> cols;
+			Tokenize(line, cols, " ");
+
+			SgdiskPart new_part;
+			new_part.number = 0;
+			new_part.start = -1;
+			new_part.end = -1;
+			size_t idx=0;
+			for(auto& col: cols)
+			{
+				std::string cd = trim(col);
+				if(!cd.empty())
+				{
+					if(idx==0)					
+						new_part.number = watoi(cd);
+					else if(idx==1)
+						new_part.start = watoi64(cd);
+					else if(idx==2)
+						new_part.end = watoi64(cd);
+					else if(idx==3)
+						new_part.size = cd;
+					else if(idx==4)
+						new_part.size += " "+ cd;
+					else if(idx==5)
+						new_part.code = cd;
+					else 
+						new_part.type_name += cd;
+					++idx;
+				}
+			}
+
+			if(new_part.start!=-1 && 
+				new_part.number!=0 &&
+				new_part.end!=-1)
+			{
+				std::string iout;
+				rc = os_popen("sgdisk -i "+std::to_string(new_part.number)+" \""+dev+"\" 2>&1", iout);
+				if(rc==0)
+				{
+					new_part.part_guid=trim(getbetween("Partition GUID code: ", " ", iout));
+					if(new_part.part_guid.empty())
+						new_part.part_guid=trim(getbetween("Partition GUID code: ", "\n", iout));
+
+					new_part.unique_guid = trim(getbetween("Partition unique GUID: ", "\n", iout));
+					new_part.flags = trim(getbetween("Attribute flags: ", "\n", iout));
+					new_part.name = trim(getbetween("Partition name: '", "\n", iout));
+					if(!new_part.name.empty() && new_part.name[new_part.name.size()-1]=='\'')
+						new_part.name = new_part.name.substr(0, new_part.name.size()-1);
+				}
+				else
+				{
+					Server->Log("Getting detailed info for partition "+std::to_string(new_part.number)+" failed: "+iout, LL_ERROR);
+				}
+
+				ret.push_back(new_part);
+			}
+		}
+
+		return ret;
+	}
+
+	std::string createSgdiskPart(const SgdiskPart& lp, const std::string& out_device)
+	{
+		std::string out;
+		int rc = os_popen("sgdisk -n "+std::to_string(lp.number)+":"+std::to_string(lp.start)+":0 "
+							"-A "+std::to_string(lp.number)+":=:"+lp.flags+" "
+							"-c "+std::to_string(lp.number)+":\""+lp.name+"\" "
+							"-t "+std::to_string(lp.number)+":"+lp.part_guid+" "
+							"-u "+std::to_string(lp.number)+":"+lp.unique_guid+" "
+							+out_device, out);
+
+		if(rc!=0)
+		{
+			return "Error creating partition "+std::to_string(lp.number)+": "+trim(out);
+		}
+
+		return std::string();
+	}
+
+	int64 getSgdiskDiskSize(const std::string& dev)
+	{
+		std::string out;
+		int rc = os_popen("sgdisk -p \""+dev+"\" 2>&1", out);
+		if(rc!=0)
+			return -1;
+
+		std::string s = trim(getbetween("Disk "+dev+": ", " sectors", out));
+		if(s.empty())
+			return -1;
+
+		return watoi64(s);
+	}
+
+	_u32 gpt_crc32(const char* data, size_t len)
+	{
+		_u32 crc = 0xFFFFFFFF;
+		for (size_t i = 0; i < len; ++i)
+		{
+			crc ^= static_cast<unsigned char>(data[i]);
+			for (int k = 0; k < 8; ++k)
+				crc = (crc >> 1) ^ (0xEDB88320 & (0 - (crc & 1)));
+		}
+		return ~crc;
+	}
+
+	template<typename T>
+	T gpt_get(const std::string& buf, size_t off)
+	{
+		T ret;
+		memcpy(&ret, buf.data() + off, sizeof(T));
+		return little_endian(ret);
+	}
+
+	template<typename T>
+	void gpt_set(std::string& buf, size_t off, T val)
+	{
+		val = little_endian(val);
+		memcpy(&buf[off], &val, sizeof(T));
+	}
+
+	void gpt_update_header_crc(std::string& hdr, _u32 hdr_size)
+	{
+		gpt_set<_u32>(hdr, 16, 0);
+		gpt_set<_u32>(hdr, 16, gpt_crc32(hdr.data(), hdr_size));
+	}
+
+	int64 get_device_size(IFsFile* dev)
+	{
+#ifdef _WIN32
+		GET_LENGTH_INFORMATION li;
+		DWORD r_bytes;
+		if (DeviceIoControl(dev->getOsHandle(), IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &li, sizeof(li), &r_bytes, NULL))
+		{
+			return li.Length.QuadPart;
+		}
+#endif
+		return dev->Size();
+	}
+
+	/**
+	* The GPT from the backup describes the original disk. If the disk restored to has
+	* a different size, move the backup partition table and header to the end of this disk and
+	* adjust the primary header (and the protective MBR) to it. Returns false if this
+	* is not possible, e.g. because the partitions do not fit onto the disk.
+	*/
+	bool fit_gpt_to_disk(SMBRData& mbrdata, int64 disk_size)
+	{
+		std::string& hdr = mbrdata.gpt_header;
+		int64 sector_size = mbrdata.gpt_header_pos;
+		if (sector_size != 512 && sector_size != 4096)
+			return false;
+
+		if (hdr.size() < 92 || hdr.compare(0, 8, "EFI PART") != 0)
+			return false;
+
+		_u32 hdr_size = gpt_get<_u32>(hdr, 12);
+		if (hdr_size < 92 || hdr_size > hdr.size())
+			return false;
+
+		int64 disk_sectors = disk_size / sector_size;
+		int64 alt_lba = disk_sectors - 1;
+		if (gpt_get<int64>(hdr, 32) == alt_lba)
+			return true;
+
+		_u32 num_entries = gpt_get<_u32>(hdr, 80);
+		_u32 entry_size = gpt_get<_u32>(hdr, 84);
+		const std::string& table = mbrdata.gpt_table;
+		if (entry_size < 128 || static_cast<int64>(num_entries) * entry_size > static_cast<int64>(table.size()))
+			return false;
+
+		int64 table_sectors = (static_cast<int64>(num_entries) * entry_size + sector_size - 1) / sector_size;
+		int64 backup_table_lba = alt_lba - table_sectors;
+		int64 last_usable = backup_table_lba - 1;
+
+		int64 max_end = 0;
+		for (_u32 i = 0; i < num_entries; ++i)
+		{
+			size_t off = static_cast<size_t>(i) * entry_size;
+			if (gpt_get<int64>(table, off) == 0 && gpt_get<int64>(table, off + 8) == 0)
+				continue; //unused entry
+			max_end = (std::max)(max_end, gpt_get<int64>(table, off + 40));
+		}
+
+		if (max_end > last_usable
+			|| gpt_get<int64>(hdr, 72) + table_sectors > gpt_get<int64>(hdr, 40))
+		{
+			Server->Log("Partitions do not fit onto the disk (last partition ends at sector "
+				+ convert(max_end) + ", last usable sector " + convert(last_usable) + ")", LL_WARNING);
+			return false;
+		}
+
+		Server->Log("Disk has " + convert(disk_sectors) + " sectors, GPT was for "
+			+ convert(gpt_get<int64>(hdr, 32) + 1) + ". Moving backup GPT to the end of the disk.", LL_INFO);
+
+		gpt_set<int64>(hdr, 32, alt_lba);
+		gpt_set<int64>(hdr, 48, last_usable);
+		gpt_update_header_crc(hdr, hdr_size);
+
+		std::string backup_hdr = hdr;
+		gpt_set<int64>(backup_hdr, 24, alt_lba);
+		gpt_set<int64>(backup_hdr, 32, 1);
+		gpt_set<int64>(backup_hdr, 72, backup_table_lba);
+		gpt_update_header_crc(backup_hdr, hdr_size);
+
+		mbrdata.backup_gpt_header = backup_hdr;
+		mbrdata.backup_gpt_header_pos = alt_lba * sector_size;
+		mbrdata.backup_gpt_table = table;
+		mbrdata.backup_gpt_table_pos = backup_table_lba * sector_size;
+
+		//protective MBR: the 0xEE partition covers the whole disk (up to 2 TiB)
+		std::string& mbr = mbrdata.mbr_data;
+		if (mbr.size() >= 512)
+		{
+			for (size_t i = 0; i < 4; ++i)
+			{
+				size_t off = 446 + i * 16;
+				if (static_cast<unsigned char>(mbr[off + 4]) == 0xEE
+					&& gpt_get<_u32>(mbr, off + 8) == 1)
+				{
+					gpt_set<_u32>(mbr, off + 12, static_cast<_u32>((std::min)(disk_sectors - 1, static_cast<int64>(0xFFFFFFFF))));
+				}
+			}
+		}
+
+		return true;
+	}
+
+	bool do_restore_write_mbr(const std::string& mbr_filename, const std::string& out_device,
+		bool fix_gpt, std::string& errmsg)
+	{
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==nullptr)
+		{
+			errmsg = "Could not open MBR file";
+			return false;
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			errmsg = "Error while parsing MBR data";
+			delete []buf;
+			return false;
+		}
+
+		IFsFile *dev=Server->openFile(out_device, MODE_RW);
+		if(dev==nullptr)
+		{
+			errmsg = "Could not open device file for writing";
+			delete []buf;
+			return false;
+		}
+
+		if (mbrdata.gpt_style)
+		{
+			int64 disk_size = get_device_size(dev);
+			if (disk_size <= 0
+				|| !fit_gpt_to_disk(mbrdata, disk_size))
+			{
+				Server->Log("Could not adjust GPT to the size of the disk (" + convert(disk_size) + " bytes). Writing it unchanged.", LL_WARNING);
+			}
+		}
+		dev->Seek(0);
+		Server->Log("Writing MBR data...", LL_INFO);
+		if (dev->Write(mbrdata.mbr_data) != mbrdata.mbr_data.size())
+		{
+			errmsg = "Writing MBR data failed. " + os_last_error_str();
+			Server->Log(errmsg, LL_ERROR);
+		}
+		else
+		{
+			Server->Log("done.", LL_INFO);
+		}
+
+		bool curr_fix_gpt=false;
+		if (mbrdata.gpt_style)
+		{
+			Server->Log("Writing GPT header...");
+			if (dev->Write(mbrdata.gpt_header_pos, mbrdata.gpt_header) != mbrdata.gpt_header.size() )
+			{
+				errmsg = "Writing GPT header failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+
+			Server->Log("Writing GPT table...");
+			if (dev->Write(mbrdata.gpt_table_pos, mbrdata.gpt_table) != mbrdata.gpt_table.size())
+			{
+				errmsg = "Writing GPT table failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+
+			if (mbrdata.backup_gpt_header_pos != -1)
+			{
+				Server->Log("Writing GPT backup header...");
+				if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
+				{
+					errmsg = "Writing GPT backup header failed. " + os_last_error_str();
+					Server->Log(errmsg, LL_ERROR);
+					curr_fix_gpt = true;
+				}
+			}
+
+			if (mbrdata.backup_gpt_table_pos != -1)
+			{
+				Server->Log("Writing GPT backup table...");
+				if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
+				{
+					errmsg = "Writing backup GPT table failed. " + os_last_error_str();
+					Server->Log(errmsg, LL_ERROR);
+					curr_fix_gpt = true;
+				}
+			}
+		}
+
+		if (mbrdata.extra_data_pos != -1)
+		{
+			Server->Log("Writing extra data at position "+convert(mbrdata.extra_data_pos)+" size "+convert(mbrdata.extra_data.size())+" ...");
+			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
+			{
+				errmsg = "Writing extra data failed. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
+			}
+		}
+
+		if (curr_fix_gpt && fix_gpt)
+		{
+			std::string out;
+			int rc = os_popen("sgdisk --version", out);
+			if (rc != 0 || out.find("sgdisk") == std::string::npos)
+			{
+				Server->Log("sgdisk not available. Not able to fixup GPT table", LL_WARNING);
+				fix_gpt = false;
+			}
+		}
+
+		if(curr_fix_gpt && fix_gpt)
+		{
+			std::string fix_output;
+			int rc = os_popen("sgdisk -e " + out_device + " 2>&1", fix_output);
+			errmsg="Fixed GPT backup table: "+trim(fix_output);
+			if(fix_output.find("too big for the disk")!=std::string::npos)
+			{
+				std::vector<SgdiskPart> partitions = getSgdiskParts(out_device);
+
+				int64 sgdisk_size = getSgdiskDiskSize(out_device);
+				while(!partitions.empty())
+				{
+					if(sgdisk_size<0)
+						break;
+
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					if(lp.start>=sgdisk_size)
+					{
+						Server->Log("Partition "+std::to_string(lp.number)+" not on disk. Removing...");
+						std::string out;
+						rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+						if(rc!=0)
+						{
+							errmsg="Error deleting last partition (1): "+trim(out);
+							Server->Log(errmsg, LL_ERROR);
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				if(!partitions.empty())
+				{
+					Server->Log("Partition too big. Resizing last partition", LL_WARNING);
+					SgdiskPart lp = partitions[partitions.size()-1];
+
+					Server->Log("Last partition num="+std::to_string(lp.number)+" start="+std::to_string(lp.start)+" end="+std::to_string(lp.end)
+						+" size="+lp.size, LL_INFO);
+
+					std::string out;
+					rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
+
+					if(rc!=0)
+					{
+						errmsg="Error deleting last partition: "+trim(out);
+						Server->Log(errmsg, LL_ERROR);
+					}
+
+					std::string err = createSgdiskPart(lp, out_device);
+
+					if(!err.empty())
+					{
+						errmsg="Error re-creating last partition: "+trim(err);
+						Server->Log(errmsg, LL_ERROR);
+					}
+				}
+				else
+				{
+					Server->Log("No partitions found", LL_ERROR);
+				}
+			}
+		}
+
+		Server->destroy(dev);
+
+		if (out_device.find("/dev/") == 0)
+		{
+			rereadPartitionLayout(out_device);
+		}
+
+		delete []buf;
+
+		return true;
 	}
 }
 
@@ -1134,93 +1566,14 @@ void do_restore(void)
 			Server->Log("Output device not specified (out_device paramter)", LL_ERROR);
 			exit(1);
 		}
-			
-		IFile *f=Server->openFile(mbr_filename, MODE_READ);
-		if(f==NULL)
+		
+		std::string errmsg;
+		if(!do_restore_write_mbr(mbr_filename, out_device, true, errmsg))
 		{
-			Server->Log("Could not open MBR file", LL_ERROR);
-			exit(1);
+			Server->Log(errmsg, LL_ERROR);
+			exit(2);
 		}
-		size_t fsize=(size_t)f->Size();
-		char *buf=new char[fsize];
-		f->Read(buf, (_u32)fsize);
-		Server->destroy(f);
-
-		CRData mbr(buf, fsize);
-		SMBRData mbrdata(mbr);
-		if(mbrdata.hasError())
-		{
-			Server->Log("Error while parsing MBR data", LL_ERROR);
-			delete []buf; exit(1);
-		}
-
-		IFile *dev=Server->openFile(out_device, MODE_RW);
-		if(dev==NULL)
-		{
-			Server->Log("Could not open device file for writing", LL_ERROR);
-			delete []buf; exit(1);
-		}
-		dev->Seek(0);
-		Server->Log("Writing MBR data...", LL_INFO);
-		if (dev->Write(mbrdata.mbr_data) != mbrdata.mbr_data.size())
-		{
-			Server->Log("Writing MBR data failed. " + os_last_error_str(), LL_ERROR);
-		}
-		else
-		{
-			Server->Log("done.", LL_INFO);
-		}
-
-		if (mbrdata.gpt_style)
-		{
-			Server->Log("Writing GPT header...");
-			if (dev->Write(mbrdata.gpt_header_pos, mbrdata.gpt_header) != mbrdata.gpt_header.size() )
-			{
-				Server->Log("Writing GPT header failed. " + os_last_error_str(), LL_ERROR);
-			}
-
-			Server->Log("Writing GPT table...");
-			if (dev->Write(mbrdata.gpt_table_pos, mbrdata.gpt_table) != mbrdata.gpt_table.size())
-			{
-				Server->Log("Writing GPT table failed. " + os_last_error_str(), LL_ERROR);
-			}
-
-			if (mbrdata.backup_gpt_header_pos != -1)
-			{
-				Server->Log("Writing GPT backup header...");
-				if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
-				{
-					Server->Log("Writing GPT backup header failed. " + os_last_error_str(), LL_ERROR);
-				}
-			}
-
-			if (mbrdata.backup_gpt_table_pos != -1)
-			{
-				Server->Log("Writing GPT backup table...");
-				if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
-				{
-					Server->Log("Writing backup GPT table failed. " + os_last_error_str(), LL_ERROR);
-				}
-			}
-		}
-
-		if (mbrdata.extra_data_pos != -1)
-		{
-			Server->Log("Writing extra data at position "+convert(mbrdata.extra_data_pos)+" size "+convert(mbrdata.extra_data.size())+" ...");
-			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
-			{
-				Server->Log("Writing extra data failed. " + os_last_error_str(), LL_ERROR);
-			}
-		}
-
-		Server->destroy(dev);
-
-		if (out_device.find("/dev/") == 0)
-		{
-			rereadPartitionLayout(out_device);
-		}
-
-		delete []buf;
+		
 		exit(0);
 	}
 	else if(cmd=="mbrinfo")
@@ -1232,7 +1585,7 @@ void do_restore(void)
 			exit(1);
 		}
 		IFile *f=Server->openFile(mbr_filename, MODE_READ);
-		if(f==NULL)
+		if(f==nullptr)
 		{
 			Server->Log("Could not open MBR file", LL_ERROR);
 			exit(1);
@@ -1269,9 +1622,9 @@ void do_restore(void)
 	else if (cmd == "read_mbr")
 	{
 		std::string dev_fn = Server->getServerParameter("device_fn");
-		std::auto_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+		std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
 
-		if (dev.get() == NULL)
+		if (dev.get() == nullptr)
 		{
 			Server->Log("Error opening device at " + dev_fn+". "+os_last_error_str(), LL_ERROR);
 			exit(5);
@@ -1293,6 +1646,76 @@ void do_restore(void)
 
 		exit(0);
 	}
+	else if(cmd=="resize_ntfs")
+	{
+		std::string dev_fn = Server->getServerParameter("device_fn");
+		std::unique_ptr<IFile> dev(Server->openFile(dev_fn, MODE_READ_DEVICE));
+
+		if (dev.get() == nullptr)
+		{
+			Server->Log("Error opening device at " + dev_fn+". "+os_last_error_str(), LL_ERROR);
+			exit(5);
+		}
+
+		dev.reset();
+
+		std::string s_new_size = Server->getServerParameter("new_size");
+		if(s_new_size.empty())
+		{
+			Server->Log("new_size paramater missing", LL_ERROR);
+			exit(6);
+		}
+
+		int64 new_size = watoi64(s_new_size);
+
+		std::string err;
+		std::atomic<int> complete_pc;
+		std::atomic<bool> done(false);
+		std::thread t( [&err, dev_fn, new_size, &complete_pc, &done]()
+		{
+			err = restore::resize_ntfs(new_size, dev_fn, complete_pc);
+			done=true;
+		});
+
+		t.detach();
+
+		int last_pc = complete_pc;
+		while(!done)
+		{
+			Server->wait(1000);
+			if(complete_pc!=last_pc)
+			{
+				last_pc = complete_pc;
+				Server->Log("Resize "+std::to_string(last_pc)+"% complete", LL_INFO);
+			}
+		}
+
+		if(!err.empty())
+		{
+			Server->Log("Resize error: "+err, LL_ERROR);
+			exit(1);
+		}
+
+		exit(0);
+	}
+	else if(cmd=="get_sgparts")
+	{
+		std::string dev_fn = Server->getServerParameter("device_fn");
+
+		Server->Log("Device size: "+PrettyPrintBytes(getSgdiskDiskSize(dev_fn)*512), LL_INFO);
+
+		std::vector<SgdiskPart> parts = getSgdiskParts(dev_fn);
+
+		for(const SgdiskPart& part: parts)
+		{
+			Server->Log("part number="+std::to_string(part.number)
+				+" start="+std::to_string(part.start)+" end="+std::to_string(part.end)
+				+" size="+part.size+" part_uuid="+part.part_guid+" unique_uuid="+part.unique_guid
+				+" name=\""+part.name+"\" flags="+part.flags, LL_INFO);
+		}
+
+		exit(0);
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -1307,7 +1730,8 @@ void do_restore(void)
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		Server->Log("login(username,password)", LL_INFO);
-		Server->Log("read_mbr(device)", LL_INFO);
+		Server->Log("read_mbr(device_fn)", LL_INFO);
+		Server->Log("resize_ntfs(device_fn,new_size)", LL_INFO);
 		exit(0);
 	}
 	else if(cmd=="ping_server")
@@ -1317,7 +1741,7 @@ void do_restore(void)
 	}
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	if(c==nullptr)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		exit(1);return;
@@ -1378,7 +1802,7 @@ void do_restore(void)
 			{
 				if (cmd == "get_backupimages_json")
 				{
-					std::cout << backup_images_output_to_json(r.substr(1));
+					std::cout << backup_images_output_to_json_str(r.substr(1));
 				}
 				else
 				{
@@ -1642,61 +2066,64 @@ private:
 	int64 output_file_size;
 };
 
-bool has_network_device(void)
+namespace restore
 {
+	bool has_network_device(void)
+	{
 #ifdef _WIN32
-	return true;
+		return true;
 #else
 #ifdef sun
-	return true;
+		return true;
 #else
-	char          buf[1024];
-	struct ifconf ifc;
-	struct ifreq *ifr;
-	int           sck;
-	int           nInterfaces;
-	int           i;
+		char          buf[1024];
+		struct ifconf ifc;
+		struct ifreq* ifr;
+		int           sck;
+		int           nInterfaces;
+		int           i;
 
-	int type = SOCK_DGRAM;
+		int type = SOCK_DGRAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-	type |= SOCK_CLOEXEC;
+		type |= SOCK_CLOEXEC;
 #endif
-/* Get a socket handle. */
-	sck = socket(AF_INET, type, 0);
-	if(sck < 0)
-	{
-		return true;
-	}
+		/* Get a socket handle. */
+		sck = socket(AF_INET, type, 0);
+		if (sck < 0)
+		{
+			return true;
+		}
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(sck, F_SETFD, fcntl(sck, F_GETFD, 0) | FD_CLOEXEC);
+		fcntl(sck, F_SETFD, fcntl(sck, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
-/* Query available interfaces. */
-	ifc.ifc_len = sizeof(buf);
-	ifc.ifc_buf = buf;
-	if(ioctl(sck, SIOCGIFCONF, &ifc) < 0)
-	{
-		close(sck);
-		return true;
-	}
-
-/* Iterate through the list of interfaces. */
-	ifr         = ifc.ifc_req;
-	nInterfaces = ifc.ifc_len / sizeof(struct ifreq);
-	for(i = 0; i < nInterfaces; i++)
-	{
-		struct ifreq *item = &ifr[i];
-		
-		if(htonl(INADDR_LOOPBACK)!=((struct sockaddr_in *)&item->ifr_addr)->sin_addr.s_addr )
+		/* Query available interfaces. */
+		ifc.ifc_len = sizeof(buf);
+		ifc.ifc_buf = buf;
+		if (ioctl(sck, SIOCGIFCONF, &ifc) < 0)
 		{
 			close(sck);
 			return true;
 		}
-	}
-	close(sck);
-	return false;
+
+		/* Iterate through the list of interfaces. */
+		ifr = ifc.ifc_req;
+		nInterfaces = ifc.ifc_len / sizeof(struct ifreq);
+		for (i = 0; i < nInterfaces; i++)
+		{
+			struct ifreq* item = &ifr[i];
+
+			if (htonl(INADDR_LOOPBACK) != ((struct sockaddr_in*)&item->ifr_addr)->sin_addr.s_addr)
+			{
+				close(sck);
+				return true;
+			}
+		}
+		close(sck);
+		return false;
 #endif //sun
 #endif //_WIN32
+	}
 }
 
 void ping_named_server(void)
@@ -1719,40 +2146,43 @@ void ping_named_server(void)
 	}
 }
 
-bool has_internet_connection(int* ec, std::string& errstatus)
+namespace restore
 {
-	*ec = 0;
-
-	IPipe* c = connectToService(ec);
-
-	if (c == NULL)
+	bool has_internet_connection(int& ec, std::string& errstatus)
 	{
+		ec = 0;
+
+		IPipe* c = connectToService(ec);
+
+		if (c == nullptr)
+		{
+			return false;
+		}
+
+		std::string pw = getFile(pw_file);
+		CTCPStack tcpstack;
+		tcpstack.Send(c, "STATUS DETAIL#pw=" + pw);
+		std::string r = getResponse(c);
+		if (r.empty())
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			ec = 1;
+			return false;
+		}
+
+		std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
+		std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
+
+		if (internet_connected == "true"
+			&& r.find("\"servers\": []") == std::string::npos)
+		{
+			return true;
+		}
+
+		errstatus = internet_status;
+		ec = 2;
 		return false;
 	}
-
-	std::string pw = getFile(pw_file);
-	CTCPStack tcpstack;
-	tcpstack.Send(c, "STATUS DETAIL#pw=" + pw);
-	std::string r = getResponse(c);
-	if (r.empty())
-	{
-		Server->Log("No response from ClientConnector", LL_ERROR);
-		*ec = 1;
-		return false;
-	}
-	
-	std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
-	std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
-
-	if (internet_connected == "true"
-		&& r.find("\"servers\": []")==std::string::npos)
-	{
-		return true;
-	}
-
-	errstatus = internet_status;
-	*ec = 2;
-	return false;
 }
 
 namespace
@@ -1760,144 +2190,170 @@ namespace
 	bool internet_server_configured = false;
 }
 
-void configure_internet_server()
+namespace restore
 {
-	std::string internet_server;
-	while (internet_server.empty())
+	void configure_internet_server()
 	{
-		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_name`\" 8 30 2> out");
-		internet_server = trim(getFile("out"));
+		std::string internet_server;
+		while (internet_server.empty())
+		{
+			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_name`\" 8 30 2> out");
+			internet_server = trim(getFile("out"));
 
-		if (rc != 0)
+			if (rc != 0)
+			{
+				system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+				return;
+			}
+		}
+
+		if (internet_server.empty())
 		{
 			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
 			return;
 		}
-	}
 
-	if (internet_server.empty())
-	{
-		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
-		return;
-	}
+		std::string internet_authkey;
+		while (internet_authkey.empty())
+		{
+			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_authkey`\" 8 30 2> out");
+			internet_authkey = getFile("out");
 
-	std::string internet_authkey;
-	while (internet_authkey.empty())
-	{
-		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_authkey`\" 8 30 2> out");
-		internet_authkey = getFile("out");
+			if (rc != 0)
+			{
+				system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+				return;
+			}
+		}
 
-		if (rc != 0)
+		if (internet_authkey.empty())
 		{
 			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
 			return;
 		}
+
+		system("clear");
+		std::cout << "Configuring UrBackup restore client as Internet client..." << std::endl;
+
+		configure_internet_server(internet_server, internet_authkey, "", true);
 	}
 
-	if (internet_authkey.empty())
+	void configure_internet_server(std::string server_url, const std::string& server_authkey, const std::string& server_proxy,
+		bool with_cli)
 	{
-		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
-		return;
-	}
+		system("systemctl stop restore-client");
 
-	system("clear");
-	std::cout << "Configuring UrBackup restore client as Internet client..." << std::endl;
-	system("systemctl stop restore-client");
+		int internet_server_port = 55415;
 
-	std::string internet_server_port = "55415";
-	if (internet_server.find(":") != std::string::npos)
-	{
-		internet_server_port = getafter(":", internet_server);
-		internet_server = getuntil(":", internet_server);
-	}
-
-	std::string rnd;
-	rnd.resize(16);
-	Server->secureRandomFill(&rnd[0], 16);
-
-	std::string clientname = "##restore##" + bytesToHex(rnd);
-
-	os_create_dir_recursive("urbackup/data");
-
-	writestring("internet_mode_enabled=true\n"
-		"internet_server=" + internet_server + "\n"
-		"internet_server_port=" + internet_server_port + "\n"
-		"internet_authkey=" + internet_authkey + "\n"
-		"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
-
-	std::cout << "Starting UrBackup Internet restore client..." << std::endl;
-
-	if (system("systemctl start restore-client-internet") != 0)
-	{
-		std::cout << "Error starting Internet restore client." << std::endl;
-		char ch;
-		std::cin >> ch;
-		return;
-	}
-
-	std::cout << "Waiting for Internet restore client to connect..." << std::endl;
-
-	Server->wait(1000);
-
-	int64 starttime = Server->getTimeMS();
-	int ec;
-	std::string errstatus;
-	while (Server->getTimeMS() - starttime < 60000)
-	{
-		if (has_internet_connection(&ec, errstatus))
+		if (next(server_url, 0, "urbackup://"))
 		{
-			internet_server_configured = true;
+			server_url.erase(0, 11);
+			if (server_url.find(":") != std::string::npos)
+			{
+				internet_server_port = watoi(getafter(":", server_url));
+				server_url = getuntil(":", server_url);
+			}
+		}
+
+		std::string rnd;
+		rnd.resize(16);
+		Server->secureRandomFill(&rnd[0], 16);
+
+		std::string clientname = "##restore##" + bytesToHex(rnd);
+
+		os_create_dir_recursive("urbackup/data_1");
+
+		writestring("internet_mode_enabled=true\n"
+			"internet_server=" + server_url + "\n"
+			"internet_server_port=" + std::to_string(internet_server_port) + "\n"
+			"internet_authkey=" + server_authkey + "\n"
+			"computername=" + clientname + "\n", "urbackup/data_1/settings.cfg");
+
+		if (with_cli)
+			std::cout << "Starting UrBackup Internet restore client..." << std::endl;
+
+		if (system("systemctl restart restore-client-internet") != 0)
+		{
+			std::cout << "Error starting Internet restore client." << std::endl;
+			char ch;
+			std::cin >> ch;
 			return;
 		}
-		if (ec == 2 && next(errstatus, 0, "error:"))
-			break;
+
+		if (!with_cli)
+			return;
+
+		std::cout << "Waiting for Internet restore client to connect..." << std::endl;
+
 		Server->wait(1000);
+
+		int64 starttime = Server->getTimeMS();
+		int ec;
+		std::string errstatus;
+		while (Server->getTimeMS() - starttime < 60000)
+		{
+			if (has_internet_connection(ec, errstatus))
+			{
+				internet_server_configured = true;
+				return;
+			}
+			if (ec == 2 && next(errstatus, 0, "error:"))
+				break;
+			Server->wait(1000);
+		}
+
+		std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
+		std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
+		system("systemctl stop restore-client-internet");
+		Server->deleteFile("urbackup/data_1/settings.cfg");
+		system("systemctl start restore-client");
+
+		std::string errmsg;
+		switch (ec)
+		{
+		case 10:
+		case 1:
+			errmsg = "`cat urbackup/restore/internal_error`";
+			break;
+		case 2:
+			errmsg = getFile("urbackup/restore/internet_authentification_failed");
+			errmsg = greplace("_STATUS_", errstatus, errmsg);
+			break;
+		}
+
+		int r = system(("dialog --menu \"`cat urbackup/restore/error_happend` " + errmsg + ". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
+			"\"r\" \"`cat urbackup/restore/search_again`\" "
+			"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
+			"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
+			"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+
+		if (r != 0)
+		{
+			return;
+		}
+		std::string out = getFile("out");
+		if (out == "s")
+		{
+			system("bash");
+		}
+		else if (out == "i")
+		{
+			configure_internet_server();
+		}
 	}
 
-	std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
-	std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
-	system("systemctl stop restore-client-internet");
-	Server->deleteFile("urbackup/data/settings.cfg");
-	system("systemctl start restore-client");
-
-	std::string errmsg;
-	switch (ec)
+	void configure_local_server()
 	{
-	case 10:
-	case 1:
-		errmsg = "`cat urbackup/restore/internal_error`";
-		break;
-	case 2:
-		errmsg = getFile("urbackup/restore/internet_authentification_failed");
-		errmsg = greplace("_STATUS_", errstatus, errmsg);
-		break;
-	}
-
-	int r = system(("dialog --menu \"`cat urbackup/restore/error_happend` " + errmsg + ". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
-		"\"r\" \"`cat urbackup/restore/search_again`\" "
-		"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
-		"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
-		"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
-
-	if (r != 0)
-	{
-		return;
-	}
-	std::string out = getFile("out");
-	if (out == "s")
-	{
-		system("bash");
-	}
-	else if(out=="i")
-	{
-		configure_internet_server();
+		system("systemctl stop restore-client-internet");
+		Server->deleteFile("urbackup/data_1/settings.cfg");
+		system("systemctl restart restore-client");
 	}
 }
 
-namespace
+namespace restore
 {
 
-bool do_login(LoginData& login_data)
+bool do_login(LoginData& login_data, bool with_cli_output)
 {
 	if (login_data.has_login_data)
 	{
@@ -1929,8 +2385,11 @@ bool do_login(LoginData& login_data)
 		return tryLogin(login_data.username, login_data.password, salts, 10, &ec);
 	}
 
-	system("clear");
-	system("cat urbackup/restore/trying_to_login");
+	if (with_cli_output)
+	{
+		system("clear");
+		system("cat urbackup/restore/trying_to_login");
+	}
 
 	int ec;
 	if (!tryLogin("", "", std::vector<SPasswordSalt>(), 0, &ec))
@@ -1938,15 +2397,20 @@ bool do_login(LoginData& login_data)
 		if (ec == 1)
 		{
 			//Server probably does not support logging in
-			std::vector<std::string> clients = getBackupclients(&ec);
+			std::vector<std::string> clients = getBackupclients(ec);
 			if (ec == 0 && !clients.empty())
 			{
 				return true;
 			}
 		}
 
-		while (true)
+		if (!with_cli_output)
 		{
+			return false;
+		}
+
+		while (true)
+		{			
 			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
 			std::string username = getFile("out");
 
@@ -2114,7 +2578,7 @@ void restore_wizard(void)
 				login_data = LoginData();
 				if(do_login(login_data))
 				{					
-					clients=getBackupclients(&ec);
+					clients=getBackupclients(ec);
 					
 					switch(ec)
 					{
@@ -2359,7 +2823,7 @@ void restore_wizard(void)
 					break;
 				}
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);
-				if(f==NULL)
+				if(f==nullptr)
 				{
 					err="cannot_read_mbr";
 					state=101;
@@ -2383,7 +2847,7 @@ void restore_wizard(void)
 				system("cat urbackup/restore/writing_mbr");
 				system("echo");
 				IFile *dev=Server->openFile(seldrive, MODE_RW);
-				if(dev==NULL)
+				if(dev==nullptr)
 				{
 					err="cannot_open_disk";
 					state=101;
@@ -2399,6 +2863,8 @@ void restore_wizard(void)
 
 				bool fix_gpt = false;
 				std::vector<IFSImageFactory::SPartition> partitions;
+
+				const bool linux_vol = next(mbrdata.volume_name, 0, "LINUX:");
 
 				if(mbrdata.gpt_style)
 				{
@@ -2492,27 +2958,27 @@ void restore_wizard(void)
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
 				system("echo");
-				dev=NULL;
-				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+				dev=nullptr;
+				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number, linux_vol);
 				if(!partpath.empty())
 				{
 					dev=Server->openFile(partpath, MODE_RW);
 				}
 				int try_c=0;
 				int delete_parts = 0;
-				while(dev==NULL && try_c<10)
+				while(dev==nullptr && try_c<10)
 				{
 					system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 					Server->wait(10000);
 					system("cat urbackup/restore/testing_partition");
 					system("echo");
-					partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+					partpath = getPartitionPath(seldrive, mbrdata.partition_number, linux_vol);
 					if(!partpath.empty())
 					{
 						dev=Server->openFile(partpath, MODE_RW);
 					}
 
-					if(dev==NULL)
+					if(dev==nullptr)
 					{
 						if (!mbrdata.gpt_style)
 						{
@@ -2555,7 +3021,7 @@ void restore_wizard(void)
 
 					++try_c;
 				}
-				if(dev==NULL)
+				if(dev==nullptr)
 				{
 					err="no_restore_partition";
 					state=101;
