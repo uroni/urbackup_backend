@@ -80,8 +80,9 @@ sub properties {
             type => 'string',
         },
         'restore-dir' => {
-            description => "Directory for the disk images of a guest while it is restored (needs"
-                . " space for up to the size of the disks).",
+            description => "Directory for the files of a container while it is restored (needs"
+                . " space for up to the size of the container), and for the disk images of a VM"
+                . " if the server cannot serve parts of an image.",
             type => 'string',
             default => '/var/tmp',
         },

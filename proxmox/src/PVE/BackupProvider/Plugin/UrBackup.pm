@@ -20,7 +20,9 @@ package PVE::BackupProvider::Plugin::UrBackup;
 #    backup are read (see bitmap_state_file()).
 #
 # A VM is restored from the images of one backup job: the zip file of an image has the guest
-# configuration, and the client downloads the images to files that Proxmox VE imports.
+# configuration. The client serves the image of each disk via NBD (it reads what is asked for
+# from the server), and Proxmox VE imports it from a /dev/nbdX node. With a server that cannot
+# do that, the client downloads the images to files that Proxmox VE imports.
 #
 # A container is a file backup of the virtual client:
 #  - its file system is mounted at /run/urbackup-pve/<vmid>/fs/rootfs, with the user and group
@@ -53,6 +55,14 @@ use base qw(PVE::BackupProvider::Plugin::Base);
 my $RUN_DIR = '/run/urbackup-pve';
 my $SNAPSHOT_DIR = "$RUN_DIR/snap"; # (of the snapshot scripts)
 my $SNAPSHOT_SCRIPT_DIR = '/usr/share/urbackup-pve';
+# A file per image that the client serves via NBD for a restore: its name is a number, and it
+# has the process that restores and the /dev/nbdX node of the image. The client serves the
+# image on the unix socket <number>.sock next to it.
+my $RESTORE_NBD_DIR = "$RUN_DIR/restore-nbd";
+# Seconds to wait for a connection of the server to the client that an image can be read over
+my $RESTORE_CONNECTION_TIMEOUT = 120;
+# Seconds the server gets to connect to the client again after an image was read
+my $RESTORE_RECONNECT_WAIT = 20;
 my $LOCK_FILE = '/run/lock/urbackup-pve.lock';
 # Seconds the server gets to finish the images after the client has sent the data
 my $SERVER_FINISH_TIMEOUT = 15 * 60;
@@ -1382,9 +1392,18 @@ my sub find_backup {
     my (undef, $name, $vmid) = $plugin->parse_volname($volname);
     my ($type, $time) = $name =~ m!/(\w+)-(\d+)$!;
 
-    my $backups = $type eq 'lxc'
-        ? $plugin->container_backups($self->{scfg}, $vmid)
-        : $plugin->vm_backups($self->{scfg}, $self->{storeid}, $vmid);
+    # The client asks the server over a connection of the server to it. The server closes it
+    # after an image was read from it and takes a few seconds to connect again, and until then
+    # the server seems to have no backups of the guest (e.g. right after another restore).
+    my $backups;
+    my $deadline = time() + $RESTORE_CONNECTION_TIMEOUT;
+    while (1) {
+        $backups = $type eq 'lxc'
+            ? $plugin->container_backups($self->{scfg}, $vmid)
+            : $plugin->vm_backups($self->{scfg}, $self->{storeid}, $vmid);
+        last if $backups->@* || time() >= $deadline;
+        sleep(2);
+    }
     for my $backup ($backups->@*) {
         return ($vmid, $backup) if $backup->{time} == $time;
     }
@@ -1496,11 +1515,79 @@ my sub restore_container_dir {
     return option($self, 'restore-dir') . "/urbackup-restore-$vmid-$time-lxc";
 }
 
+my sub restore_nbd_socket {
+    my ($number) = @_;
+
+    return "$RESTORE_NBD_DIR/$number.sock";
+}
+
+# The unix socket of the NBD server a /dev/nbdX node is connected to for a restore, if it is
+my sub restore_nbd_node_socket {
+    my ($node) = @_;
+
+    my ($name) = $node =~ m!^/dev/(nbd\d+)$! or return;
+    my ($pid) = (file_read_firstline("/sys/block/$name/pid") // '') =~ m/^(\d+)$/ or return;
+    my $cmdline = eval { file_get_contents("/proc/$pid/cmdline") } // return;
+    my ($socket) = $cmdline =~ m/file\.server\.path=([^,\0]+)/ or return;
+
+    return $socket;
+}
+
+# Ends the restore of an image via NBD: disconnects its /dev/nbdX node and tells the client to
+# stop serving the image.
+my sub stop_restore_nbd {
+    my ($self, $number, $node) = @_;
+
+    my $socket = restore_nbd_socket($number);
+
+    if (defined($node) && (restore_nbd_node_socket($node) // '') eq $socket) {
+        eval { run_command(['qemu-nbd', '-d', $node], outfunc => sub { }) };
+        log_warning($self, "unable to disconnect $node - $@") if $@;
+    }
+
+    # (exit code 4: it does not serve one there any more, e.g. the client was restarted)
+    my ($rc, undef, $err) = $self->{'storage-plugin'}
+        ->clientctl($self->{scfg}, ['image-nbd-stop', '--unix-socket', $socket]);
+    log_warning($self, "unable to stop the UrBackup client serving an image on $socket: $err")
+        if $rc != 0 && $rc != 4;
+
+    unlink($socket);
+    unlink("$RESTORE_NBD_DIR/$number");
+}
+
+# Ends the restores via NBD of processes that are gone (a restore that is killed does not
+# clean up). Until then the server does not list the images: the client asks it over the
+# connection that the image is read over.
+my sub remove_restore_nbd_leftovers {
+    my ($self) = @_;
+
+    my $ended = 0;
+    PVE::Tools::lock_file($LOCK_FILE, 30, sub {
+        for my $fn (glob("$RESTORE_NBD_DIR/*")) {
+            my ($number) = $fn =~ m!/(\d+)$! or next;
+            my ($pid, $node) =
+                (eval { file_get_contents($fn) } // '') =~ m!^(\d+) (/dev/nbd\d+)?$! or next;
+            next if -e "/proc/$pid";
+
+            log_info($self, "ending what an earlier restore left: the image on "
+                . restore_nbd_socket($number));
+            stop_restore_nbd($self, $number, $node);
+            $ended = 1;
+        }
+    });
+    die $@ if $@;
+
+    # (the server connects to the client again)
+    sleep($RESTORE_RECONNECT_WAIT) if $ended;
+}
+
 # The disks of a backup: { $device_name => { image, size, files } }
 my sub backup_disks {
     my ($self, $volname) = @_;
 
     return $self->{'restore-disks'}->{$volname} if $self->{'restore-disks'}->{$volname};
+
+    remove_restore_nbd_leftovers($self);
 
     my ($vmid, $backup) = find_backup($self, $volname);
 
@@ -1555,6 +1642,57 @@ my sub restore_image_file {
     ($device_name) = $device_name =~ m/^([\w.-]+)$/ or die "unexpected device name\n";
 
     return option($self, 'restore-dir') . "/urbackup-restore-$vmid-$time-$device_name.raw";
+}
+
+# Has the client serve an image via NBD, on a unix socket in $RESTORE_NBD_DIR (only root can
+# connect to it). Returns the number of its file there, or nothing if the server does not let
+# the client read from the image: it wants a login that the storage does not have, or it is
+# older than UrBackup 2.6.
+my sub serve_image_via_nbd {
+    my ($self, $image) = @_;
+
+    my $plugin = $self->{'storage-plugin'};
+
+    my $number;
+    PVE::Tools::lock_file($LOCK_FILE, 30, sub {
+        make_path($RESTORE_NBD_DIR);
+
+        # (not the number of a restore that was killed, which is ended by its file)
+        $number = 1;
+        $number++ while -e "$RESTORE_NBD_DIR/$number";
+
+        file_set_contents("$RESTORE_NBD_DIR/$number", "$$ ");
+    });
+    die $@ if $@;
+
+    my $args = [
+        'image-nbd-start', '--backupid', $image->{id}, '--time', $image->{time},
+        '--unix-socket', restore_nbd_socket($number),
+    ];
+    my ($rc, $out, $err);
+    my $logged_in = 0;
+    my $deadline = time() + $RESTORE_CONNECTION_TIMEOUT;
+    while (1) {
+        ($rc, $out, $err) = $plugin->clientctl($self->{scfg}, $args);
+        if ($rc == 2 && time() < $deadline) {
+            # The image is read over a connection of the server to the client, which is closed
+            # after it. The server takes a few seconds to connect again after the last image.
+            sleep(2);
+        } elsif ($rc == 3 && !$logged_in) {
+            # (the login is one of the connection)
+            last if !$plugin->client_login($self->{scfg}, $self->{storeid});
+            $logged_in = 1;
+        } else {
+            last;
+        }
+    }
+    return $number if $rc == 0;
+
+    unlink("$RESTORE_NBD_DIR/$number");
+    return if $rc == 3;
+
+    die "unable to have the UrBackup client serve the image (urbackupclientctl exit code $rc):"
+        . " $err\n";
 }
 
 sub restore_get_mechanism {
@@ -1615,6 +1753,34 @@ sub restore_vm_volume_init {
         or die "backup '$volname' has no disk '$device_name'\n";
     my $image = $disk->{image};
 
+    if (defined(my $number = serve_image_via_nbd($self, $image))) {
+        my $socket = restore_nbd_socket($number);
+        # (the server's image is somewhat larger than the disk)
+        my $node = eval {
+            bind_next_free_dev_nbd_node(
+                $self,
+                [
+                    '--image-opts',
+                    "driver=raw,size=$disk->{size},file.driver=nbd,file.server.type=unix"
+                        . ",file.server.path=$socket",
+                    '--read-only',
+                ],
+            );
+        };
+        if (my $err = $@) {
+            stop_restore_nbd($self, $number);
+            die $err;
+        }
+        $self->{'restore-nbd'}->{$volname}->{$device_name} = { number => $number, node => $node };
+        file_set_contents("$RESTORE_NBD_DIR/$number", "$$ $node");
+
+        log_info($self, "reading the image of $device_name from the UrBackup server via $node");
+
+        return { 'qemu-img-path' => $node };
+    }
+
+    log_info($self, "the UrBackup server does not let the client read from the image");
+
     make_path(option($self, 'restore-dir'));
     my $fn = restore_image_file($self, $volname, $device_name);
 
@@ -1649,6 +1815,11 @@ sub restore_vm_volume_init {
 
 sub restore_vm_volume_cleanup {
     my ($self, $volname, $device_name, $info) = @_;
+
+    if (my $nbd = delete $self->{'restore-nbd'}->{$volname}->{$device_name}) {
+        stop_restore_nbd($self, $nbd->{number}, $nbd->{node});
+        return;
+    }
 
     my $fn = restore_image_file($self, $volname, $device_name);
     unlink($fn) if -e $fn;

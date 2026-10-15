@@ -12,9 +12,10 @@ connects the disks' backup exports to `/dev/nbdX` nodes and gives them stable na
 server for an image backup of it with `urbackupclientctl` and waits until the client has sent
 the image of each disk and the server has finished them. The images are images of the whole
 disks. The server keeps a zip file with each of them that has the configuration of the VM, its
-firewall configuration and the size of the disk. For a restore, the client downloads the
-images of the backup to files in `restore-dir`, which Proxmox VE then imports into the storage
-of the new VM.
+firewall configuration and the size of the disk. For a restore, the client serves the image
+of each disk of the backup via NBD, reading what is asked for from the server. The plugin
+connects it to a `/dev/nbdX` node, from which Proxmox VE imports the disk into the storage of
+the new VM.
 
 While a VM runs, Proxmox VE keeps track of the parts of its disks that change after a backup
 (bitmaps, as with the Proxmox Backup Server), and the next backup only reads those: see
@@ -78,7 +79,7 @@ UrBackup client (`--nodes`):
 | `clientctl`           | `/usr/local/bin/urbackupclientctl` | Path of urbackupclientctl |
 | `client-backend`      | `/usr/local/sbin/urbackupclientbackend` | Path of urbackupclientbackend |
 | `client-name`         | computer name of the client, else the host name | Name of the host's client on the server |
-| `restore-dir`         | `/var/tmp`                         | Directory for the disk images or files of a guest during a restore (needs space for up to the size of the guest) |
+| `restore-dir`         | `/var/tmp`                         | Directory for the files of a container during its restore (needs space for up to the size of the container). Also for the disk images of a VM, if the server is older than UrBackup 2.6 |
 | `backup-timeout`      | 14400                              | Seconds to wait for the server to start and finish a backup |
 | `full-image-interval` | 30                                 | Days after which the next backup of a VM is a full image backup (it is one earlier, if there would be more incremental ones in a row than the server keeps) |
 | `username`, `password` | none                              | User of the UrBackup server for listing and restoring the backups of VMs, if the server has users |
@@ -142,7 +143,7 @@ earlier backups stay with the node the guest was on.
 ## Listing and restoring the backups
 
 Proxmox VE shows the backups the server has of the guests this node backs up. The client
-asks the server for them and downloads them for a restore.
+asks the server for them and reads them from it for a restore.
 
 It may list and restore its own file backups (containers). For image backups (VMs), a server
 that has users only allows that after a login: set `username` and `password` of the storage
@@ -153,10 +154,20 @@ plugin checks at the end of a backup that the server has the finished images. Th
 counts a wrong password once per guest and refuses logins from the host for ten minutes after
 more than ten failed ones.
 
-If the connection to the server breaks during the restore of a VM, the client tries to
-continue the download for ten minutes before the restore fails. Proxmox VE keeps the
-configuration of a guest whose restore failed, without its disks; remove it or restore over
-it.
+The restore of a VM reads all of each disk (the server only sends the parts of the image that
+have data) and needs no space on the host besides the new disks. While a disk is restored, the
+client serves its image on a unix socket in `/run/urbackup-pve/restore-nbd` that only root can
+connect to.
+
+If the connection to the server breaks during the restore of a VM, the client connects again
+and continues; the restore fails if that does not work for five minutes, or if the client is
+stopped. Proxmox VE keeps the configuration of a guest whose restore failed, without its
+disks; remove it or restore over it.
+
+A server older than UrBackup 2.6 cannot serve parts of an image. The client then downloads
+the images to files in `restore-dir`, which needs space for the disks of the VM there, and
+Proxmox VE imports these. If the connection to the server breaks, the client tries to continue
+such a download for ten minutes before the restore fails.
 
 The server keeps one image per disk and does not know which of them belong to one backup
 job. The plugin stores the time of the job and the disks of the VM with each image, and
