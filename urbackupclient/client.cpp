@@ -7600,6 +7600,12 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	return true;
 #else
 	std::string fs_dev = getMountDevice(volume);
+	if (fs_dev.empty()
+		&& cbt_type == CbtType_Extents)
+	{
+		//The volume of the image backup itself, e.g. a symbolic link to a device
+		fs_dev = volume;
+	}
 	if (fs_dev.empty())
 	{
 		VSSLog("Cannot get device of mount " + volume + ". CBT disabled.", LL_INFO);
@@ -7612,7 +7618,11 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		Server->deleteFile("urbackup/hdat_img_" + conv_filename(fs_dev) + ".dat");
 	}
 
-	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
+	std::auto_ptr<IFsFile> hdat_file;
+	if (cbt_type != CbtType_Extents)
+	{
+		hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
+	}
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
 
 	if (hdat_img.get() == NULL && hdat_file.get() == NULL)
@@ -7731,6 +7741,10 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	{
 		ret = finishCbtEra(hdat_file.get(), hdat_img.get(), volume, shadow_id, snap_volume, for_image_backup, cbt_file,
 			hdat_file_era, hdat_img_era);
+	}
+	else if (cbt_type == CbtType_Extents)
+	{
+		ret = finishCbtExtents(volfile.get(), hdat_img.get(), volume, shadow_id, cbt_file);
 	}
 
 	if (ret)
@@ -7942,6 +7956,83 @@ bool IndexThread::finishCbtDatto(IFile* volfile, IFsFile* hdat_file, IFsFile* hd
 			}
 		}
 	}
+
+	return true;
+}
+
+bool IndexThread::finishCbtExtents(IFile* volfile, IFsFile* hdat_img, std::string volume, int shadow_id, std::string cbt_file)
+{
+	if (hdat_img == NULL)
+	{
+		VSSLog("Error opening img hdat file", LL_ERROR);
+		return false;
+	}
+
+	std::auto_ptr<IFile> extents(Server->openFile(cbt_file, MODE_READ));
+	if (extents.get() == NULL)
+	{
+		VSSLog("Error opening the list of changed extents at " + cbt_file + ". " + os_last_error_str(), LL_ERROR);
+		return false;
+	}
+
+	std::string data = extents->Read(static_cast<_u32>(extents->Size()));
+	if (static_cast<int64>(data.size()) != extents->Size())
+	{
+		VSSLog("Error reading the list of changed extents from " + cbt_file, LL_ERROR);
+		return false;
+	}
+
+	if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+	{
+		VSSLog("Error writing shadow id (4)", LL_ERROR);
+		return false;
+	}
+
+	{
+		IScopedLock lock(cbt_shadow_id_mutex);
+		cbt_shadow_ids[strlower(volume)] = shadow_id;
+	}
+
+	char zero_sha[SHA256_DIGEST_SIZE] = {};
+	char zero_sha_read[sizeof(zero_sha)];
+	int64 volsize = volfile->Size();
+	int64 changed_bytes = 0;
+
+	std::vector<std::string> lines;
+	Tokenize(data, lines, "\n");
+	for (size_t i = 0; i < lines.size(); ++i)
+	{
+		std::string line = trim(lines[i]);
+		if (line.empty())
+		{
+			continue;
+		}
+
+		std::string str_offset = getuntil(" ", line);
+		std::string str_length = trim(getafter(" ", line));
+		int64 offset = watoi64(str_offset);
+		int64 length = watoi64(str_length);
+		if (str_offset.empty() || convert(offset) != str_offset
+			|| convert(length) != str_length
+			|| offset < 0 || length <= 0 || length > volsize || offset > volsize - length)
+		{
+			VSSLog("Unexpected line \"" + line + "\" in the list of changed extents " + cbt_file, LL_ERROR);
+			return false;
+		}
+
+		changed_bytes += length;
+
+		for (int64 cbt_pos = offset / c_checkpoint_dist; cbt_pos <= (offset + length - 1) / c_checkpoint_dist; ++cbt_pos)
+		{
+			if (!punchHoleOrZero(hdat_img, sizeof(shadow_id) + cbt_pos * SHA256_DIGEST_SIZE,
+				zero_sha, zero_sha_read, sizeof(zero_sha)))
+			{
+				return false;
+			}
+		}
+	}
+
+	VSSLog("Change block tracking of volume " + volume + ": " + PrettyPrintBytes(changed_bytes) + " changed", LL_INFO);
 
 	return true;
 }
@@ -9185,6 +9276,19 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 			VSSLog("Using era change information from device " + cbt_file, LL_INFO);
 			dir->ref->cbt = true;
 			dir->ref->cbt_type = CbtType_Era;
+			dir->ref->cbt_file = cbt_file;
+		}
+		else if (cbt_type == "extents"
+			&& for_imagebackup)
+		{
+			//CBT_FILE lists the changed parts of the volume since its last image backup:
+			//lines with "<offset> <length>" in bytes. Without it all of it may have changed.
+			if (!cbt_file.empty())
+			{
+				VSSLog("Using the changed extents listed in " + cbt_file, LL_INFO);
+			}
+			dir->ref->cbt = true;
+			dir->ref->cbt_type = CbtType_Extents;
 			dir->ref->cbt_file = cbt_file;
 		}
 

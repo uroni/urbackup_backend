@@ -132,22 +132,34 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 		}
 		else
 		{
-			if(end_marker_pos>end_marker_zeros+1)
+			if(end_marker_pos>=end_marker_zeros+1)
 			{
+				//The end marker is in this data: the zeros from before it are data
 				if(carry_zeros>0)
 				{
 					for(size_t i=0;i<carry_zeros;++i)
 						decryption_filter.Put(0);
 				}
 
-				if(has_copy)
+				if(end_marker_pos>end_marker_zeros+1)
 				{
-					decryption_filter.Put(reinterpret_cast<const byte*>(data_copy.data()), end_marker_pos-end_marker_zeros-1);
+					if(has_copy)
+					{
+						decryption_filter.Put(reinterpret_cast<const byte*>(data_copy.data()), end_marker_pos-end_marker_zeros-1);
+					}
+					else
+					{
+						decryption_filter.Put(reinterpret_cast<const byte*>(data), end_marker_pos-end_marker_zeros-1);
+					}
 				}
-				else
-				{
-					decryption_filter.Put(reinterpret_cast<const byte*>(data), end_marker_pos-end_marker_zeros-1);
-				}
+			}
+			else
+			{
+				//The end marker started in the data from before: the zeros in front of those of
+				//the end marker are data
+				size_t marker_carry_zeros = end_marker_zeros+1-end_marker_pos;
+				for(size_t i=marker_carry_zeros;i<carry_zeros;++i)
+					decryption_filter.Put(0);
 			}
 			try
 			{

@@ -748,6 +748,13 @@ void ClientMain::operator ()(void)
 				update_capa = false;
 
 				updateCapabilities(NULL);
+
+				if (next_capa_update == 0
+					&& protocol_versions.update_capa_interval > 0)
+				{
+					next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
+				}
+
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
 				if (!authenticateIfNeeded(true, false))
@@ -1022,7 +1029,14 @@ void ClientMain::operator ()(void)
 		}
 
 		std::string msg;
-		pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		int64 wait_time = skip_checking ? 0 : check_time_intervall;
+		if (next_capa_update != 0)
+		{
+			//Be in time for the next capability update the client asked for
+			int64 capa_wait_time = next_capa_update - Server->getTimeMS();
+			wait_time = (std::max)((int64)0, (std::min)(wait_time, capa_wait_time));
+		}
+		pipe->Read(&msg, static_cast<int>(wait_time));
 		
 		skip_checking=false;
 		if(msg=="exit")
@@ -1946,6 +1960,8 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		if (update_settings)
 		{
 			ServerSettings::updateClient(clientid);
+			//Start new virtual clients now, not when the settings are looked at the next time
+			updateVirtualClients();
 		}
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,

@@ -1156,6 +1156,11 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 		{
 			obj.set("start_id", finished_processes[i].start_id);
 		}
+		obj.set("action", actionToStr(finished_processes[i].action));
+		if (!finished_processes[i].details.empty())
+		{
+			obj.set("details", finished_processes[i].details);
+		}
 		j_finished_processes.add(obj);
 	}
 
@@ -1821,6 +1826,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			hashdataok=false;
 			hashdataleft=watoi(f_hashsize->second);
 			image_inf.image_letter=(params["letter"]);
+			image_inf.orig_image_letter = image_inf.image_letter;
 			image_inf.shadowdrive=(params["shadowdrive"]);
 			image_inf.server_status_id = watoi(params["status_id"]);
 			image_inf.start_id = watoi64(params["start_id"]);
@@ -1993,6 +1999,27 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	ParseParamStrHttp(s_params, &params);
 
 	std::string dl=params["driveletter"];
+
+#ifndef _WIN32
+	//Whole disk of a virtual client (e.g. a disk of a virtual machine that a backup provider plugin
+	//connected): instead of the partition table of the disk the volume is on, the server gets a zip
+	//file with information about the disk and stores the image as an image of the whole disk
+	if (!params["clientsubname"].empty()
+		&& params.find("disk_path") != params.end())
+	{
+		std::string zip_name = "disk_" + conv_filename(params["clientsubname"]) + "_"
+			+ conv_filename(ExtractFileName(params["disk_path"], "/")) + ".zip";
+		if (FileExists("urbackup/data/" + zip_name))
+		{
+			CWData r;
+			r.addChar(1);
+			r.addChar(100);
+			r.addString2("urbackup/" + zip_name);
+			tcpstack.Send(pipe, r);
+			return;
+		}
+	}
+#endif
 
 	if(dl=="SYSVOL")
 	{
@@ -3437,13 +3464,47 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		image_args = "&IMAGE=1&REQ_PREV_CBITMAP=1";
 	}
 
+	//Defaults for the server's settings of this (virtual) client, e.g. written by a backup
+	//provider plugin: virtual_clients_add, image_letters, image_snapshot_groups_def, ...
+	//all_volumes replaces the volumes reported to the server
+	std::string def_args;
+	std::string defaults_fn = "urbackup/data/client_defaults" + (clientsubname.empty() ? std::string() : "_" + conv_filename(clientsubname)) + ".cfg";
+	if (FileExists(defaults_fn))
+	{
+		std::auto_ptr<ISettingsReader> defaults(Server->createFileSettingsReader(defaults_fn));
+		std::vector<std::string> keys = defaults->getKeys();
+		size_t def_idx = 0;
+		for (size_t i = 0; i < keys.size(); ++i)
+		{
+			std::string val = defaults->getValue(keys[i], std::string());
+			if (keys[i] == "all_volumes")
+			{
+				all_volumes = val;
+				all_nonusb_volumes = val;
+				//They can change at any time: have the server ask for them before each image backup
+				def_args += "&UPDATE_VOLS=1";
+			}
+			else if (keys[i] == "update_capa_interval")
+			{
+				//How often the server asks for these again (ms), e.g. to pick up new virtual clients
+				def_args += "&UPDATE_CAPA_INTERVAL=" + EscapeParamString(val);
+			}
+			else
+			{
+				def_args += "&def_key_" + convert(def_idx) + "=" + EscapeParamString(keys[i])
+					+ "&def_val_" + convert(def_idx) + "=" + EscapeParamString(val);
+				++def_idx;
+			}
+		}
+	}
+
 
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str) +
 		"&ALL_VOLUMES="+EscapeParamString(all_volumes)+"&ALL_NONUSB_VOLUMES="+EscapeParamString(all_nonusb_volumes)
 		+"&ETA=1&CDP=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&RESTORE_VER=1&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&FILESRVTUNNEL=1&CHANNEL_VER=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args + skip_startup_delay);
+		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args + skip_startup_delay + def_args);
 #endif
 }
 

@@ -333,6 +333,21 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, ERead
 		Server->Log("Error reading device file name from "+pDevOrig+"-dev", LL_ERROR);
 		return NULL;
 	}
+
+	//The snapshot script can say that the device has no file system to look for, e.g. because it
+	//is a whole disk, or because only the changed parts of it can be read
+	if(trim(getFile(pDevOrig+"-fs"))=="unknown")
+	{
+		Server->Log("Filesystem type is unknown according to "+pDevOrig+"-fs", LL_DEBUG);
+		FSUnknown *fs=new FSUnknown(pDev, read_ahead, background_priority, next_block_callback);
+		if(fs->hasError())
+		{
+			delete fs;
+			return NULL;
+		}
+		PrintInfo(fs);
+		return fs;
+	}
 #endif
 
 	if (partitioned)

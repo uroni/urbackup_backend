@@ -1,0 +1,12 @@
+Package: urbackup-pve
+Version: @VERSION@
+Section: admin
+Priority: optional
+Architecture: all
+Depends: libpve-storage-perl (>= 9.0), pve-container, qemu-server, util-linux (>= 2.39)
+Maintainer: LJ <ljlongwing@users.noreply.github.com>
+Homepage: https://www.urbackup.org
+Description: UrBackup backup provider for Proxmox VE
+ Backs up the virtual machines and containers of Proxmox VE with UrBackup, as a
+ storage of type "urbackup" that backup jobs can use. The UrBackup client on
+ the host does the backups; it is not part of this package.

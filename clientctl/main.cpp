@@ -679,6 +679,9 @@ int action_start(std::vector<std::string> args)
 	TCLAP::SwitchArg image_backup("m", "image", "Start image backup");
 
 	cmd.xorAdd(file_backup, image_backup);
+#else
+	//File backup unless --image (e.g. a volume reported by a backup provider plugin)
+	TCLAP::SwitchArg image_backup("m", "image", "Start image backup", cmd);
 #endif
 
 	TCLAP::SwitchArg non_blocking_arg("b", "non-blocking",
@@ -702,14 +705,11 @@ int action_start(std::vector<std::string> args)
 	std::string type;
 	int rc;
 	int64 start_id = 0;
-#ifdef _WIN32
-	if(file_backup.getValue())
+	if(!image_backup.getValue())
 	{
-#endif
 		type = full_backup.getValue() ? "FULL" : "INCR";
 
 		rc = Connector::startBackup(virtual_client_arg.getValue(), full_backup.getValue(), &start_id);
-#ifdef _WIN32
 	}
 	else
 	{
@@ -717,7 +717,6 @@ int action_start(std::vector<std::string> args)
 
 		rc = Connector::startImage(virtual_client_arg.getValue(), full_backup.getValue(), &start_id);
 	}
-#endif
 
 	if(rc==2)
 	{

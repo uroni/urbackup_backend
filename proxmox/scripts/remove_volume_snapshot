@@ -1,0 +1,7 @@
+#!/bin/sh
+# Snapshot script of the virtual clients of the Proxmox VE backup provider.
+# remove_volume_snapshot <snapshot id> ...
+SNAP=/run/urbackup-pve/snap/$1
+
+rm -rf "$SNAP" "$SNAP-dev" "$SNAP-fs"
+exit 0

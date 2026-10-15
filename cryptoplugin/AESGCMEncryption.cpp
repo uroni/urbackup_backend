@@ -165,6 +165,7 @@ void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size, size_t off
 				char ich=2;
 				ret.insert(ret.begin()+i+1, ich);
 				++i;
+				++size;
 				end_marker_state=0;
 				Server->Log("Escaped something at "+convert(i), LL_DEBUG);
 				++overhead_size;

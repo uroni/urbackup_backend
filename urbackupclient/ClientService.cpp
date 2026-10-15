@@ -2826,7 +2826,16 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	} dev_num;
 
 	std::string dev_fn;
-	parseDevicePartNumber(dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
+	//The volume may be a symlink to the device (e.g. a stable name for a changing device)
+	std::string real_dl = dl;
+	char* real_path = realpath(dl.c_str(), NULL);
+	if (real_path != NULL)
+	{
+		real_dl = real_path;
+		free(real_path);
+	}
+
+	parseDevicePartNumber(real_dl, dev_fn, dev_num.DeviceNumber, dev_num.PartitionNumber);
 
 	IFile* dev = Server->openFile(dev_fn, MODE_READ_DEVICE);
 	if (dev == NULL)
@@ -2835,6 +2844,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
+	std::auto_ptr<IFile> dev_delete(dev);
 
 	std::string gpt_header = dev->Read(512LL, 512, NULL);
 
@@ -2871,6 +2881,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
+	std::auto_ptr<IFile> dev_delete(dev);
 #endif
 
 	dev->Seek(0);
@@ -3385,7 +3396,9 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 	{
 		lock_process.relock(NULL);
 
-		size_t selidx = 0;
+		//No server for a virtual client it does not know (yet), instead of starting a backup
+		//of the main client
+		size_t selidx = virtual_client.empty() ? 0 : channel_pipes.size();
 		for (size_t i = 0; i < channel_pipes.size(); ++i)
 		{
 			if (channel_pipes[i].virtual_client == virtual_client)
@@ -4433,7 +4446,7 @@ bool ClientConnector::removeRunningProcess(int64 id, bool success, bool consider
 			if (!consider_refs || curr.refs == 0)
 			{
 				Server->Log("Removing running process (1) id " + convert(curr.id) + " server_id " + convert(curr.server_id) + " token " + curr.server_token + " action " + convert((int)curr.action), LL_DEBUG);
-				finished_processes.push_back(SFinishedProcess(id, success, curr.start_id));
+				finished_processes.push_back(SFinishedProcess(id, success, curr.action, curr.details, curr.start_id));
 				while (finished_processes.size() > 20)
 				{
 					finished_processes.erase(finished_processes.begin());
