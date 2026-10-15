@@ -438,13 +438,13 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->max_running_jobs_per_client_group = 1000;
 	}
 	
-	readStringClientSetting(q_get_client_setting, "update_freq_incr", std::string(), &settings->update_freq_incr, false);
+	readFreqClientSetting(q_get_client_setting, "update_freq_incr", &settings->update_freq_incr, false);
 		
-	readStringClientSetting(q_get_client_setting, "update_freq_full", std::string(), &settings->update_freq_full, false);
+	readFreqClientSetting(q_get_client_setting, "update_freq_full", &settings->update_freq_full, false);
 	
-	readStringClientSetting(q_get_client_setting, "update_freq_image_incr", std::string(), &settings->update_freq_image_incr, false);
+	readFreqClientSetting(q_get_client_setting, "update_freq_image_incr", &settings->update_freq_image_incr, false);
 		
-	readStringClientSetting(q_get_client_setting, "update_freq_image_full", std::string(), &settings->update_freq_image_full, false);
+	readFreqClientSetting(q_get_client_setting, "update_freq_image_full", &settings->update_freq_image_full, false);
 		
 	readIntClientSetting(q_get_client_setting, "max_file_incr", &settings->max_file_incr, false);
 		
@@ -626,10 +626,10 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 
 	settings->client_access_key = settings_client->getValue("client_access_key", std::string());
 
-	readStringClientSetting(q_get_client_setting, "update_freq_incr", std::string(), &settings->update_freq_incr);
-	readStringClientSetting(q_get_client_setting, "update_freq_full", std::string(), &settings->update_freq_full);
-	readStringClientSetting(q_get_client_setting, "update_freq_image_incr", std::string(), &settings->update_freq_image_incr);
-	readStringClientSetting(q_get_client_setting, "update_freq_image_full", std::string(), &settings->update_freq_image_full);
+	readFreqClientSetting(q_get_client_setting, "update_freq_incr", &settings->update_freq_incr);
+	readFreqClientSetting(q_get_client_setting, "update_freq_full", &settings->update_freq_full);
+	readFreqClientSetting(q_get_client_setting, "update_freq_image_incr", &settings->update_freq_image_incr);
+	readFreqClientSetting(q_get_client_setting, "update_freq_image_full", &settings->update_freq_image_full);
 
 	readIntClientSetting(q_get_client_setting, "max_file_incr", &settings->max_file_incr);
 	readIntClientSetting(q_get_client_setting, "min_file_incr", &settings->min_file_incr);
@@ -805,6 +805,18 @@ void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int 
 		{
 			*output = res[0]["value"];
 		}
+	}
+}
+
+void ServerSettings::readFreqClientSetting(IQuery* q_get_client_setting, const std::string & name, std::string * output, bool allow_client_value)
+{
+	//A backup interval without a value would be an interval of zero seconds:
+	//keep the value of the group or the default instead
+	std::string prev_value = *output;
+	readStringClientSetting(q_get_client_setting, name, std::string(), output, allow_client_value);
+	if (trim(*output).empty())
+	{
+		*output = prev_value;
 	}
 }
 
