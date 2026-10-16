@@ -1550,7 +1550,7 @@ bool FileClient::Reconnect(void)
 								return ERR_ERROR;
 							}
 
-							Server->Log("Failed to write to file... waiting...", LL_WARNING);
+							Server->Log("Failed to write to file \""+file->getFilename()+"\". "+os_last_error_str()+". Waiting...", LL_WARNING);
 							Server->wait(10000);
 							starttime=Server->getTimeMS();
 						}
