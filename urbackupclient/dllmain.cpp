@@ -831,6 +831,11 @@ bool upgrade_client(void)
 
 	db->Write("PRAGMA journal_mode=WAL");
 
+	//Not a version upgrade so it does not collide with the dev database versions.
+	//Without them every changed directory scans both tables (very slow after an USN journal rollover)
+	db->Write("CREATE INDEX IF NOT EXISTS mdirs_name ON mdirs(name)");
+	db->Write("CREATE INDEX IF NOT EXISTS del_dirs_name ON del_dirs(name)");
+
 	if (ver == max_v)
 	{
 		return true;
