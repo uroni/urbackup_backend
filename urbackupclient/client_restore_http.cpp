@@ -322,7 +322,11 @@ ACTION_IMPL(ping_server)
 {
 	std::string servername = POST["servername"];
 	std::thread t([servername]() {
+#ifdef _WIN32
+		restore::ping_server(servername);
+#else
 		system(("./urbackuprestoreclient --ping-server \"" + servername + "\"").c_str());
+#endif
 		});
 
 	t.detach();
@@ -472,7 +476,7 @@ ACTION_IMPL(get_partition)
 	std::unique_ptr<IFsFile> dev;
 	if(!partpath.empty())
 	{
-		dev.reset(Server->openFile(partpath, MODE_RW));
+		dev.reset(Server->openFile(partpath, MODE_RW_DEVICE));
 	}
 	int try_c=0;
 	int delete_parts = 0;
@@ -480,14 +484,20 @@ ACTION_IMPL(get_partition)
 
 	while(!dev && try_c<10)
 	{
+#ifdef _WIN32
+		restore::rereadPartitionLayout(seldrive);
+		Server->wait(3000);
+#else
 		system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 		Server->wait(10000);
+#endif
 		partpath = restore::getPartitionPath(seldrive, mbrdata.partition_number, next(mbrdata.volume_name, 0, "LINUX:"));
 		if(!partpath.empty())
 		{
-			dev.reset(Server->openFile(partpath, MODE_RW));
+			dev.reset(Server->openFile(partpath, MODE_RW_DEVICE));
 		}
 
+#ifndef _WIN32
 		if(!dev)
 		{
 			if (!mbrdata.gpt_style)
@@ -526,6 +536,7 @@ ACTION_IMPL(get_partition)
 					system(("echo -e \""+cmd+"\" | gdisk " + seldrive).c_str());
 			}
 		}
+#endif
 
 		++try_c;
 	}
@@ -550,7 +561,11 @@ ACTION_IMPL(get_partition)
 
 ACTION_IMPL(restart)
 {
+#ifdef _WIN32
+	system("wpeutil reboot");
+#else
 	system("init 6");
+#endif
 	JSON::Object ret;
 	ret.set("ok", true);
 	restore::writeJsonResponse(tid, ret);
@@ -589,7 +604,12 @@ ACTION_IMPL(set_keyboard_layout)
 
 ACTION_IMPL(get_connection_settings)
 {
+#ifdef _WIN32
+	//copied from the restore medium by its start script
+	std::string settingsfn = "connection_settings.json";
+#else
 	std::string settingsfn = "/run/live/medium/connection_settings.json";
+#endif
 	if(!FileExists(settingsfn))
 	{
 		JSON::Object ret;
