@@ -1468,7 +1468,7 @@ void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 			{
 				break;
 			}
-			Server->Log("Failed to write to file... waiting... in Chunked File transfer. "+os_last_error_str(), LL_WARNING);
+			Server->Log("Failed to write to file \""+f->getFilename()+"\" in chunked file transfer. "+os_last_error_str()+". Waiting...", LL_WARNING);
 			Server->wait(10000);
 			--tries;
 		}
