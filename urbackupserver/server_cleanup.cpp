@@ -2540,10 +2540,15 @@ void ServerCleanupThread::cleanup_other()
 	cleanup_clientlists();
 	ServerLogger::Log(logid, "Done cleaning up client lists.", LL_INFO);
 	ServerLogger::Log(logid, "Cleaning up old client access tokens...", LL_INFO);
+	//tgroup is NULL for user tokens. NULLs are distinct in the unique index, so every file backup adds the same token again
 	cleanupdao->getDatabase()->Write("DELETE FROM user_tokens WHERE id IN ("
 		"SELECT a.id FROM user_tokens a WHERE EXISTS ("
 		"SELECT id FROM user_tokens b WHERE a.username=b.username "
-		"AND a.clientid=b.clientid AND a.tgroup=b.tgroup AND b.created>a.created "
+		"AND a.clientid=b.clientid AND a.token=b.token AND a.tgroup IS b.tgroup AND b.id>a.id));");
+	cleanupdao->getDatabase()->Write("DELETE FROM user_tokens WHERE id IN ("
+		"SELECT a.id FROM user_tokens a WHERE EXISTS ("
+		"SELECT id FROM user_tokens b WHERE a.username=b.username "
+		"AND a.clientid=b.clientid AND a.tgroup IS b.tgroup AND b.created>a.created "
 		"AND (strftime('%s', b.created)-strftime('%s', a.created)) > 15552000));");
 	ServerLogger::Log(logid, "Done cleaning up old client access tokens.", LL_INFO);
 
