@@ -622,6 +622,10 @@ int action_remove_unknown(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
+	TCLAP::ValueArg<std::string> client_arg("c", "client",
+		"Only remove unknown files and directories of this client",
+		false, "", "client name", cmd);
+
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 
@@ -636,6 +640,11 @@ int action_remove_unknown(std::vector<std::string> args)
 	real_args.push_back("debug");
 	real_args.push_back("--app");
 	real_args.push_back("remove_unknown");
+	if (!client_arg.getValue().empty())
+	{
+		real_args.push_back("--remove_unknown_client");
+		real_args.push_back(client_arg.getValue());
+	}
 	real_args.push_back("--snapshot_helper");
 	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 
