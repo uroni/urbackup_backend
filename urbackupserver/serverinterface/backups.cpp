@@ -1458,7 +1458,7 @@ ACTION_IMPL(backups)
 		IDatabase *db=helper.getDatabase();
 		if(sa.empty())
 		{
-			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
+			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image FROM clients";
 			if(token_authentication)
 			{
 				if(CURRP.find("clientname")==CURRP.end())
@@ -1519,6 +1519,7 @@ ACTION_IMPL(backups)
 					obj.set("name", res[i]["name"]);
 					obj.set("id", watoi(res[i]["id"]));
 					obj.set("lastbackup", watoi64(res[i]["lastbackup"]));
+					obj.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
 					clients.add(obj);
 				}
 				ret.set("clients", clients);
