@@ -5790,6 +5790,8 @@ function addPlural(val, str)
 }
 function dectorateTimelength(tl, unit)
 {
+	//Intervals are stored in whole seconds, so months/years come back as e.g. 0.99999...
+	tl=Math.round(tl*100)/100;
 	if(unit=='h') tl+=" "+trans(addPlural(tl, "hour"));
 	else if(unit=='d') tl+=" "+trans(addPlural(tl,"day"));
 	else if(unit=='w') tl+=" "+trans(addPlural(tl,"week"));
