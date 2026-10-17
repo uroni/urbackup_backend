@@ -534,12 +534,30 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 	std::vector<ServerCleanupDao::SClientInfo> res_clients=cleanupdao->getClients();
 
+	//Set by "urbackupsrv remove-unknown --client"
+	std::string only_client = Server->getServerParameter("remove_unknown_client");
+	if (!only_client.empty())
+	{
+		std::vector<ServerCleanupDao::SClientInfo> sel_clients;
+		for (size_t i = 0; i < res_clients.size(); ++i)
+		{
+			if (res_clients[i].name == only_client)
+				sel_clients.push_back(res_clients[i]);
+		}
+		if (sel_clients.empty())
+		{
+			Server->Log("Client \"" + only_client + "\" not found", LL_ERROR);
+			return;
+		}
+		res_clients = sel_clients;
+	}
+
 	for(size_t i=0;i<res_clients.size();++i)
 	{
 		int clientid=res_clients[i].id;
 		const std::string& clientname=res_clients[i].name;
 
-		Server->Log("Removing unknown for client \""+clientname+"\"");
+		Server->Log("Removing unknown for client \""+clientname+"\" ("+convert(i+1)+"/"+convert(res_clients.size())+")");
 
 		std::vector<ServerCleanupDao::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
@@ -733,6 +751,14 @@ void ServerCleanupThread::do_remove_unknown(void)
 			}
 		}
 		check_symlinks(res_clients[i], backupfolder, false);
+	}
+
+	if (!only_client.empty())
+	{
+		//Covers the file entries of all clients
+		Server->Log("Skipping removal of dangling file entries (only one client selected)", LL_INFO);
+		FileIndex::flush();
+		return;
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
