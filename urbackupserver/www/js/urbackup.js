@@ -1961,6 +1961,10 @@ function show_backups2(data)
 				obj.lastbackup="-";
 			else
 				obj.lastbackup = format_unix_timestamp(obj.lastbackup);
+			if(obj.lastbackup_image==0)
+				obj.lastbackup_image="-";
+			else
+				obj.lastbackup_image = format_unix_timestamp(obj.lastbackup_image);
 			rows+=dustRender("backups_clients_row", obj);
 		}
 		ndata=dustRender("backups_clients", {rows: rows, ses: g.session});
