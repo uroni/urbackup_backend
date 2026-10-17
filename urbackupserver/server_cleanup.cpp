@@ -819,18 +819,13 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 	if (image_extension != "raw"
 		|| !BackupServer::isImageSnapshotsEnabled())
 	{
+		//Files that are already gone (e.g. deleted manually) do not prevent removing the backup
 		bool b = true;
-		if (!deleteAndTruncateFile(logid, path))
+		const char* const required_exts[] = { "", ".hash", ".mbr" };
+		for (const char* ext : required_exts)
 		{
-			b = false;
-		}
-		if (!deleteAndTruncateFile(logid, path + ".hash"))
-		{
-			b = false;
-		}
-		if (!deleteAndTruncateFile(logid, path + ".mbr"))
-		{
-			if (os_get_file_type(os_file_prefix(path + ".mbr")) & EFileType_File)
+			if (!deleteAndTruncateFile(logid, path + ext)
+				&& (os_get_file_type(os_file_prefix(path + ext)) & EFileType_File))
 			{
 				b = false;
 			}
@@ -839,7 +834,8 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 		deleteAndTruncateFile(logid, path + ".sync");
 		deleteAndTruncateFile(logid, path + ".bitmap");
 
-		if (b && ExtractFileName(ExtractFilePath(path)) != clientname)
+		if (b && ExtractFileName(ExtractFilePath(path)) != clientname
+			&& os_directory_exists(os_file_prefix(ExtractFilePath(path))))
 		{
 			b = os_remove_dir(os_file_prefix(ExtractFilePath(path)));
 		}
