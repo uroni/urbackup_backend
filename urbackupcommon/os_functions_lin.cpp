@@ -82,6 +82,68 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error, bool ex
 	return getFiles(path, has_error, ignore_other_fs);
 }
 
+#ifdef __APPLE__
+	static bool _sipCheck(const std::string &fn) {
+		bool res=false;
+		static const std::vector<std::string> blocked = {
+			"/Library/Caches/com.apple.aned",
+			"/Library/Caches/com.apple.amsengagementd.classicdatavault",
+			"/Library/Caches/com.apple.aneuserd",
+			"/System/Library/AssetsV2/com_apple_MobileAsset_UAF_FM_GenerativeModels",
+			"/System/Library/AssetsV2/com_apple_MobileAsset_UAF_FM_Overrides",
+			"/System/Library/AssetsV2/com_apple_MobileAsset_UAF_FM_Visual",
+			"/System/Library/AssetsV2/com_apple_MobileAsset_UAF_IF_Planner",
+			"/System/Library/AssetsV2/com_apple_MobileAsset_UAF_IF_PlannerOverrides",
+			"/private/var/OOPJit",
+			"/private/var/containers/Data/ProtectedSystem",
+			"/private/var/db/AppleIntelligencePlatform",
+			"/private/var/db/ExtensibleSSO/Configuration",
+			"/private/var/db/installcoordinationd",
+			"/private/var/db/rmd",
+			"/private/var/db/rmd/secure",
+			"/private/var/db/SoC",
+			"/private/var/db/SystemKeys",
+			"/private/var/db/appinstalld",
+			"/private/var/db/ConfigurationProfiles/Store",
+			"/private/var/db/CoreDuet/Knowledge",
+			"/private/var/db/DifferentialPrivacy",
+			"/private/var/db/DumpPanic",
+			"/private/var/db/fpsd/dvp",
+			"/private/var/db/KernelExtensionManagement/Staging",
+			"/private/var/db/lockdown",
+			"/private/var/db/MobileIdentityService",
+			"/private/var/db/oah",
+			"/private/var/db/searchparty",
+			"/private/var/db/sysdiagnose/com.apple.sysdiagnose",
+			"/private/var/networkd/db",
+			"/private/var/protected/trustd/private",
+			"/System/Library/Templates/Data/private/var/db/oah"
+		};
+		std::string try_path;
+		try_path=fn;
+
+		std::string prefix="/Volumes/urbackup_snaps/";
+		if(fn.find(prefix)==0) 
+		{
+			std::string remainder=fn.substr(prefix.size());
+			size_t sl=remainder.find('/');
+			if(sl!=std::string::npos) 
+			{
+				try_path="/"+remainder.substr(sl+1);
+			}
+		}
+		for(size_t i=0;i<blocked.size();++i) 
+		{
+			if(try_path==blocked[i]) 
+			{ 
+				res=true;
+				break; 
+			}
+		}
+		return res;
+	}
+#endif
+
 std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
@@ -128,30 +190,6 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 		if(f.name=="." || f.name==".." )
 			continue;		
 
-#ifdef __APPLE__
-//        Cannot stat certain locations due to macOS SIP restrictions
-        if(upath+dirp->d_name=="/Library/Caches/com.apple.aned" ||
-            upath+dirp->d_name=="/private/var/db/appinstalld" ||
-            upath+dirp->d_name=="/private/var/db/ConfigurationProfiles/Store" ||
-            upath+dirp->d_name=="/private/var/db/CoreDuet/Knowledge" ||
-            upath+dirp->d_name=="/private/var/db/DifferentialPrivacy" ||
-            upath+dirp->d_name=="/private/var/db/DumpPanic" ||
-            upath+dirp->d_name=="/private/var/db/fpsd/dvp" ||
-            upath+dirp->d_name=="/private/var/db/KernelExtensionManagement/Staging" ||
-            upath+dirp->d_name=="/private/var/db/lockdown" ||
-            upath+dirp->d_name=="/private/var/db/MobileIdentityService" ||
-            upath+dirp->d_name=="/private/var/db/oah" ||
-            upath+dirp->d_name=="/private/var/db/searchparty" ||
-            upath+dirp->d_name=="/private/var/db/sysdiagnose/com.apple.sysdiagnose" ||
-            upath+dirp->d_name=="/private/var/networkd/db" ||
-            upath+dirp->d_name=="/private/var/protected/trustd/private" ||
-            upath+dirp->d_name=="/System/Library/Templates/Data/private/var/db/oah")
-        {
-            Log("[macOS] Skipping \""+upath+dirp->d_name+"\" due to macOS SIP restriction", LL_INFO);
-            continue;
-        }
-#endif
-    
 		f.isdir=(dirp->d_type==DT_DIR);
 		
 		struct stat64 f_info;
@@ -207,6 +245,18 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 		{
 			std::string errmsg;
 			int err = os_last_error(errmsg);
+#ifdef __APPLE__
+			if(err==EPERM)
+			{
+				std::string fullpath = upath + dirp->d_name;
+				if(_sipCheck(fullpath))
+				{
+					Log("[macOS] Skipping \"" + fullpath + "\" due to SIP restriction", LL_INFO);
+					errno=0;
+					continue;
+				}
+			}
+#endif
 			Log("Cannot stat \""+upath+dirp->d_name+"\": "+(errmsg)+" ("+convert(err)+")", LL_ERROR);
 			if(has_error!=NULL)
 			{
