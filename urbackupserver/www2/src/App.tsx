@@ -255,6 +255,15 @@ export const router = createHashRouter([
                   return { Component: LocalTab };
                 },
               },
+              {
+                path: ":clientId/internet-active",
+                lazy: async () => {
+                  const { InternetTab } = await import(
+                    "./features/settings/Clients/InternetTab"
+                  );
+                  return { Component: InternetTab };
+                },
+              },
             ],
           },
         ],
