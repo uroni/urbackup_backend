@@ -41,7 +41,11 @@ export interface SettingField
   name: string;
   label: string;
   // "mergeable" settings can combine the values of several sources
-  kind: "checkbox" | "text" | "mergeable" | "select";
+  kind: "checkbox" | "text" | "mergeable" | "select" | "custom";
+  // Input of "custom" settings, with its own hidden inputs for the form
+  render?: (settings: ClientSettings["settings"]) => React.ReactNode;
+  // Form entries of "custom" settings
+  schema?: Record<string, ZodMiniType>;
   // Values of "select" settings
   options?: { value: string; label: string }[];
   // Format of the value shown for "text" settings
@@ -180,6 +184,10 @@ function SettingInput({
     );
   }
 
+  if (field.kind === "custom") {
+    return field.render?.(settings);
+  }
+
   if (field.kind === "select") {
     return (
       <SelectDropdown
@@ -254,6 +262,10 @@ function createSchema(fields: SettingField[]) {
   return z.object(
     Object.fromEntries(
       fields.flatMap((f): [string, ZodMiniType][] => {
+        if (f.kind === "custom") {
+          return Object.entries(f.schema ?? {});
+        }
+
         if (f.kind === "checkbox") {
           return [
             [f.name, z.stringbool()],
