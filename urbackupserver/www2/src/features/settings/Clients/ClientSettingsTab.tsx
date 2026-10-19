@@ -38,8 +38,10 @@ export interface SettingField
   label: string;
   // "mergeable" settings can combine the values of several sources
   kind: "checkbox" | "text" | "mergeable";
-  // Format of the value saved for "text" settings
+  // Format of the value shown for "text" settings
   pattern?: RegExp;
+  // Converts a "text" setting between the stored and the shown value
+  format?: { ui: (v: string) => string; api: (v: string) => string };
   // Only shown for main clients, not for virtual sub clients
   mainClientOnly?: boolean;
 }
@@ -92,6 +94,17 @@ function ClientSettingsForm({
     (f) => !f.mainClientOnly || settings.main_client !== false,
   );
 
+  const onSubmit = (data: Record<string, unknown>) => {
+    const formatted = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => {
+        const format = shownFields.find((f) => f.name === k)?.format;
+        return [k, format ? format.api(String(v)) : v];
+      }),
+    );
+
+    handleSubmit(formatted as ClientSettings["settings"]);
+  };
+
   return (
     <FormContainer>
       <h1>
@@ -113,7 +126,7 @@ function ClientSettingsForm({
               fields={[]}
               schema={createSchema(shownFields)}
               initialFormState={{}}
-              onSubmit={handleSubmit}
+              onSubmit={onSubmit}
             >
               {(validationMessages) =>
                 shownFields.map((field) => (
@@ -152,9 +165,9 @@ function SettingInput({
         name={field.name}
         dropdownLabel={createDropdownLabel(field.label.toLowerCase())}
         field={formField}
-        initialFormState={getSettingState<CheckboxTextDropdownState>(
-          settings,
-          field.name,
+        initialFormState={formatState(
+          getSettingState<CheckboxTextDropdownState>(settings, field.name),
+          field.format,
         )}
         validationMessage={validationMessage}
       />
@@ -192,6 +205,24 @@ function SettingInput({
       )}
     />
   );
+}
+
+function formatState(
+  state: CheckboxTextDropdownState,
+  format: SettingField["format"],
+) {
+  if (!format) {
+    return state;
+  }
+
+  const ui = (v: unknown) => (v === undefined ? v : format.ui(String(v)));
+
+  return {
+    ...state,
+    value: ui(state.value),
+    value_group: ui(state.value_group),
+    value_client: ui(state.value_client),
+  } as CheckboxTextDropdownState;
 }
 
 const SOURCES = z.enum(["1", "2", "4"]);

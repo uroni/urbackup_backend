@@ -246,6 +246,15 @@ export const router = createHashRouter([
                   return { Component: ClientTab };
                 },
               },
+              {
+                path: ":clientId/local-passive",
+                lazy: async () => {
+                  const { LocalTab } = await import(
+                    "./features/settings/Clients/LocalTab"
+                  );
+                  return { Component: LocalTab };
+                },
+              },
             ],
           },
         ],
