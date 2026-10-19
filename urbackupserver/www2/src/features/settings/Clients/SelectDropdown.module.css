@@ -1,0 +1,11 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingXS);
+}
+
+/* Stay in the column of the field, long values are cut off */
+.select {
+  flex: 1;
+  min-width: 0;
+}
