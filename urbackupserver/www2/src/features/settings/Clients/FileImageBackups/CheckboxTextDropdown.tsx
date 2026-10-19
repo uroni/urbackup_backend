@@ -11,6 +11,7 @@ import textStyles from "../../Form/TextField.module.css";
 import styles from "./FileImageBackups.module.css";
 import { ResettableInput } from "../../Form/TextField";
 import { DropdownField } from "./DropdownField";
+import { isClientConfigurable } from "./clientConfigurable";
 import {
   FORMATTED_VALUE_TO_USE,
   SETTINGS_SOURCE,
@@ -37,6 +38,9 @@ interface FormData {
 }
 
 const HERE_SETTINGS = USE_VALUES[SETTINGS_SOURCE.HERE];
+
+const { value_client, ...formattedOptionsWithoutClient } =
+  FORMATTED_VALUE_TO_USE;
 
 function selectValueInUse(multiValue: InitialFormState, use: Use) {
   return multiValue[VALUE_TO_USE[use]];
@@ -167,13 +171,14 @@ export function CheckboxTextDropdown({
           }}
         />
       )}
-      <input type="hidden" name={name} value={hiddenInputValues.value} />
+      <input type="hidden" name={name} value={hiddenInputValues.value ?? ""} />
       <input type="hidden" name={nameUse} value={hiddenInputValues.use} />
       {formData.enabled && (
         <div>
           <TextFieldDropdown
             key={checky.field.name}
             label={checky.field.label}
+            hint={field.description}
             validationMessage={validationMessage}
             type="text"
             inputProps={{
@@ -197,7 +202,11 @@ export function CheckboxTextDropdown({
               id={nameUse}
               label={dropdownLabel}
               options={VALUE_TO_USE}
-              formattedOptions={FORMATTED_VALUE_TO_USE}
+              formattedOptions={
+                isClientConfigurable(name)
+                  ? FORMATTED_VALUE_TO_USE
+                  : formattedOptionsWithoutClient
+              }
               value={FORMATTED_VALUE_TO_USE[VALUE_TO_USE[formData.use]].name}
               selectedOptions={[String(formData.use)]}
               onOptionSelect={(e, d) => {
@@ -225,6 +234,7 @@ export function CheckboxTextDropdown({
 
 function TextFieldDropdown({
   label,
+  hint,
   name,
   type,
   onChange,
@@ -233,6 +243,7 @@ function TextFieldDropdown({
   children,
 }: {
   label: string;
+  hint?: React.ReactNode;
   name?: string;
   type: InputProps["type"];
   onChange: (value: string | undefined) => void;
@@ -260,6 +271,7 @@ function TextFieldDropdown({
   return (
     <FUIField
       label={label}
+      hint={hint ? <>{hint}</> : undefined}
       {...(validationMessage && {
         validationState: "error",
         validationMessage,
