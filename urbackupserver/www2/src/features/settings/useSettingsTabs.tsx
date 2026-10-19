@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { SelectTabEvent, SelectTabData } from "@fluentui/react-components";
+import { useLocation } from "react-router-dom";
 
 import { router } from "../../App";
 
@@ -12,30 +12,32 @@ export interface TabItem {
 const BASE_SETTINGS_URL = "/settings";
 
 export function useSettingsTabs(tabs: TabItem[], baseURL = BASE_SETTINGS_URL) {
-  const [selectedTab, setSelectedTab] = useState(() => getSelectedPage(tabs));
+  const { pathname } = useLocation();
 
   const onTabSelect = async (_: SelectTabEvent, data: SelectTabData) => {
-    setSelectedTab(data.value as string);
-
     const nt = `${baseURL}/${data.value}`;
     await router.navigate(nt);
   };
 
   return {
-    selectedTab,
+    // Follow the route, so links and back/forward update the selection too
+    selectedTab: getSelectedPage(tabs, pathname),
     onTabSelect,
   };
 }
 
-function getSelectedPage(settingsTabs: TabItem[]) {
-  const page = window.location.hash;
-  const settingsPage = page.replace(/#\/\w+\/?/, "");
+function getSelectedPage(settingsTabs: TabItem[], pathname: string) {
+  const settingsPage = pathname.replace(/^\/\w+\/?/, "");
+  const segments = settingsPage.split("/");
 
-  const pageInTabs = settingsTabs.find((st) => st.value === settingsPage);
+  // "clients/7/permissions" selects "clients" in the sidebar and
+  // "permissions" in the client tabs
+  const pageInTabs = settingsTabs.find(
+    (st) =>
+      st.value === settingsPage ||
+      st.value === segments[0] ||
+      st.value === segments[segments.length - 1],
+  );
 
-  if (!pageInTabs || !settingsPage) {
-    return settingsTabs[0].value;
-  }
-
-  return settingsPage;
+  return pageInTabs?.value ?? settingsTabs[0].value;
 }
