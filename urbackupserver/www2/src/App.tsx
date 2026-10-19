@@ -237,6 +237,42 @@ export const router = createHashRouter([
                   return { Component: Permissions };
                 },
               },
+              {
+                path: ":clientId/client",
+                lazy: async () => {
+                  const { ClientTab } = await import(
+                    "./features/settings/Clients/ClientTab"
+                  );
+                  return { Component: ClientTab };
+                },
+              },
+              {
+                path: ":clientId/local-passive",
+                lazy: async () => {
+                  const { LocalTab } = await import(
+                    "./features/settings/Clients/LocalTab"
+                  );
+                  return { Component: LocalTab };
+                },
+              },
+              {
+                path: ":clientId/internet-active",
+                lazy: async () => {
+                  const { InternetTab } = await import(
+                    "./features/settings/Clients/InternetTab"
+                  );
+                  return { Component: InternetTab };
+                },
+              },
+              {
+                path: ":clientId/advanced",
+                lazy: async () => {
+                  const { AdvancedTab } = await import(
+                    "./features/settings/Clients/AdvancedTab"
+                  );
+                  return { Component: AdvancedTab };
+                },
+              },
             ],
           },
         ],

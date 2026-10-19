@@ -1,5 +1,5 @@
 .field:has(.reset-input) {
-  --field-width: 34ch;
+  --field-width: var(--settings-field-width, 34ch);
 
   grid-template-columns: auto var(--field-width);
   align-items: center;
