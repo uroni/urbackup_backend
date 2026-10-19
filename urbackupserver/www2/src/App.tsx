@@ -273,6 +273,15 @@ export const router = createHashRouter([
                   return { Component: AdvancedTab };
                 },
               },
+              {
+                path: ":clientId/alerts",
+                lazy: async () => {
+                  const { AlertsTab } = await import(
+                    "./features/settings/Clients/AlertsTab"
+                  );
+                  return { Component: AlertsTab };
+                },
+              },
             ],
           },
         ],
