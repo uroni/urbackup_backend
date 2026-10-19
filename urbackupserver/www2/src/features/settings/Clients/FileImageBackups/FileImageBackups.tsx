@@ -248,7 +248,7 @@ type SettingLookup = ClientSettingState | SettingState["value"];
 // The clientsettings response mixes the per-setting objects
 // ({ use, value_group, ... }) with a few plain values (clientid, clientname,
 // ...). Every field on this page is a setting.
-function getSettingState<T = ClientSettingState>(
+export function getSettingState<T = ClientSettingState>(
   settings: ClientSettings["settings"],
   name: string,
 ) {
@@ -292,6 +292,6 @@ function getValueFromSettings(
   );
 }
 
-function createDropdownLabel(text: string) {
+export function createDropdownLabel(text: string) {
   return `Select settings source for ${text}`;
 }
