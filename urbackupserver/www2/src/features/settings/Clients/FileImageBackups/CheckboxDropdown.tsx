@@ -71,7 +71,9 @@ export function CheckboxDropdown({
   };
 
   return (
-    <div className={`${styles["checkbox-wrapper"]} repel`}>
+    <div
+      className={`${styles["checkbox-wrapper"]} ${styles["checkbox-dropdown"]} repel`}
+    >
       <input type="hidden" name={name} value={hiddenInputValues.value} />
       <input type="hidden" name={nameUse} value={hiddenInputValues.use} />
       <CheckboxFieldUncontrolled
