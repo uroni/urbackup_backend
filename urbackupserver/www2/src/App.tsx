@@ -108,6 +108,15 @@ export const router = createHashRouter([
             },
           },
           {
+            path: ":clientId/versions",
+            lazy: async () => {
+              const { FileVersions } = await import(
+                "./features/backups/FileVersions"
+              );
+              return { Component: FileVersions };
+            },
+          },
+          {
             path: ":clientId/:backupId",
             lazy: async () => {
               const { BackupContentTable } = await import(

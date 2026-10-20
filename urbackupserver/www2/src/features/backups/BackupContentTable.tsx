@@ -11,7 +11,7 @@ import {
   Button,
   TableColumnId,
 } from "@fluentui/react-components";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Document20Filled, Folder20Filled } from "@fluentui/react-icons";
 
@@ -104,11 +104,30 @@ export const columns: TableColumnDefinition<File>[] = [
   createTableColumn<File>({
     columnId: "actions",
     renderHeaderCell: () => "",
-    renderCell: () => {
-      return <Button>List</Button>;
-    },
+    renderCell: (item) => <ListVersionsButton name={item.name} />,
   }),
 ];
+
+function ListVersionsButton({ name }: { name: string }) {
+  const { clientId } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const path = `${searchParams.get("path") ?? ""}/${name}`;
+
+  return (
+    <Button
+      title="List this path in every backup"
+      onClick={() =>
+        navigate(
+          `/backups/${clientId}/versions?${new URLSearchParams({ path })}`,
+        )
+      }
+    >
+      List
+    </Button>
+  );
+}
 
 const noneColumns = ["name", "size", "created", "mod", "access"];
 
