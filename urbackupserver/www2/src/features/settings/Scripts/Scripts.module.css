@@ -1,0 +1,34 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--spacingS);
+}
+
+.param {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--spacingS);
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Fluent inputs keep their own width otherwise and overflow the grid */
+.param > *,
+.param :is(span, input, select) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 60rem) {
+  .param {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.code textarea {
+  font-family: var(--fontFamilyMonospace);
+  white-space: pre;
+}
