@@ -3,8 +3,10 @@ import {
   Checkbox,
   Field as FUIField,
   Input,
+  Link,
   Select,
 } from "@fluentui/react-components";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod/v4-mini";
 
 import type {
@@ -94,6 +96,8 @@ function AlertSettings({ settings }: { settings: ClientSettings["settings"] }) {
   // Shows the values of a newly selected source in the inputs
   const [sourceSwitches, setSourceSwitches] = useState(0);
 
+  const navigate = useNavigate();
+
   const script = scripts.find((s) => String(s.id) === state.script);
 
   const change = (update: Partial<typeof state>) =>
@@ -176,6 +180,14 @@ function AlertSettings({ settings }: { settings: ClientSettings["settings"] }) {
           />
         </div>
       </FUIField>
+
+      {Boolean(all.can_edit_scripts) && (
+        <Link
+          onClick={() => navigate(`/settings/alert-scripts?id=${state.script}`)}
+        >
+          Edit alert scripts
+        </Link>
+      )}
 
       {script?.params.map((param) => (
         <AlertParam
