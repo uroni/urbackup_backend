@@ -206,6 +206,15 @@ export const router = createHashRouter([
             },
           },
           {
+            path: "change-password",
+            lazy: async () => {
+              const { ChangePassword } = await import(
+                "./features/settings/ChangePassword"
+              );
+              return { Component: ChangePassword };
+            },
+          },
+          {
             path: "alert-scripts",
             lazy: async () => {
               const { AlertScripts } = await import(
