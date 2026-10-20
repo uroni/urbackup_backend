@@ -1,4 +1,54 @@
+import { useState } from "react";
+import { Field as FUIField, Select } from "@fluentui/react-components";
+import { z } from "zod/v4-mini";
+
+import type { ClientSettings } from "../../../api/urbackupserver";
+import textStyles from "../Form/TextField.module.css";
+import { useSettings } from "../useSettings";
 import { ClientSettingsTab, type SettingField } from "./ClientSettingsTab";
+import selectStyles from "./SelectDropdown.module.css";
+
+/**
+ * Group of the client, only for users that may change it
+ */
+function GroupMembership({
+  settings,
+}: {
+  settings: ClientSettings["settings"];
+}) {
+  const { navitems } = useSettings();
+
+  const [group, setGroup] = useState(
+    String((settings as Record<string, unknown>).memberof ?? 0),
+  );
+
+  if (!navitems.groupmod) {
+    return null;
+  }
+
+  return (
+    <FUIField
+      label="Group"
+      orientation="horizontal"
+      className={`${textStyles.field} ${selectStyles.field}`}
+    >
+      <div className={selectStyles.row}>
+        <input type="hidden" name="memberof" value={group} />
+        <Select
+          className={selectStyles.select}
+          value={group}
+          onChange={(_, d) => setGroup(d.value)}
+        >
+          {navitems.groups.map((g) => (
+            <option key={g.id} value={String(g.id)}>
+              {g.name || "Default"}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </FUIField>
+  );
+}
 
 // Same check as the old web interface
 const BACKUP_WINDOW_PATTERN =
@@ -17,6 +67,14 @@ const backupWindowField = (
 });
 
 const clientFields: SettingField[] = [
+  {
+    name: "memberof",
+    label: "Group",
+    kind: "custom",
+    clientOnly: true,
+    render: (settings) => <GroupMembership settings={settings} />,
+    schema: { memberof: z.optional(z.string()) },
+  },
   {
     name: "startup_backup_delay",
     label: "Delay after system startup",
