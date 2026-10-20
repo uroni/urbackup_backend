@@ -1,0 +1,17 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacingXS);
+}
+
+/* Stay in the column of the field, long values are cut off */
+.select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Same input column as the text fields, also for long option texts */
+.field {
+  grid-template-columns: auto var(--settings-field-width, 34ch);
+  align-items: center;
+}
