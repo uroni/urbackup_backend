@@ -542,6 +542,7 @@ export interface GeneralSettings {
 export interface ClientSettings {
   sa: "clientsettings"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
+  cowraw_available?: boolean; // If true the cowraw image format is available
   settings: { [key: string]: ClientSettingState } | { [key: string]: SettingValueType };
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
@@ -1404,7 +1405,7 @@ class UrBackupServer {
       "include_files",
       "default_dirs",
       "image_letters",
-      "internet_speeds",
+      "internet_speed",
       "local_speed",
       "internet_mode_enabled",
       "internet_full_file_backups",
@@ -1417,6 +1418,28 @@ class UrBackupServer {
       "local_encrypt"
     ] as const;
   }
+
+  // Add a settings group named `name`, it starts with the general settings.
+  // Fails if a group with that name exists.
+  addGroup = async (name: string) => {
+    const resp = await this.fetchData({ sa: "groupadd", name }, "settings");
+    if (!resp.add_ok) {
+      throw new Error("Adding group failed");
+    }
+    return resp.added_group as SettingsGroups;
+  };
+
+  // Remove the settings group with id `groupid`, its clients move to the
+  // default group
+  removeGroup = async (groupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "groupremove", id: "" + groupid },
+      "settings",
+    );
+    if (!resp.delete_ok) {
+      throw new Error("Removing group failed");
+    }
+  };
 
   // Get client settings for client with id `clientid`
   getClientSettings = async (clientid: ClientIdType) => {
