@@ -22,8 +22,12 @@ export const GENERAL_SETTINGS = 0;
 /**
  * The general settings in the form of client settings that are set "here"
  */
-export function asClientSettings({ settings }: GeneralSettings) {
+export function asClientSettings({
+  settings,
+  cowraw_available,
+}: GeneralSettings) {
   return {
+    cowraw_available,
     settings: Object.fromEntries(
       Object.entries(settings).map(([k, v]) => {
         // Settings of clients arrive as { value }, the server settings plain
@@ -43,7 +47,7 @@ export function useFileBackups(clientId: number) {
   const queryKey = [...QUERY_KEY, Number(clientId)];
 
   const {
-    data: { settings },
+    data: { settings, cowraw_available },
   } = useSuspenseQuery({
     queryKey,
     queryFn: () =>
@@ -108,6 +112,7 @@ export function useFileBackups(clientId: number) {
 
   return {
     settings,
+    cowrawAvailable: !!cowraw_available,
     handleSubmit,
   };
 }

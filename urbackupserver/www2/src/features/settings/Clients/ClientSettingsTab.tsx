@@ -64,6 +64,8 @@ export interface SettingField
   // Only shown in the settings of clients or in the general settings
   clientOnly?: boolean;
   generalOnly?: boolean;
+  // Checkbox of "text" settings that disables them with a negative value
+  checkboxLabel?: string;
 }
 
 /**
@@ -130,17 +132,6 @@ function ClientSettingsForm({
       : !f.generalOnly && (!f.mainClientOnly || settings.main_client !== false),
   );
 
-  const onSubmit = (data: Record<string, unknown>) => {
-    const formatted = Object.fromEntries(
-      Object.entries(data).map(([k, v]) => {
-        const format = shownFields.find((f) => f.name === k)?.format;
-        return [k, format ? format.api(String(v)) : v];
-      }),
-    );
-
-    handleSubmit(formatted as ClientSettings["settings"]);
-  };
-
   return (
     <FormContainer>
       <h1>
@@ -155,30 +146,62 @@ function ClientSettingsForm({
           These settings can only be changed on the main client.
         </Body1>
       ) : (
-        <FormCard>
-          <div className={`flow ${styles["settings-form"]}`}>
-            <FormSection
-              // The fields below keep their own state and transform their values
-              fields={[]}
-              schema={createSchema(shownFields)}
-              initialFormState={{}}
-              onSubmit={onSubmit}
-            >
-              {(validationMessages) =>
-                shownFields.map((field) => (
-                  <SettingInput
-                    key={field.name}
-                    field={field}
-                    settings={settings}
-                    validationMessage={validationMessages[field.name]}
-                  />
-                ))
-              }
-            </FormSection>
-          </div>
-        </FormCard>
+        <SettingsFormCard
+          fields={shownFields}
+          settings={settings}
+          onSubmit={handleSubmit}
+        />
       )}
     </FormContainer>
+  );
+}
+
+/**
+ * A form with the inputs of `fields` that saves them with `onSubmit`
+ */
+export function SettingsFormCard({
+  fields,
+  settings,
+  onSubmit,
+}: {
+  fields: SettingField[];
+  settings: ClientSettings["settings"];
+  onSubmit: (settings: ClientSettings["settings"]) => void;
+}) {
+  const submit = (data: Record<string, unknown>) => {
+    const formatted = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => {
+        const format = fields.find((f) => f.name === k)?.format;
+        return [k, format ? format.api(String(v)) : v];
+      }),
+    );
+
+    onSubmit(formatted as ClientSettings["settings"]);
+  };
+
+  return (
+    <FormCard>
+      <div className={`flow ${styles["settings-form"]}`}>
+        <FormSection
+          // The fields below keep their own state and transform their values
+          fields={[]}
+          schema={createSchema(fields)}
+          initialFormState={{}}
+          onSubmit={submit}
+        >
+          {(validationMessages) =>
+            fields.map((field) => (
+              <SettingInput
+                key={field.name}
+                field={field}
+                settings={settings}
+                validationMessage={validationMessages[field.name]}
+              />
+            ))
+          }
+        </FormSection>
+      </div>
+    </FormCard>
   );
 }
 
@@ -199,6 +222,7 @@ function SettingInput({
     return (
       <CheckboxTextDropdown
         name={field.name}
+        checkboxLabel={field.checkboxLabel}
         dropdownLabel={createDropdownLabel(field.label.toLowerCase())}
         field={formField}
         initialFormState={formatState(
