@@ -7,11 +7,23 @@ import {
 } from "@fluentui/react-components";
 import { useNavigate } from "react-router-dom";
 
+import { useSettings } from "./useSettings";
 import { type TabItem, useSettingsTabs } from "./useSettingsTabs";
 import styles from "./SettingsNavSidebar.module.css";
 
 export const SettingsNavSidebar = () => {
-  const { selectedTab, onTabSelect } = useSettingsTabs(SETTINGS_TABS);
+  const { navitems } = useSettings();
+
+  // Like the client tabs, the Internet settings only for users that may
+  // change them
+  const tabs = SETTINGS_TABS.map((t) => ({
+    ...t,
+    children: t.children?.filter(
+      (c) => c.value !== "internet-active" || navitems.internet,
+    ),
+  }));
+
+  const { selectedTab, onTabSelect } = useSettingsTabs(tabs);
 
   const navigate = useNavigate();
 
@@ -25,7 +37,7 @@ export const SettingsNavSidebar = () => {
         }}
       >
         <TabList selectedValue={selectedTab} vertical onTabSelect={onTabSelect}>
-          <SettingsTabs tabs={SETTINGS_TABS} />
+          <SettingsTabs tabs={tabs} />
         </TabList>
       </div>
     </div>
@@ -105,6 +117,10 @@ const SETTINGS_TABS: TabItem[] = [
         title: "Backups",
       },
       {
+        value: "permissions",
+        title: "Permissions",
+      },
+      {
         value: "client",
         title: "Client",
       },
@@ -115,6 +131,14 @@ const SETTINGS_TABS: TabItem[] = [
       {
         value: "alerts",
         title: "Alerts",
+      },
+      {
+        value: "local-passive",
+        title: "Local/Passive",
+      },
+      {
+        value: "internet-active",
+        title: "Internet/Active",
       },
       {
         value: "advanced",

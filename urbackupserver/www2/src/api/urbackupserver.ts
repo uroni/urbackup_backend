@@ -469,6 +469,14 @@ export interface AlertScriptParam {
   type: string; // Type of the setting
 }
 
+export interface AlertScriptEdit {
+  scripts: { id: number; name: string }[]; // List of alert scripts
+  id: number; // Id of the alert script (1: the default script)
+  script: string; // Lua code of the alert script
+  params: AlertScriptParam[]; // Parameters of the alert script
+  saved_ok?: boolean;
+}
+
 export interface SettingsAlertScript {
   id: number; // Id of the alert script
   name: string; // Name of the alert script
@@ -542,6 +550,7 @@ export interface GeneralSettings {
 export interface ClientSettings {
   sa: "clientsettings"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
+  cowraw_available?: boolean; // If true the cowraw image format is available
   settings: { [key: string]: ClientSettingState } | { [key: string]: SettingValueType };
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
@@ -1404,7 +1413,7 @@ class UrBackupServer {
       "include_files",
       "default_dirs",
       "image_letters",
-      "internet_speeds",
+      "internet_speed",
       "local_speed",
       "internet_mode_enabled",
       "internet_full_file_backups",
@@ -1417,6 +1426,90 @@ class UrBackupServer {
       "local_encrypt"
     ] as const;
   }
+
+  // Get the alert script with id `id` to edit it, with the list of alert
+  // scripts
+  getAlertScript = async (id: number) => {
+    const resp = await this.fetchData(
+      { sa: "get_alert", id: "" + id },
+      "scripts",
+    );
+    return resp as AlertScriptEdit;
+  };
+
+  // Save the alert script with id `id`, or add it with id -1
+  saveAlertScript = async (
+    id: number,
+    name: string,
+    params: Pick<
+      AlertScriptParam,
+      "name" | "label" | "default_value" | "type"
+    >[],
+    script: string,
+  ) => {
+    const p: Record<string, string> = {
+      sa: "set_alert",
+      id: "" + id,
+      name,
+      script,
+    };
+    params.forEach((param, i) => {
+      p[`${i}_name`] = param.name;
+      p[`${i}_label`] = param.label;
+      p[`${i}_default`] = param.default_value;
+      p[`${i}_type`] = param.type;
+    });
+    const resp = (await this.fetchData(p, "scripts")) as AlertScriptEdit;
+    if (!resp.saved_ok) {
+      throw new Error("Saving alert script failed");
+    }
+    return resp;
+  };
+
+  // Remove the alert script with id `id`, returns the default script
+  removeAlertScript = async (id: number) => {
+    const resp = await this.fetchData(
+      { sa: "rm_alert", id: "" + id },
+      "scripts",
+    );
+    return resp as AlertScriptEdit;
+  };
+
+  // Get the Lua script that formats the report mails
+  getReportScript = async () => {
+    const resp = await this.fetchData({ sa: "get_report" }, "scripts");
+    return resp as { script: string };
+  };
+
+  // Save the Lua script that formats the report mails
+  saveReportScript = async (script: string) => {
+    const resp = await this.fetchData({ sa: "set_report", script }, "scripts");
+    if (!resp.saved_ok) {
+      throw new Error("Saving report script failed");
+    }
+  };
+
+  // Add a settings group named `name`, it starts with the general settings.
+  // Fails if a group with that name exists.
+  addGroup = async (name: string) => {
+    const resp = await this.fetchData({ sa: "groupadd", name }, "settings");
+    if (!resp.add_ok) {
+      throw new Error("Adding group failed");
+    }
+    return resp.added_group as SettingsGroups;
+  };
+
+  // Remove the settings group with id `groupid`, its clients move to the
+  // default group
+  removeGroup = async (groupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "groupremove", id: "" + groupid },
+      "settings",
+    );
+    if (!resp.delete_ok) {
+      throw new Error("Removing group failed");
+    }
+  };
 
   // Get client settings for client with id `clientid`
   getClientSettings = async (clientid: ClientIdType) => {

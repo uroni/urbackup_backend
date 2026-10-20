@@ -7,7 +7,6 @@ import {
   Subtitle2,
   Title3,
 } from "@fluentui/react-components";
-import { useParams } from "react-router-dom";
 
 import { FormCard, FormContainer } from "../../Form/Form";
 import { FormSection } from "../../Form/FormSection";
@@ -17,8 +16,10 @@ import {
   fileBackupsFields,
   fileBackupsFormSchema,
   includeFilesSchema,
+  ransomwareCanaryPathsSchema,
+  toDaysFromSeconds,
+  toSecondsFromDays,
 } from "./backupsForm";
-import { useSettings } from "../../useSettings";
 import styles from "../Clients.module.css";
 import secondaryFormStyles from "./FileImageBackups.module.css";
 import { useFileBackups } from "./useFileBackups";
@@ -39,6 +40,12 @@ import {
   type InitialFormState as CheckboxDropdownState,
 } from "./CheckboxDropdown";
 import { VALUE_TO_USE } from "./utils";
+import { TIME_SPAN_PATTERN } from "../timeSpan";
+import {
+  SettingsFormCard,
+  SettingsTarget,
+  type SettingField,
+} from "../ClientSettingsTab";
 
 const checkboxFieldInputs = [
   {
@@ -84,18 +91,12 @@ const checkboxFieldInputs = [
 ];
 
 export function FileImageBackups() {
-  const { clientId } = useParams();
-
-  const { navitems } = useSettings();
-
-  const client = navitems.clients.find((c) => c.id === +clientId!);
-
-  if (!client) {
-    return <h1>No client found with ID: {clientId}</h1>;
-  }
-
   return (
-    <FileImageBackupsForm clientId={+clientId!} clientName={client.name} />
+    <SettingsTarget>
+      {(clientId, name) => (
+        <FileImageBackupsForm clientId={clientId} clientName={name} />
+      )}
+    </SettingsTarget>
   );
 }
 
@@ -106,7 +107,7 @@ function FileImageBackupsForm({
   clientId: number;
   clientName: string;
 }) {
-  const { settings, handleSubmit } = useFileBackups(clientId);
+  const { settings, cowrawAvailable, handleSubmit } = useFileBackups(clientId);
 
   const initialFormState = useMemo(
     () => getInitialFormState(fileBackupsFields, settings),
@@ -193,6 +194,11 @@ function FileImageBackupsForm({
           label: "default directories",
           schema: defaultDirsSchema,
         },
+        {
+          name: "ransomware_canary_paths",
+          label: "ransomware canary paths",
+          schema: ransomwareCanaryPathsSchema,
+        },
       ].map(({ name, label, schema }, i) => {
         const field = fileBackupsFields.find((f) => f.name === name);
 
@@ -239,8 +245,100 @@ function FileImageBackupsForm({
           </div>
         );
       })}
+
+      <Subtitle1 as="h2" className={styles["subtitle"]}>
+        Image Backups
+      </Subtitle1>
+
+      <SettingsFormCard
+        fields={imageBackupsFields(cowrawAvailable)}
+        settings={settings}
+        onSubmit={handleSubmit}
+      />
     </FormContainer>
   );
+}
+
+const INTERVAL_DESCRIPTION = (
+  <>
+    Can depend on the time, e.g. <code>1@Mon-Fri/8-17;7</code>
+  </>
+);
+
+const imageInterval = (
+  name: string,
+  label: string,
+  checkboxLabel: string,
+): SettingField => ({
+  name,
+  label,
+  checkboxLabel,
+  kind: "text",
+  pattern: TIME_SPAN_PATTERN,
+  description: INTERVAL_DESCRIPTION,
+  inputProps: { contentAfter: "days", "data-field-width": "50%" },
+  transformer: { ui: toDaysFromSeconds, api: toSecondsFromDays },
+});
+
+const imageCount = (name: string, label: string): SettingField => ({
+  name,
+  label,
+  kind: "text",
+  pattern: /^\d*$/,
+  inputProps: { "data-field-width": "33%" },
+});
+
+function imageBackupsFields(cowrawAvailable: boolean): SettingField[] {
+  return [
+    imageInterval(
+      "update_freq_image_incr",
+      "Interval for incremental image backups",
+      "Enable incremental image backups",
+    ),
+    imageInterval(
+      "update_freq_image_full",
+      "Interval for full image backups",
+      "Enable full image backups",
+    ),
+    imageCount("max_image_incr", "Max number of incremental image backups"),
+    imageCount("min_image_incr", "Min number of incremental image backups"),
+    imageCount("max_image_full", "Max number of full image backups"),
+    imageCount("min_image_full", "Min number of full image backups"),
+    {
+      name: "image_letters",
+      label: "Volumes to backup",
+      kind: "mergeable",
+      description: (
+        <>
+          Drive letters separated by a semicolon (";"), e.g. <code>C;D</code>,
+          or <code>ALL</code> for all volumes and <code>ALL_NONUSB</code> for
+          all volumes except USB drives.
+        </>
+      ),
+    },
+    {
+      name: "image_file_format",
+      label: "Image backup file format",
+      kind: "select",
+      options: [
+        {
+          value: "vhdz",
+          label: "Compressed VHD (Compressed non-standard Virtual HardDisk)",
+        },
+        { value: "vhd", label: "VHD (Virtual HardDisk)" },
+        {
+          value: "vhdxz",
+          label:
+            "Compressed VHDX (Compressed non-standard Virtual HardDisk v2) (beta)",
+        },
+        { value: "vhdx", label: "VHDX (Virtual HardDisk v2) (beta)" },
+        // Only with a backup storage that supports snapshots or reflinks
+        ...(cowrawAvailable
+          ? [{ value: "cowraw", label: "Raw copy-on-write file" }]
+          : []),
+      ],
+    },
+  ];
 }
 
 type SettingLookup = ClientSettingState | SettingState["value"];
@@ -248,7 +346,7 @@ type SettingLookup = ClientSettingState | SettingState["value"];
 // The clientsettings response mixes the per-setting objects
 // ({ use, value_group, ... }) with a few plain values (clientid, clientname,
 // ...). Every field on this page is a setting.
-function getSettingState<T = ClientSettingState>(
+export function getSettingState<T = ClientSettingState>(
   settings: ClientSettings["settings"],
   name: string,
 ) {
@@ -292,6 +390,6 @@ function getValueFromSettings(
   );
 }
 
-function createDropdownLabel(text: string) {
+export function createDropdownLabel(text: string) {
   return `Select settings source for ${text}`;
 }

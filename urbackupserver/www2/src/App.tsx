@@ -1,6 +1,10 @@
 import * as React from "react";
 import { Suspense, useEffect, useState } from "react";
-import { createHashRouter, RouterProvider } from "react-router-dom";
+import {
+  createHashRouter,
+  RouterProvider,
+  type RouteObject,
+} from "react-router-dom";
 import LoginPage, { getSessionFromLocalStorage } from "./pages/Login";
 import { StatusPage } from "./pages/Status";
 import {
@@ -202,6 +206,24 @@ export const router = createHashRouter([
             },
           },
           {
+            path: "alert-scripts",
+            lazy: async () => {
+              const { AlertScripts } = await import(
+                "./features/settings/Scripts/AlertScripts"
+              );
+              return { Component: AlertScripts };
+            },
+          },
+          {
+            path: "report-script",
+            lazy: async () => {
+              const { ReportScript } = await import(
+                "./features/settings/Scripts/ReportScript"
+              );
+              return { Component: ReportScript };
+            },
+          },
+          {
             path: "clients",
             lazy: async () => {
               const { Clients } = await import(
@@ -219,8 +241,15 @@ export const router = createHashRouter([
                   return { Component: FileImageBackups };
                 },
               },
+              ...settingsTabRoutes(":clientId/"),
+            ],
+          },
+          {
+            // The default settings of all clients
+            path: "general",
+            children: [
               {
-                path: ":clientId/backups",
+                index: true,
                 lazy: async () => {
                   const { FileImageBackups } = await import(
                     "./features/settings/Clients/FileImageBackups/FileImageBackups"
@@ -228,15 +257,7 @@ export const router = createHashRouter([
                   return { Component: FileImageBackups };
                 },
               },
-              {
-                path: ":clientId/permissions",
-                lazy: async () => {
-                  const { Permissions } = await import(
-                    "./features/settings/Clients/Permissions"
-                  );
-                  return { Component: Permissions };
-                },
-              },
+              ...settingsTabRoutes(""),
             ],
           },
         ],
@@ -244,6 +265,84 @@ export const router = createHashRouter([
     ],
   },
 ]);
+
+// Tabs of the settings of a client and of the general settings
+function settingsTabRoutes(prefix: string): RouteObject[] {
+  return [
+    {
+      path: `${prefix}backups`,
+      lazy: async () => {
+        const { FileImageBackups } = await import(
+          "./features/settings/Clients/FileImageBackups/FileImageBackups"
+        );
+        return { Component: FileImageBackups };
+      },
+    },
+    {
+      path: `${prefix}permissions`,
+      lazy: async () => {
+        const { Permissions } = await import(
+          "./features/settings/Clients/Permissions"
+        );
+        return { Component: Permissions };
+      },
+    },
+    {
+      path: `${prefix}client`,
+      lazy: async () => {
+        const { ClientTab } = await import(
+          "./features/settings/Clients/ClientTab"
+        );
+        return { Component: ClientTab };
+      },
+    },
+    {
+      path: `${prefix}local-passive`,
+      lazy: async () => {
+        const { LocalTab } = await import(
+          "./features/settings/Clients/LocalTab"
+        );
+        return { Component: LocalTab };
+      },
+    },
+    {
+      path: `${prefix}internet-active`,
+      lazy: async () => {
+        const { InternetTab } = await import(
+          "./features/settings/Clients/InternetTab"
+        );
+        return { Component: InternetTab };
+      },
+    },
+    {
+      path: `${prefix}advanced`,
+      lazy: async () => {
+        const { AdvancedTab } = await import(
+          "./features/settings/Clients/AdvancedTab"
+        );
+        return { Component: AdvancedTab };
+      },
+    },
+    {
+      path: `${prefix}alerts`,
+      lazy: async () => {
+        const { AlertsTab } = await import(
+          "./features/settings/Clients/AlertsTab"
+        );
+        return { Component: AlertsTab };
+      },
+    },
+    {
+      path: `${prefix}archive`,
+      lazy: async () => {
+        const { ArchiveTab } = await import(
+          "./features/settings/Clients/ArchiveTab"
+        );
+        return { Component: ArchiveTab };
+      },
+    },
+  ];
+}
 
 const queryClient = new QueryClient();
 
