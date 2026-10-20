@@ -1,17 +1,26 @@
+import { useState } from "react";
 import {
   Badge,
   Body1,
+  Button,
   Caption2Strong,
   Field,
   SearchBox as FUISearchBox,
+  Input,
   Tab,
   TabList,
 } from "@fluentui/react-components";
-import { NavLink, Outlet, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 
 import { useSettings } from "../useSettings";
 import styles from "./Clients.module.css";
-import { SettingsClients } from "../../../api/urbackupserver";
+import type {
+  SettingsClients,
+  SettingsGroups,
+} from "../../../api/urbackupserver";
+import { urbackupServer } from "../../../App";
+import { addMessage } from "../../../components/Banner/messageStore";
 import {
   filterBySearch,
   useFilteredBySearch,
@@ -34,18 +43,23 @@ export function Clients() {
     `/settings/clients/${clientId}`,
   );
 
-  const { setSearch, filteredItems } = useFilteredBySearch<SettingsClients>(
-    navitems.clients,
-    filterClientData,
-  );
+  const { search, setSearch, filteredItems } =
+    useFilteredBySearch<SettingsClients>(navitems.clients, filterClientData);
 
-  const groups = groupClients(filteredItems);
+  // Groups without clients only without a search, to open their settings
+  const groups = navitems.groups
+    .map((group) => ({
+      ...group,
+      clients: filteredItems.filter((c) => c.group === group.id),
+    }))
+    .filter((g) => g.clients.length > 0 || search === "");
 
   return (
     <div className={styles.wrapper}>
       {/* Sidebar */}
       <nav className={styles.sidebar}>
         <SearchClients onSearch={setSearch} />
+        {navitems.groupmod && <AddGroup />}
         <ClientGroups groups={groups} />
       </nav>
 
@@ -55,17 +69,22 @@ export function Clients() {
           <div id="client-navigation" className="visually-hidden">
             Client menu
           </div>
-          <TabList
-            selectedValue={selectedTab}
-            onTabSelect={onTabSelect}
-            className={styles.tablist}
-          >
-            {tabs.map(({ value, title }) => (
-              <Tab key={value} value={value}>
-                {title}
-              </Tab>
-            ))}
-          </TabList>
+          <div className={styles["tab-bar"]}>
+            <TabList
+              selectedValue={selectedTab}
+              onTabSelect={onTabSelect}
+              className={styles.tablist}
+            >
+              {tabs.map(({ value, title }) => (
+                <Tab key={value} value={value}>
+                  {title}
+                </Tab>
+              ))}
+            </TabList>
+            {+clientId < 0 && navitems.groupmod && (
+              <DeleteGroup groupId={-clientId} />
+            )}
+          </div>
         </nav>
         <section className={styles["client-content"]}>
           <Outlet />
@@ -75,30 +94,42 @@ export function Clients() {
   );
 }
 
-function ClientGroups({ groups }: { groups: SettingsClients[][] }) {
+function ClientGroups({
+  groups,
+}: {
+  groups: (SettingsGroups & { clients: SettingsClients[] })[];
+}) {
   return (
     <ul>
-      {groups.map((clients) => (
-        <ClientList key={clients[0].groupname} clients={clients} />
+      {groups.map((group) => (
+        <ClientList key={group.id} group={group} clients={group.clients} />
       ))}
     </ul>
   );
 }
 
-function ClientList({ clients }: { clients: SettingsClients[] }) {
-  if (clients.length === 0) {
-    return null;
-  }
-
-  const groupName = clients[0].groupname || "Default";
-
+function ClientList({
+  group,
+  clients,
+}: {
+  group: SettingsGroups;
+  clients: SettingsClients[];
+}) {
   return (
     <>
-      {groupName && (
-        <div className={styles.group}>
-          <Caption2Strong>{groupName}</Caption2Strong>
-        </div>
-      )}
+      <div className={styles.group}>
+        <NavLink
+          // The settings of the default group are the general settings
+          to={
+            group.id === 0
+              ? "/settings/general/backups"
+              : `./-${group.id}/backups`
+          }
+          title={`Settings of the group ${group.name || "Default"}`}
+        >
+          <Caption2Strong>{group.name || "Default"}</Caption2Strong>
+        </NavLink>
+      </div>
       {clients.map((client) => (
         <li key={client.id} className={styles.client}>
           <NavLink to={`./${client.id}/backups`}>
@@ -129,12 +160,70 @@ function SearchClients({ onSearch }: { onSearch: (search: string) => void }) {
   );
 }
 
-function groupClients(clients: SettingsClients[]) {
-  const grouped = Object.groupBy(clients, (d) => d.groupname);
+function AddGroup() {
+  const [name, setName] = useState("");
 
-  const result = Object.values(grouped) as SettingsClients[][];
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  return result;
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const group = await urbackupServer.addGroup(name);
+      setName("");
+      await queryClient.invalidateQueries({ queryKey: ["settings"] });
+      navigate(`/settings/clients/-${group.id}/backups`);
+    } catch {
+      addMessage({
+        intent: "error",
+        text: `Adding the group failed. Is there a group named "${name}" already?`,
+      });
+    }
+  };
+
+  return (
+    <form className={styles["add-group"]} onSubmit={add}>
+      <Input
+        aria-label="New group name"
+        placeholder="New group name"
+        value={name}
+        onChange={(_, d) => setName(d.value)}
+      />
+      <Button type="submit" disabled={name.trim() === ""}>
+        Add group
+      </Button>
+    </form>
+  );
+}
+
+function DeleteGroup({ groupId }: { groupId: number }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const remove = async () => {
+    if (
+      !window.confirm(
+        "Delete this group? Its clients move to the default group.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await urbackupServer.removeGroup(groupId);
+      await queryClient.invalidateQueries({ queryKey: ["settings"] });
+      navigate("/settings/clients");
+    } catch {
+      addMessage({ intent: "error", text: "Deleting the group failed." });
+    }
+  };
+
+  return (
+    <Button appearance="subtle" onClick={remove}>
+      Delete group
+    </Button>
+  );
 }
 
 function filterClientData(item: SettingsClients, search: string) {

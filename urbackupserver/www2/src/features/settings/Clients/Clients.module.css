@@ -113,3 +113,29 @@ h1 + .subtitle {
 .settings-form {
   --settings-field-width: 44ch;
 }
+
+.tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline-end: var(--spacingM);
+}
+
+.group a {
+  color: currentColor;
+  text-decoration: none;
+}
+
+.group a:is(:hover, :focus, [aria-current="page"]) {
+  text-decoration: underline;
+}
+
+.add-group {
+  display: flex;
+  gap: var(--spacingXS);
+  padding: 0 var(--spacingM) var(--spacingM);
+}
+
+.add-group input {
+  min-width: 0;
+}

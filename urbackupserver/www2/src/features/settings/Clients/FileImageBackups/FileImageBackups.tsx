@@ -7,7 +7,6 @@ import {
   Subtitle2,
   Title3,
 } from "@fluentui/react-components";
-import { useParams } from "react-router-dom";
 
 import { FormCard, FormContainer } from "../../Form/Form";
 import { FormSection } from "../../Form/FormSection";
@@ -21,10 +20,9 @@ import {
   toDaysFromSeconds,
   toSecondsFromDays,
 } from "./backupsForm";
-import { useSettings } from "../../useSettings";
 import styles from "../Clients.module.css";
 import secondaryFormStyles from "./FileImageBackups.module.css";
-import { GENERAL_SETTINGS, useFileBackups } from "./useFileBackups";
+import { useFileBackups } from "./useFileBackups";
 import {
   ClientSettings,
   ClientSettingState,
@@ -41,9 +39,13 @@ import {
   CheckboxDropdown,
   type InitialFormState as CheckboxDropdownState,
 } from "./CheckboxDropdown";
-import { GlobalSettings, VALUE_TO_USE } from "./utils";
+import { VALUE_TO_USE } from "./utils";
 import { TIME_SPAN_PATTERN } from "../timeSpan";
-import { SettingsFormCard, type SettingField } from "../ClientSettingsTab";
+import {
+  SettingsFormCard,
+  SettingsTarget,
+  type SettingField,
+} from "../ClientSettingsTab";
 
 const checkboxFieldInputs = [
   {
@@ -89,28 +91,13 @@ const checkboxFieldInputs = [
 ];
 
 export function FileImageBackups() {
-  const { clientId } = useParams();
-
-  const { navitems } = useSettings();
-
-  if (clientId === undefined) {
-    return (
-      <GlobalSettings.Provider value>
-        <FileImageBackupsForm
-          clientId={GENERAL_SETTINGS}
-          clientName="General"
-        />
-      </GlobalSettings.Provider>
-    );
-  }
-
-  const client = navitems.clients.find((c) => c.id === +clientId);
-
-  if (!client) {
-    return <h1>No client found with ID: {clientId}</h1>;
-  }
-
-  return <FileImageBackupsForm clientId={+clientId} clientName={client.name} />;
+  return (
+    <SettingsTarget>
+      {(clientId, name) => (
+        <FileImageBackupsForm clientId={clientId} clientName={name} />
+      )}
+    </SettingsTarget>
+  );
 }
 
 function FileImageBackupsForm({

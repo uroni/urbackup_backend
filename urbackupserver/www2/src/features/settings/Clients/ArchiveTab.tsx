@@ -25,7 +25,7 @@ import {
   serializeArchiveRules,
   type TimeUnit,
 } from "./archiveRules";
-import { GlobalSettings } from "./FileImageBackups/utils";
+import { SettingsScope } from "./FileImageBackups/utils";
 import styles from "./ArchiveTab.module.css";
 
 const GROUP = 1;
@@ -68,9 +68,12 @@ function ArchiveSettings({
   const setting = ((settings as Record<string, unknown>).archive ??
     {}) as Setting;
 
-  // The general rules have their own prefix and no group to use
-  const global = useContext(GlobalSettings);
-  const prefix = global ? "d" : "c";
+  // The general and group rules have their own prefix, the general rules
+  // have no rules of a group to use
+  const scope = useContext(SettingsScope);
+  const global = scope === "general";
+  const prefix = { general: "d", group: "g", client: "c" }[scope];
+  const groupName = scope === "group" ? "General" : "Group";
 
   const [use, setUse] = useState(setting.use ?? HERE);
 
@@ -117,7 +120,11 @@ function ArchiveSettings({
 
       {!global && (
         <Checkbox
-          label="Use the archive rules of the group"
+          label={
+            scope === "group"
+              ? "Use the general archive rules"
+              : "Use the archive rules of the group"
+          }
           checked={(use & GROUP) !== 0}
           onChange={(_, d) =>
             setUse((u) => (d.checked ? u | GROUP : u & ~GROUP))
@@ -150,7 +157,7 @@ function ArchiveSettings({
               </TableCell>
               <TableCell>{r.letters || "-"}</TableCell>
               {!global && (
-                <TableCell>{r.source === GROUP ? "Group" : "Here"}</TableCell>
+                <TableCell>{r.source === GROUP ? groupName : "Here"}</TableCell>
               )}
               <TableCell>
                 <Button

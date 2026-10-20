@@ -1419,6 +1419,28 @@ class UrBackupServer {
     ] as const;
   }
 
+  // Add a settings group named `name`, it starts with the general settings.
+  // Fails if a group with that name exists.
+  addGroup = async (name: string) => {
+    const resp = await this.fetchData({ sa: "groupadd", name }, "settings");
+    if (!resp.add_ok) {
+      throw new Error("Adding group failed");
+    }
+    return resp.added_group as SettingsGroups;
+  };
+
+  // Remove the settings group with id `groupid`, its clients move to the
+  // default group
+  removeGroup = async (groupid: number) => {
+    const resp = await this.fetchData(
+      { sa: "groupremove", id: "" + groupid },
+      "settings",
+    );
+    if (!resp.delete_ok) {
+      throw new Error("Removing group failed");
+    }
+  };
+
   // Get client settings for client with id `clientid`
   getClientSettings = async (clientid: ClientIdType) => {
     const resp = await this.fetchData({ sa: "clientsettings", t_clientid: "" + clientid }, "settings");

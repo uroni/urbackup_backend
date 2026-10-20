@@ -71,8 +71,9 @@ export function useFileBackups(clientId: number) {
         : urbackupServer.saveClientSettings(clientId, settings),
     onSuccess: () => {
       return queryClient.invalidateQueries({
-        // The server page shows the general settings too
-        queryKey: clientId === GENERAL_SETTINGS ? ["settings"] : queryKey,
+        // The server page shows the general settings too and the client
+        // list the group of a client
+        queryKey: ["settings"],
       });
     },
   });
