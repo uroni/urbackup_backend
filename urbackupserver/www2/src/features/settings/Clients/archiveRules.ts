@@ -11,6 +11,10 @@ export interface ArchiveRule {
   window: string;
   letters: string;
   uuid?: string;
+  // Unix time of the next archival and seconds until then, of the rules of
+  // a client. Only sent by the server, not saved.
+  next?: number;
+  timeLeft?: number;
 }
 
 export type TimeUnit = "h" | "d" | "w" | "m" | "y";
@@ -60,6 +64,10 @@ export function parseArchiveRules(value: string, prefixes: string[]) {
         window: get("window"),
         letters: get("letters"),
         uuid: params.get(`uuid_${prefix}${i}`) ?? undefined,
+        ...(params.has(`next_archival_${prefix}${i}`) && {
+          next: Number(get("next_archival")),
+          timeLeft: Number(get("timeleft")),
+        }),
       });
     }
   }
