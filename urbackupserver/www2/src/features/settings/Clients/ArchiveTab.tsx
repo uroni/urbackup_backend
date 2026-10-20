@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@fluentui/react-components";
 import { DeleteRegular } from "@fluentui/react-icons";
+
+import { formatDatetime } from "../../../utils/format";
 import { z } from "zod/v4-mini";
 
 import type { ClientSettings } from "../../../api/urbackupserver";
@@ -58,6 +60,15 @@ function formatLength(value: number, unit: TimeUnit | "i") {
   }
 
   return `${value} ${UNITS[unit][value === 1 ? 0 : 1]}`;
+}
+
+function formatNextArchival({ next, timeLeft }: ArchiveRule) {
+  if (next === undefined || timeLeft === undefined) {
+    return "-";
+  }
+
+  // Due, but the archive window or the next run of the archival is pending
+  return timeLeft <= 0 ? "Waiting for window/next run" : formatDatetime(next);
 }
 
 function ArchiveSettings({
@@ -140,6 +151,9 @@ function ArchiveSettings({
             <TableHeaderCell>Archive window</TableHeaderCell>
             <TableHeaderCell>Backup type</TableHeaderCell>
             <TableHeaderCell>Volume letters</TableHeaderCell>
+            {scope === "client" && (
+              <TableHeaderCell>Next archival</TableHeaderCell>
+            )}
             {!global && <TableHeaderCell>Source</TableHeaderCell>}
             <TableHeaderCell>
               <span className="visually-hidden">Actions</span>
@@ -156,6 +170,9 @@ function ArchiveSettings({
                 {BACKUP_TYPES[r.backupType] ?? r.backupType}
               </TableCell>
               <TableCell>{r.letters || "-"}</TableCell>
+              {scope === "client" && (
+                <TableCell>{formatNextArchival(r)}</TableCell>
+              )}
               {!global && (
                 <TableCell>{r.source === GROUP ? groupName : "Here"}</TableCell>
               )}
@@ -171,7 +188,7 @@ function ArchiveSettings({
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={global ? 6 : 7}>
+              <TableCell colSpan={{ general: 6, group: 7, client: 8 }[scope]}>
                 <Body1>No backups are archived automatically.</Body1>
               </TableCell>
             </TableRow>
