@@ -542,6 +542,7 @@ export interface GeneralSettings {
 export interface ClientSettings {
   sa: "clientsettings"; // Request settings sub-action
   navitems: SettingsNavitems; // Navigation items
+  cowraw_available?: boolean; // If true the cowraw image format is available
   settings: { [key: string]: ClientSettingState } | { [key: string]: SettingValueType };
   saved_ok: undefined | boolean; // If true the settings were saved successfully
 }
@@ -1404,7 +1405,7 @@ class UrBackupServer {
       "include_files",
       "default_dirs",
       "image_letters",
-      "internet_speeds",
+      "internet_speed",
       "local_speed",
       "internet_mode_enabled",
       "internet_full_file_backups",

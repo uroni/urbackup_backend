@@ -1,3 +1,4 @@
+import { useContext } from "react";
 import {
   Body1,
   Dropdown,
@@ -7,7 +8,7 @@ import {
 } from "@fluentui/react-components";
 
 import styles from "./DropdownField.module.css";
-import { FORMATTED_VALUE_TO_USE, VALUE_TO_USE } from "./utils";
+import { FORMATTED_VALUE_TO_USE, GlobalSettings, VALUE_TO_USE } from "./utils";
 
 export function DropdownField({
   label,
@@ -20,6 +21,10 @@ export function DropdownField({
   // May leave out sources that aren't offered, e.g. the client value
   formattedOptions: Partial<typeof FORMATTED_VALUE_TO_USE>;
 } & Partial<DropdownProps>) {
+  if (useContext(GlobalSettings)) {
+    return null;
+  }
+
   return (
     <div>
       <Label htmlFor={props.id} className="visually-hidden">

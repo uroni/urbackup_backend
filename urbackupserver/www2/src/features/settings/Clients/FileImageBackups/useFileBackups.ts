@@ -4,7 +4,10 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 
-import type { ClientSettings } from "../../../../api/urbackupserver";
+import type {
+  ClientSettings,
+  GeneralSettings,
+} from "../../../../api/urbackupserver";
 import { urbackupServer } from "../../../../App";
 import {
   addMessage,
@@ -13,16 +16,44 @@ import {
 
 const QUERY_KEY = ["settings", "clients", "backups"];
 
+// Settings of the client id 0 are the general settings
+export const GENERAL_SETTINGS = 0;
+
+/**
+ * The general settings in the form of client settings that are set "here"
+ */
+export function asClientSettings({
+  settings,
+  cowraw_available,
+}: GeneralSettings) {
+  return {
+    cowraw_available,
+    settings: Object.fromEntries(
+      Object.entries(settings).map(([k, v]) => {
+        // Settings of clients arrive as { value }, the server settings plain
+        if (v === null || typeof v !== "object") {
+          return [k, { use: 2, value: v }];
+        }
+
+        return [k, "value" in v ? { ...v, use: 2 } : v];
+      }),
+    ),
+  } as ClientSettings;
+}
+
 export function useFileBackups(clientId: number) {
   const queryClient = useQueryClient();
 
   const queryKey = [...QUERY_KEY, Number(clientId)];
 
   const {
-    data: { settings },
+    data: { settings, cowraw_available },
   } = useSuspenseQuery({
     queryKey,
-    queryFn: () => urbackupServer.getClientSettings(clientId),
+    queryFn: () =>
+      clientId === GENERAL_SETTINGS
+        ? urbackupServer.getGeneralSettings().then(asClientSettings)
+        : urbackupServer.getClientSettings(clientId),
   });
 
   const mutation = useMutation({
@@ -30,10 +61,18 @@ export function useFileBackups(clientId: number) {
       settings,
     }: {
       settings: Parameters<typeof urbackupServer.saveClientSettings>[1];
-    }) => urbackupServer.saveClientSettings(clientId, settings),
+    }): Promise<unknown> =>
+      clientId === GENERAL_SETTINGS
+        ? urbackupServer.saveGeneralSettings(
+            settings as Parameters<
+              typeof urbackupServer.saveGeneralSettings
+            >[0],
+          )
+        : urbackupServer.saveClientSettings(clientId, settings),
     onSuccess: () => {
       return queryClient.invalidateQueries({
-        queryKey,
+        // The server page shows the general settings too
+        queryKey: clientId === GENERAL_SETTINGS ? ["settings"] : queryKey,
       });
     },
   });
@@ -73,6 +112,7 @@ export function useFileBackups(clientId: number) {
 
   return {
     settings,
+    cowrawAvailable: !!cowraw_available,
     handleSubmit,
   };
 }
