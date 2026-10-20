@@ -7,7 +7,7 @@ import {
   type EnabledState,
   getEnabledState,
   getUse,
-  GlobalSettings,
+  SettingsScope,
   SETTINGS_SOURCE,
 } from "./utils";
 import { ResettableInput } from "../../Form/TextField";
@@ -25,7 +25,8 @@ export function MergeableFields({
 }) {
   const nameUse = `${name}.use`;
 
-  const global = useContext(GlobalSettings);
+  const scope = useContext(SettingsScope);
+  const global = scope === "general";
 
   // A source that isn't set has no value in the response
   const [hereValue, setHereValue] = useState<string>(
@@ -85,12 +86,15 @@ export function MergeableFields({
     },
     {
       name: SETTINGS_SOURCE.GROUP,
-      labels: makeLabels(SETTINGS_SOURCE.GROUP, label),
+      labels: makeLabels(
+        scope === "group" ? "general" : SETTINGS_SOURCE.GROUP,
+        label,
+      ),
       readOnly: true,
       state: isSourceEnabled(enabledStates, SETTINGS_SOURCE.GROUP),
       value: initialFormState.value_group ?? "",
     },
-    ...(isClientConfigurable(name) && !global
+    ...(isClientConfigurable(name) && scope === "client"
       ? [
           {
             name: SETTINGS_SOURCE.CLIENT,
@@ -237,7 +241,7 @@ function isSourceEnabled(
 }
 
 function makeLabels(
-  source: (typeof SETTINGS_SOURCE)[keyof typeof SETTINGS_SOURCE],
+  source: (typeof SETTINGS_SOURCE)[keyof typeof SETTINGS_SOURCE] | "general",
   label: string,
 ) {
   return {

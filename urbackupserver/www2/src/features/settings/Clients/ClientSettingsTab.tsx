@@ -1,3 +1,4 @@
+import { Fragment, useContext } from "react";
 import { Body1, Body2, Subtitle2, Title3 } from "@fluentui/react-components";
 import { useParams } from "react-router-dom";
 import { z, type ZodMiniType } from "zod/v4-mini";
@@ -22,7 +23,7 @@ import {
   GENERAL_SETTINGS,
   useFileBackups,
 } from "./FileImageBackups/useFileBackups";
-import { GlobalSettings } from "./FileImageBackups/utils";
+import { SettingsScope } from "./FileImageBackups/utils";
 import {
   CheckboxTextDropdown,
   type InitialFormState as CheckboxTextDropdownState,
@@ -69,8 +70,54 @@ export interface SettingField
 }
 
 /**
- * Page of the client settings that shows `fields` in one form, or of the
- * general settings if the route has no client
+ * Settings of the route: of a client, of a group (negative ids) or the
+ * general settings (no id), with their scope for the inputs
+ */
+export function SettingsTarget({
+  children,
+}: {
+  children: (clientId: number, name: string) => React.ReactNode;
+}) {
+  const { clientId } = useParams();
+
+  const { navitems } = useSettings();
+
+  if (clientId === undefined) {
+    return (
+      <SettingsScope.Provider value="general">
+        {children(GENERAL_SETTINGS, "General")}
+      </SettingsScope.Provider>
+    );
+  }
+
+  const id = +clientId;
+
+  if (id < 0) {
+    const group = navitems.groups.find((g) => g.id === -id);
+
+    if (!group) {
+      return <h1>No group found with ID: {-id}</h1>;
+    }
+
+    return (
+      <SettingsScope.Provider key={id} value="group">
+        {children(id, `Group ${group.name}`)}
+      </SettingsScope.Provider>
+    );
+  }
+
+  const client = navitems.clients.find((c) => c.id === id);
+
+  if (!client) {
+    return <h1>No client found with ID: {clientId}</h1>;
+  }
+
+  return <Fragment key={id}>{children(id, client.name)}</Fragment>;
+}
+
+/**
+ * Page of the settings of a client, group or the general settings that
+ * shows `fields` in one form
  */
 export function ClientSettingsTab({
   title,
@@ -79,37 +126,17 @@ export function ClientSettingsTab({
   title: string;
   fields: SettingField[];
 }) {
-  const { clientId } = useParams();
-
-  const { navitems } = useSettings();
-
-  if (clientId === undefined) {
-    return (
-      <GlobalSettings.Provider value>
+  return (
+    <SettingsTarget>
+      {(clientId, name) => (
         <ClientSettingsForm
-          clientId={GENERAL_SETTINGS}
-          clientName="General"
+          clientId={clientId}
+          clientName={name}
           title={title}
           fields={fields}
         />
-      </GlobalSettings.Provider>
-    );
-  }
-
-  const client = navitems.clients.find((c) => c.id === +clientId);
-
-  if (!client) {
-    return <h1>No client found with ID: {clientId}</h1>;
-  }
-
-  return (
-    <ClientSettingsForm
-      key={clientId}
-      clientId={+clientId}
-      clientName={client.name}
-      title={title}
-      fields={fields}
-    />
+      )}
+    </SettingsTarget>
   );
 }
 
@@ -126,10 +153,15 @@ function ClientSettingsForm({
 }) {
   const { settings, handleSubmit } = useFileBackups(clientId);
 
+  const scope = useContext(SettingsScope);
+
   const shownFields = fields.filter((f) =>
-    clientId === GENERAL_SETTINGS
+    scope === "general"
       ? !f.clientOnly
-      : !f.generalOnly && (!f.mainClientOnly || settings.main_client !== false),
+      : scope === "group"
+        ? !f.clientOnly && !f.generalOnly
+        : !f.generalOnly &&
+          (!f.mainClientOnly || settings.main_client !== false),
   );
 
   return (
