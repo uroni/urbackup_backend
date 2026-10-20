@@ -117,6 +117,9 @@ export interface StatusClientItem {
   status: ClientSpecificStatus | ClientProcessActionTypes;
   lastseen: number;
   processes: ClientProcessItem[];
+  // A client that isn't configured to use this server, e.g. with an identity
+  // error. Only has id "-", name, ip, online and status.
+  rejected?: boolean;
 }
 
 export interface StatusResult {
