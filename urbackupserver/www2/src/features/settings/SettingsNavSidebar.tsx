@@ -16,7 +16,9 @@ export const SettingsNavSidebar = () => {
 
   // Like the client tabs, the Internet settings only for users that may
   // change them
-  const tabs = SETTINGS_TABS.map((t) => ({
+  const tabs = SETTINGS_TABS.filter(
+    (t) => t.value !== "change-password" || !navitems.disable_change_pw,
+  ).map((t) => ({
     ...t,
     children: t.children?.filter(
       (c) => c.value !== "internet-active" || navitems.internet,
@@ -107,6 +109,10 @@ const SETTINGS_TABS: TabItem[] = [
   {
     value: "clients",
     title: "Clients",
+  },
+  {
+    value: "change-password",
+    title: "Change password",
   },
   {
     value: "general",

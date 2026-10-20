@@ -1194,7 +1194,6 @@ class UrBackupServer {
   // Change the password of a user with the given userId
   // Throws UnknownChangePasswordError if the password could not be changed
   changeUserPassword = async (userId: string, password: string) => {
-    // TODO: Add function to change own password
     const salt = randomString();
     const password_md5 = MD5(salt + password).toString();
     const params: Record<string, string> = { sa: "changepw", userid: userId, pwmd5: password_md5, salt: salt };
@@ -1205,6 +1204,37 @@ class UrBackupServer {
 
     throw new UnknownChangePasswordError();
   }
+
+  // Change the password of the logged in user, which needs the old password
+  // Throws PasswordWrongError if the old password is wrong
+  changeOwnPassword = async (oldPassword: string, newPassword: string) => {
+    // The salt of the user of the session
+    const saltResp = await this.fetchSalt("");
+    if (typeof saltResp.error != "undefined") {
+      throw new UsernameNotFoundError();
+    }
+
+    const old_pw = calcPwHash(
+      saltResp.salt,
+      saltResp.rnd,
+      oldPassword,
+      saltResp.pbkdf2_rounds,
+    );
+    const salt = randomString();
+    const pwmd5 = MD5(salt + newPassword).toString();
+
+    const resp = await this.fetchData(
+      { sa: "changepw", userid: "own", pwmd5, salt, old_pw },
+      "settings",
+    );
+
+    if (resp.old_pw_wrong) {
+      throw new PasswordWrongError();
+    }
+    if (!resp.change_ok) {
+      throw new UnknownChangePasswordError();
+    }
+  };
 
   // Get list of all client and group settings
   settingsList = () => {
