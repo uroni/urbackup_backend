@@ -1,0 +1,13 @@
+.page {
+  max-width: 80ch;
+  margin-inline: auto;
+  padding: var(--spacingXL);
+}
+
+.code {
+  overflow-x: auto;
+  padding: var(--spacingS);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: var(--colorNeutralBackground3);
+}

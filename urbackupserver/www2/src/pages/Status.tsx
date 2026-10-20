@@ -11,13 +11,20 @@ import {
   MenuButton,
   MenuItem,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
   TableCellLayout,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   TableColumnDefinition,
   TableRowId,
 } from "@fluentui/react-components";
-import { StatusClientItem } from "../api/urbackupserver";
+import { ExtraClient, StatusClientItem } from "../api/urbackupserver";
 import { Suspense, useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { urbackupServer } from "../App";
 import {
   BackupResultProvider,
@@ -130,6 +137,8 @@ const Status = () => {
   });
   const { removeClients } = useStatusClientActions();
 
+  const navigate = useNavigate();
+
   const [selectedRows, setSelectedRows] = useState<Set<TableRowId>>(new Set());
 
   const selectedRowsArray = transformSelectedRows(selectedRows);
@@ -157,7 +166,14 @@ const Status = () => {
     <>
       <Suspense fallback={<Spinner />}>
         <TableWrapper className="centered">
-          <h3>Status page</h3>
+          <div className="cluster">
+            <h3>Status page</h3>
+            {statusResult.data.allow_add_client && (
+              <Button onClick={() => navigate("/status/add-client")}>
+                Add client
+              </Button>
+            )}
+          </div>
           <div className="cluster">
             <SearchBox onSearch={setSearch} />
             <PaginationItemsPerPageSelector
@@ -288,11 +304,55 @@ const Status = () => {
               </div>
             </>
           )}
+          {statusResult.data.allow_extra_clients &&
+            statusResult.data.extra_clients.length > 0 && (
+              <ExtraClients clients={statusResult.data.extra_clients} />
+            )}
         </TableWrapper>
       </Suspense>
     </>
   );
 };
+
+/**
+ * Hostnames at which the server looks for local/passive clients
+ */
+function ExtraClients({ clients }: { clients: ExtraClient[] }) {
+  const queryClient = useQueryClient();
+
+  const remove = async (id: string) => {
+    await urbackupServer.removeExtraClient(id);
+    await queryClient.invalidateQueries({ queryKey: ["status"] });
+  };
+
+  return (
+    <>
+      <h3>Clients discovered by hostname</h3>
+      <Table size="small">
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell>IP/hostname</TableHeaderCell>
+            <TableHeaderCell>Online</TableHeaderCell>
+            <TableHeaderCell>
+              <span className="visually-hidden">Actions</span>
+            </TableHeaderCell>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {clients.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell>{c.hostname}</TableCell>
+              <TableCell>{c.online ? "Yes" : "No"}</TableCell>
+              <TableCell>
+                <Button onClick={() => remove(c.id)}>Remove</Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
+  );
+}
 
 export const StatusPage = () => (
   <BackupResultProvider>
