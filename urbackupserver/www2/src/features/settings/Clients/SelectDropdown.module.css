@@ -9,3 +9,9 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Same input column as the text fields, also for long option texts */
+.field {
+  grid-template-columns: auto var(--settings-field-width, 34ch);
+  align-items: center;
+}

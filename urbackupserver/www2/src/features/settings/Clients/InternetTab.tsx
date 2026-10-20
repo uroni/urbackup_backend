@@ -48,7 +48,7 @@ function InternetServer({
         label="Server URL clients connect to"
         hint="e.g. urbackup://backup.example.com, separate several with ';'"
         orientation="horizontal"
-        className={textStyles.field}
+        className={`${textStyles.field} ${selectStyles.field}`}
         {...(validationMessage && {
           validationState: "error",
           validationMessage,
