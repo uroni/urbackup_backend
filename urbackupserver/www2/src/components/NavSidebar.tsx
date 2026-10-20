@@ -11,6 +11,7 @@ import {
   DataBarVerticalRegular,
   DocumentTextRegular,
   HeartPulseRegular,
+  InfoRegular,
   PulseRegular,
   SettingsRegular,
 } from "@fluentui/react-icons";
@@ -52,6 +53,9 @@ export const NavSidebar = () => {
         </NavItem>
         <NavItem value={Pages.Settings} icon={<SettingsRegular />}>
           Settings
+        </NavItem>
+        <NavItem value={Pages.About} icon={<InfoRegular />}>
+          About
         </NavItem>
       </NavDrawerBody>
       <NavDrawerFooter>
