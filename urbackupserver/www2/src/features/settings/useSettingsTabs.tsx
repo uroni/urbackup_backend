@@ -30,14 +30,21 @@ function getSelectedPage(settingsTabs: TabItem[], pathname: string) {
   const settingsPage = pathname.replace(/^\/\w+\/?/, "");
   const segments = settingsPage.split("/");
 
+  // Tabs in a group, e.g. "general/backups", are selected by their full page
+  const allTabs = settingsTabs.flatMap((st) =>
+    st.children
+      ? st.children.map((c) => ({ ...c, value: `${st.value}/${c.value}` }))
+      : [st],
+  );
+
   // "clients/7/permissions" selects "clients" in the sidebar and
   // "permissions" in the client tabs
-  const pageInTabs = settingsTabs.find(
+  const pageInTabs = allTabs.find(
     (st) =>
       st.value === settingsPage ||
       st.value === segments[0] ||
       st.value === segments[segments.length - 1],
   );
 
-  return pageInTabs?.value ?? settingsTabs[0].value;
+  return pageInTabs?.value ?? allTabs[0].value;
 }

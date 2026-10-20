@@ -166,6 +166,13 @@ const advancedFields: SettingField[] = [
     "image_compress_threads",
     "Number of threads to use for VHDZ compression (0: auto)",
   ),
+  {
+    ...text(
+      "internet_expect_endpoint",
+      "List of server IPs (proxys) from which to expect endpoint information (forwarded for) when connecting to Internet/active service (needs server restart)",
+    ),
+    generalOnly: true,
+  },
 ];
 
 export function AdvancedTab() {

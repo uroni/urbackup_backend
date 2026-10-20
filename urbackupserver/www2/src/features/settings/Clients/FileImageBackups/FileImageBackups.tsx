@@ -21,7 +21,7 @@ import {
 import { useSettings } from "../../useSettings";
 import styles from "../Clients.module.css";
 import secondaryFormStyles from "./FileImageBackups.module.css";
-import { useFileBackups } from "./useFileBackups";
+import { GENERAL_SETTINGS, useFileBackups } from "./useFileBackups";
 import {
   ClientSettings,
   ClientSettingState,
@@ -38,7 +38,7 @@ import {
   CheckboxDropdown,
   type InitialFormState as CheckboxDropdownState,
 } from "./CheckboxDropdown";
-import { VALUE_TO_USE } from "./utils";
+import { GlobalSettings, VALUE_TO_USE } from "./utils";
 
 const checkboxFieldInputs = [
   {
@@ -88,15 +88,24 @@ export function FileImageBackups() {
 
   const { navitems } = useSettings();
 
-  const client = navitems.clients.find((c) => c.id === +clientId!);
+  if (clientId === undefined) {
+    return (
+      <GlobalSettings.Provider value>
+        <FileImageBackupsForm
+          clientId={GENERAL_SETTINGS}
+          clientName="General"
+        />
+      </GlobalSettings.Provider>
+    );
+  }
+
+  const client = navitems.clients.find((c) => c.id === +clientId);
 
   if (!client) {
     return <h1>No client found with ID: {clientId}</h1>;
   }
 
-  return (
-    <FileImageBackupsForm clientId={+clientId!} clientName={client.name} />
-  );
+  return <FileImageBackupsForm clientId={+clientId} clientName={client.name} />;
 }
 
 function FileImageBackupsForm({

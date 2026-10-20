@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   Body1,
   Button,
@@ -25,6 +25,7 @@ import {
   serializeArchiveRules,
   type TimeUnit,
 } from "./archiveRules";
+import { GlobalSettings } from "./FileImageBackups/utils";
 import styles from "./ArchiveTab.module.css";
 
 const GROUP = 1;
@@ -67,12 +68,16 @@ function ArchiveSettings({
   const setting = ((settings as Record<string, unknown>).archive ??
     {}) as Setting;
 
+  // The general rules have their own prefix and no group to use
+  const global = useContext(GlobalSettings);
+  const prefix = global ? "d" : "c";
+
   const [use, setUse] = useState(setting.use ?? HERE);
 
   const groupRules = parseArchiveRules(setting.value_group ?? "", ["d", "g"]);
 
   const [hereRules, setHereRules] = useState(() =>
-    parseArchiveRules(setting.value ?? "", ["c"]),
+    parseArchiveRules(setting.value ?? "", [prefix]),
   );
 
   const rows: Row[] = [
@@ -103,18 +108,22 @@ function ArchiveSettings({
   // Without any source there are no rules, which is stored as no own rules
   const savedUse = use === 0 ? HERE : use;
   const savedValue =
-    use & HERE ? serializeArchiveRules(hereRules) : setting.value ?? "";
+    use & HERE ? serializeArchiveRules(hereRules, prefix) : setting.value ?? "";
 
   return (
     <div className="flow">
       <input type="hidden" name="archive" value={savedValue} />
       <input type="hidden" name="archive.use" value={savedUse} />
 
-      <Checkbox
-        label="Use the archive rules of the group"
-        checked={(use & GROUP) !== 0}
-        onChange={(_, d) => setUse((u) => (d.checked ? u | GROUP : u & ~GROUP))}
-      />
+      {!global && (
+        <Checkbox
+          label="Use the archive rules of the group"
+          checked={(use & GROUP) !== 0}
+          onChange={(_, d) =>
+            setUse((u) => (d.checked ? u | GROUP : u & ~GROUP))
+          }
+        />
+      )}
 
       <Table size="small" className={styles.table}>
         <TableHeader>
@@ -124,7 +133,7 @@ function ArchiveSettings({
             <TableHeaderCell>Archive window</TableHeaderCell>
             <TableHeaderCell>Backup type</TableHeaderCell>
             <TableHeaderCell>Volume letters</TableHeaderCell>
-            <TableHeaderCell>Source</TableHeaderCell>
+            {!global && <TableHeaderCell>Source</TableHeaderCell>}
             <TableHeaderCell>
               <span className="visually-hidden">Actions</span>
             </TableHeaderCell>
@@ -140,7 +149,9 @@ function ArchiveSettings({
                 {BACKUP_TYPES[r.backupType] ?? r.backupType}
               </TableCell>
               <TableCell>{r.letters || "-"}</TableCell>
-              <TableCell>{r.source === GROUP ? "Group" : "Here"}</TableCell>
+              {!global && (
+                <TableCell>{r.source === GROUP ? "Group" : "Here"}</TableCell>
+              )}
               <TableCell>
                 <Button
                   appearance="subtle"
@@ -153,7 +164,7 @@ function ArchiveSettings({
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7}>
+              <TableCell colSpan={global ? 6 : 7}>
                 <Body1>No backups are archived automatically.</Body1>
               </TableCell>
             </TableRow>

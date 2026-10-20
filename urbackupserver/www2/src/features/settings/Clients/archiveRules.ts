@@ -68,22 +68,24 @@ export function parseArchiveRules(value: string, prefixes: string[]) {
 }
 
 /**
- * Setting value of the rules of a client
+ * Setting value of the rules of a client, or with the prefix "d" of the
+ * general settings
  */
-export function serializeArchiveRules(rules: ArchiveRule[]) {
+export function serializeArchiveRules(rules: ArchiveRule[], prefix = "c") {
   const params = new URLSearchParams();
 
-  rules.forEach((r, i) => {
-    params.set(`every_c${i}`, String(toSeconds(r.every, r.everyUnit)));
-    params.set(`every_unit_c${i}`, r.everyUnit);
-    params.set(`for_c${i}`, String(toSeconds(r.for, r.forUnit)));
-    params.set(`for_unit_c${i}`, r.forUnit);
-    params.set(`backup_type_c${i}`, r.backupType);
-    params.set(`window_c${i}`, r.window);
-    params.set(`letters_c${i}`, r.letters);
+  rules.forEach((r, n) => {
+    const i = `${prefix}${n}`;
+    params.set(`every_${i}`, String(toSeconds(r.every, r.everyUnit)));
+    params.set(`every_unit_${i}`, r.everyUnit);
+    params.set(`for_${i}`, String(toSeconds(r.for, r.forUnit)));
+    params.set(`for_unit_${i}`, r.forUnit);
+    params.set(`backup_type_${i}`, r.backupType);
+    params.set(`window_${i}`, r.window);
+    params.set(`letters_${i}`, r.letters);
     // The server sets the ids of new rules
     if (r.uuid && r.uuid.length > 10) {
-      params.set(`uuid_c${i}`, r.uuid);
+      params.set(`uuid_${i}`, r.uuid);
     }
   });
 

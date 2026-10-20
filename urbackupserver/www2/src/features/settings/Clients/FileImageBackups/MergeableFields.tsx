@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Field, Input, InputProps } from "@fluentui/react-components";
 
 import type { ClientSettingState } from "../../../../api/urbackupserver";
@@ -7,6 +7,7 @@ import {
   type EnabledState,
   getEnabledState,
   getUse,
+  GlobalSettings,
   SETTINGS_SOURCE,
 } from "./utils";
 import { ResettableInput } from "../../Form/TextField";
@@ -23,6 +24,8 @@ export function MergeableFields({
   initialFormState: ClientSettingState;
 }) {
   const nameUse = `${name}.use`;
+
+  const global = useContext(GlobalSettings);
 
   // A source that isn't set has no value in the response
   const [hereValue, setHereValue] = useState<string>(
@@ -87,7 +90,7 @@ export function MergeableFields({
       state: isSourceEnabled(enabledStates, SETTINGS_SOURCE.GROUP),
       value: initialFormState.value_group ?? "",
     },
-    ...(isClientConfigurable(name)
+    ...(isClientConfigurable(name) && !global
       ? [
           {
             name: SETTINGS_SOURCE.CLIENT,
@@ -100,6 +103,9 @@ export function MergeableFields({
       : []),
   ];
 
+  // Only the general value itself, which is always used
+  const shownInputs = global ? inputs.slice(0, 1) : inputs;
+
   return (
     <>
       <input
@@ -109,9 +115,10 @@ export function MergeableFields({
       />
       <input type="hidden" name={nameUse} value={hiddenInputValues.use} />
       <div className={`${styles.mergeable} flow flow-s`}>
-        {inputs.map((input) => (
+        {shownInputs.map((input) => (
           <CheckboxTextField
             key={input.name}
+            hideCheckbox={global}
             checked={input.state}
             checkboxLabel={input.labels.checkbox}
             onCheckboxChange={(checked) => {
@@ -136,16 +143,22 @@ export function MergeableFields({
 
 function CheckboxTextField({
   checked,
+  hideCheckbox,
   checkboxLabel,
   onCheckboxChange,
   children,
 }: {
   checked: boolean;
+  hideCheckbox?: boolean;
   checkboxLabel: string;
   onCheckboxChange: (checked: boolean) => void;
   children: React.ReactNode;
 }) {
   const [enabled, setEnabled] = useState(checked);
+
+  if (hideCheckbox) {
+    return children;
+  }
 
   return (
     <div className={`${styles["mergeable__row"]} repel`}>
