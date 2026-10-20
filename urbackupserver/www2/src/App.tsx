@@ -69,6 +69,13 @@ export const router = createHashRouter([
         element: <StatusPage />,
       },
       {
+        path: `/${Pages.Status}/add-client`,
+        lazy: async () => {
+          const { AddClient } = await import("./features/status/AddClient");
+          return { Component: AddClient };
+        },
+      },
+      {
         path: "/about",
         element: <div>About page</div>,
       },
