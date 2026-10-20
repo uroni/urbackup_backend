@@ -1,9 +1,10 @@
 import { z } from "zod/v4-mini";
 
-import { stringToInt, VALIDATION_MESSAGES } from "../../Form/validation";
+import { VALIDATION_MESSAGES } from "../../Form/validation";
 import UrBackupServer from "../../../../api/urbackupserver";
 import { BaseField, Field } from "../../Form/types";
 import { NewTabLink } from "../../../../components/NewTabLink";
+import { TIME_SPAN_PATTERN } from "../timeSpan";
 
 const HOURS_IN_DAY = 24;
 const SECONDS_IN_HOUR = 60 * 60;
@@ -52,12 +53,6 @@ export const FILE_BACKUPS_LABELS: Record<FileBackupsSettingsKey, string> = {
 };
 
 const FORM_MESSAGES = {
-  update_freq_incr: VALIDATION_MESSAGES.numeric(
-    FILE_BACKUPS_LABELS["update_freq_incr"],
-  ),
-  update_freq_full: VALIDATION_MESSAGES.numeric(
-    FILE_BACKUPS_LABELS["update_freq_full"],
-  ),
   max_file_incr: VALIDATION_MESSAGES.numeric(
     FILE_BACKUPS_LABELS["max_file_incr"],
   ),
@@ -77,13 +72,23 @@ const emptyOrPositive = (message: string) =>
   z.union([z.literal(""), z.coerce.number().check(z.gte(0))], message);
 
 export const fileBackupsFormSchema = z.object({
-  update_freq_incr: stringToInt(FORM_MESSAGES["update_freq_incr"]).check(
-    z.int(FORM_MESSAGES["update_freq_incr"]),
-  ),
+  update_freq_incr: z
+    .string()
+    .check(
+      z.regex(
+        TIME_SPAN_PATTERN,
+        VALIDATION_MESSAGES.regex(FILE_BACKUPS_LABELS["update_freq_incr"]),
+      ),
+    ),
   "update_freq_incr.use": settingsClientEnum,
-  update_freq_full: stringToInt(FORM_MESSAGES["update_freq_full"]).check(
-    z.int(FORM_MESSAGES["update_freq_full"]),
-  ),
+  update_freq_full: z
+    .string()
+    .check(
+      z.regex(
+        TIME_SPAN_PATTERN,
+        VALIDATION_MESSAGES.regex(FILE_BACKUPS_LABELS["update_freq_full"]),
+      ),
+    ),
   "update_freq_full.use": settingsClientEnum,
   max_file_incr: emptyOrPositive(FORM_MESSAGES["max_file_incr"]),
   "max_file_incr.use": settingsClientEnum,
@@ -124,6 +129,11 @@ export const ransomwareCanaryPathsSchema = z.object({
 const baseFileBackupsFields = [
   {
     name: "update_freq_incr",
+    description: (
+      <>
+        Can depend on the time, e.g. <code>2@Mon-Fri/8-17;12</code>
+      </>
+    ),
     inputProps: {
       contentAfter: "hours",
       "data-field-width": "50%",
@@ -140,6 +150,11 @@ const baseFileBackupsFields = [
   },
   {
     name: "update_freq_full",
+    description: (
+      <>
+        Can depend on the time, e.g. <code>7@Sat-Sun/0-24;30</code>
+      </>
+    ),
     inputProps: {
       contentAfter: "days",
       "data-field-width": "50%",

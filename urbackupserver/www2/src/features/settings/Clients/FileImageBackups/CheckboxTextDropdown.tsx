@@ -12,6 +12,7 @@ import styles from "./FileImageBackups.module.css";
 import { ResettableInput } from "../../Form/TextField";
 import { DropdownField } from "./DropdownField";
 import { isClientConfigurable } from "./clientConfigurable";
+import { mapTimeSpan } from "../timeSpan";
 import {
   FORMATTED_VALUE_TO_USE,
   SETTINGS_SOURCE,
@@ -46,6 +47,18 @@ function selectValueInUse(multiValue: InitialFormState, use: Use) {
   return multiValue[VALUE_TO_USE[use]];
 }
 
+// Applies `f` to each value, also of a time span like "5@1-5/8-17;24"
+function transform(
+  value: SettingValue | undefined,
+  f: ((v: number) => number | string) | undefined,
+) {
+  if (!f || value === undefined || value === "") {
+    return value;
+  }
+
+  return mapTimeSpan(String(value), f);
+}
+
 function initialValue(
   initialFormState: InitialFormState,
   {
@@ -61,31 +74,13 @@ function initialValue(
   const selectedValue = selectValueInUse(initialFormState, use);
   const hereValue = selectValueInUse(initialFormState, HERE_SETTINGS);
 
-  // Handle cases when client setting has the value set as NaN
-  if (selectedValue === undefined || isNaN(Number(selectedValue))) {
-    return {
-      enabled: isEnabled ?? true, // Show the fields to allow changing
-      value: selectedValue,
-      here: hereValue,
-      use,
-    };
-  }
-
-  const enabled = isEnabled ?? Number(selectedValue) >= 0;
-
-  if (field.transformer?.ui) {
-    return {
-      enabled,
-      value: field.transformer.ui(Number(selectedValue)),
-      here: field.transformer.ui(Number(hereValue)),
-      use,
-    };
-  }
+  // Negative values are disabled, of a time span the first one decides
+  const enabled = isEnabled ?? !(parseFloat(String(selectedValue)) < 0);
 
   return {
     enabled,
-    value: selectedValue,
-    here: hereValue,
+    value: transform(selectedValue, field.transformer?.ui),
+    here: transform(hereValue, field.transformer?.ui),
     use,
   };
 }
@@ -140,7 +135,7 @@ export function CheckboxTextDropdown({
       return selectValueInUse(initialFormState, HERE_SETTINGS);
     }
 
-    return field.transformer?.api(Number(formData.here)) ?? formData.here;
+    return transform(formData.here, field.transformer?.api);
   };
 
   const hiddenInputValues = {
@@ -158,9 +153,9 @@ export function CheckboxTextDropdown({
           checked={formData.enabled}
           onChange={(_, d) => {
             const newChecked = d.checked as boolean;
-            const newValue = newChecked
-              ? Math.abs(Number(formData.value))
-              : Math.abs(Number(formData.value)) * -1;
+            const newValue = transform(formData.value, (v) =>
+              newChecked ? Math.abs(v) : Math.abs(v) * -1,
+            );
 
             setFormData({
               enabled: newChecked,
@@ -215,8 +210,10 @@ export function CheckboxTextDropdown({
                 const newValue =
                   selectValueInUse(initialFormState, newUse) ?? "";
 
-                const transformedValue =
-                  field.transformer?.ui(Number(newValue)) ?? newValue;
+                const transformedValue = transform(
+                  newValue,
+                  field.transformer?.ui,
+                );
 
                 setFormData((p) => ({
                   ...p,
