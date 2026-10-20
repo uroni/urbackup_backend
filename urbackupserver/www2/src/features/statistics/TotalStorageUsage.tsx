@@ -61,6 +61,12 @@ export function TotalStorageUsage({
   const totalImagesUsage = usage.map((d) => d.images).reduce(sum, 0);
   const totalUsage = usage.map((d) => d.used).reduce(sum, 0);
 
+  // Percent of the total, no bars before anything is stored
+  const filesPercent =
+    totalUsage > 0 ? (totalFilesUsage / totalUsage) * 100 : 0;
+  const imagesPercent =
+    totalUsage > 0 ? (totalImagesUsage / totalUsage) * 100 : 0;
+
   return (
     <>
       <div className="flow">
@@ -72,12 +78,12 @@ export function TotalStorageUsage({
             <g>
               <ChartRect
                 x="0"
-                width={`${(totalFilesUsage / totalUsage) * 100}%`}
+                width={`${filesPercent}%`}
                 fill={FILES_COLOR}
               />
               <ChartRect
-                x={`${(totalFilesUsage / totalUsage) * 100 + CHART_GAP}%`}
-                width={`${Math.max(0, (totalImagesUsage / totalUsage) * 100 - CHART_GAP)}%`}
+                x={`${filesPercent + CHART_GAP}%`}
+                width={`${Math.max(0, imagesPercent - CHART_GAP)}%`}
                 fill={IMAGES_COLOR}
               />
             </g>
