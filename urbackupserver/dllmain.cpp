@@ -2199,16 +2199,16 @@ std::string archiveSettingsParamStr(IDatabase* db, int clientid, std::string pre
 
 		std::string idx = "_" + prefix + convert(i);
 		if (!ret.empty()) ret += "&";
-		ret += "every"+ idx +"=" + res[i]["interval"];
-		ret += "&every_unit" + idx + "=" + res[i]["interval_unit"];
-		ret += "&for" + idx + "=" + res[i]["interval_unit"];
-		ret += "&for_unit" + idx + "=" + res[i]["interval_unit"];
-		ret += "&backup_types" + idx + "=" + ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"]));
-		ret += "&archive_window" + idx + "=" + res[i]["archive_window"];
-		ret += "&letters" + idx + "=" + res[i]["letters"];
+		ret += "every"+ idx +"=" + EscapeParamString(res[i]["interval"]);
+		ret += "&every_unit" + idx + "=" + EscapeParamString(res[i]["interval_unit"]);
+		ret += "&for" + idx + "=" + EscapeParamString(res[i]["length"]);
+		ret += "&for_unit" + idx + "=" + EscapeParamString(res[i]["length_unit"]);
+		ret += "&backup_type" + idx + "=" + EscapeParamString(ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
+		ret += "&archive_window" + idx + "=" + EscapeParamString(res[i]["archive_window"]);
+		ret += "&letters" + idx + "=" + EscapeParamString(res[i]["letters"]);
 		ret += "&uuid"+idx+"=" + bytesToHex(uuid);
 
-		q_set_uuid->Bind(uuid);
+		q_set_uuid->Bind(uuid.data(), uuid.size());
 		q_set_uuid->Bind(res[i]["id"]);
 		q_set_uuid->Write();
 		q_set_uuid->Reset();

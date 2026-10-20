@@ -372,8 +372,8 @@ void ServerAutomaticArchive::updateArchiveSettings(int clientid)
 
 	IQuery *q_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
 
-	IQuery *q_insert_all = db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters)"
-		"VALUES (?,?,?,?,?,?,?,?,?)");
+	IQuery *q_insert_all = db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters, uuid)"
+		"VALUES (?,?,?,?,?,?,?,?,?,?)");
 
 	std::string prefix = "d";
 	std::string idx;
@@ -388,13 +388,13 @@ void ServerAutomaticArchive::updateArchiveSettings(int clientid)
 		std::string backup_type_str = params["backup_type_" + idx];
 		archive.backup_types = ServerAutomaticArchive::getBackupTypes(backup_type_str);
 		archive.window = params["window_" + idx];
-		archive.letters = params["window_" + idx];
+		archive.letters = params["letters_" + idx];
 		archive.every_unit = params["every_unit_" + idx];
 		archive.for_unit = params["for_unit_" + idx];
 		archive.uuid = hexToBytes(params["uuid_" + idx]);
 
 		q_next->Bind(clientid);
-		q_next->Bind(archive.uuid);
+		q_next->Bind(archive.uuid.data(), archive.uuid.size());
 
 		db_results res_next = q_next->Read();
 
@@ -435,6 +435,7 @@ void ServerAutomaticArchive::updateArchiveSettings(int clientid)
 		q_insert_all->Bind(clientid);
 		q_insert_all->Bind(archive.window);
 		q_insert_all->Bind(archive.letters);
+		q_insert_all->Bind(archive.uuid.data(), archive.uuid.size());
 		q_insert_all->Write();
 		q_insert_all->Reset();
 	}
