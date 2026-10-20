@@ -15,7 +15,7 @@ import {
 } from "@fluentui/react-components";
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { Document20Filled, Folder20Filled } from "@fluentui/react-icons";
 
 import type { File, Files } from "../../api/urbackupserver";
@@ -337,6 +337,8 @@ function ImageBackup({ data, onMount }: { data: Files; onMount: () => void }) {
           ))}
       </dl>
 
+      {info.linux_image_restore && <LinuxImageRestore backupId={info.id} />}
+
       {data.mount_in_progress && <p>Mounting the image…</p>}
 
       {data.mount_failed && (
@@ -370,6 +372,53 @@ function ImageBackup({ data, onMount }: { data: Files; onMount: () => void }) {
       {!data.can_mount && !data.mount_in_progress && !data.mount_failed && (
         <p>No files exist in this path.</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Restoring a Linux image runs a script on the machine to restore. The script
+ * connects to the server's Internet address with a one-time token.
+ */
+function LinuxImageRestore({ backupId }: { backupId: number }) {
+  const restore = useMutation({
+    mutationFn: () => urbackupServer.restoreLinuxImage(backupId),
+  });
+
+  if (restore.isError) {
+    return (
+      <MessageBar intent="error">
+        <MessageBarBody>{restore.error.message}</MessageBarBody>
+      </MessageBar>
+    );
+  }
+
+  if (!restore.data) {
+    return (
+      <div>
+        <Button onClick={() => restore.mutate()} disabled={restore.isPending}>
+          Restore Linux image
+        </Button>
+      </div>
+    );
+  }
+
+  const url = urbackupServer.linuxImageRestoreURL(
+    restore.data.authkey,
+    restore.data.token,
+  );
+
+  return (
+    <div className="flow">
+      <h4>Restore Linux image</h4>
+      <p>To restore your Linux disk please enter following in a terminal:</p>
+      <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+        <code>{`TF=\`mktemp\` && wget "${url}" -O $TF && sudo sh $TF; rm -f $TF`}</code>
+      </pre>
+      <p>
+        The command only works while you stay logged in. The script connects to
+        the server name and port set in Settings → Internet.
+      </p>
     </div>
   );
 }

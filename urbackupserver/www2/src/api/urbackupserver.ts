@@ -831,6 +831,30 @@ class UrBackupServer {
     return this.getSiteURL() + this.serverUrl + "?" + params.toString();
   };
 
+  // Create a one-time token to restore Linux image backup `backupid`.
+  // The token stays valid while this session is logged in
+  restoreLinuxImage = async (backupid: number) => {
+    const resp = await this.fetchData(
+      { backupid: "" + backupid },
+      "restore_image",
+    );
+    if (!resp.ok) {
+      throw new Error("Error getting Linux image restore information");
+    }
+    return resp as { ok: true; token: string; authkey: string };
+  };
+
+  // Download link of the script restoring a Linux image (no session, it is run on the client)
+  linuxImageRestoreURL = (authkey: string, token: string) => {
+    const params = new URLSearchParams();
+    params.append("a", "download_client");
+    params.append("restore_image", "1");
+    params.append("os", "linux");
+    params.append("authkey", authkey);
+    params.append("token", token);
+    return this.getSiteURL() + this.serverUrl + "?" + params.toString();
+  };
+
   // Returns current running processes and last activities if withLastActivities is true
   progress = async (withLastActivities: boolean) => {
     const resp = await this.fetchData(
