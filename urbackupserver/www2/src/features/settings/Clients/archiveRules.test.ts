@@ -25,6 +25,14 @@ describe("archive rules", () => {
     ]);
   });
 
+  it("reads the next archival but doesn't save it", () => {
+    const value = `${stored}&next_archival_c0=1792465714&timeleft_c0=3600`;
+    const [rule] = parseArchiveRules(value, ["c"]);
+
+    expect([rule.next, rule.timeLeft]).toEqual([1792465714, 3600]);
+    expect(serializeArchiveRules([rule])).not.toContain("next_archival");
+  });
+
   it("keeps the rules when saved again", () => {
     const again = serializeArchiveRules(parseArchiveRules(stored, ["c"]));
     expect(parseArchiveRules(again, ["c"])).toEqual(
