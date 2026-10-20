@@ -1,4 +1,9 @@
+import { createContext } from "react";
+
 import { ClientSettingState } from "../../../../api/urbackupserver";
+
+// The general settings have no settings sources: all values are set "here"
+export const GlobalSettings = createContext(false);
 
 export const SETTINGS_SOURCE = {
   GROUP: "group",

@@ -29,3 +29,8 @@
     margin-inline-start: -6px;
   }
 }
+
+/* Keep the source dropdown next to long labels */
+.checkbox-dropdown {
+  --repel-wrap: nowrap;
+}
