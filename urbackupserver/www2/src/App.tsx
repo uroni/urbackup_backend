@@ -206,6 +206,24 @@ export const router = createHashRouter([
             },
           },
           {
+            path: "alert-scripts",
+            lazy: async () => {
+              const { AlertScripts } = await import(
+                "./features/settings/Scripts/AlertScripts"
+              );
+              return { Component: AlertScripts };
+            },
+          },
+          {
+            path: "report-script",
+            lazy: async () => {
+              const { ReportScript } = await import(
+                "./features/settings/Scripts/ReportScript"
+              );
+              return { Component: ReportScript };
+            },
+          },
+          {
             path: "clients",
             lazy: async () => {
               const { Clients } = await import(
