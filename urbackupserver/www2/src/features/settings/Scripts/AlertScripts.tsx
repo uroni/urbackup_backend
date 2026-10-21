@@ -5,7 +5,6 @@ import {
   Field,
   Input,
   Select,
-  Textarea,
 } from "@fluentui/react-components";
 import { AddRegular, DeleteRegular } from "@fluentui/react-icons";
 import {
@@ -26,6 +25,7 @@ import {
   clearMessages,
 } from "../../../components/Banner/messageStore";
 import { FormCard, FormContainer } from "../Form/Form";
+import { CodeEditor } from "./CodeEditor";
 import styles from "./Scripts.module.css";
 
 const PARAM_TYPES = {
@@ -251,13 +251,12 @@ function AlertScriptForm({
         </div>
 
         <Field label={<h2>Script (Lua)</h2>}>
-          <Textarea
-            className={styles.code}
+          <CodeEditor
+            label="Script (Lua)"
             value={script}
             readOnly={readOnly}
-            resize="vertical"
             rows={25}
-            onChange={(_, d) => setScript(d.value)}
+            onChange={setScript}
           />
         </Field>
 

@@ -28,7 +28,9 @@
   }
 }
 
-.code textarea {
-  font-family: var(--fontFamilyMonospace);
-  white-space: pre;
+.editor {
+  resize: vertical;
+  overflow: hidden;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
 }
