@@ -124,6 +124,9 @@ export interface StatusResult {
   nospc_stalled: boolean | undefined;
   nospc_fatal: boolean | undefined;
   database_error: boolean | undefined;
+  has_ident_error_clients: true | undefined;
+  has_ident_error_clients_stop_show_key: string | undefined;
+  show_has_ident_error_clients: false | undefined;
 
   allow_modify_clients: boolean | undefined;
   remove_client: boolean | undefined;
@@ -133,11 +136,36 @@ export interface StatusResult {
   no_file_backups: boolean;
 
   admin: boolean | undefined;
+  // Newest server version, for admins until they stop showing it
+  curr_version_num: number | undefined;
+  curr_version_str: string | undefined;
 
   server_identity: string;
   server_pubkey: string;
 
   status: StatusClientItem[];
+}
+
+// Result of the slower backup storage checks (admin only)
+export interface StatusCheckResult {
+  dir_error: true | undefined;
+  dir_error_ext: string | undefined;
+  dir_error_hint: string | undefined;
+  dir_error_volume: string | undefined;
+  dir_error_stop_show_key: string | undefined;
+  dir_error_show: false | undefined;
+  system_err: string | undefined;
+  detail_err_str: string | undefined;
+  max_path_str: string | undefined;
+  btrfs_backupfolder: string | undefined;
+  urbackup_backupfolder: string | undefined;
+  tmpdir_error: true | undefined;
+  tmpdir_error_stop_show_key: string | undefined;
+  tmpdir_error_show: false | undefined;
+  virus_error: true | undefined;
+  virus_error_path: string | undefined;
+  virus_error_stop_show_key: string | undefined;
+  virus_error_show: false | undefined;
 }
 
 export type StartType = "incr_file" | "full_file" | "incr_image" | "full_image";
@@ -751,6 +779,30 @@ class UrBackupServer {
   // Return data for displaying status page
   status = async () => {
     const resp = await this.fetchData({}, "status");
+    return resp as StatusResult;
+  };
+
+  // Check backup and temporary folders. Slow, call once per status page visit
+  statusCheck = async () => {
+    const resp = await this.fetchData({}, "status_check");
+    return resp as StatusCheckResult;
+  };
+
+  // Stop showing the status error or hint with key `stopShowKey`
+  stopShowStatusError = async (stopShowKey: string) => {
+    const resp = await this.fetchData({ stop_show: stopShowKey }, "status");
+    return resp as StatusResult;
+  };
+
+  // Stop showing that server version `version` is available
+  stopShowNewVersion = async (version: string) => {
+    const resp = await this.fetchData({ stop_show_version: version }, "status");
+    return resp as StatusResult;
+  };
+
+  // Reset a server error. `error` is "nospc_stalled", "nospc_fatal" or "database_error"
+  resetStatusError = async (error: string) => {
+    const resp = await this.fetchData({ reset_error: error }, "status");
     return resp as StatusResult;
   };
 
