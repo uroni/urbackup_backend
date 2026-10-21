@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Field, Textarea } from "@fluentui/react-components";
+import { Button, Field } from "@fluentui/react-components";
 import {
   useMutation,
   useQueryClient,
@@ -13,7 +13,7 @@ import {
   clearMessages,
 } from "../../../components/Banner/messageStore";
 import { FormCard, FormContainer } from "../Form/Form";
-import styles from "./Scripts.module.css";
+import { CodeEditor } from "./CodeEditor";
 
 /**
  * Editor of the Lua script that formats the log report mails
@@ -56,12 +56,11 @@ export function ReportScript() {
           }}
         >
           <Field label="Script (Lua)">
-            <Textarea
-              className={styles.code}
+            <CodeEditor
+              label="Script (Lua)"
               value={script}
-              resize="vertical"
               rows={30}
-              onChange={(_, d) => setScript(d.value)}
+              onChange={setScript}
             />
           </Field>
           <div>
