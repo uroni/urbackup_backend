@@ -136,6 +136,9 @@ export interface StatusResult {
   no_file_backups: boolean;
 
   admin: boolean | undefined;
+  // Newest server version, for admins until they stop showing it
+  curr_version_num: number | undefined;
+  curr_version_str: string | undefined;
 
   server_identity: string;
   server_pubkey: string;
@@ -788,6 +791,12 @@ class UrBackupServer {
   // Stop showing the status error or hint with key `stopShowKey`
   stopShowStatusError = async (stopShowKey: string) => {
     const resp = await this.fetchData({ stop_show: stopShowKey }, "status");
+    return resp as StatusResult;
+  };
+
+  // Stop showing that server version `version` is available
+  stopShowNewVersion = async (version: string) => {
+    const resp = await this.fetchData({ stop_show_version: version }, "status");
     return resp as StatusResult;
   };
 

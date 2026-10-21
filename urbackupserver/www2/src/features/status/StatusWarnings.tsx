@@ -11,6 +11,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { StatusCheckResult, StatusResult } from "../../api/urbackupserver";
 import { urbackupServer } from "../../App";
+import { serverVersionNumber } from "./serverVersion";
+
+const runningVersion = serverVersionNumber(
+  document
+    .querySelector('meta[name="urbackup-version"]')
+    ?.getAttribute("content"),
+);
 
 const DIR_ERROR_TEXT =
   "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.";
@@ -114,6 +121,11 @@ export function StatusWarnings({ status }: { status: StatusResult }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["status"] }),
   });
 
+  const stopShowVersion = useMutation({
+    mutationFn: urbackupServer.stopShowNewVersion,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["status"] }),
+  });
+
   const stopShowAction = (key: string | undefined, label: string) =>
     key ? { label, onClick: () => stopShow.mutate(key) } : undefined;
   const resetAction = (error: string) => ({
@@ -121,8 +133,25 @@ export function StatusWarnings({ status }: { status: StatusResult }) {
     onClick: () => reset.mutate(error),
   });
 
+  const newVersion = status.curr_version_str;
+
   return (
     <>
+      {newVersion &&
+        runningVersion !== undefined &&
+        (status.curr_version_num ?? 0) > runningVersion && (
+          <Warning
+            intent="info"
+            action={{
+              label: "Stop showing this",
+              onClick: () => stopShowVersion.mutate(newVersion),
+            }}
+          >
+            There is a new version of UrBackup server available ({newVersion}
+            ). Download it{" "}
+            <Link href="https://www.urbackup.org/download.html">here</Link>.
+          </Warning>
+        )}
       {status.nospc_stalled && (
         <Warning action={resetAction("nospc_stalled")}>
           There is currently not enough free space in the backup folder.
