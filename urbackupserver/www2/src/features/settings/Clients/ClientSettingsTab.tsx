@@ -51,9 +51,12 @@ export interface SettingField
   render?: (
     settings: ClientSettings["settings"],
     validationMessage?: string,
+    validationMessages?: Record<string, string>,
   ) => React.ReactNode;
   // Form entries of "custom" settings
   schema?: Record<string, ZodMiniType>;
+  // Turns the form entries of "custom" settings into settings to save
+  toSettings?: (entries: Record<string, unknown>) => Record<string, unknown>;
   // Values of "select" settings
   options?: { value: string; label: string }[];
   // Format of the value shown for "text" settings
@@ -200,7 +203,9 @@ export function SettingsFormCard({
   settings: ClientSettings["settings"];
   onSubmit: (settings: ClientSettings["settings"]) => void;
 }) {
-  const submit = (data: Record<string, unknown>) => {
+  const submit = (entries: Record<string, unknown>) => {
+    const data = fields.reduce((all, f) => f.toSettings?.(all) ?? all, entries);
+
     const formatted = Object.fromEntries(
       Object.entries(data).map(([k, v]) => {
         const format = fields.find((f) => f.name === k)?.format;
@@ -228,6 +233,7 @@ export function SettingsFormCard({
                 field={field}
                 settings={settings}
                 validationMessage={validationMessages[field.name]}
+                validationMessages={validationMessages}
               />
             ))
           }
@@ -237,14 +243,16 @@ export function SettingsFormCard({
   );
 }
 
-function SettingInput({
+export function SettingInput({
   field,
   settings,
   validationMessage,
+  validationMessages,
 }: {
   field: SettingField;
   settings: ClientSettings["settings"];
   validationMessage?: string;
+  validationMessages?: Record<string, string>;
 }) {
   const formField = { ...field, type: "custom" } satisfies BaseField<string> & {
     label: string;
@@ -267,7 +275,7 @@ function SettingInput({
   }
 
   if (field.kind === "custom") {
-    return field.render?.(settings, validationMessage);
+    return field.render?.(settings, validationMessage, validationMessages);
   }
 
   if (field.kind === "select") {
@@ -336,7 +344,7 @@ function formatState(
   } as CheckboxTextDropdownState;
 }
 
-const SOURCES = z.enum(["1", "2", "4"]);
+export const SOURCES = z.enum(["1", "2", "4"]);
 // Any combination of the group, here and client sources
 const MERGED_SOURCES = z.enum(Array.from({ length: 8 }, (_, i) => String(i)));
 
