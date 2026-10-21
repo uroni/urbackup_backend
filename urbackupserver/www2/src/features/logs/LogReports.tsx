@@ -8,6 +8,7 @@ import {
 } from "@fluentui/react-components";
 import { useState } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { urbackupServer } from "../../App";
 import { LOG_LEVELS, SendOnly } from "../../api/urbackupserver";
@@ -47,6 +48,8 @@ export function LogReports() {
   } = logsResult.data;
 
   const saveLogReportingMutation = useSaveLogReportingMutation();
+
+  const navigate = useNavigate();
 
   const [emailErrorMessage, setEmailErrorMessage] = useState("");
 
@@ -184,7 +187,9 @@ export function LogReports() {
         </div>
         {can_report_script_edit && (
           <div>
-            <Link>Edit report script</Link>
+            <Link onClick={() => navigate("/settings/report-script")}>
+              Edit report script
+            </Link>
           </div>
         )}
       </div>

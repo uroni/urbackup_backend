@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Field, Input, InputProps } from "@fluentui/react-components";
 
 import type { ClientSettingState } from "../../../../api/urbackupserver";
@@ -7,10 +7,12 @@ import {
   type EnabledState,
   getEnabledState,
   getUse,
+  SettingsScope,
   SETTINGS_SOURCE,
 } from "./utils";
 import { ResettableInput } from "../../Form/TextField";
 import styles from "./FileImageBackups.module.css";
+import { isClientConfigurable } from "./clientConfigurable";
 
 export function MergeableFields({
   name,
@@ -23,8 +25,12 @@ export function MergeableFields({
 }) {
   const nameUse = `${name}.use`;
 
+  const scope = useContext(SettingsScope);
+  const global = scope === "general";
+
+  // A source that isn't set has no value in the response
   const [hereValue, setHereValue] = useState<string>(
-    initialFormState.value as string,
+    String(initialFormState.value ?? ""),
   );
 
   const [enabledStates, setEnabledStates] = useState<EnabledState[]>(() =>
@@ -40,7 +46,7 @@ export function MergeableFields({
     // Send no changes to "HERE" value if the selected source is not HERE.
     // Even if the field was interacted with.
     if (!isHereValueEnabled) {
-      return initialFormState.value;
+      return initialFormState.value ?? "";
     }
 
     return hereValue;
@@ -80,19 +86,29 @@ export function MergeableFields({
     },
     {
       name: SETTINGS_SOURCE.GROUP,
-      labels: makeLabels(SETTINGS_SOURCE.GROUP, label),
+      labels: makeLabels(
+        scope === "group" ? "general" : SETTINGS_SOURCE.GROUP,
+        label,
+      ),
       readOnly: true,
       state: isSourceEnabled(enabledStates, SETTINGS_SOURCE.GROUP),
-      value: initialFormState.value_group,
+      value: initialFormState.value_group ?? "",
     },
-    {
-      name: SETTINGS_SOURCE.CLIENT,
-      labels: makeLabels(SETTINGS_SOURCE.CLIENT, label),
-      readOnly: true,
-      state: isSourceEnabled(enabledStates, SETTINGS_SOURCE.CLIENT),
-      value: initialFormState.value_client,
-    },
+    ...(isClientConfigurable(name) && scope === "client"
+      ? [
+          {
+            name: SETTINGS_SOURCE.CLIENT,
+            labels: makeLabels(SETTINGS_SOURCE.CLIENT, label),
+            readOnly: true,
+            state: isSourceEnabled(enabledStates, SETTINGS_SOURCE.CLIENT),
+            value: initialFormState.value_client ?? "",
+          },
+        ]
+      : []),
   ];
+
+  // Only the general value itself, which is always used
+  const shownInputs = global ? inputs.slice(0, 1) : inputs;
 
   return (
     <>
@@ -103,9 +119,10 @@ export function MergeableFields({
       />
       <input type="hidden" name={nameUse} value={hiddenInputValues.use} />
       <div className={`${styles.mergeable} flow flow-s`}>
-        {inputs.map((input) => (
+        {shownInputs.map((input) => (
           <CheckboxTextField
             key={input.name}
+            hideCheckbox={global}
             checked={input.state}
             checkboxLabel={input.labels.checkbox}
             onCheckboxChange={(checked) => {
@@ -130,16 +147,22 @@ export function MergeableFields({
 
 function CheckboxTextField({
   checked,
+  hideCheckbox,
   checkboxLabel,
   onCheckboxChange,
   children,
 }: {
   checked: boolean;
+  hideCheckbox?: boolean;
   checkboxLabel: string;
   onCheckboxChange: (checked: boolean) => void;
   children: React.ReactNode;
 }) {
   const [enabled, setEnabled] = useState(checked);
+
+  if (hideCheckbox) {
+    return children;
+  }
 
   return (
     <div className={`${styles["mergeable__row"]} repel`}>
@@ -218,7 +241,7 @@ function isSourceEnabled(
 }
 
 function makeLabels(
-  source: (typeof SETTINGS_SOURCE)[keyof typeof SETTINGS_SOURCE],
+  source: (typeof SETTINGS_SOURCE)[keyof typeof SETTINGS_SOURCE] | "general",
   label: string,
 ) {
   return {
