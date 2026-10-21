@@ -1,11 +1,26 @@
 import { useState } from "react";
-import { Field as FUIField, Select } from "@fluentui/react-components";
-import { z } from "zod/v4-mini";
+import { Button, Field as FUIField, Select } from "@fluentui/react-components";
+import { z, type ZodMiniType } from "zod/v4-mini";
 
-import type { ClientSettings } from "../../../api/urbackupserver";
+import type {
+  ClientSettings,
+  ClientSettingState,
+} from "../../../api/urbackupserver";
 import textStyles from "../Form/TextField.module.css";
+import { VALIDATION_MESSAGES } from "../Form/validation";
 import { useSettings } from "../useSettings";
-import { ClientSettingsTab, type SettingField } from "./ClientSettingsTab";
+import {
+  ClientSettingsTab,
+  SettingInput,
+  SOURCES,
+  type SettingField,
+} from "./ClientSettingsTab";
+import { getSettingState } from "./FileImageBackups/FileImageBackups";
+import {
+  SETTINGS_SOURCE,
+  USE_VALUES,
+  VALUE_TO_USE,
+} from "./FileImageBackups/utils";
 import selectStyles from "./SelectDropdown.module.css";
 
 /**
@@ -66,6 +81,107 @@ const backupWindowField = (
   description,
 });
 
+const [incrFileWindow, ...otherWindows] = [
+  backupWindowField(
+    "backup_window_incr_file",
+    "Backup window for incremental file backups",
+    <>
+      E.g. <code>Mon-Fri/8-17;Sat,Sun/0-24</code>
+    </>,
+  ),
+  backupWindowField(
+    "backup_window_full_file",
+    "Backup window for full file backups",
+  ),
+  backupWindowField(
+    "backup_window_incr_image",
+    "Backup window for incremental image backups",
+  ),
+  backupWindowField(
+    "backup_window_full_image",
+    "Backup window for full image backups",
+  ),
+];
+
+const combinedWindow = { ...incrFileWindow, label: "Backup window" };
+
+const HERE_VALUE = VALUE_TO_USE[USE_VALUES[SETTINGS_SOURCE.HERE]];
+
+/**
+ * Like the old web interface one backup window for all backup types while
+ * they are the same. The combined input is the incremental file backup one
+ */
+function BackupWindows({
+  settings,
+  validationMessages = {},
+}: {
+  settings: ClientSettings["settings"];
+  validationMessages?: Record<string, string>;
+}) {
+  const [states, setStates] = useState(() =>
+    [incrFileWindow, ...otherWindows].map((f) =>
+      getSettingState<ClientSettingState>(settings, f.name),
+    ),
+  );
+
+  const [separate, setSeparate] = useState(() =>
+    states.some((s) => JSON.stringify(s) !== JSON.stringify(states[0])),
+  );
+
+  if (separate) {
+    return [incrFileWindow, ...otherWindows].map((f, i) => (
+      <SettingInput
+        key={f.name}
+        field={f}
+        settings={
+          { ...settings, [f.name]: states[i] } as ClientSettings["settings"]
+        }
+        validationMessage={validationMessages[f.name]}
+      />
+    ));
+  }
+
+  return (
+    <div>
+      <SettingInput
+        field={combinedWindow}
+        settings={settings}
+        validationMessage={validationMessages[incrFileWindow.name]}
+      />
+      <Button
+        appearance="subtle"
+        size="small"
+        onClick={(e) => {
+          // Start the separate inputs with the unsaved combined value
+          // (the hidden inputs, the dropdown has the ".use" name as its id)
+          const hidden = (name: string) =>
+            e.currentTarget.form!.querySelector<HTMLInputElement>(
+              `input[type=hidden][name="${name}"]`,
+            )!.value;
+
+          const combined = {
+            ...states[0],
+            use: Number(hidden(`${incrFileWindow.name}.use`)),
+            [HERE_VALUE]: hidden(incrFileWindow.name),
+          } as ClientSettingState;
+
+          setStates(states.map(() => combined));
+          setSeparate(true);
+        }}
+      >
+        Set a backup window per backup type
+      </Button>
+    </div>
+  );
+}
+
+const windowSchema = (f: SettingField, use: ZodMiniType) => ({
+  [f.name]: z
+    .string()
+    .check(z.regex(BACKUP_WINDOW_PATTERN, VALIDATION_MESSAGES.regex(f.label))),
+  [`${f.name}.use`]: use,
+});
+
 const clientFields: SettingField[] = [
   {
     name: "memberof",
@@ -93,25 +209,37 @@ const clientFields: SettingField[] = [
     kind: "checkbox",
     mainClientOnly: true,
   },
-  backupWindowField(
-    "backup_window_incr_file",
-    "Backup window for incremental file backups",
-    <>
-      E.g. <code>Mon-Fri/8-17;Sat,Sun/0-24</code>
-    </>,
-  ),
-  backupWindowField(
-    "backup_window_full_file",
-    "Backup window for full file backups",
-  ),
-  backupWindowField(
-    "backup_window_incr_image",
-    "Backup window for incremental image backups",
-  ),
-  backupWindowField(
-    "backup_window_full_image",
-    "Backup window for full image backups",
-  ),
+  {
+    name: incrFileWindow.name,
+    label: "Backup window",
+    kind: "custom",
+    render: (settings, _, validationMessages) => (
+      <BackupWindows
+        settings={settings}
+        validationMessages={validationMessages}
+      />
+    ),
+    schema: Object.assign(
+      windowSchema(combinedWindow, SOURCES),
+      // The other inputs are empty while the combined one is shown
+      ...otherWindows.map((f) => windowSchema(f, z.enum(["", "1", "2", "4"]))),
+    ),
+    toSettings: (entries) => {
+      if (entries[`${otherWindows[0].name}.use`] !== "") {
+        return entries;
+      }
+
+      const name = incrFileWindow.name;
+
+      return Object.assign(
+        { ...entries },
+        ...otherWindows.map((f) => ({
+          [f.name]: entries[name],
+          [`${f.name}.use`]: entries[`${name}.use`],
+        })),
+      );
+    },
+  },
   {
     name: "computername",
     label: "Client name",
