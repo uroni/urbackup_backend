@@ -69,7 +69,7 @@ function SelectTimezone(props: WizardComponent) {
                     if(sd.length>1)
                     {
                         tzArea = sd[0];
-                        tzCity = sd[1];
+                        tzCity = sd.slice(1).join("/");
                     }
                     else
                     {
