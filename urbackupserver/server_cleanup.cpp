@@ -534,19 +534,33 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 	std::vector<ServerCleanupDao::SClientInfo> res_clients=cleanupdao->getClients();
 
-	//Set by "urbackupsrv remove-unknown --client"
+	//Set by "urbackupsrv remove-unknown --client/--group"
 	std::string only_client = Server->getServerParameter("remove_unknown_client");
-	if (!only_client.empty())
+	std::string only_group = Server->getServerParameter("remove_unknown_group");
+	if (!only_client.empty() || !only_group.empty())
 	{
+		std::vector<int> group_clients;
+		if (!only_group.empty())
+		{
+			IQuery* q_group = db->Prepare("SELECT c.id AS id FROM clients c INNER JOIN settings_db.si_client_groups cg ON c.groupid=cg.id WHERE cg.name=?", false);
+			q_group->Bind(only_group);
+			db_results res_group = q_group->Read();
+			db->destroyQuery(q_group);
+			for (size_t i = 0; i < res_group.size(); ++i)
+				group_clients.push_back(watoi(res_group[i]["id"]));
+		}
+
 		std::vector<ServerCleanupDao::SClientInfo> sel_clients;
 		for (size_t i = 0; i < res_clients.size(); ++i)
 		{
-			if (res_clients[i].name == only_client)
+			if ( (only_client.empty() || res_clients[i].name == only_client)
+				&& (only_group.empty() || std::find(group_clients.begin(), group_clients.end(), res_clients[i].id) != group_clients.end()) )
 				sel_clients.push_back(res_clients[i]);
 		}
 		if (sel_clients.empty())
 		{
-			Server->Log("Client \"" + only_client + "\" not found", LL_ERROR);
+			Server->Log("No client found"+(only_client.empty() ? "" : " with name \""+only_client+"\"")
+				+(only_group.empty() ? "" : " in group \""+only_group+"\""), LL_ERROR);
 			return;
 		}
 		res_clients = sel_clients;
@@ -753,10 +767,10 @@ void ServerCleanupThread::do_remove_unknown(void)
 		check_symlinks(res_clients[i], backupfolder, false);
 	}
 
-	if (!only_client.empty())
+	if (!only_client.empty() || !only_group.empty())
 	{
 		//Covers the file entries of all clients
-		Server->Log("Skipping removal of dangling file entries (only one client selected)", LL_INFO);
+		Server->Log("Skipping removal of dangling file entries (not all clients selected)", LL_INFO);
 		FileIndex::flush();
 		return;
 	}

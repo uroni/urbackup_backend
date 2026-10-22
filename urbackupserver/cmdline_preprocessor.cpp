@@ -626,6 +626,10 @@ int action_remove_unknown(std::vector<std::string> args)
 		"Only remove unknown files and directories of this client",
 		false, "", "client name", cmd);
 
+	TCLAP::ValueArg<std::string> group_arg("g", "group",
+		"Only remove unknown files and directories of the clients in this group",
+		false, "", "group name", cmd);
+
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 
@@ -644,6 +648,11 @@ int action_remove_unknown(std::vector<std::string> args)
 	{
 		real_args.push_back("--remove_unknown_client");
 		real_args.push_back(client_arg.getValue());
+	}
+	if (!group_arg.getValue().empty())
+	{
+		real_args.push_back("--remove_unknown_group");
+		real_args.push_back(group_arg.getValue());
 	}
 	real_args.push_back("--snapshot_helper");
 	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
