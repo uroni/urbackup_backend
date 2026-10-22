@@ -3,14 +3,24 @@ import Checkbox, { CheckboxChangeEvent } from "antd/lib/checkbox/Checkbox";
 import produce from "immer";
 import { useCallback, useEffect } from "react";
 import { useState } from "react";
-import { serverTimezoneDef, toIsoDateTime } from "./App";
+import { serverTimezoneDef, toIsoDateTime, toIsoDateTimeInZone } from "./App";
 import { BackupImage, LocalDisk, WizardComponent, WizardState, WizardStateProps } from "./WizardState";
 
 export function imageDateTime(img: BackupImage, props: WizardStateProps) {
     if (img.time_str.length>0 && props.timezoneArea===serverTimezoneDef)
         return img.time_str;
-        
-    return toIsoDateTime(new Date(img.time_s*1000))
+
+    const d = new Date(img.time_s*1000);
+    if (props.timezoneArea!==serverTimezoneDef) {
+        const tz = props.timezoneCity.length===0 ? props.timezoneArea : (props.timezoneArea+"/"+props.timezoneCity);
+        try {
+            return toIsoDateTimeInZone(d, tz);
+        } catch(error) {
+            // Unknown to the browser: fall back to its local time
+        }
+    }
+
+    return toIsoDateTime(d)
 }
 
 function ConfigRestore(props: WizardComponent) {
