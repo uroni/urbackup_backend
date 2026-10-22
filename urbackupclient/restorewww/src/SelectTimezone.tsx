@@ -1,6 +1,6 @@
 import { Alert, Button, Select } from "antd";
 import { useEffect, useState } from "react";
-import { serverTimezoneDef, useMountEffect } from "./App";
+import { browserTimezones, serverTimezoneDef, useMountEffect } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
 import produce from "immer";
 
@@ -15,6 +15,7 @@ function SelectTimezone(props: WizardComponent) {
     const [timezoneArea, setTimezoneArea] = useState(props.props.timezoneArea);
     const [timezoneCity, setTimezoneCity] = useState(props.props.timezoneCity);
     const [loadedArea, setLoadedArea] = useState("");
+    const [localTzs, setLocalTzs] = useState<string[]>([]);
 
     useMountEffect( () => {
         (async () => {
@@ -35,6 +36,14 @@ function SelectTimezone(props: WizardComponent) {
             }
 
             let areas : string[] = jdata["areas"];
+            if(areas.length===0) {
+                // No timedatectl (Windows PE): list the browser's time zones, the selection is then only used to show the image times
+                const tzs = browserTimezones();
+                setLocalTzs(tzs);
+                areas = tzs.map(tz => tz.split("/")[0]).filter((area, idx, arr) => arr.indexOf(area)===idx);
+                if(areas.indexOf("UTC")===-1)
+                    areas.push("UTC");
+            }
             areas.unshift(serverTimezoneDef);
 
             setTzAreas(areas);
@@ -79,6 +88,9 @@ function SelectTimezone(props: WizardComponent) {
 
     useEffect(() => {
         (async () => {
+            if(isLoadingAreas)
+                return;
+
             if(timezoneArea===loadedArea)
             {
                 setIsLoadingCities(false);
@@ -90,6 +102,17 @@ function SelectTimezone(props: WizardComponent) {
                 setTzCities([]);
                 setIsLoadingCities(false);
                 setLoadedArea(timezoneArea);
+                return;
+            }
+
+            if(localTzs.length>0)
+            {
+                const cities = localTzs.filter(tz => tz.startsWith(timezoneArea+"/")).map(tz => tz.substring(timezoneArea.length+1));
+                setTzCities(cities);
+                if(cities.indexOf(timezoneCity)===-1)
+                    setTimezoneCity(cities.length>0 && timezoneCity.length===0 ? cities[0] : "");
+                setLoadedArea(timezoneArea);
+                setIsLoadingCities(false);
                 return;
             }
 
@@ -132,7 +155,7 @@ function SelectTimezone(props: WizardComponent) {
             setIsLoadingCities(false);
             setLoadedArea(timezoneArea);
         })();
-    }, [timezoneArea, timezoneCity, loadedArea]);
+    }, [timezoneArea, timezoneCity, loadedArea, localTzs, isLoadingAreas]);
 
     const onAreaSelectChange = (value: string) => {
         setTimezoneArea(value);
