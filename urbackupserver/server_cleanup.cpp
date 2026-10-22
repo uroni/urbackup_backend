@@ -534,12 +534,44 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 	std::vector<ServerCleanupDao::SClientInfo> res_clients=cleanupdao->getClients();
 
+	//Set by "urbackupsrv remove-unknown --client/--group"
+	std::string only_client = Server->getServerParameter("remove_unknown_client");
+	std::string only_group = Server->getServerParameter("remove_unknown_group");
+	if (!only_client.empty() || !only_group.empty())
+	{
+		std::vector<int> group_clients;
+		if (!only_group.empty())
+		{
+			IQuery* q_group = db->Prepare("SELECT c.id AS id FROM clients c INNER JOIN settings_db.si_client_groups cg ON c.groupid=cg.id WHERE cg.name=?", false);
+			q_group->Bind(only_group);
+			db_results res_group = q_group->Read();
+			db->destroyQuery(q_group);
+			for (size_t i = 0; i < res_group.size(); ++i)
+				group_clients.push_back(watoi(res_group[i]["id"]));
+		}
+
+		std::vector<ServerCleanupDao::SClientInfo> sel_clients;
+		for (size_t i = 0; i < res_clients.size(); ++i)
+		{
+			if ( (only_client.empty() || res_clients[i].name == only_client)
+				&& (only_group.empty() || std::find(group_clients.begin(), group_clients.end(), res_clients[i].id) != group_clients.end()) )
+				sel_clients.push_back(res_clients[i]);
+		}
+		if (sel_clients.empty())
+		{
+			Server->Log("No client found"+(only_client.empty() ? "" : " with name \""+only_client+"\"")
+				+(only_group.empty() ? "" : " in group \""+only_group+"\""), LL_ERROR);
+			return;
+		}
+		res_clients = sel_clients;
+	}
+
 	for(size_t i=0;i<res_clients.size();++i)
 	{
 		int clientid=res_clients[i].id;
 		const std::string& clientname=res_clients[i].name;
 
-		Server->Log("Removing unknown for client \""+clientname+"\"");
+		Server->Log("Removing unknown for client \""+clientname+"\" ("+convert(i+1)+"/"+convert(res_clients.size())+")");
 
 		std::vector<ServerCleanupDao::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
@@ -733,6 +765,14 @@ void ServerCleanupThread::do_remove_unknown(void)
 			}
 		}
 		check_symlinks(res_clients[i], backupfolder, false);
+	}
+
+	if (!only_client.empty() || !only_group.empty())
+	{
+		//Covers the file entries of all clients
+		Server->Log("Skipping removal of dangling file entries (not all clients selected)", LL_INFO);
+		FileIndex::flush();
+		return;
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
