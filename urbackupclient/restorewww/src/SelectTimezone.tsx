@@ -1,5 +1,5 @@
 import { Alert, Button, Select } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { browserTimezones, serverTimezoneDef, useMountEffect } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
 import produce from "immer";
@@ -16,6 +16,8 @@ function SelectTimezone(props: WizardComponent) {
     const [timezoneCity, setTimezoneCity] = useState(props.props.timezoneCity);
     const [loadedArea, setLoadedArea] = useState("");
     const [localTzs, setLocalTzs] = useState<string[]>([]);
+    // The server time zone lookup can take a while; it must not override a selection made in the meantime
+    const userSelected = useRef(false);
 
     useMountEffect( () => {
         (async () => {
@@ -75,7 +77,7 @@ function SelectTimezone(props: WizardComponent) {
                     }
                 }
 
-                if(areas.indexOf(tzArea)!==-1)
+                if(!userSelected.current && areas.indexOf(tzArea)!==-1)
                 {
                     setTimezoneCity(tzCity);
                     setTimezoneArea(tzArea);
@@ -158,11 +160,13 @@ function SelectTimezone(props: WizardComponent) {
     }, [timezoneArea, timezoneCity, loadedArea, localTzs, isLoadingAreas]);
 
     const onAreaSelectChange = (value: string) => {
+        userSelected.current = true;
         setTimezoneArea(value);
         setTimezoneCity("");
     }
 
     const onCitySelectChange = (value: string) => {
+        userSelected.current = true;
         setTimezoneCity(value);
     }
 
