@@ -220,7 +220,7 @@ void IdleCheckerThread::checkPauseTimeout(void)
 	}
 
 	Server->Log("Pause timed out after " + PrettyPrintTime((until - pause_start) * 1000)
-		+ ". Continuing backups.", LL_INFO);
+		+ ". Continuing backups.", LL_WARNING);
 }
 
 namespace
