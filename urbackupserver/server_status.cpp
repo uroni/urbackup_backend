@@ -615,7 +615,7 @@ void ServerStatus::updateLastseen(const std::string & clientname)
 }
 
 void ServerStatus::setClientState(const std::string & clientname, bool paused, int64 paused_for,
-	int keeping_awake, int prevent_sleep)
+	int keeping_awake, int prevent_sleep, int64 resumes_in)
 {
 	IScopedLock lock(mutex);
 	std::map<std::string, SStatus>::iterator it = status.find(clientname);
@@ -625,7 +625,16 @@ void ServerStatus::setClientState(const std::string & clientname, bool paused, i
 	}
 	if (!paused)
 	{
+		if (it->second.client_paused_since != 0
+			&& it->second.client_pause_until != 0
+			&& Server->getTimeSeconds() + 120 >= it->second.client_pause_until)
+		{
+			Server->Log("Pause of client \"" + clientname + "\" timed out after "
+				+ PrettyPrintTime((it->second.client_pause_until - it->second.client_paused_since) * 1000)
+				+ ". Backups continue.", LL_INFO);
+		}
 		it->second.client_paused_since = 0;
+		it->second.client_pause_until = 0;
 	}
 	else
 	{
@@ -633,6 +642,7 @@ void ServerStatus::setClientState(const std::string & clientname, bool paused, i
 		if (paused_for < 0)
 			paused_for = 0;
 		it->second.client_paused_since = Server->getTimeSeconds() - paused_for;
+		it->second.client_pause_until = resumes_in >= 0 ? Server->getTimeSeconds() + resumes_in : 0;
 	}
 	it->second.client_keeping_awake = keeping_awake;
 	it->second.client_prevent_sleep = prevent_sleep;
@@ -645,6 +655,7 @@ void ServerStatus::resetClientState(const std::string & clientname)
 	if (it != status.end())
 	{
 		it->second.client_paused_since = 0;
+		it->second.client_pause_until = 0;
 		it->second.client_keeping_awake = -1;
 		it->second.client_prevent_sleep = -1;
 	}

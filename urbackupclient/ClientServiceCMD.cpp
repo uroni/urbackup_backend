@@ -1652,6 +1652,13 @@ void ClientConnector::sendChannelState(SChannel* chan)
 			//Duration, not a timestamp: independent of clock differences to the server
 			state += "&paused_for=" + convert((Server->getTimeMS() - start) / 1000);
 		}
+		int64 pause_until = IdleCheckerThread::getPauseUntil();
+		if (pause_until != 0)
+		{
+			//Also a duration: seconds until the pause times out
+			int64 resumes_in = pause_until - Server->getTimeSeconds();
+			state += "&resumes_in=" + convert(resumes_in > 0 ? resumes_in : 0);
+		}
 	}
 	tcpstack.Send(pipe, "CLIENT STATE " + state);
 }

@@ -1318,6 +1318,10 @@ function show_status2(data)
 		if(obj.client_paused_since>0)
 		{
 			obj.paused_since_t=format_unix_timestamp(obj.client_paused_since);
+			if(obj.client_pause_until>0)
+			{
+				obj.paused_until_t=format_unix_timestamp(obj.client_pause_until);
+			}
 		}
 		if(obj.client_keeping_awake>=0)
 		{
@@ -1367,7 +1371,7 @@ function show_status2(data)
 			obj.keeping_awake_t = keeping_awake==1 ? "yes" : "no";
 			if(keeping_awake==0 && obj.client_prevent_sleep>=0)
 			{
-				obj.keeping_awake_t += obj.client_prevent_sleep==1 ? " (sleep prevention is on, used during backups)" : " (sleep prevention is off)";
+				obj.keeping_awake_t += obj.client_prevent_sleep==1 ? " (sleep prevention is on, used while the client is busy)" : " (sleep prevention is off)";
 			}
 		}
 		

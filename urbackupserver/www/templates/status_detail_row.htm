@@ -11,7 +11,7 @@
 		</select>
 	</td>
 	{/show_select_box}
-	<td>{name}{?paused_since_t}<div class="text-warning"><strong>Paused since {paused_since_t}</strong></div>{/paused_since_t}{?keeping_awake_t}<div class="text-muted"><small>Keeping the PC awake: {keeping_awake_t}</small></div>{/keeping_awake_t}</td>
+	<td>{name}{?paused_since_t}<div class="text-warning"><strong>Paused since {paused_since_t}{?paused_until_t} (resumes {paused_until_t}){/paused_until_t}</strong></div>{/paused_since_t}{?keeping_awake_t}<div class="text-muted"><small>Keeping the PC awake: {keeping_awake_t}</small></div>{/keeping_awake_t}</td>
 	<td>{groupname}</td>
 	<td>{online} {?online_add_status}({status|s}){/online_add_status} {?reset_client_uid}<a class="btn btn-sm btn-danger" href="javascript: allowNewClient({id});">{tAllow new client}</a>{/reset_client_uid}</td>
 	<td>{status|s}</td>

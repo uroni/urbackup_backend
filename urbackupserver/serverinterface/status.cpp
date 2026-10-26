@@ -521,6 +521,7 @@ ACTION_IMPL(status)
 			if (curr_status != NULL)
 			{
 				stat.set("client_paused_since", curr_status->client_paused_since);
+				stat.set("client_pause_until", curr_status->client_pause_until);
 				stat.set("client_keeping_awake", curr_status->client_keeping_awake);
 				stat.set("client_prevent_sleep", curr_status->client_prevent_sleep);
 			}

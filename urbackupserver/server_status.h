@@ -103,7 +103,7 @@ struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
 		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled;
-		lastseen = 0; client_paused_since = 0; client_keeping_awake = -1; client_prevent_sleep = -1;
+		lastseen = 0; client_paused_since = 0; client_pause_until = 0; client_keeping_awake = -1; client_prevent_sleep = -1;
 	}
 
 	std::string client;
@@ -125,6 +125,8 @@ struct SStatus
 	//Not stored in the database: refreshed whenever the channel is (re)established.
 	//Unix seconds, 0 if not paused/unknown
 	int64 client_paused_since;
+	//Unix seconds the client's pause times out, 0 if never/unknown
+	int64 client_pause_until;
 	//1 yes, 0 no, -1 unknown
 	int client_keeping_awake;
 	int client_prevent_sleep;
@@ -152,7 +154,7 @@ public:
 	static bool isRestoreDisabled(const std::string &clientname, std::string& client_subname);
 	static void updateLastseen(const std::string &clientname);
 	static void setClientState(const std::string &clientname, bool paused, int64 paused_for,
-		int keeping_awake, int prevent_sleep);
+		int keeping_awake, int prevent_sleep, int64 resumes_in);
 	static int64 getClientPausedSince(const std::string &clientname);
 	static void resetClientState(const std::string &clientname);
 	static int64 getLastseen(const std::string &clientname);

@@ -427,9 +427,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(msg.substr(13), &params);
 		str_map::iterator it_ka = params.find("keeping_awake");
 		str_map::iterator it_ps = params.find("prevent_sleep");
+		str_map::iterator it_ri = params.find("resumes_in");
 		ServerStatus::setClientState(clientname, params["paused"] == "1", watoi64(params["paused_for"]),
 			it_ka != params.end() ? watoi(it_ka->second) : -1,
-			it_ps != params.end() ? watoi(it_ps->second) : -1);
+			it_ps != params.end() ? watoi(it_ps->second) : -1,
+			it_ri != params.end() ? watoi64(it_ri->second) : -1);
 	}
 	else if (next(msg, 0, "METERED "))
 	{
