@@ -653,6 +653,15 @@
 				<div id="internet_connect_always_sw" style="display: inline"></div>
 			</div>
 			{/main_client}
+			{?main_client}
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="prevent_sleep">Prevent the computer from going to sleep during backups:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="prevent_sleep" value="true" {prevent_sleep}/></label>
+				</div>
+				<div id="prevent_sleep_sw" style="display: inline"></div>
+			</div>
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_file_dataplan_limit">{tDo not start file backups if current estimated data usage limit per month is smaller than}:</label>
 				<div class="col-sm-6">

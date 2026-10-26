@@ -79,6 +79,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("internet_parallel_file_hashing");
 	ret.push_back("image_file_format");
 	ret.push_back("internet_connect_always");
+	ret.push_back("prevent_sleep");
 	ret.push_back("server_url");
 	ret.push_back("verify_using_client_hashes");
 	ret.push_back("internet_readd_file_entries");
@@ -150,6 +151,7 @@ std::vector<std::string> getClientConfigurableSettingsList(const bool with_max_b
 	ret.push_back("internet_compress");
 	ret.push_back("internet_encrypt");
 	ret.push_back("internet_connect_always");
+	ret.push_back("prevent_sleep");
 	ret.push_back("vss_select_components");
 	ret.push_back("local_encrypt");
 	ret.push_back("local_compress");

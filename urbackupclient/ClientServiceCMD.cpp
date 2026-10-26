@@ -1184,6 +1184,8 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("internet_status", InternetClient::getStatusMsg());
 
+	ret.set("keeping_awake", isPreventingSleep());
+
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
 	ret.set("capability_bits", getCapabilities(db));
@@ -1228,6 +1230,29 @@ namespace
 		SetThreadExecutionState(ES_CONTINUOUS);
 	}
 
+	bool preventSleepEnabled()
+	{
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+		if (curr_settings.get() != NULL)
+		{
+			std::string prevent_sleep;
+			// Same .use/.client scheme as the server's resolution (ClientMain.cpp)
+			// and IndexThread::getVssSettings: the tray stores a local override as
+			// <key>.client with <key>.use == c_use_value_client.
+			if (curr_settings->getValue("prevent_sleep.use", c_use_group) == c_use_value_client
+				&& curr_settings->getValue("prevent_sleep.client", &prevent_sleep))
+			{
+				return prevent_sleep != "false";
+			}
+			if (curr_settings->getValue("prevent_sleep", &prevent_sleep)
+				|| curr_settings->getValue("prevent_sleep_def", &prevent_sleep))
+			{
+				return prevent_sleep != "false";
+			}
+		}
+		return true;
+	}
+
 	typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
 
 	bool IsWindows11()
@@ -1258,6 +1283,9 @@ namespace
 
 	void preventSleep()
 	{
+		if (!preventSleepEnabled())
+			return;
+
 		static bool isWin11 = IsWindows11();
 		if (isWin11)
 		{
@@ -1273,11 +1301,28 @@ namespace
 			return;
 		}
 
+		{
+			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
+			last_prevent_sleep_time = Server->getTimeMS();
+		}
+
 		SetThreadExecutionState(ES_SYSTEM_REQUIRED);
 	}
 }
 
 #endif //_WIN32
+
+bool ClientConnector::isPreventingSleep()
+{
+#ifdef _WIN32
+	std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
+
+	return last_prevent_sleep_time != 0
+		&& Server->getTimeMS() - last_prevent_sleep_time < 2 * 60 * 1000;
+#else
+	return false;
+#endif
+}
 
 void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 {
@@ -1316,8 +1361,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	proc->last_pingtime = Server->getTimeMS();	
 
 #ifdef _WIN32
-	if (!IdleCheckerThread::getPause())
-		preventSleep();
+	preventSleep();
 #endif
 }
 
@@ -1376,8 +1420,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->done_bytes = watoi64(params["done_bytes"]);
 
 #ifdef _WIN32
-	if(!paused)
-		preventSleep();
+	preventSleep();
 #endif
 }
 
