@@ -157,10 +157,10 @@ struct SChannel
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
 		  token(token), make_conn(make_conn), server_identity(server_identity),
 		state(EChannelState_Idle), capa(capa), restore_version(restore_version),
-		virtual_client(virtual_client), channel_version(0) {}
+		virtual_client(virtual_client), channel_version(0), state_fb(false) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_conn(NULL),
-		state(EChannelState_Idle), capa(0), restore_version(0), channel_version(0) {}
+		state(EChannelState_Idle), capa(0), restore_version(0), channel_version(0), state_fb(false) {}
 
 	IPipe *pipe;
 	bool internet_connection;
@@ -172,6 +172,9 @@ struct SChannel
 	int restore_version;
 	std::string virtual_client;
 	int channel_version;
+	//Server wants "CLIENT STATE" messages (paused, keep-awake) on this channel
+	bool state_fb;
+	std::string last_state;
 
 	enum EChannelState
 	{
@@ -348,6 +351,7 @@ private:
 	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity);
 	void CMD_CHANNEL_PONG(const std::string &cmd, const std::string& endpoint_name);
 	void CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name);
+	void sendChannelState(SChannel* chan);
 	void CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params);

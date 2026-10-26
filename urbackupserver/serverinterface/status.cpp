@@ -510,9 +510,19 @@ ACTION_IMPL(status)
 						JSON::Object proc;
 						proc.set("action", process.action);
 						proc.set("pcdone", process.pcdone);
+						proc.set("paused", process.paused);
+						proc.set("paused_since", process.paused_since);
+						proc.set("keeping_awake", process.keeping_awake);
 						processes.add(proc);
 					}
 				}
+			}
+
+			if (curr_status != NULL)
+			{
+				stat.set("client_paused_since", curr_status->client_paused_since);
+				stat.set("client_keeping_awake", curr_status->client_keeping_awake);
+				stat.set("client_prevent_sleep", curr_status->client_prevent_sleep);
 			}
 
 			stat.set("online", online);

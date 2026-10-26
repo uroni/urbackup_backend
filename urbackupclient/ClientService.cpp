@@ -541,6 +541,7 @@ int ClientConnector::Run()
 			if(Server->getTimeMS()-last_channel_ping>60000
 				&& chan->state==SChannel::EChannelState_Idle)
 			{
+				sendChannelState(chan);
 				tcpstack.Send(pipe, "PING");
 				last_channel_ping=Server->getTimeMS();
 				chan->state = SChannel::EChannelState_Pinging;

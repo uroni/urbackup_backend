@@ -274,8 +274,10 @@ void ServerChannelThread::run()
 				}
 				curr_ident = client_main->getIdentity();
 				tcpstack.reset();
+				//An older client never answers state_fb: do not keep what a previous channel reported
+				ServerStatus::resetClientState(clientname);
 				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=2&channel_version=1&startup=1&virtual_client="+EscapeParamString(virtual_client)+
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=2&channel_version=1&startup=1&state_fb=1&virtual_client="+EscapeParamString(virtual_client)+
 					"&settings_update_version="+convert(client_main->getSettingsUpdateVersion()));
 
 				lasttime=Server->getTimeMS();
@@ -417,6 +419,17 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	else if (msg == "UPDATE ACCESS KEY")
 	{
 		client_main->sendToPipe("UPDATE ACCESS KEY");
+	}
+	else if (next(msg, 0, "CLIENT STATE "))
+	{
+		//Only sent by clients that were told "state_fb=1" in the channel setup
+		str_map params;
+		ParseParamStrHttp(msg.substr(13), &params);
+		str_map::iterator it_ka = params.find("keeping_awake");
+		str_map::iterator it_ps = params.find("prevent_sleep");
+		ServerStatus::setClientState(clientname, params["paused"] == "1", watoi64(params["paused_for"]),
+			it_ka != params.end() ? watoi(it_ka->second) : -1,
+			it_ps != params.end() ? watoi(it_ps->second) : -1);
 	}
 	else if (next(msg, 0, "METERED "))
 	{

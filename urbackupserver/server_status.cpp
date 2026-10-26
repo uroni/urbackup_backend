@@ -482,7 +482,26 @@ void ServerStatus::setProcessPaused(const std::string & clientname, size_t id, b
 
 	if (proc != NULL)
 	{
+		if (b && !proc->paused)
+		{
+			proc->paused_since = Server->getTimeSeconds();
+		}
+		else if (!b)
+		{
+			proc->paused_since = 0;
+		}
 		proc->paused = b;
+	}
+}
+
+void ServerStatus::setProcessKeepingAwake(const std::string & clientname, size_t id, int keeping_awake)
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if (proc != NULL)
+	{
+		proc->keeping_awake = keeping_awake;
 	}
 }
 
@@ -593,6 +612,53 @@ void ServerStatus::updateLastseen(const std::string & clientname)
 		return;
 	}
 	it->second.lastseen = Server->getTimeSeconds();
+}
+
+void ServerStatus::setClientState(const std::string & clientname, bool paused, int64 paused_for,
+	int keeping_awake, int prevent_sleep)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it = status.find(clientname);
+	if (it == status.end())
+	{
+		return;
+	}
+	if (!paused)
+	{
+		it->second.client_paused_since = 0;
+	}
+	else
+	{
+		//Client reports how long it has been paused, so clock differences do not matter
+		if (paused_for < 0)
+			paused_for = 0;
+		it->second.client_paused_since = Server->getTimeSeconds() - paused_for;
+	}
+	it->second.client_keeping_awake = keeping_awake;
+	it->second.client_prevent_sleep = prevent_sleep;
+}
+
+void ServerStatus::resetClientState(const std::string & clientname)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it = status.find(clientname);
+	if (it != status.end())
+	{
+		it->second.client_paused_since = 0;
+		it->second.client_keeping_awake = -1;
+		it->second.client_prevent_sleep = -1;
+	}
+}
+
+int64 ServerStatus::getClientPausedSince(const std::string & clientname)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it = status.find(clientname);
+	if (it == status.end())
+	{
+		return 0;
+	}
+	return it->second.client_paused_since;
 }
 
 int64 ServerStatus::getLastseen(const std::string & clientname)

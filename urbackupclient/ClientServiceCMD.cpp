@@ -55,6 +55,12 @@
 #include <atomic>
 
 
+namespace
+{
+	//Server::getTimeMS() when the client was paused, 0 if never
+	std::atomic<int64> pause_start_time(0);
+}
+
 #ifndef _WIN32
 #define _atoi64 atoll
 #endif
@@ -1423,16 +1429,30 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	ParseParamStrHttp(params_str, &params);
 	str_map::iterator it_paused_fb = params.find("paused_fb");
 	const bool paused = IdleCheckerThread::getPause();
+	std::string reply;
 	if (it_paused_fb != params.end()
 		&& it_paused_fb->second == "1"
 		&& paused)
 	{
-		tcpstack.Send(pipe, "PAUSED");
+		reply = "PAUSED";
 	}
 	else
 	{
-		tcpstack.Send(pipe, "OK");
+		reply = "OK";
 	}
+
+#ifdef _WIN32
+	//Only the Windows client holds off sleep. Only answer when the server asks for it,
+	//so older servers still get the plain "OK"/"PAUSED".
+	str_map::iterator it_awake_fb = params.find("awake_fb");
+	if (it_awake_fb != params.end()
+		&& it_awake_fb->second == "1")
+	{
+		reply += isPreventingSleep() ? "&keeping_awake=1" : "&keeping_awake=0";
+	}
+#endif
+
+	tcpstack.Send(pipe, reply);
 
 	idle_timeout = 120000;
 
@@ -1583,8 +1603,10 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		SChannel new_channel(pipe, internet_conn, endpoint_name, token,
 			&make_conn, identity, capa, watoi(params["restore_version"]), params["virtual_client"]);
 		new_channel.channel_version = watoi(params["channel_version"]);
+		new_channel.state_fb = params["state_fb"] == "1";
 		channel_pipes.push_back(new_channel);
 		is_channel=true;
+		sendChannelState(&channel_pipes[channel_pipes.size() - 1]);
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
 		lasttime=Server->getTimeMS();
@@ -1602,6 +1624,36 @@ void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd, const std::string
 		chan->state = SChannel::EChannelState_Idle;
 	}
 	refreshSessionFromChannel(endpoint_name);
+}
+
+void ClientConnector::sendChannelState(SChannel* chan)
+{
+	if (chan == NULL || !chan->state_fb)
+		return;
+
+	//Whether the client is paused, and on Windows whether it holds off sleep and may do so.
+	//Sent when it changes and when the channel is set up, so the server also learns
+	//about an idle paused client (and again after a server restart).
+	bool paused = IdleCheckerThread::getPause();
+	std::string state = std::string("paused=") + (paused ? "1" : "0");
+#ifdef _WIN32
+	state += std::string("&keeping_awake=") + (isPreventingSleep() ? "1" : "0")
+		+ "&prevent_sleep=" + (preventSleepEnabled() ? "1" : "0");
+#endif
+	if (state == chan->last_state)
+		return;
+	chan->last_state = state;
+
+	if (paused)
+	{
+		int64 start = pause_start_time.load();
+		if (start != 0)
+		{
+			//Duration, not a timestamp: independent of clock differences to the server
+			state += "&paused_for=" + convert((Server->getTimeMS() - start) / 1000);
+		}
+	}
+	tcpstack.Send(pipe, "CLIENT STATE " + state);
 }
 
 void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name)
@@ -1729,6 +1781,10 @@ void ClientConnector::CMD_PAUSE(const std::string &cmd)
 	if(b=="true")
 	{
 		ok=true;
+		if (!IdleCheckerThread::getPause())
+		{
+			pause_start_time = Server->getTimeMS();
+		}
 		int64 pause_until = 0;
 		int64 pause_timeout = getPauseTimeoutSeconds();
 		if (pause_timeout > 0)

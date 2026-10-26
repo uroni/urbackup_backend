@@ -63,7 +63,8 @@ struct SProcess
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
 		speed_bpms(0), can_stop(false), total_bytes(-1),
-		done_bytes(0), detail_pc(-1), paused(false), start_id(0)
+		done_bytes(0), detail_pc(-1), paused(false), start_id(0),
+		paused_since(0), keeping_awake(-1)
 	{
 
 	}
@@ -87,6 +88,10 @@ struct SProcess
 	int64 done_bytes;
 	bool paused;
 	int64 start_id;
+	//Time (unix seconds) the client reported paused, 0 if not paused
+	int64 paused_since;
+	//Client keeps the computer awake: 1 yes, 0 no, -1 unknown (not reported by the client)
+	int keeping_awake;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -98,7 +103,7 @@ struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
 		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled;
-		lastseen = 0;
+		lastseen = 0; client_paused_since = 0; client_keeping_awake = -1; client_prevent_sleep = -1;
 	}
 
 	std::string client;
@@ -116,6 +121,13 @@ struct SStatus
 	int running_jobs;
 	ERestore restore;
 	int64 lastseen;
+	//Reported by the client on its channel, independent of any running backup.
+	//Not stored in the database: refreshed whenever the channel is (re)established.
+	//Unix seconds, 0 if not paused/unknown
+	int64 client_paused_since;
+	//1 yes, 0 no, -1 unknown
+	int client_keeping_awake;
+	int client_prevent_sleep;
 };
 
 class ServerStatus
@@ -139,6 +151,10 @@ public:
 	static bool canRestore(const std::string &clientname, bool& server_confirms);
 	static bool isRestoreDisabled(const std::string &clientname, std::string& client_subname);
 	static void updateLastseen(const std::string &clientname);
+	static void setClientState(const std::string &clientname, bool paused, int64 paused_for,
+		int keeping_awake, int prevent_sleep);
+	static int64 getClientPausedSince(const std::string &clientname);
+	static void resetClientState(const std::string &clientname);
 	static int64 getLastseen(const std::string &clientname);
 
 	static void init_mutex(void);
@@ -200,6 +216,9 @@ public:
 
 	static void setProcessDetails(const std::string &clientname, size_t id,
 		std::string details, int detail_pc);
+
+	static void setProcessKeepingAwake(const std::string &clientname, size_t id,
+		int keeping_awake);
 
 	static void setProcessPaused(const std::string &clientname, size_t id,
 		bool b);

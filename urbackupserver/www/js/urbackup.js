@@ -1313,11 +1313,30 @@ function show_status2(data)
 		obj.start_file_backup="";
 		obj.start_image_backup="";
 		
+		var keeping_awake=-1;
+		//Reported by the client itself, also when idle
+		if(obj.client_paused_since>0)
+		{
+			obj.paused_since_t=format_unix_timestamp(obj.client_paused_since);
+		}
+		if(obj.client_keeping_awake>=0)
+		{
+			keeping_awake=obj.client_keeping_awake;
+		}
 		if(obj.processes)
 		{
 			for(var j=0;j<obj.processes.length;++j)
 			{
 				var proc = obj.processes[j];
+				if(proc.paused && proc.paused_since>0
+					&& !obj.paused_since_t)
+				{
+					obj.paused_since_t=format_unix_timestamp(proc.paused_since);
+				}
+				if(proc.keeping_awake>=0 && proc.keeping_awake>keeping_awake)
+				{
+					keeping_awake=proc.keeping_awake;
+				}
 				if(proc.action>0 && proc.action<7)
 				{
 					if(proc.pcdone<0)
@@ -1340,6 +1359,15 @@ function show_status2(data)
 						obj.start_image_backup+=dustRender("status_percent_done", proc);
 					}
 				}
+			}
+		}
+		
+		if(keeping_awake>=0)
+		{
+			obj.keeping_awake_t = keeping_awake==1 ? "yes" : "no";
+			if(keeping_awake==0 && obj.client_prevent_sleep>=0)
+			{
+				obj.keeping_awake_t += obj.client_prevent_sleep==1 ? " (sleep prevention is on, used during backups)" : " (sleep prevention is off)";
 			}
 		}
 		
