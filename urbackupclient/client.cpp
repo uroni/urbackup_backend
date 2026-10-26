@@ -98,6 +98,8 @@
 
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
+std::atomic<int64> IdleCheckerThread::pause_until(0);
+int64 IdleCheckerThread::pause_start=0;
 volatile bool IndexThread::stop_index=false;
 volatile bool IndexThread::index_busy=false;
 std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
@@ -178,12 +180,47 @@ bool IdleCheckerThread::getIdle(void)
 
 bool IdleCheckerThread::getPause(void)
 {
+	checkPauseTimeout();
 	return pause;
 }
 
-void IdleCheckerThread::setPause(bool b)
+void IdleCheckerThread::setPause(bool b, int64 until)
 {
+	pause_until = b ? until : 0;
+	pause_start = b ? Server->getTimeSeconds() : 0;
 	pause=b;
+}
+
+int64 IdleCheckerThread::getPauseUntil(void)
+{
+	return pause ? pause_until.load() : 0;
+}
+
+void IdleCheckerThread::checkPauseTimeout(void)
+{
+	//Wall-clock time (unix seconds), so time spent asleep counts
+	int64 until = pause_until.load();
+	if (!pause
+		|| until == 0
+		|| Server->getTimeSeconds() < until)
+	{
+		return;
+	}
+
+	if (!pause_until.compare_exchange_strong(until, 0))
+	{
+		return;
+	}
+
+	pause = false;
+	IFileServ* filesrv = IndexThread::getFileSrv();
+	if (filesrv != NULL)
+	{
+		filesrv->setPause(false);
+	}
+
+	Server->Log("Pause timed out after " + PrettyPrintTime((until - pause_start) * 1000)
+		+ ". Continuing backups.", LL_INFO);
 }
 
 namespace

@@ -1189,6 +1189,11 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	ret.set("internet_status", InternetClient::getStatusMsg());
 
 	ret.set("keeping_awake", isPreventingSleep());
+	if (IdleCheckerThread::getPause())
+	{
+		ret.set("paused", true);
+		ret.set("pause_until", IdleCheckerThread::getPauseUntil());
+	}
 #ifdef _WIN32
 	ret.set("prevent_sleep", isPreventSleepEnabled());
 #endif
@@ -1349,6 +1354,18 @@ bool ClientConnector::isPreventingSleep()
 #else
 	return false;
 #endif
+}
+
+int64 ClientConnector::getPauseTimeoutSeconds()
+{
+	std::string pause_timeout_hours = "24";
+	getClientSettingValue("pause_timeout_hours", pause_timeout_hours);
+	double hours = atof(pause_timeout_hours.c_str());
+	if (hours > 0)
+	{
+		return static_cast<int64>(hours * 60 * 60 + 0.5);
+	}
+	return 0;
 }
 
 bool ClientConnector::isPreventSleepEnabled()
@@ -1712,7 +1729,13 @@ void ClientConnector::CMD_PAUSE(const std::string &cmd)
 	if(b=="true")
 	{
 		ok=true;
-		IdleCheckerThread::setPause(true);
+		int64 pause_until = 0;
+		int64 pause_timeout = getPauseTimeoutSeconds();
+		if (pause_timeout > 0)
+		{
+			pause_until = Server->getTimeSeconds() + pause_timeout;
+		}
+		IdleCheckerThread::setPause(true, pause_until);
 		IndexThread::getFileSrv()->setPause(true);
 	}
 	else if(b=="false")

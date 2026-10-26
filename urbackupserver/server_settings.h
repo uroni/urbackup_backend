@@ -121,6 +121,7 @@ struct SSettings
 	std::string image_file_format;
 	bool internet_connect_always;
 	bool prevent_sleep;
+	std::string pause_timeout_hours;
 	bool show_server_updates;
 	std::string server_url;
 	bool verify_using_client_hashes;

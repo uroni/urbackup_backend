@@ -661,6 +661,16 @@
 				</div>
 				<div id="prevent_sleep_sw" style="display: inline"></div>
 			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="pause_timeout_hours">Continue paused backups automatically after (0 = stay paused until continued):</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="pause_timeout_hours" value="{pause_timeout_hours}"/>
+						<div class="input-group-addon">hours</div>
+					</div>
+				</div>
+				<div id="pause_timeout_hours_sw" style="display: inline"></div>
+			</div>
 			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_file_dataplan_limit">{tDo not start file backups if current estimated data usage limit per month is smaller than}:</label>

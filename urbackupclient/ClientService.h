@@ -232,6 +232,8 @@ public:
 
 	static bool isPreventSleepEnabled();
 
+	static int64 getPauseTimeoutSeconds();
+
 	static bool isBusy();
 
 	static void updateKeepAwake();
