@@ -99,6 +99,7 @@
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
+volatile bool IndexThread::index_busy=false;
 std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
 IMutex* IndexThread::cbt_shadow_id_mutex;
 std::map<std::string, int> IndexThread::cbt_shadow_ids;
@@ -738,6 +739,11 @@ IndexThread::~IndexThread()
 	delete cd;
 }
 
+bool IndexThread::isBusy()
+{
+	return index_busy;
+}
+
 IMutex* IndexThread::getFilelistMutex(void)
 {
 	return filelist_mutex;
@@ -844,6 +850,8 @@ void IndexThread::operator()(void)
 			setResultFinished(curr_result_id);
 		}
 
+		index_busy = false;
+
 		std::string msg;
 		msgpipe->Read(&msg, sc_refs_cleanup ? 60000 : -1);
 
@@ -858,6 +866,17 @@ void IndexThread::operator()(void)
 		char action;
 		data.getChar(&action);
 		data.getUInt(&curr_result_id);
+
+		if (action == IndexThreadAction_StartFullFileBackup
+			|| action == IndexThreadAction_StartIncrFileBackup
+			|| action == IndexThreadAction_CreateShadowcopy
+			|| action == IndexThreadAction_ReferenceShadowcopy
+			|| action == IndexThreadAction_ReleaseShadowcopy
+			|| action == IndexThreadAction_SnapshotCbt)
+		{
+			index_busy = true;
+			ClientConnector::updateKeepAwake();
+		}
 		if(action==IndexThreadAction_StartIncrFileBackup
 			|| ( (last_index=="full" || last_index=="vfull") && action == IndexThreadAction_StartFullFileBackup ) )
 		{

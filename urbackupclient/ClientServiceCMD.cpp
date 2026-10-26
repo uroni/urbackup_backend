@@ -454,6 +454,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	status_updated = true;
 
+	updateKeepAwake();
+
 	end_to_end_file_backup_verification_enabled=false;
 
 	if (!async_list)
@@ -616,6 +618,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	running_processes.push_back(new_proc);
 
 	status_updated = true;
+
+	updateKeepAwake();
 
 	if (!async_list)
 	{
@@ -1185,6 +1189,9 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	ret.set("internet_status", InternetClient::getStatusMsg());
 
 	ret.set("keeping_awake", isPreventingSleep());
+#ifdef _WIN32
+	ret.set("prevent_sleep", isPreventSleepEnabled());
+#endif
 
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
@@ -1206,119 +1213,148 @@ void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 }
 
+namespace
+{
+	bool getClientSettingValue(const std::string& key, std::string& value)
+	{
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+		if (curr_settings.get() == NULL)
+		{
+			return false;
+		}
+		// Same .use/.client scheme as the server's resolution (ClientMain.cpp)
+		// and IndexThread::getVssSettings: the tray stores a local override as
+		// <key>.client with <key>.use == c_use_value_client.
+		if (curr_settings->getValue(key + ".use", c_use_group) == c_use_value_client
+			&& curr_settings->getValue(key + ".client", &value))
+		{
+			return true;
+		}
+		return curr_settings->getValue(key, &value)
+			|| curr_settings->getValue(key + "_def", &value);
+	}
+}
+
 #ifdef _WIN32
 
 namespace
 {
 	std::mutex prevent_sleep_mutex;
-	int64 last_prevent_sleep_time = 0;
+	bool prevent_sleep_thread_running = false;
+	bool prevent_sleep_kick = false;
+	bool keeping_awake = false;
+	bool prevent_sleep_stop = false;
 
+	bool preventSleepEnabled()
+	{
+		std::string prevent_sleep;
+		if (getClientSettingValue("prevent_sleep", prevent_sleep))
+		{
+			return prevent_sleep != "false";
+		}
+		return true;
+	}
+
+	//Holds ES_SYSTEM_REQUIRED while the client is busy (running backup or
+	//restore process, indexing, snapshots), independent of server pings.
 	void prevent_thread_func()
 	{
 		SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_CONTINUOUS);
 
 		std::unique_lock<std::mutex> lock(prevent_sleep_mutex);
+		keeping_awake = true;
 
-		while (Server->getTimeMS() - last_prevent_sleep_time < 2 * 60 * 1000)
+		while (true)
 		{
+			prevent_sleep_kick = false;
 			lock.unlock();
-			Server->wait(10000);
+			Server->wait(5000);
 			lock.lock();
+			if (prevent_sleep_stop)
+			{
+				break;
+			}
+			lock.unlock();
+			bool keep = ClientConnector::isBusy() && preventSleepEnabled();
+			lock.lock();
+			if (prevent_sleep_stop
+				|| (!keep && !prevent_sleep_kick))
+			{
+				break;
+			}
 		}
 
-		last_prevent_sleep_time = 0;
+		keeping_awake = false;
+		prevent_sleep_thread_running = false;
 		SetThreadExecutionState(ES_CONTINUOUS);
-	}
-
-	bool preventSleepEnabled()
-	{
-		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
-		if (curr_settings.get() != NULL)
-		{
-			std::string prevent_sleep;
-			// Same .use/.client scheme as the server's resolution (ClientMain.cpp)
-			// and IndexThread::getVssSettings: the tray stores a local override as
-			// <key>.client with <key>.use == c_use_value_client.
-			if (curr_settings->getValue("prevent_sleep.use", c_use_group) == c_use_value_client
-				&& curr_settings->getValue("prevent_sleep.client", &prevent_sleep))
-			{
-				return prevent_sleep != "false";
-			}
-			if (curr_settings->getValue("prevent_sleep", &prevent_sleep)
-				|| curr_settings->getValue("prevent_sleep_def", &prevent_sleep))
-			{
-				return prevent_sleep != "false";
-			}
-		}
-		return true;
-	}
-
-	typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
-
-	bool IsWindows11()
-	{
-		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
-		if (!hMod)
-			return false;
-
-		RtlGetVersionPtr pRtlGetVersion =
-			reinterpret_cast<RtlGetVersionPtr>(GetProcAddress(hMod, "RtlGetVersion"));
-
-		if (!pRtlGetVersion)
-			return false;
-
-		RTL_OSVERSIONINFOW info;
-		ZeroMemory(&info, sizeof(info));
-		info.dwOSVersionInfoSize = sizeof(info);
-
-		if (pRtlGetVersion(&info) != 0)
-			return false;
-
-		/* Windows 11 = major version 10, build >= 22000 */
-		return info.dwMajorVersion>10 || 
-			(info.dwMajorVersion==10 && info.dwMinorVersion>0) ||
-			(info.dwMajorVersion == 10 && info.dwBuildNumber >= 22000);
-	}
-
-
-	void preventSleep()
-	{
-		if (!preventSleepEnabled())
-			return;
-
-		static bool isWin11 = IsWindows11();
-		if (isWin11)
-		{
-			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
-
-			if (last_prevent_sleep_time == 0)
-			{
-				std::thread prevent_sleep_thread = std::thread(prevent_thread_func);
-				prevent_sleep_thread.detach();
-			}
-
-			last_prevent_sleep_time = Server->getTimeMS();
-			return;
-		}
-
-		{
-			std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
-			last_prevent_sleep_time = Server->getTimeMS();
-		}
-
-		SetThreadExecutionState(ES_SYSTEM_REQUIRED);
 	}
 }
 
 #endif //_WIN32
+
+void ClientConnector::updateKeepAwake()
+{
+#ifdef _WIN32
+	if (!preventSleepEnabled())
+		return;
+
+	std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
+
+	prevent_sleep_kick = true;
+
+	if (!prevent_sleep_thread_running
+		&& !prevent_sleep_stop)
+	{
+		prevent_sleep_thread_running = true;
+		std::thread prevent_sleep_thread = std::thread(prevent_thread_func);
+		prevent_sleep_thread.detach();
+	}
+#endif
+}
+
+void ClientConnector::stopKeepAwake()
+{
+#ifdef _WIN32
+	//The thread uses backup_mutex/process_mutex (isBusy()): let it end before they are destroyed
+	std::unique_lock<std::mutex> lock(prevent_sleep_mutex);
+	prevent_sleep_stop = true;
+	for (int i = 0; i < 100 && prevent_sleep_thread_running; ++i)
+	{
+		lock.unlock();
+		Server->wait(100);
+		lock.lock();
+	}
+#endif
+}
+
+bool ClientConnector::isBusy()
+{
+	if (IndexThread::isBusy())
+	{
+		return true;
+	}
+
+	IScopedLock lock(backup_mutex);
+	IScopedLock process_lock(process_mutex);
+
+	return getActiveProcess(x_pingtimeout) != NULL;
+}
 
 bool ClientConnector::isPreventingSleep()
 {
 #ifdef _WIN32
 	std::lock_guard<std::mutex> lock(prevent_sleep_mutex);
 
-	return last_prevent_sleep_time != 0
-		&& Server->getTimeMS() - last_prevent_sleep_time < 2 * 60 * 1000;
+	return keeping_awake;
+#else
+	return false;
+#endif
+}
+
+bool ClientConnector::isPreventSleepEnabled()
+{
+#ifdef _WIN32
+	return preventSleepEnabled();
 #else
 	return false;
 #endif
@@ -1360,9 +1396,7 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	proc->eta_ms = 0;
 	proc->last_pingtime = Server->getTimeMS();	
 
-#ifdef _WIN32
-	preventSleep();
-#endif
+	updateKeepAwake();
 }
 
 void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
@@ -1419,9 +1453,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->total_bytes = watoi64(params["total_bytes"]);
 	proc->done_bytes = watoi64(params["done_bytes"]);
 
-#ifdef _WIN32
-	preventSleep();
-#endif
+	updateKeepAwake();
 }
 
 void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity)

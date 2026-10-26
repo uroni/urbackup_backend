@@ -368,6 +368,8 @@ public:
 	void operator()(void);
 
 	static IMutex* getFilelistMutex(void);
+
+	static bool isBusy();
 	static IPipe * getMsgPipe(void);
 	static IFileServ *getFileSrv(void);
 
@@ -683,6 +685,7 @@ private:
 	std::vector<std::string> open_files;
 
 	static IMutex *filelist_mutex;
+	volatile static bool index_busy;
 	static IMutex *filesrv_mutex;
 
 	static IPipe* msgpipe;
