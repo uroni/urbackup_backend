@@ -631,7 +631,7 @@ void ServerStatus::setClientState(const std::string & clientname, bool paused, i
 		{
 			Server->Log("Pause of client \"" + clientname + "\" timed out after "
 				+ PrettyPrintTime((it->second.client_pause_until - it->second.client_paused_since) * 1000)
-				+ ". Backups continue.", LL_INFO);
+				+ ". Backups continue.", LL_WARNING);
 		}
 		it->second.client_paused_since = 0;
 		it->second.client_pause_until = 0;
