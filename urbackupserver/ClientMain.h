@@ -321,6 +321,7 @@ private:
 	void updateClientAccessKey();
 	bool isDataplanOkay(bool file);
 	bool isOnline(ServerChannelThread& channel_thread);
+	bool isOnlineNotPaused(ServerChannelThread& channel_thread);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
@@ -443,6 +444,7 @@ private:
 	SProtocolVersions protocol_versions;
 	volatile bool internet_connection;
 	volatile bool connection_metered;
+	int64 logged_paused_since;
 	int update_version;
 	std::string all_volumes;
 	std::string all_nonusb_volumes;

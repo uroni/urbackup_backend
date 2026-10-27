@@ -86,6 +86,8 @@ ACTION_IMPL(progress)
 					obj.set("done_bytes", clients[i].processes[j].done_bytes);
 					obj.set("detail_pc", clients[i].processes[j].detail_pc);
 					obj.set("paused", clients[i].processes[j].paused);
+					obj.set("paused_since", clients[i].processes[j].paused_since);
+					obj.set("keeping_awake", clients[i].processes[j].keeping_awake);
 					obj.set("start_id", clients[i].processes[j].start_id);
 
 					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
