@@ -1644,6 +1644,11 @@ function show_status2(data)
 						{
 							source["d"+idx] = trans("backup_never");
 						}
+						else if(n1==="-")
+						{
+							//Client not in the database (e.g. rejected by the client)
+							source["d"+idx] = "-";
+						}
 						else
 						{
 							source["d"+idx] = format_unix_timestamp(n1);
