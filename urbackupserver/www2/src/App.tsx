@@ -282,6 +282,15 @@ export const router = createHashRouter([
                   return { Component: AlertsTab };
                 },
               },
+              {
+                path: ":clientId/archive",
+                lazy: async () => {
+                  const { ArchiveTab } = await import(
+                    "./features/settings/Clients/ArchiveTab"
+                  );
+                  return { Component: ArchiveTab };
+                },
+              },
             ],
           },
         ],

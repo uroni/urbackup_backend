@@ -1,0 +1,35 @@
+.table {
+  --flow-space: var(--spacingL);
+}
+
+.new-rule {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  padding: var(--spacingM);
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22ch, 1fr));
+  gap: var(--spacingM);
+}
+
+.length {
+  display: flex;
+  gap: var(--spacingXS);
+}
+
+.length > * {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Fluent sets minimum widths that don't fit two of them in a grid cell */
+.length :is(input, select) {
+  min-width: 0;
+  width: 100%;
+}
+
+.error {
+  color: var(--colorPaletteRedForeground1);
+}
