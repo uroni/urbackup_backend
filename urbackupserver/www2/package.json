@@ -15,9 +15,9 @@
   "dependencies": {
     "@fluentui/react-charting": "^5.23.11",
     "@fluentui/react-charts-preview": "^0.1.6",
-    "@fluentui/react-components": "^9.57.0",
+    "@fluentui/react-components": "^9.75.0",
     "@fluentui/react-experiments": "^8.14.152",
-    "@fluentui/react-icons": "^2.0.239",
+    "@fluentui/react-icons": "^2.0.345",
     "@lingui/core": "^4.10.1",
     "@lingui/react": "^4.10.1",
     "@tanstack/react-query": "^5.56.2",

@@ -1,44 +1,68 @@
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  SelectTabData,
-  SelectTabEvent,
-  Tab,
-  TabList,
+  NavDrawer,
+  NavDrawerBody,
+  NavDrawerFooter,
+  NavItem,
+  OnNavItemSelectData,
 } from "@fluentui/react-components";
+import {
+  ArchiveRegular,
+  DataBarVerticalRegular,
+  DocumentTextRegular,
+  HeartPulseRegular,
+  PulseRegular,
+  SettingsRegular,
+} from "@fluentui/react-icons";
 
 import { Pages } from "../App";
+import { SwitchToClassic } from "./SwitchToClassic";
 
 export const NavSidebar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  const [selectedValue, setSelectedValue] = useState(() =>
-    getInitialTab(pathname),
-  );
-
-  const onTabSelect = async (event: SelectTabEvent, data: SelectTabData) => {
-    setSelectedValue(data.value as Pages);
-
-    const nt = `/${data.value}`;
-    await navigate(nt);
+  const onNavItemSelect = async (_: unknown, data: OnNavItemSelectData) => {
+    await navigate(`/${data.value}`);
   };
 
   return (
-    <TabList selectedValue={selectedValue} vertical onTabSelect={onTabSelect}>
-      <Tab value={Pages.Status}>Status</Tab>
-      <Tab value={Pages.Activities}>Activities</Tab>
-      <Tab value={Pages.Backups}>Backups</Tab>
-      <Tab value={Pages.Statistics}>Statistics</Tab>
-      <Tab value={Pages.Logs}>Logs</Tab>
-      <Tab value={Pages.Settings}>Settings</Tab>
-    </TabList>
+    <NavDrawer
+      open
+      type="inline"
+      size="small"
+      selectedValue={getActivePage(pathname)}
+      onNavItemSelect={onNavItemSelect}
+    >
+      <NavDrawerBody>
+        <NavItem value={Pages.Status} icon={<HeartPulseRegular />}>
+          Status
+        </NavItem>
+        <NavItem value={Pages.Activities} icon={<PulseRegular />}>
+          Activities
+        </NavItem>
+        <NavItem value={Pages.Backups} icon={<ArchiveRegular />}>
+          Backups
+        </NavItem>
+        <NavItem value={Pages.Statistics} icon={<DataBarVerticalRegular />}>
+          Statistics
+        </NavItem>
+        <NavItem value={Pages.Logs} icon={<DocumentTextRegular />}>
+          Logs
+        </NavItem>
+        <NavItem value={Pages.Settings} icon={<SettingsRegular />}>
+          Settings
+        </NavItem>
+      </NavDrawerBody>
+      <NavDrawerFooter>
+        <SwitchToClassic />
+      </NavDrawerFooter>
+    </NavDrawer>
   );
 };
 
 export default NavSidebar;
 
-function getInitialTab(pathname: string) {
-  const page = pathname.split("/").filter((p) => p.length)[0] ?? Pages.Status;
-  return page;
+function getActivePage(pathname: string) {
+  return pathname.split("/").filter((p) => p.length)[0] ?? Pages.Status;
 }

@@ -6,6 +6,7 @@ import { router } from "../../App";
 export interface TabItem {
   value: string;
   title: React.ReactNode;
+  icon?: React.ReactElement;
   children?: TabItem[];
 }
 

@@ -5,7 +5,6 @@ import { Outlet, useMatch } from "react-router-dom";
 import HeaderBar from "./HeaderBar";
 import styles from "./Layout.module.css";
 import NavSidebar from "./NavSidebar";
-import { SwitchToClassic } from "./SwitchToClassic";
 import { SettingsNavSidebar } from "../features/settings/SettingsNavSidebar";
 
 export function BaseLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +12,8 @@ export function BaseLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={styles.layout}>
-      <Layout.Sidebar>
+      <HeaderBar />
+      <div className={styles.body}>
         {match ? (
           <Suspense fallback={<Spinner />}>
             <SettingsNavSidebar />
@@ -21,8 +21,8 @@ export function BaseLayout({ children }: { children: React.ReactNode }) {
         ) : (
           <NavSidebar />
         )}
-      </Layout.Sidebar>
-      <Layout.Content>{children}</Layout.Content>
+        <Layout.Content>{children}</Layout.Content>
+      </div>
     </div>
   );
 }
@@ -32,18 +32,6 @@ export function Layout() {
     <BaseLayout>
       <Outlet />
     </BaseLayout>
-  );
-}
-
-function Sidebar({ children }: { children: React.ReactNode }) {
-  return (
-    <header className={`${styles.sidebar} flow`}>
-      <HeaderBar />
-      {children}
-      <div className={styles["sidebar-footer"]}>
-        <SwitchToClassic />
-      </div>
-    </header>
   );
 }
 
@@ -58,7 +46,5 @@ function Content({ children }: { children: React.ReactNode }) {
     </main>
   );
 }
-
-Layout.Sidebar = Sidebar;
 
 Layout.Content = Content;

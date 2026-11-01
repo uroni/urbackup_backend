@@ -1,11 +1,21 @@
 .layout {
-  --size-sidebar: 22ch;
-
   display: flex;
-  /* display: grid;
-  grid-template-columns: var(--size-sidebar) 1fr; */
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100vh;
   overflow: hidden;
+}
+
+.header {
+  flex-shrink: 0;
+  padding: 6pt 10pt;
+  background-color: var(--colorNeutralBackground3);
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+
+.body {
+  display: flex;
+  flex-grow: 1;
+  min-height: 0;
 }
 
 .content {
@@ -18,26 +28,6 @@
   margin-inline: auto;
   width: 100%;
   overflow: auto;
-  height: 100%;
-  max-height: 100vh;
-}
-
-.sidebar {
-  flex-basis: var(--size-sidebar);
-  flex-grow: 0;
-
-  background-color: var(--colorNeutralBackground3);
-  box-shadow: var(--shadow4);
-  padding: 10pt;
-  max-height: 100vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 10pt;
 }
 
 .without-padding-content {
