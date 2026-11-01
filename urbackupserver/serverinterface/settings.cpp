@@ -575,7 +575,12 @@ void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
 
 void archiveParamsSetUuid(str_map& POST)
 {
-	std::string archive = UnescapeSQLString(POST["archive"]);
+	// POST["archive"] would add an empty archive setting to a save without one
+	str_map::iterator it_archive = POST.find("archive");
+	if (it_archive == POST.end())
+		return;
+
+	std::string archive = UnescapeSQLString(it_archive->second);
 
 	str_map params;
 	ParseParamStrHttp(archive, &params);
