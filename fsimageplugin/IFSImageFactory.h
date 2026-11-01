@@ -37,8 +37,11 @@ public:
 		ImageFormat_CompressedVHD=1,
 		ImageFormat_RawCowFile=2,
 		ImageFormat_VHDX = 3,
-		ImageFormat_CompressedVHDX = 4
+		ImageFormat_CompressedVHDX = 4,
+		ImageFormat_Unknown = 5
 	};
+
+	virtual ImageFormat detectImageFormat(const std::string &fn)=0;
 
 	virtual IVHDFile *createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
 		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD,

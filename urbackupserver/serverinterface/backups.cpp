@@ -959,8 +959,7 @@ namespace backupaccess
 			}
 
 			std::string path = res[0]["path"];
-			std::string filename = ExtractFileName(path);
-			std::string extension = findextension(filename);
+			const std::string filename = ExtractFileName(path);
 
 			bool disk_image = false;
 			std::unique_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
@@ -1000,20 +999,8 @@ namespace backupaccess
 				}
 			}
 
-			std::unique_ptr<IVHDFile> vhdfile;
-			if (extension == "vhd"
-				|| extension == "vhdz")
-			{
-				vhdfile.reset(image_fak->createVHDFile(path, true, 0));
-			}
-			else if(extension=="raw")
-			{
-				vhdfile.reset(image_fak->createVHDFile(path, true, 0, 2*1024*1024, false, IFSImageFactory::ImageFormat_RawCowFile));
-			}
-			else
-			{
-				assert(false);
-			}
+			std::unique_ptr<IVHDFile> vhdfile(image_fak->createVHDFile(path, true,
+				 0, 2*1024*1024, false, image_fak->detectImageFormat(filename)));
 
 			if (vhdfile.get() != NULL
 				&& vhdfile->isOpen())
