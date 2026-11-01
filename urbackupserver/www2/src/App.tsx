@@ -237,6 +237,15 @@ export const router = createHashRouter([
                   return { Component: Permissions };
                 },
               },
+              {
+                path: ":clientId/client",
+                lazy: async () => {
+                  const { ClientTab } = await import(
+                    "./features/settings/Clients/ClientTab"
+                  );
+                  return { Component: ClientTab };
+                },
+              },
             ],
           },
         ],
