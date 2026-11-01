@@ -6163,16 +6163,7 @@ g.maximize_or_minimize = function(refresh)
 
 function getServerUrlPlaceholder()
 {
-	var site_url = (location.protocol == "http:" ? "ws:" : "wss:") + "//" + location.host + location.pathname;
-	
-	if(site_url.substr(site_url.length-1)!="/")
-	{
-		site_url+="/";
-	}
-
-	site_url+="socket";
-
-	return site_url;
+	return getSiteURL().replace(/^http/, "ws")+"socket";
 }
 
 function addNewClient1()

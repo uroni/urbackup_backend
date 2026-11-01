@@ -810,7 +810,7 @@ class UrBackupServer {
     return await this.stopRemoveClients([clientId]);
   };
 
-  // Get base URL of current site (in browser)
+  // Get base URL of the server (in browser), without the www2/ this interface is served from
   getSiteURL = (): string => {
     let siteUrl = location.protocol + "//" + location.host + location.pathname;
 
@@ -822,6 +822,10 @@ class UrBackupServer {
 
     if (siteUrl.substring(siteUrl.length - 1) != "/") {
       siteUrl += "/";
+    }
+
+    if (siteUrl.endsWith("/www2/")) {
+      siteUrl = siteUrl.slice(0, -5);
     }
 
     return siteUrl;
