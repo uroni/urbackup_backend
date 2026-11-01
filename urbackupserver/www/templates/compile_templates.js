@@ -1,6 +1,14 @@
 var fs = require('fs');
 var path = require('path');
-var dust = require("dustjs-linkedin");
+var vm = require('vm');
+
+// Use the bundled dust-full.js (uroni/dustjs fork) so templates are compiled
+// with the same grammar as the web interface. Evaluate it like a browser would,
+// since as a CommonJS module it would require separate ./dust and ./parser files.
+var dust_ctx = {};
+dust_ctx.window = dust_ctx;
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js/dust-full.js"), "utf8"), dust_ctx);
+var dust = dust_ctx.dust;
 var EventEmitter=require('events').EventEmitter,
     filesEE=new EventEmitter();
 
