@@ -23,8 +23,14 @@ export function Clients() {
 
   const { clientId = "" } = useParams();
 
+  // Like the old web interface, only users that may change the Internet
+  // settings see them
+  const tabs = CLIENT_TABS.filter(
+    (t) => t.value !== "internet-active" || navitems.internet,
+  );
+
   const { selectedTab, onTabSelect } = useSettingsTabs(
-    CLIENT_TABS,
+    tabs,
     `/settings/clients/${clientId}`,
   );
 
@@ -54,7 +60,7 @@ export function Clients() {
             onTabSelect={onTabSelect}
             className={styles.tablist}
           >
-            {CLIENT_TABS.map(({ value, title }) => (
+            {tabs.map(({ value, title }) => (
               <Tab key={value} value={value}>
                 {title}
               </Tab>
