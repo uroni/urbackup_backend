@@ -1,6 +1,6 @@
 /*! Dust - Asynchronous Templating - v2.5.1
 * http://linkedin.github.io/dustjs/
-* Copyright (c) 2016 Aleksander Williams; Released under the MIT License */
+* Copyright (c) 2026 Aleksander Williams; Released under the MIT License */
 (function(root) {
   var dust = {},
       NONE = 'NONE',
@@ -1054,8 +1054,8 @@
         peg$c60 = { type: "other", description: "key" },
         peg$c61 = /^[ a-zA-Z_$]/,
         peg$c62 = { type: "class", value: "[ a-zA-Z_$]", description: "[ a-zA-Z_$]" },
-        peg$c63 = /^[ 0-9a-zA-Z(),\/\\_$-:#]/,
-        peg$c64 = { type: "class", value: "[ 0-9a-zA-Z(),\\/\\\\_$-:#]", description: "[ 0-9a-zA-Z(),\\/\\\\_$-:#]" },
+        peg$c63 = /^[ 0-9a-zA-Z(),\/\\_$-:#=]/,
+        peg$c64 = { type: "class", value: "[ 0-9a-zA-Z(),\\/\\\\_$-:#=]", description: "[ 0-9a-zA-Z(),\\/\\\\_$-:#=]" },
         peg$c65 = function(h, t) { return h + t.join('')  },
         peg$c66 = { type: "other", description: "array" },
         peg$c67 = function(n) {return n.join('')},
