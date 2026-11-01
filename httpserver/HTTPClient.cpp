@@ -60,6 +60,7 @@ void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoin
 	request_ticket=ILLEGAL_THREADPOOL_TICKET;
 	fileupload=false;
 	endpoint=pEndpoint;
+	this->wakeup=wakeup;
 }
 
 void CHTTPClient::init_mutex(void)
@@ -139,7 +140,15 @@ int CHTTPClient::Run()
 
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
 	{
-		if( !Server->getThreadPool()->isRunning(request_ticket) )
+		if( Server->getThreadPool()->isRunning(request_ticket) )
+		{
+			//The handler is done and the pool is about to release the ticket
+			if (request_done.isDone())
+				return 1;
+
+			return HTTP_RUN_WAIT_MS;
+		}
+		else
 		{
 			//Server->Log("Connection: "+http_params["CONNECTION"], LL_DEBUG);
 			/*if( strlower(http_params["CONNECTION"])=="close" )
@@ -182,8 +191,6 @@ int CHTTPClient::Run()
 				}
 			}
 		}
-
-		return HTTP_RUN_WAIT_MS;
 	}
 
 	if( do_quit==true || http_g_state==HTTP_STATE_DONE)
@@ -575,7 +582,8 @@ bool CHTTPClient::processRequest(void)
 #ifdef _WIN32
 			rp = greplace("\\", "_", rp);
 #endif
-			CHTTPFile *file_handler=new CHTTPFile(http_service->getRoot()+rp, pipe);
+			request_done.reset(wakeup);
+			CHTTPFile *file_handler=new CHTTPFile(http_service->getRoot()+rp, pipe, &request_done);
 			request_ticket=Server->getThreadPool()->execute(file_handler, "http file request");
 			request_handler=file_handler;
 			return true;
@@ -585,7 +593,8 @@ bool CHTTPClient::processRequest(void)
 
 		pl=NULL;
 		http_params["REMOTE_ADDR"]=endpoint;
-		CHTTPAction *action_handler=new CHTTPAction(name,context,gparams, http_content, http_params, pipe);
+		request_done.reset(wakeup);
+		CHTTPAction *action_handler=new CHTTPAction(name,context,gparams, http_content, http_params, pipe, &request_done);
 		request_ticket=Server->getThreadPool()->execute(action_handler, "http dynamic request");
 		request_handler=action_handler;
 		return true;

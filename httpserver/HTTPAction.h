@@ -1,13 +1,14 @@
 #include "../Interface/Types.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Object.h"
+#include "HTTPRequestDone.h"
 
 class IPipe;
 
 class CHTTPAction : public IThread, public IObject
 {
 public:
-	CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput);
+	CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput, CHTTPRequestDone* pRequestDone);
 
 	void operator()(void);
 private:
@@ -19,5 +20,6 @@ private:
 	std::string context;
 
 	IPipe *output;
+	CHTTPRequestDone* request_done;
 
 };

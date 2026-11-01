@@ -58,7 +58,7 @@ namespace
 	};
 }
 
-CHTTPAction::CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput)
+CHTTPAction::CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput, CHTTPRequestDone* pRequestDone)
 {
 	name=pName;
 	GETStr=pGETStr;
@@ -66,12 +66,15 @@ CHTTPAction::CHTTPAction(const std::string &pName, const std::string pContext, c
 	RawPARAMS=pRawPARAMS;
 	output=pOutput;
 	context=pContext;
+	request_done=pRequestDone;
 }
 
 #define MAP(x,y) { std::map<std::string, std::string>::iterator iter=RawPARAMS.find(x); if(iter!=RawPARAMS.end() ) PARAMS.insert(std::pair<std::string, std::string>(y, iter->second) ); }
 
 void CHTTPAction::operator()(void)
 {
+	CHTTPRequestDone::Guard done_guard(request_done);
+
 	std::map<std::string, std::string> GET;
 	std::map<std::string, std::string> POST;
 	ParseParamStrHttp(GETStr, &GET, true);
