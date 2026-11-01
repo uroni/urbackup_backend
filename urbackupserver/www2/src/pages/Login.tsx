@@ -102,6 +102,21 @@ export const useUser = () => {
   };
 };
 
+// Separate from useUser, as observing the "user" query refetches it, which
+// would replace the session right before logging out
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => urbackupServer.logout(),
+    onSettled: () => {
+      saveSessionToLocalStorage("");
+      // Drop everything fetched with the old session
+      queryClient.clear();
+    },
+  });
+};
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

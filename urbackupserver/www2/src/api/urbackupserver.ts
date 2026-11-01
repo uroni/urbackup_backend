@@ -684,6 +684,20 @@ class UrBackupServer {
     return resp;
   };
 
+  // End the session on the server
+  logout = async () => {
+    try {
+      await this.fetchData({}, "logout");
+    } catch (error) {
+      // Session already gone on the server
+      if (!(error instanceof SessionNotFoundError)) {
+        throw error;
+      }
+    } finally {
+      this.session = "";
+    }
+  };
+
   // Login to server with username and password
   login = async (
     username: string,
