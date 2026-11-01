@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Body1,
   Body2,
@@ -39,6 +39,14 @@ import {
   type InitialFormState as CheckboxDropdownState,
 } from "./CheckboxDropdown";
 import { VALUE_TO_USE } from "./utils";
+import { BackupSummary } from "./BackupSummary";
+import {
+  describe as describeBackups,
+  parseCount,
+  parseInterval,
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+} from "./backupSummaryModel";
 
 const checkboxFieldInputs = [
   {
@@ -113,6 +121,21 @@ function FileImageBackupsForm({
     [settings, clientId],
   );
 
+  // Values currently shown in the interval and number of backups inputs
+  const [shownValues, setShownValues] = useState<ShownValues>({});
+
+  const handleValueChange = useCallback(
+    (name: string, value: string | number | undefined, enabled: boolean) => {
+      setShownValues((p) => ({ ...p, [name]: { value, enabled } }));
+    },
+    [],
+  );
+
+  const summary = useMemo(
+    () => describeFileBackups(shownValues),
+    [shownValues],
+  );
+
   return (
     <FormContainer key={clientId}>
       <h1>
@@ -148,8 +171,10 @@ function FileImageBackupsForm({
                       name,
                     )}
                     validationMessage={validationMessages[name]}
+                    onValueChange={handleValueChange}
                   />
                 ))}
+                <BackupSummary summary={summary} />
                 {[
                   {
                     field: "backup_dirs_optional",
@@ -241,6 +266,33 @@ function FileImageBackupsForm({
       })}
     </FormContainer>
   );
+}
+
+type ShownValues = Record<
+  string,
+  { value: string | number | undefined; enabled: boolean }
+>;
+
+function describeFileBackups(shown: ShownValues) {
+  const interval = (name: string, unitSeconds: number) =>
+    parseInterval(
+      shown[name]?.value,
+      shown[name]?.enabled === false,
+      unitSeconds,
+    );
+
+  const count = (name: string) => parseCount(shown[name]?.value);
+
+  return describeBackups({
+    image: false,
+    incr: interval("update_freq_incr", SECONDS_PER_HOUR),
+    full: interval("update_freq_full", SECONDS_PER_DAY),
+    max_full: count("max_file_full"),
+    min_full: count("min_file_full"),
+    max_incr: count("max_file_incr"),
+    min_incr: count("min_file_incr"),
+    to_last: [false],
+  });
 }
 
 type SettingLookup = ClientSettingState | SettingState["value"];
