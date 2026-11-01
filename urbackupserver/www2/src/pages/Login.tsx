@@ -16,6 +16,7 @@ import {
 } from "../api/urbackupserver";
 import { Trans, t } from "@lingui/macro";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { SwitchToClassic } from "../components/SwitchToClassic";
 
 export function getSessionFromLocalStorage(): string {
   if (!window.localStorage) return "";
@@ -232,6 +233,9 @@ const Login = () => {
           )}
         </div>
       </form>
+      <div>
+        <SwitchToClassic />
+      </div>
     </div>
   );
 };

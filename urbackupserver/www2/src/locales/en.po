@@ -11,18 +11,27 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
 
-#: src/pages/Login.tsx:100
+#: src/components/SwitchToClassic.tsx:28
+msgid "Classic interface"
+msgstr ""
+
+#: src/pages/Login.tsx:228
 msgid "Logging in..."
 msgstr ""
 
-#: src/pages/Login.tsx:89
-msgid "Login:"
-msgstr "Login:"
+#: src/pages/Login.tsx:183
+msgid "Login"
+msgstr ""
 
-#: src/pages/Login.tsx:97
+#: src/pages/Login.tsx:89
+#~ msgid "Login:"
+#~ msgstr "Login:"
+
+#: src/pages/Login.tsx:213
 msgid "Password"
 msgstr ""
 
-#: src/pages/Login.tsx:93
+
+#: src/pages/Login.tsx:200
 msgid "Username"
 msgstr ""

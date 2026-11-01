@@ -1323,6 +1323,7 @@ translations.el = {
 "interval_days": "ημέρες"
 }
 translations.en = {
+"switch_to_www2": "Try the new interface",
 "nav_item_3": "Logs",
 "nav_item_1": "Settings",
 "ok": "Ok",

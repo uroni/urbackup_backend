@@ -110,6 +110,15 @@ function startup()
 	new getJSON("login", available_langs, try_anonymous_login);
 }
 
+function switch_to_www2()
+{
+	var d = new Date();
+	d.setTime(d.getTime() + 10*365*24*60*60*1000);
+	var path = location.pathname.substring(0, location.pathname.lastIndexOf("/")+1);
+	document.cookie="urbackup_www2=1; expires="+d.toUTCString()+"; path="+path;
+	window.location.href="www2/";
+}
+
 
 function refresh_page()
 {
@@ -168,6 +177,8 @@ function change_lang(l, refresh)
 	I('languages').innerHTML=c;
 	
 	window.curr_trans=window.translations[l];
+
+	I('switch_www2').innerHTML=trans("switch_to_www2");
 
 	if(refresh)
 	{

@@ -4,6 +4,12 @@ import { lingui } from "@lingui/vite-plugin";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Served from the www2 folder of the classic web interface
+  base: "./",
+  build: {
+    outDir: "../www/www2",
+    emptyOutDir: true,
+  },
   plugins: [
     react({
       babel: {

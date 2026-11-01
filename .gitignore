@@ -337,3 +337,4 @@ linux-installer
 linux-installer-dbg
 UrBackupUpdateLinux.sh
 UrBackupUpdateLinux-dbg.sh
+urbackupserver/www/www2/
