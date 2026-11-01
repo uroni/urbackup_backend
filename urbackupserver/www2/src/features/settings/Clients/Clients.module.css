@@ -108,3 +108,8 @@ h1 + .subtitle {
   top: 0;
   z-index: 99;
 }
+
+/* Room for the input and the settings source selector of each setting */
+.settings-form {
+  --settings-field-width: 44ch;
+}

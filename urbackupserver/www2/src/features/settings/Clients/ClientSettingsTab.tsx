@@ -25,6 +25,10 @@ import {
 } from "./FileImageBackups/CheckboxTextDropdown";
 import { MergeableFields } from "./FileImageBackups/MergeableFields";
 import secondaryFormStyles from "./FileImageBackups/FileImageBackups.module.css";
+import {
+  SelectDropdown,
+  type InitialFormState as SelectDropdownState,
+} from "./SelectDropdown";
 
 /**
  * A client setting with a settings source selector
@@ -37,7 +41,9 @@ export interface SettingField
   name: string;
   label: string;
   // "mergeable" settings can combine the values of several sources
-  kind: "checkbox" | "text" | "mergeable";
+  kind: "checkbox" | "text" | "mergeable" | "select";
+  // Values of "select" settings
+  options?: { value: string; label: string }[];
   // Format of the value shown for "text" settings
   pattern?: RegExp;
   // Converts a "text" setting between the stored and the shown value
@@ -120,7 +126,7 @@ function ClientSettingsForm({
         </Body1>
       ) : (
         <FormCard>
-          <div className="flow">
+          <div className={`flow ${styles["settings-form"]}`}>
             <FormSection
               // The fields below keep their own state and transform their values
               fields={[]}
@@ -170,6 +176,21 @@ function SettingInput({
           field.format,
         )}
         validationMessage={validationMessage}
+      />
+    );
+  }
+
+  if (field.kind === "select") {
+    return (
+      <SelectDropdown
+        name={field.name}
+        label={field.label}
+        dropdownLabel={createDropdownLabel(field.label.toLowerCase())}
+        options={field.options ?? []}
+        initialFormState={getSettingState<SelectDropdownState>(
+          settings,
+          field.name,
+        )}
       />
     );
   }

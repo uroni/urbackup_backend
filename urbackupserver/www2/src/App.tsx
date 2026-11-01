@@ -264,6 +264,15 @@ export const router = createHashRouter([
                   return { Component: InternetTab };
                 },
               },
+              {
+                path: ":clientId/advanced",
+                lazy: async () => {
+                  const { AdvancedTab } = await import(
+                    "./features/settings/Clients/AdvancedTab"
+                  );
+                  return { Component: AdvancedTab };
+                },
+              },
             ],
           },
         ],
