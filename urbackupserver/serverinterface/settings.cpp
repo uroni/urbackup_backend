@@ -286,16 +286,11 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	return ret;
 }
 
-void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
+namespace
 {
-	JSON::Value j_archive = obj.get("archive");
-
-	IQuery* get_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
-
-	if (j_archive.getType() == JSON::str_type)
+	std::string addNextArchival(int clientid, IQuery* get_next, std::string archive_str)
 	{
 		str_map params;
-		std::string archive_str = j_archive.getString();
 		ParseParamStrHttp(archive_str, &params);
 
 		for (str_map::iterator it = params.begin(); it != params.end(); ++it)
@@ -303,9 +298,10 @@ void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
 			if (next(it->first, 0, "uuid_"))
 			{
 				std::string idx = getafter("uuid_", it->first);
+				std::string buuid = hexToBytes(it->second);
 
 				get_next->Bind(clientid);
-				get_next->Bind(it->second);
+				get_next->Bind(buuid.data(), buuid.size());
 				db_results res = get_next->Read();
 				get_next->Reset();
 
@@ -318,8 +314,32 @@ void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
 			}
 		}
 
-		obj.set("archive", archive_str);
+		return archive_str;
 	}
+}
+
+void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
+{
+	JSON::Value j_archive = obj.get("archive");
+
+	if (j_archive.getType() != JSON::obj_type)
+		return;
+
+	IQuery* get_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
+
+	// The client's own, its group's and the client side archive rules
+	JSON::Object archive = j_archive.getObject();
+	const char* keys[] = { "value", "value_group", "value_client" };
+	for (const char* key : keys)
+	{
+		JSON::Value val = archive.get(key);
+		if (val.getType() == JSON::str_type)
+		{
+			archive.set(key, addNextArchival(clientid, get_next, val.getString()));
+		}
+	}
+
+	obj.set("archive", archive);
 }
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
@@ -592,7 +612,7 @@ void archiveParamsSetUuid(str_map& POST)
 				std::string uuid;
 				uuid.resize(16);
 				Server->secureRandomFill(&uuid[0], uuid.size());
-				it->second = uuid;
+				it->second = bytesToHex(uuid);
 				mod = true;
 			}
 		}
@@ -684,7 +704,8 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 void updateArchiveSettings(int clientid, IDatabase *db)
 {
 	IQuery* q = db->Prepare("INSERT INTO settings_db.settings(key, value, clientid) VALUES ('archive_update', '1', ?)");
-	if (clientid == 0)
+	// The rules of the general settings and of groups are used by clients
+	if (clientid <= 0)
 	{
 		db_results res_ids = db->Read("SELECT id FROM clients");
 

@@ -1247,6 +1247,12 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 			q_insert_setting->Write();
 			q_insert_setting->Reset();
 
+			q_insert_setting->Bind("archive_update");
+			q_insert_setting->Bind("1");
+			q_insert_setting->Bind(rid);
+			q_insert_setting->Write();
+			q_insert_setting->Reset();
+
 			if (client_group != NULL)
 			{
 				q_insert_setting->Bind("group_id");
