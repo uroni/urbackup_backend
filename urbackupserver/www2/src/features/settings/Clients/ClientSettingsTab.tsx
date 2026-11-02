@@ -35,6 +35,10 @@ import {
   type InitialFormState as SelectDropdownState,
 } from "./SelectDropdown";
 
+type ValueChangeHandler = NonNullable<
+  React.ComponentProps<typeof CheckboxTextDropdown>["onValueChange"]
+>;
+
 /**
  * A client setting with a settings source selector
  */
@@ -198,10 +202,13 @@ export function SettingsFormCard({
   fields,
   settings,
   onSubmit,
+  onValueChange,
 }: {
   fields: SettingField[];
   settings: ClientSettings["settings"];
   onSubmit: (settings: ClientSettings["settings"]) => void;
+  // Called with the value shown in "text" settings
+  onValueChange?: ValueChangeHandler;
 }) {
   const submit = (entries: Record<string, unknown>) => {
     const data = fields.reduce((all, f) => f.toSettings?.(all) ?? all, entries);
@@ -234,6 +241,7 @@ export function SettingsFormCard({
                 settings={settings}
                 validationMessage={validationMessages[field.name]}
                 validationMessages={validationMessages}
+                onValueChange={onValueChange}
               />
             ))
           }
@@ -248,11 +256,13 @@ export function SettingInput({
   settings,
   validationMessage,
   validationMessages,
+  onValueChange,
 }: {
   field: SettingField;
   settings: ClientSettings["settings"];
   validationMessage?: string;
   validationMessages?: Record<string, string>;
+  onValueChange?: ValueChangeHandler;
 }) {
   const formField = { ...field, type: "custom" } satisfies BaseField<string> & {
     label: string;
@@ -270,6 +280,7 @@ export function SettingInput({
           field.format,
         )}
         validationMessage={validationMessage}
+        onValueChange={onValueChange}
       />
     );
   }
