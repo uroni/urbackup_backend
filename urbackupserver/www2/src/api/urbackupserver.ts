@@ -898,6 +898,43 @@ class UrBackupServer {
     return resp as Files;
   };
 
+  // Restore the files at `path` of a file backup to the client, of them only
+  // the file or folder `filter` if given. Resolves once the server has
+  // prepared the restore, which then shows in the activities.
+  // Throws BackupsAccessError with e.g. "client_not_online"
+  restoreFiles = async (
+    clientid: number,
+    backupid: number,
+    path: string,
+    filter?: string,
+  ) => {
+    const resp = await this.fetchData(
+      {
+        sa: "clientdl",
+        clientid: "" + clientid,
+        backupid: "" + backupid,
+        path: path,
+        ...(filter !== undefined && { filter }),
+      },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+
+    for (let waitKey = resp.wait_key; waitKey; ) {
+      const wait = await this.fetchData(
+        { wait_key: waitKey },
+        "restore_prepare_wait",
+      );
+      if (wait.completed) {
+        break;
+      }
+      if (!wait.wait_key) {
+        throw new BackupsAccessError("restore_wait_failed");
+      }
+      waitKey = wait.wait_key;
+    }
+  };
+
   // Archive a backup
   archiveBackup = async (clientid: number, backupid: number) => {
     const resp = await this.fetchData(
