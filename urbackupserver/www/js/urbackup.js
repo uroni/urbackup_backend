@@ -2887,6 +2887,7 @@ function settingSwitchReset(key)
 	}
 
 	renderSettingSwitchAll();
+	updateBackupSummary();
 }
 function fixupUse(key, use)
 {
@@ -2997,6 +2998,8 @@ function settingSwitch()
 			
 		I(key+"_group").value = g.curr_settings[key].value_group;
 	}
+
+	updateBackupSummary();
 }
 function renderSettingValue(key, val)
 {
@@ -4056,6 +4059,8 @@ function show_settings2(data)
 		unescapeCurrentSettings(g.curr_settings);
 		renderSettingSwitchAll();
 	}
+
+	updateBackupSummary();
 	
 	if(update_tabber && tabber_set_idx)
 	{
