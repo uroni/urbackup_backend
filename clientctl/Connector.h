@@ -27,7 +27,7 @@ typedef long long int int64;
 struct SBackupDir
 {
 	SBackupDir()
-		: id(0), group(0), server_default(0)
+		: id(0), group(0), server_default(0), servers_from_client(false)
 	{}
 
 	SBackupDir(std::string path,
@@ -39,7 +39,8 @@ struct SBackupDir
 		int server_default)
 		: path(path), name(name), id(id),
 		group(group), virtual_client(virtual_client),
-		flags(flags), server_default(server_default)
+		flags(flags), server_default(server_default),
+		servers_from_client(false)
 	{}
 
 	std::string path;
@@ -49,6 +50,10 @@ struct SBackupDir
 	std::string virtual_client;
 	std::string flags;
 	int server_default;
+	//Identities of the servers this directory is backed up to (empty: all)
+	std::vector<std::string> servers;
+	//The servers were chosen on the client (not a server's default directory)
+	bool servers_from_client;
 };
 
 struct SStatus
@@ -178,6 +183,11 @@ public:
 	static int startBackup(const std::string& virtual_client, bool full, int64* start_id = NULL);
 	static int startImage(const std::string& virtual_client, bool full, int64* start_id = NULL);
 	static bool updateSettings(const std::string &sdata, bool& no_perm);
+
+	//Server list as "count=N" and "<n>.<field>=<value>" lines
+	//use_change_pw: with the internet auth keys
+	static std::string getServerList(bool use_change_pw = false);
+	static std::string setServerList(const std::string &data);
 	static std::vector<SLogEntry> getLogEntries(void);
 	static std::vector<SLogLine> getLogdata(int logid, int loglevel);
 	static bool setPause(bool b_pause);
@@ -200,6 +210,9 @@ public:
 		ENbdImageResult_NotFound = 5
 	};
 
+	//Restrict browsing/restoring to one server (id, name or identity as in list-servers)
+	static std::string server_filter;
+
 	static std::string getFileBackupsList(const std::string& virtual_client, EAccessError& access_error);
 	static std::string getFileList(const std::string& path, int* backupid, const std::string& virtual_client, EAccessError& access_error);
 	static std::string startRestore( const std::string& path, int backupid, const std::string& virtual_client,
@@ -210,7 +223,9 @@ public:
 	static std::string getBackupQueue(const std::string& virtual_client);
 	static SStatusDetails getStatusDetails();
 
-	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup);
+	//server: only the backup paths of this server (id, name or identity as in list-servers)
+	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup,
+		const std::string& server = std::string());
 
 	//Image backups of restore_name or (if empty) of this client/its virtual client. Raw "id|timestamp|time|letter" lines
 	static std::string getImageBackupsList(const std::string& restore_name, const std::string& virtual_client, EAccessError& access_error);

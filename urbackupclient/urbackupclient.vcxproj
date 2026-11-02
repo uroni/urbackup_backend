@@ -78,6 +78,7 @@
     <ClCompile Include="RestoreFiles.cpp" />
     <ClCompile Include="SambaService.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
+    <ClCompile Include="ServerList.cpp" />
     <ClCompile Include="TokenCallback.cpp" />
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
     <ClCompile Include="watchdir\JournalDAO.cpp" />
@@ -138,6 +139,7 @@
     <ClInclude Include="RestoreFiles.h" />
     <ClInclude Include="SambaService.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
+    <ClInclude Include="ServerList.h" />
     <ClInclude Include="TokenCallback.h" />
     <ClInclude Include="tokens.h" />
     <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />

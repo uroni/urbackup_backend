@@ -134,6 +134,9 @@ private:
 	int tgroup;
 	std::string clientsubname;
 
+	//Facet of the server the restore is from: its settings, backup paths and virtual clients
+	int getFacetId();
+
 	str_map metadata_path_mapping;
 
 	bool request_restart;

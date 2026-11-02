@@ -403,7 +403,7 @@ public:
 
 	static void readPatterns(int index_group, std::string index_clientsubname,
 		std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
-		bool& backup_dirs_optional);
+		bool& backup_dirs_optional, int facet_id = 0);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 
@@ -427,7 +427,14 @@ private:
 	static void addResult(unsigned int id, const std::string& res);
 	static void setResultFinished(unsigned int id);
 
-	bool readBackupDirs(void);
+	//Facet of the server the current backup is for (the server of starttoken)
+	int getStartTokenFacet();
+	//filter_server: only the directories of the server the current backup is for
+	bool readBackupDirs(bool filter_server=true);
+	//Removes the default directories of other servers from backup_dirs
+	void filterBackupDirsForServer();
+	//settings.cfg (or settings_<clientsubname>.cfg) of all servers
+	static std::vector<std::string> getAllSettingsFns(const std::string& clientsubname);
 	bool readBackupScripts(bool full_backup);
 
 	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, 
@@ -748,6 +755,7 @@ private:
 	int index_flags;
 	std::string index_clientsubname;
 	EBackupDirServerDefault index_server_default;
+	int index_facet_id;
 	bool index_follow_last;
 	bool index_keep_files;
 

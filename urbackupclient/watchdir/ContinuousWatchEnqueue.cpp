@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "../../stringtools.h"
 #include "../ClientService.h"
+#include "../ServerList.h"
 #include <memory>
 #include "../../Interface/SettingsReader.h"
 #include "../../urbackupserver/database.h"
@@ -340,7 +341,7 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 
 	update_patterns=false;
 
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(ServerList::getDefaultSettingsFn()));
 
 	if(curr_settings.get())
 	{

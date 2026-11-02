@@ -24,6 +24,7 @@
 #include "DirectoryWatcherThread.h"
 #include "../urbackupcommon/json.h"
 #include "ClientService.h"
+#include "ServerList.h"
 #include <assert.h>
 
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
@@ -1115,7 +1116,8 @@ bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext&
 
 bool IndexThread::getVssSettings()
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
+	//The components to back up are selected per server
+	std::string settings_fn = ServerList::getSettingsFn(getStartTokenFacet());
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	vss_select_components.clear();
 	vss_select_all_components = false;
@@ -2247,7 +2249,7 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 	{
 		SBackupDir backup_dir;
 
-		cd->addBackupDir(named_prefix, path, 0, index_flags, c_group_vss_components, 0);
+		cd->addBackupDir(named_prefix, path, 0, index_flags, c_group_vss_components, 0, getStartTokenFacet());
 
 		backup_dir.id = static_cast<int>(db->getLastInsertID());
 
@@ -2263,6 +2265,7 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 		backup_dir.tname = named_prefix;
 		backup_dir.symlinked = false;
 		backup_dir.symlinked_confirmed = true;
+		backup_dir.facet = getStartTokenFacet();
 		backup_dir.server_default = index_server_default;
 
 		backup_dirs.push_back(backup_dir);

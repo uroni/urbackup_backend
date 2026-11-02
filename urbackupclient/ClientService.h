@@ -193,6 +193,7 @@ struct SAsyncFileList
 };
 
 struct SVolumesCache;
+struct SServerEntry;
 class RestoreFiles;
 
 const unsigned int x_pingtimeout=180000;
@@ -224,7 +225,8 @@ public:
 	bool isQuitting(void);
 	bool isHashdataOkay(void);
 
-	void setIsInternetConnection(void);
+	//Connection to the internet server of the client facet server_id
+	void setIsInternetConnection(int server_id);
 
 	static bool isBackupRunning();
 
@@ -260,18 +262,31 @@ public:
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
-	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use);
+	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id);
 
 private:
 	void ReceivePacketsInt();
 	bool checkPassword(const std::string &cmd, bool& change_pw);
-	bool saveBackupDirs(str_map &args, bool server_default, int group_offset);
+	bool saveBackupDirs(str_map &args, bool server_default, int group_offset, int facet_id);
 	std::string replaceChars(std::string in);
+	struct SDefaultDir
+	{
+		std::string path;
+		std::string name;
+		int group;
+		//Added on the client (part of the client's value of the setting)
+		bool client;
+	};
+	static std::vector<SDefaultDir> parseDefaultDirs(ISettingsReader* settings);
 	void updateSettings(const std::string &pData);
-	void replaceSettings(const std::string &pData);
+	//Changes the settings of the server of a facet
+	void replaceSettings(const std::string &pData, int target_facet_id);
+	static std::string settingsVersionKey(int facet_id, const std::string& clientsubname);
 	void saveLogdata(const std::string &created, const std::string &pData);
-	std::string getLogpoints(void);
-	void getLogLevel(int logid, int loglevel, std::string &data);
+	//server_ident: only the logs of this server and the ones without a recorded server
+	std::string getLogpoints(const std::string& server_ident);
+	//with_time: "level-time-message" lines (time: unix time, 0 if unknown) instead of "level-message"
+	void getLogLevel(int logid, int loglevel, std::string &data, bool with_time = false);
 	bool waitForThread(void);
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
@@ -285,7 +300,7 @@ private:
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
 	bool checkVersion(IFile* updatef);
-	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
+	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client, const std::string& server);
 	void ImageErr(const std::string &msg);
 	bool mapSystemVolume();
 	void update_silent(void);
@@ -294,7 +309,7 @@ private:
     static bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
 	int parseVersion(const std::string& version, std::vector<std::string>& features);
-	int64 readSettingsUpdateVersion(const std::string& virtual_client);
+	int64 readSettingsUpdateVersion(int settings_facet_id, const std::string& virtual_client);
 
 	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client);
 
@@ -307,6 +322,9 @@ private:
 	static int64 getLastBackupTime();
 
 	static std::string getHasNoRecentBackup();
+	//1: the last backup by this server is older than the backup interval it sent, 0: it is not,
+	//-1: not known (the server did not send its backup interval yet or is switched off)
+	static int getServerHasNoRecentBackup(const SServerEntry& entry, int64 client_last_backup);
 
 	static std::string getCurrRunningJob(bool reset_done, int& pcdone);
 
@@ -340,10 +358,10 @@ private:
 	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params);
-	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd);
+	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd, str_map &params);
 	void CMD_LOGDATA(const std::string &cmd);
 	void CMD_PAUSE(const std::string &cmd);
-	void CMD_GET_LOGPOINTS(const std::string &cmd);
+	void CMD_GET_LOGPOINTS(const std::string &cmd, str_map &params);
 	void CMD_GET_LOGDATA(const std::string &cmd, str_map &params);
 	void CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok);
 	void CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok);
@@ -366,6 +384,8 @@ private:
 	void CMD_CAPA(const std::string &cmd);
 	void CMD_NEW_SERVER(str_map &params);
 	void CMD_RESET_KEEP(str_map &params);
+	void CMD_GET_SERVER_LIST(const std::string &cmd, bool pw_change_ok);
+	void CMD_SET_SERVER_LIST(const std::string &cmd);
 	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 	void CMD_GET_VSSLOG(const std::string &cmd);
 	void CMD_GET_ACCESS_PARAMS(str_map &params);
@@ -379,6 +399,14 @@ private:
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
+	//Web interface URL of a server (from the settings in its facet)
+	static std::string getServerUrl(const std::string& server_ident);
+	static int64 getServerLastBackup(const std::string& server_ident);
+	//True if the channel is to the server selected by the "server" parameter (facet id,
+	//name or identity) or no server was selected
+	static bool channelMatchesServer(const SChannel& channel, const std::string& server);
+	//Adds "server" and "server_name" of the channel's server to the objects of a JSON array
+	static std::string addServerToJsonArray(const std::string& json, const SChannel& channel);
 	void exit_backup_immediate(int rc);
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
@@ -487,10 +515,15 @@ private:
 	ImageInformation image_inf;
 
 	std::string server_token;
+	//Permanent identity of the server sending the current command (empty if unknown)
+	std::string server_ident;
 
 	bool want_receive;
 
 	bool internet_conn;
+	int internet_server_id;
+	//Client facet of the server sending the current command (0 if unknown)
+	int facet_id;
 
 	std::string endpoint_name;
 

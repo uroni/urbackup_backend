@@ -658,6 +658,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_SHOW_LOGS;
 	if(cs->no_images || (internet_mode && !cs->internet_image_backups))
 		capa|=DONT_DO_IMAGE_BACKUPS;
+	if(cs->no_file_backups)
+		capa|=DONT_DO_FILE_BACKUPS;
 	if(internet_mode && !cs->internet_full_file_backups)
 		capa|=DONT_DO_FULL_FILE_BACKUPS;
 	if(!cs->allow_starting_full_file_backups)

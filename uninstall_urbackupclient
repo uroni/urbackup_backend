@@ -43,6 +43,10 @@ then
 	rm -R "$PREFIX/var/urbackup"
 else
 	[ ! -e "$PREFIX/var/urbackup/data" ] || rm -R "$PREFIX/var/urbackup/data"
+	for facet_dir in "$PREFIX/var/urbackup"/data_*
+	do
+		[ ! -d "$facet_dir" ] || rm -R "$facet_dir"
+	done
 	[ ! -e "$PREFIX/var/urbackup/tokens" ] || rm -R "$PREFIX/var/urbackup/tokens"
 	[ ! -e "$PREFIX/var/urbackup/backup_client.db" ] || rm "$PREFIX/var/urbackup/backup_client.db*"
 	[ ! -e "$PREFIX/var/urbackup/server_idents.txt" ] || rm "$PREFIX/var/urbackup/server_idents.txt"

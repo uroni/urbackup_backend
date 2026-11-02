@@ -33,6 +33,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include "ServerIdentityMgr.h"
+#include "ServerList.h"
 #include "../urbackupcommon/settings.h"
 #include "ImageThread.h"
 #include "InternetClient.h"
@@ -48,6 +49,7 @@
 #include <limits.h>
 #include <memory>
 #include <algorithm>
+#include <set>
 #include <assert.h>
 
 
@@ -301,6 +303,8 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	last_channel_ping=0;
 	file_version=1;
 	internet_conn=false;
+	internet_server_id=-1;
+	facet_id=0;
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
 	endpoint_name = pEndpointName;
@@ -1033,9 +1037,54 @@ void ClientConnector::ReceivePacketsInt()
 			}
 		}
 
+		if(ident_ok || is_channel)
+		{
+			server_ident = ServerIdentityMgr::getServerIdentity(identity);
+
+			if(!internet_conn
+				&& !server_ident.empty())
+			{
+				SServerEntry entry;
+				if(ServerList::getEntryByIdent(server_ident, entry)
+					&& !entry.local)
+				{
+					//LAN connections of this server are disabled in the server list
+					Server->Log("Closing LAN connection of server " + server_ident + " (LAN disabled for it)", LL_DEBUG);
+					do_quit=true;
+					continue;
+				}
+				else if(ident_ok)
+				{
+					ServerList::setEndpoint(server_ident, endpoint_name);
+				}
+			}
+		}
+
+		if(ident_ok)
+		{
+			ServerIdentityMgr::setServerTokenIdentity(server_token, server_ident);
+
+			if(internet_conn)
+			{
+				InternetClient::setInternetServerIdentity(internet_server_id, server_ident);
+			}
+
+			if(!server_ident.empty()
+				&& ServerList::getFacetId(server_ident)==0)
+			{
+				ServerList::addTrustedIdent(server_ident);
+			}
+		}
+
+		if(ident_ok || is_channel)
+		{
+			//Settings, backup paths and file lists of this server are in its facet
+			facet_id = ServerList::getFacetIdOrDefault(server_ident);
+		}
+
 		if( (ident_ok || is_channel) && !internet_conn )
 		{
-			InternetClient::hasLANConnection();
+			InternetClient::hasLANConnection(server_ident);
 		}
 
 		if(cmd=="ADD IDENTITY" )
@@ -1256,11 +1305,11 @@ void ClientConnector::ReceivePacketsInt()
 				}
 				else if(next(cmd, 0, "UPDATE SETTINGS ") )
 				{
-					CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
+					CMD_TOCHANNEL_UPDATE_SETTINGS(cmd, params); continue;
 				}
 				else if(cmd=="GET LOGPOINTS" )
 				{
-					CMD_GET_LOGPOINTS(cmd); continue;
+					CMD_GET_LOGPOINTS(cmd, params); continue;
 				}
 				else if(cmd=="GET LOGDATA" )
 				{
@@ -1274,8 +1323,17 @@ void ClientConnector::ReceivePacketsInt()
 				{
 					CMD_RESET_KEEP(params); continue;
 				}
+				else if (next(cmd, 0, "SET SERVER LIST "))
+				{
+					CMD_SET_SERVER_LIST(cmd); continue;
+				}
 			}
-			
+
+			if (cmd == "GET SERVER LIST")
+			{
+				CMD_GET_SERVER_LIST(cmd, pw_change_ok); continue;
+			}
+
 			if( cmd=="GET BACKUP DIRS" )
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
@@ -1435,36 +1493,39 @@ std::string ClientConnector::removeIllegalCharsFromBackupName(std::string in)
 	return ret;
 }
 
-bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset, int facet_id)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
-	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs");
+	const std::string str_facet = convert(facet_id);
+	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs WHERE facet="+str_facet);
 	bool all_virtual_clients = false;
 	if (args.find("all_virtual_clients") != args.end())
 	{
 		all_virtual_clients = true;
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND facet="+str_facet);
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2");
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND facet="+str_facet);
 		}
 	}
 	else
 	{
 		if (!server_default)
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+				+ " AND facet="+str_facet);
 		}
 		else
 		{
-			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+			db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND server_default!=2 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+				+ " AND facet="+str_facet);
 		}
 	}
-	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? , ?, ?, ?)");
+	IQuery *q_insert_dir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, facet) VALUES (?, ? , ?, ?, ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1474,8 +1535,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		q->Reset();
 	}
 	*/
-	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
-	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?");
+	//A name can only be used once per facet. The same path has the same name in all facets
+	//(the names are also the names of the shares of the directories)
+	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=? AND (facet="+str_facet+" OR path!=?)");
+	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=? AND facet="+str_facet);
 	std::string dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
@@ -1588,6 +1651,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			}
 
 			q2->Bind(name);
+			q2->Bind(dir);
 			std::string orig_name = name;
 			if(q2->Read().empty()==false
 				|| name=="urbackup")
@@ -1596,6 +1660,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				{
 					q2->Reset();
 					q2->Bind(name+"_"+convert(k));
+					q2->Bind(dir);
 					if(q2->Read().empty()==true)
 					{
 						name+="_"+convert(k);
@@ -1647,6 +1712,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			q_insert_dir->Bind(curr_server_default);
 			q_insert_dir->Bind(flags);
 			q_insert_dir->Bind(group);
+			q_insert_dir->Bind(facet_id);
 			q_insert_dir->Write();
 			q_insert_dir->Reset();
 		}
@@ -1674,13 +1740,23 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	IQuery* q_other_has_path = NULL;
 	if (!all_virtual_clients)
 	{
-		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max)
+			+ " AND facet="+str_facet);
 	}
+
+	IQuery* q_other_facet_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND facet!="+str_facet);
 
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
 		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
+			q_other_facet_has_path->Bind(backupdirs[i]["path"]);
+			db_results res_other_facet = q_other_facet_has_path->Read();
+			q_other_facet_has_path->Reset();
+
+			if (!res_other_facet.empty())
+				continue;
+
 			if (!all_virtual_clients)
 			{
 				q_other_has_path->Bind(backupdirs[i]["path"]);
@@ -1786,11 +1862,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}	
 #endif
 
-	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end()))
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset, args.find("enable_client_paths_use")!=args.end(), facet_id))
 	{
 		IScopedLock lock(backup_mutex);
 		for (size_t o = 0; o<channel_pipes.size(); ++o)
 		{
+			if (ServerList::getFacetIdOrDefault(ServerIdentityMgr::getServerIdentity(channel_pipes[o].server_identity)) != facet_id)
+				continue;
+
 			CTCPStack tmpstack(channel_pipes[o].internet_connection);
 			tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
 		}
@@ -1845,31 +1924,92 @@ void ClientConnector::updateLastBackup(void)
 
 std::vector<std::string> getSettingsList(void);
 
+std::vector<ClientConnector::SDefaultDir> ClientConnector::parseDefaultDirs(ISettingsReader* settings)
+{
+	int default_dirs_use = settings->getValue("default_dirs.use", 0);
+	std::vector<std::string> default_dirs_toks;
+	size_t default_dirs_client_off = std::string::npos;
+
+	if (default_dirs_use & c_use_group)
+	{
+		Tokenize(settings->getValue("default_dirs.group", ""), default_dirs_toks, ";");
+	}
+	if (default_dirs_use & c_use_value)
+	{
+		std::vector<std::string> toks;
+		Tokenize(settings->getValue("default_dirs.home", ""), toks, ";");
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+	}
+	if (default_dirs_use & c_use_value_client)
+	{
+		std::vector<std::string> toks;
+		Tokenize(settings->getValue("default_dirs.client", ""), toks, ";");
+		default_dirs_client_off = default_dirs_toks.size();
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+	}
+
+	std::vector<SDefaultDir> ret;
+	for (size_t i = 0; i < default_dirs_toks.size(); ++i)
+	{
+		SDefaultDir dir;
+		dir.path = UnescapeParamString(trim(default_dirs_toks[i]));
+		dir.group = c_group_default;
+		if (dir.path.find("|") != std::string::npos)
+		{
+			std::vector<std::string> toks;
+			Tokenize(dir.path, toks, "|");
+			dir.path = toks[0];
+			dir.name = toks[1];
+			if (toks.size() > 2)
+			{
+				dir.group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
+			}
+		}
+		dir.client = i >= default_dirs_client_off;
+		if (!dir.path.empty())
+		{
+			ret.push_back(dir);
+		}
+	}
+	return ret;
+}
+
+std::string ClientConnector::settingsVersionKey(int facet_id, const std::string& clientsubname)
+{
+	return convert(facet_id) + "|" + clientsubname;
+}
+
 void ClientConnector::updateSettings(const std::string &pData)
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
-	std::string settings_fn="urbackup/data/settings.cfg";
+	//Each server has its own settings and backup paths in its facet
+	const int settings_facet_id = facet_id != 0 ? facet_id : ServerList::getDefaultFacetId();
+	const std::string str_facet = convert(settings_facet_id);
+
+	std::string settings_fn=ServerList::getSettingsFn(settings_facet_id);
 	std::string clientsubname;
 	std::string str_group_offset;
 	int group_offset=0;
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty()
 		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
 	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_fn = ServerList::getSettingsFn(settings_facet_id, clientsubname);
 		group_offset = atoi(str_group_offset.c_str());
 
-		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset)
+			+ " AND facet=" + str_facet);
 		if (!res_old_client.empty()
 			&& res_old_client[0]["virtual_client"]!=clientsubname)
 		{
-			db->Write("DELETE FROM backupdirs WHERE tgroup=" + convert(group_offset));
-			db->Write("DELETE FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+			db->Write("DELETE FROM backupdirs WHERE tgroup=" + convert(group_offset) + " AND facet=" + str_facet);
+			db->Write("DELETE FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset) + " AND facet=" + str_facet);
 		}
-		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset) VALUES (?,?)", false);
+		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset, facet) VALUES (?,?,?)", false);
 		q->Bind(clientsubname);
 		q->Bind(group_offset);
+		q->Bind(settings_facet_id);
 		q->Write();
 		q->Reset();
 		db->destroyQuery(q);
@@ -1879,7 +2019,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 	if (settings_update_version != 0)
 	{
 		IScopedLock lock(backup_mutex);
-		settings_update_versions[clientsubname] = (std::max)(settings_update_version, settings_update_versions[clientsubname]);
+		std::string version_key = settingsVersionKey(settings_facet_id, clientsubname);
+		settings_update_versions[version_key] = (std::max)(settings_update_version, settings_update_versions[version_key]);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -1892,8 +2033,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 	critical_settings.push_back("internet_authkey");
 	critical_settings.push_back("computername");
 
-	bool mod = false;
-
 	std::string settings_add="\n";
 	for (size_t i = 0; i < critical_settings.size(); ++i)
 	{
@@ -1903,74 +2042,53 @@ void ClientConnector::updateSettings(const std::string &pData)
 			&& !new_settings->getValue(critical_settings[i], &new_v) )
 		{
 			settings_add += critical_settings[i] + "=" + curr_v + "\n";
-			mod = true;
 		}
 		else if (curr_v != new_v && new_v.empty()
 			&& critical_settings[i] != "internet_server_proxy")
 		{
 			settings_add += critical_settings[i] + "=" + curr_v + "\n";
-			mod = true;
 		}
 	}
 
-
-	int default_dirs_use = new_settings->getValue("default_dirs.use", 0);
-	std::vector<std::string> default_dirs_toks;
-	size_t default_dirs_client_off = std::string::npos;
-
-	if (default_dirs_use & c_use_group)
+	std::string curr_internet_server;
+	std::string new_internet_server;
+	if (!internet_conn
+		&& curr_settings->getValue("internet_server", &curr_internet_server)
+		&& !curr_internet_server.empty()
+		&& (!new_settings->getValue("internet_server", &new_internet_server)
+			|| new_internet_server.empty()))
 	{
-		std::string val;
-		Tokenize(new_settings->getValue("default_dirs.group", ""), default_dirs_toks, ";");
-	}
-	if (default_dirs_use & c_use_value)
-	{
-		std::string val;
-		std::vector<std::string> toks;
-		Tokenize(new_settings->getValue("default_dirs.home", ""), toks, ";");
-		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
-	}
-	if (default_dirs_use & c_use_value_client)
-	{
-		std::string val;
-		std::vector<std::string> toks;
-		Tokenize(new_settings->getValue("default_dirs.client", ""), toks, ";");
-		default_dirs_client_off = default_dirs_toks.size();
-		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+		//The server does not know the internet server configured on this client. Its internet
+		//settings (e.g. its internet_authkey) are not the ones of that server: keep the current ones
+		std::vector<std::string> curr_keys = curr_settings->getKeys();
+		for (size_t i = 0; i < curr_keys.size(); ++i)
+		{
+			std::string curr_v;
+			if (next(curr_keys[i], 0, "internet_")
+				&& curr_settings->getValue(curr_keys[i], &curr_v))
+			{
+				settings_add += curr_keys[i] + "=" + curr_v + "\n";
+			}
+		}
 	}
 
-	if(!default_dirs_toks.empty())
+	std::vector<SDefaultDir> default_dirs = parseDefaultDirs(new_settings.get());
+	if (!default_dirs.empty())
 	{
 		str_map args;
-		for(size_t i=0;i<default_dirs_toks.size();++i)
+		for (size_t i = 0; i < default_dirs.size(); ++i)
 		{
-			std::string path = UnescapeParamString(trim(default_dirs_toks[i]));
-			std::string name;
-			int group = c_group_default;
-			if(path.find("|")!=std::string::npos)
-			{
-				std::vector<std::string> toks;
-				Tokenize(path, toks, "|");
-				path = toks[0];
-				name = toks[1];
-				if(toks.size()>2)
-				{
-					group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
-				}
-			}
-			args["dir_"+convert(i)]=path;
-			if(!name.empty())
-				args["dir_"+convert(i)+"_name"]=name;
-
-			args["dir_"+convert(i)+"_group"]=convert(group);
-			args["dir_" + convert(i) + "_server_default"] = convert(i>= default_dirs_client_off ? 0 : 1);
+			args["dir_" + convert(i)] = default_dirs[i].path;
+			if (!default_dirs[i].name.empty())
+				args["dir_" + convert(i) + "_name"] = default_dirs[i].name;
+			args["dir_" + convert(i) + "_group"] = convert(default_dirs[i].group);
+			args["dir_" + convert(i) + "_server_default"] = convert(default_dirs[i].client ? 0 : 1);
 		}
 
-		saveBackupDirs(args, true, group_offset);
+		saveBackupDirs(args, true, group_offset, settings_facet_id);
 	}
 
-	if(mod
-		|| getFile(settings_fn)!= pData)
+	if(getFile(settings_fn)!= pData + settings_add)
 	{
 		std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
@@ -1988,7 +2106,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	}
 }
 
-void ClientConnector::replaceSettings(const std::string &pData)
+void ClientConnector::replaceSettings(const std::string &pData, int target_facet_id)
 {
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
@@ -2003,12 +2121,9 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
-	std::string settings_fn="urbackup/data/settings.cfg";
 	std::string clientsubname;
-	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
-	{
-		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
-	}
+	new_settings->getValue("clientsubname", &clientsubname);
+	std::string settings_fn=ServerList::getSettingsFn(target_facet_id, clientsubname);
 
 	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
 	
@@ -2057,8 +2172,9 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		int64 local_settings_version;
 		{
 			IScopedLock lock(backup_mutex);
-			settings_update_versions[clientsubname] = (std::max)(settings_update_versions[clientsubname], (std::max)(old_settings->getValue("update_version", int64()), new_settings->getValue("update_version", int64()))) + 1;
-			local_settings_version = settings_update_versions[clientsubname];
+			std::string version_key = settingsVersionKey(target_facet_id, clientsubname);
+			settings_update_versions[version_key] = (std::max)(settings_update_versions[version_key], (std::max)(old_settings->getValue("update_version", int64()), new_settings->getValue("update_version", int64()))) + 1;
+			local_settings_version = settings_update_versions[version_key];
 		}
 
 		std::string new_data;
@@ -2121,6 +2237,13 @@ void ClientConnector::replaceSettings(const std::string &pData)
 						new_data += new_key + ".use_lm=" + convert(new_use_lm) + "\n";
 						add_new_keys.push_back(new_key + ".use_lm");
 					}
+
+					if (val != old_client_val)
+					{
+						//The new value is the client's value of the setting (the server takes it from there)
+						new_data += new_key + ".client=" + val + "\n";
+						add_new_keys.push_back(new_key + ".client");
+					}
 				}
 			}
 		}
@@ -2169,6 +2292,18 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	q_p->Write();
 	_i64 logid=db->getLastInsertID();
 
+	if (!server_ident.empty())
+	{
+		//Which server's backup the log is of. A separate table, so older client
+		//versions can still use the database
+		db->Write("CREATE TABLE IF NOT EXISTS log_servers (logid INTEGER PRIMARY KEY, server_ident TEXT)");
+		IQuery* q_s = db->Prepare("INSERT OR REPLACE INTO log_servers (logid, server_ident) VALUES (?, ?)", false);
+		q_s->Bind(logid);
+		q_s->Bind(server_ident);
+		q_s->Write();
+		db->destroyQuery(q_s);
+	}
+
 	while(!db->BeginWriteTransaction())
 				Server->wait(500);
 
@@ -2214,9 +2349,26 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	db->destroyAllQueries();
 }
 
-std::string ClientConnector::getLogpoints(void)
+std::string ClientConnector::getLogpoints(const std::string& server_ident)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	if (!server_ident.empty())
+	{
+		//Logs of this server and logs saved before the server was recorded ("id-time-known")
+		db->Write("CREATE TABLE IF NOT EXISTS log_servers (logid INTEGER PRIMARY KEY, server_ident TEXT)");
+		IQuery* q = db->Prepare("SELECT l.id AS id, strftime('%s',l.ttime) AS ltime, s.server_ident AS server_ident "
+			"FROM logs l LEFT OUTER JOIN log_servers s ON l.id=s.logid "
+			"WHERE s.server_ident=? OR s.server_ident IS NULL ORDER BY l.ttime DESC LIMIT 100", false);
+		q->Bind(server_ident);
+		db_results res = q->Read();
+		db->destroyQuery(q);
+		std::string ret;
+		for (size_t i = 0; i < res.size(); ++i)
+		{
+			ret += res[i]["id"] + "-" + res[i]["ltime"] + "-" + (res[i]["server_ident"].empty() ? "0" : "1") + "\n";
+		}
+		return ret;
+	}
 	int timeoutms=300;
 	IQuery *q=db->Prepare("SELECT id, strftime('%s',ttime) AS ltime FROM logs ORDER BY ttime DESC LIMIT 100");
 	db_results res=q->Read(&timeoutms);
@@ -2230,10 +2382,10 @@ std::string ClientConnector::getLogpoints(void)
 	return ret;
 }
 
-void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
+void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data, bool with_time)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT loglevel, message FROM logdata WHERE logid=? AND loglevel>=? ORDER BY idx ASC");
+	IQuery *q=db->Prepare("SELECT loglevel, message, strftime('%s', ltime) AS ltime FROM logdata WHERE logid=? AND loglevel>=? ORDER BY idx ASC");
 	q->Bind(logid);
 	q->Bind(loglevel);
 	int timeoutms=300;
@@ -2241,6 +2393,10 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 	for(size_t i=0;i<res.size();++i)
 	{
 		data+=(res[i]["loglevel"])+"-";
+		if (with_time)
+		{
+			data += (res[i]["ltime"].empty() ? std::string("0") : res[i]["ltime"]) + "-";
+		}
 		data+=(res[i]["message"])+"\n";
 	}
 	db->destroyAllQueries();
@@ -3371,7 +3527,7 @@ int64 ClientConnector::getLastTokenTime(const std::string & tok)
 	}
 }
 
-void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client)
+void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client, const std::string& server)
 {
 	std::string ts;
 	if(backup_type==RUNNING_INCR_FILE)
@@ -3397,11 +3553,12 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 		lock_process.relock(NULL);
 
 		//No server for a virtual client it does not know (yet), instead of starting a backup
-		//of the main client
-		size_t selidx = virtual_client.empty() ? 0 : channel_pipes.size();
+		//of the main client. With several servers, server says which one to ask for the backup
+		size_t selidx = (virtual_client.empty() && server.empty()) ? 0 : channel_pipes.size();
 		for (size_t i = 0; i < channel_pipes.size(); ++i)
 		{
-			if (channel_pipes[i].virtual_client == virtual_client)
+			if (channel_pipes[i].virtual_client == virtual_client
+				&& channelMatchesServer(channel_pipes[i], server))
 			{
 				selidx = i;
 			}
@@ -3496,9 +3653,10 @@ void ClientConnector::ImageErr(const std::string &msg)
 	delete [] buffer;
 }
 
-void ClientConnector::setIsInternetConnection(void)
+void ClientConnector::setIsInternetConnection(int server_id)
 {
 	internet_conn=true;
+	internet_server_id=server_id;
 	tcpstack.setAddChecksum(true);
 }
 
@@ -3511,11 +3669,7 @@ bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubna
 {
 	if(internet_conn)
 	{
-		std::string settings_fn = "urbackup/data/settings.cfg";
-		if(!clientsubname.empty())
-		{
-			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
-		}
+		std::string settings_fn = ServerList::getSettingsFn(facet_id != 0 ? facet_id : ServerList::getDefaultFacetId(), clientsubname);
 		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
 		if (curr_settings == NULL)
@@ -3640,6 +3794,116 @@ int ClientConnector::getCapabilities(IDatabase* db)
 	}
 
 	return capa;
+}
+
+std::string ClientConnector::getServerUrl(const std::string& server_ident)
+{
+	std::string server_url;
+	int server_facet_id = ServerList::getFacetId(server_ident);
+	if (server_facet_id == 0)
+	{
+		return server_url;
+	}
+
+	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(ServerList::getSettingsFn(server_facet_id)));
+	if (settings.get() != NULL)
+	{
+		if (!settings->getValue("server_url", &server_url))
+			settings->getValue("server_url_def", &server_url);
+	}
+	return server_url;
+}
+
+int64 ClientConnector::getServerLastBackup(const std::string& server_ident)
+{
+	return ServerList::getLastBackup(server_ident);
+}
+
+bool ClientConnector::channelMatchesServer(const SChannel& channel, const std::string& server)
+{
+	if (server.empty())
+	{
+		return true;
+	}
+
+	std::string server_ident = ServerIdentityMgr::getServerIdentity(channel.server_identity);
+	if (server_ident.empty())
+	{
+		return false;
+	}
+	if (server_ident == server)
+	{
+		return true;
+	}
+
+	SServerEntry entry;
+	if (!ServerList::getEntryByIdent(server_ident, entry))
+	{
+		return false;
+	}
+	return convert(entry.id) == server
+		|| (!entry.name.empty() && strlower(entry.name) == strlower(server));
+}
+
+std::string ClientConnector::addServerToJsonArray(const std::string& json, const SChannel& channel)
+{
+	std::string server_ident = ServerIdentityMgr::getServerIdentity(channel.server_identity);
+	if (server_ident.empty())
+	{
+		return json;
+	}
+
+	SServerEntry entry;
+	std::string server_name;
+	if (ServerList::getEntryByIdent(server_ident, entry))
+	{
+		server_name = !entry.name.empty() ? entry.name
+			: (!entry.endpoint.empty() ? entry.endpoint : entry.internet_server);
+	}
+
+	std::string fields = "\"server\": \"" + server_ident + "\", \"server_name\": \""
+		+ greplace("\"", "\\\"", greplace("\\", "\\\\", server_name)) + "\"";
+
+	//Insert after the "{" of each object in the top level array
+	std::string ret;
+	int depth = 0;
+	bool in_string = false;
+	for (size_t i = 0; i < json.size(); ++i)
+	{
+		char ch = json[i];
+		ret += ch;
+		if (in_string)
+		{
+			if (ch == '\\' && i + 1 < json.size())
+			{
+				ret += json[++i];
+			}
+			else if (ch == '"')
+			{
+				in_string = false;
+			}
+			continue;
+		}
+		if (ch == '"')
+		{
+			in_string = true;
+		}
+		else if (ch == '[' || ch == '{')
+		{
+			++depth;
+			if (ch == '{' && depth == 2)
+			{
+				size_t next_ch = json.find_first_not_of(" \t\r\n", i + 1);
+				bool empty_object = next_ch != std::string::npos && json[next_ch] == '}';
+				ret += fields + (empty_object ? "" : ", ");
+			}
+		}
+		else if (ch == ']' || ch == '}')
+		{
+			--depth;
+		}
+	}
+	return ret;
 }
 
 bool ClientConnector::multipleChannelServers()
@@ -3913,7 +4177,7 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 std::string ClientConnector::getClientName(const std::string& virtual_client)
 {
 	std::auto_ptr<ISettingsReader> settings(
-		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+		Server->createFileSettingsReader(ServerList::getDefaultSettingsFn()));
 
 	std::string computername;
 	if (settings.get() == NULL
@@ -4074,15 +4338,10 @@ int ClientConnector::parseVersion(const std::string & version, std::vector<std::
 	}
 }
 
-int64 ClientConnector::readSettingsUpdateVersion(const std::string& virtual_client)
+int64 ClientConnector::readSettingsUpdateVersion(int settings_facet_id, const std::string& virtual_client)
 {
-	std::string settings_fn = "urbackup/data/settings.cfg";
-	if (!virtual_client.empty())
-	{
-		settings_fn = "urbackup/data/settings_" + conv_filename(virtual_client) + ".cfg";
-	}
-
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(
+		ServerList::getSettingsFn(settings_facet_id, virtual_client)));
 
 	if (!curr_settings.get())
 		return 0;
@@ -4095,6 +4354,37 @@ void ClientConnector::requestRestoreRestart()
 	IScopedLock lock(backup_mutex);
 	++needs_restore_restart;
 	status_updated=true;
+}
+
+int ClientConnector::getServerHasNoRecentBackup(const SServerEntry& entry, int64 client_last_backup)
+{
+	if (entry.ident.empty()
+		|| (!entry.local && !entry.internet))
+	{
+		return -1;
+	}
+
+	int server_backup_interval = ServerList::getBackupInterval(entry.ident);
+	if (server_backup_interval <= 0)
+	{
+		return -1;
+	}
+
+	int64 last_backup_time = ServerList::getLastBackup(entry.ident);
+	if (last_backup_time == 0
+		&& entry.id == ServerList::getDefaultFacetId())
+	{
+		//Backups from before the client kept the time per server
+		last_backup_time = client_last_backup;
+	}
+
+	if (last_backup_time == 0
+		|| Server->getTimeSeconds() - last_backup_time > server_backup_interval)
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 std::string ClientConnector::getHasNoRecentBackup()
@@ -4131,6 +4421,28 @@ std::string ClientConnector::getHasNoRecentBackup()
 		return "NOA";
 	}
 
+	//Each server has its own backup interval: no recent backup if one of them is overdue.
+	//Servers that did not send their interval yet are not taken into account
+	bool has_server_interval = false;
+	std::vector<SServerEntry> entries = ServerList::getEntries();
+	for (size_t i = 0; i < entries.size(); ++i)
+	{
+		int no_recent = getServerHasNoRecentBackup(entries[i], last_backup_time);
+		if (no_recent > 0)
+		{
+			return "NO_RECENT";
+		}
+		else if (no_recent == 0)
+		{
+			has_server_interval = true;
+		}
+	}
+
+	if (has_server_interval)
+	{
+		return "NOA";
+	}
+
 	if(Server->getTimeSeconds()-last_backup_time<= backup_interval)
 	{
 		return "NOA";
@@ -4158,13 +4470,13 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 	}
 }
 
-bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use)
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset, bool update_use, int facet_id)
 {
 	db_results res_virtual_clients;
 	if(all_virtual_clients)
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE facet="+convert(facet_id));
 	else
-		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+		res_virtual_clients = db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset)+" AND facet="+convert(facet_id));
 
 	if (all_virtual_clients || group_offset == 0)
 	{
@@ -4181,7 +4493,7 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 
 		int curr_group_offset = watoi(res_virtual_client["group_offset"]);
 
-		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
+		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset)+" AND facet="+convert(facet_id));
 
 		int default_dirs_use = c_use_value_client;
 		bool has_client_path = false;
@@ -4235,10 +4547,10 @@ bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_c
 			default_dirs += path +"|"+EscapePathParamString(res_path["name"]) + str_flags;
 		}
 
-		std::string settings_fn = "urbackup/data/settings.cfg";
+		std::string settings_fn = ServerList::getSettingsFn(facet_id);
 		if (curr_group_offset !=0)
 		{
-			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
+			settings_fn = ServerList::getSettingsFn(facet_id, res_virtual_client["virtual_client"]);
 		}
 
 		if (res_paths.empty() &&
