@@ -1,15 +1,16 @@
 import { z } from "zod/v4-mini";
 
-import { stringToInt, VALIDATION_MESSAGES } from "../../Form/validation";
+import { VALIDATION_MESSAGES } from "../../Form/validation";
 import UrBackupServer from "../../../../api/urbackupserver";
 import { BaseField, Field } from "../../Form/types";
 import { NewTabLink } from "../../../../components/NewTabLink";
+import { TIME_SPAN_PATTERN } from "../timeSpan";
 
 const HOURS_IN_DAY = 24;
 const SECONDS_IN_HOUR = 60 * 60;
 
-const toSecondsFromDays = (v: number) => toSeconds(v) * HOURS_IN_DAY;
-const toDaysFromSeconds = (v: number) => toHours(v) / HOURS_IN_DAY;
+export const toSecondsFromDays = (v: number) => toSeconds(v) * HOURS_IN_DAY;
+export const toDaysFromSeconds = (v: number) => toHours(v) / HOURS_IN_DAY;
 const toHours = (v: number) => v / SECONDS_IN_HOUR;
 const toSeconds = (v: number) => v * SECONDS_IN_HOUR;
 
@@ -24,6 +25,7 @@ const FILEBACKUP_SETTINGS = [
   "include_files",
   "default_dirs",
   "backup_dirs_optional",
+  "ransomware_canary_paths",
 ] as const satisfies ReturnType<UrBackupServer["settingsList"]>[number][];
 
 export type FileBackupsSettingsKey = (typeof FILEBACKUP_SETTINGS)[number];
@@ -47,15 +49,10 @@ export const FILE_BACKUPS_LABELS: Record<FileBackupsSettingsKey, string> = {
   include_files: "Included files (with wildcards)",
   default_dirs: "Default directories to backup",
   backup_dirs_optional: "Directories to backup are optional by default",
+  ransomware_canary_paths: "Ransomware canary paths",
 };
 
 const FORM_MESSAGES = {
-  update_freq_incr: VALIDATION_MESSAGES.numeric(
-    FILE_BACKUPS_LABELS["update_freq_incr"],
-  ),
-  update_freq_full: VALIDATION_MESSAGES.numeric(
-    FILE_BACKUPS_LABELS["update_freq_full"],
-  ),
   max_file_incr: VALIDATION_MESSAGES.numeric(
     FILE_BACKUPS_LABELS["max_file_incr"],
   ),
@@ -75,13 +72,23 @@ const emptyOrPositive = (message: string) =>
   z.union([z.literal(""), z.coerce.number().check(z.gte(0))], message);
 
 export const fileBackupsFormSchema = z.object({
-  update_freq_incr: stringToInt(FORM_MESSAGES["update_freq_incr"]).check(
-    z.int(FORM_MESSAGES["update_freq_incr"]),
-  ),
+  update_freq_incr: z
+    .string()
+    .check(
+      z.regex(
+        TIME_SPAN_PATTERN,
+        VALIDATION_MESSAGES.regex(FILE_BACKUPS_LABELS["update_freq_incr"]),
+      ),
+    ),
   "update_freq_incr.use": settingsClientEnum,
-  update_freq_full: stringToInt(FORM_MESSAGES["update_freq_full"]).check(
-    z.int(FORM_MESSAGES["update_freq_full"]),
-  ),
+  update_freq_full: z
+    .string()
+    .check(
+      z.regex(
+        TIME_SPAN_PATTERN,
+        VALIDATION_MESSAGES.regex(FILE_BACKUPS_LABELS["update_freq_full"]),
+      ),
+    ),
   "update_freq_full.use": settingsClientEnum,
   max_file_incr: emptyOrPositive(FORM_MESSAGES["max_file_incr"]),
   "max_file_incr.use": settingsClientEnum,
@@ -114,9 +121,19 @@ export const defaultDirsSchema = z.object({
   "default_dirs.use": SETTINGS_MERGE_ENUM,
 });
 
+export const ransomwareCanaryPathsSchema = z.object({
+  ransomware_canary_paths: z.optional(z.string()),
+  "ransomware_canary_paths.use": SETTINGS_MERGE_ENUM,
+});
+
 const baseFileBackupsFields = [
   {
     name: "update_freq_incr",
+    description: (
+      <>
+        Can depend on the time, e.g. <code>2@Mon-Fri/8-17;12</code>
+      </>
+    ),
     inputProps: {
       contentAfter: "hours",
       "data-field-width": "50%",
@@ -133,6 +150,11 @@ const baseFileBackupsFields = [
   },
   {
     name: "update_freq_full",
+    description: (
+      <>
+        Can depend on the time, e.g. <code>7@Sat-Sun/0-24;30</code>
+      </>
+    ),
     inputProps: {
       contentAfter: "days",
       "data-field-width": "50%",
@@ -244,6 +266,23 @@ const baseFileBackupsFields = [
   },
   {
     name: "default_dirs.use",
+    type: "custom",
+  },
+  {
+    name: "ransomware_canary_paths",
+    type: "custom",
+    description: (
+      <>
+        Canary documents the client places in the backed up directories,
+        separated by a semicolon (";"). Each starts with the name of a backup
+        directory and ends with the document name, "*" matches any directory,
+        e.g. <code>Users/*/Documents/canary</code>. A file backup fails if a
+        canary in the last backup was changed.
+      </>
+    ),
+  },
+  {
+    name: "ransomware_canary_paths.use",
     type: "custom",
   },
   {

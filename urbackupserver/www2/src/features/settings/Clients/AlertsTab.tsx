@@ -134,7 +134,7 @@ function AlertSettings({ settings }: { settings: ClientSettings["settings"] }) {
       <FUIField
         label="Alert script"
         orientation="horizontal"
-        className={textStyles.field}
+        className={`${textStyles.field} ${selectStyles.field}`}
       >
         <div className={selectStyles.row}>
           <Select
@@ -214,7 +214,7 @@ function AlertParam({
     <FUIField
       label={label}
       orientation="horizontal"
-      className={textStyles.field}
+      className={`${textStyles.field} ${selectStyles.field}`}
     >
       <div className={selectStyles.row}>
         {param.type === "choice" ? (
