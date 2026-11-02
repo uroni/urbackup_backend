@@ -119,6 +119,19 @@ export interface StatusClientItem {
   processes: ClientProcessItem[];
 }
 
+export interface ExtraClient {
+  id: string; // Id of the hostname entry
+  hostname: string; // Hostname or IP of a client to discover
+  online: boolean; // If true a client is online at that address
+}
+
+export interface AddClientResult {
+  already_exists: boolean | undefined; // If true a client with that name exists
+  new_clientid: number;
+  new_clientname: string;
+  new_authkey: string; // Authentication key of the new client
+}
+
 export interface StatusResult {
   has_status_check: boolean | undefined;
   nospc_stalled: boolean | undefined;
@@ -136,6 +149,9 @@ export interface StatusResult {
 
   server_identity: string;
   server_pubkey: string;
+
+  allow_extra_clients: boolean | undefined; // If true hostnames of clients to discover can be added
+  extra_clients: ExtraClient[]; // Hostnames of clients to discover
 
   status: StatusClientItem[];
 }
@@ -766,6 +782,27 @@ class UrBackupServer {
     return resp as StartBackupResult;
   };
 
+  // Add an Internet/active client named `clientname`
+  addInternetClient = async (clientname: string) => {
+    const resp = await this.fetchData({ clientname }, "add_client");
+    if (!resp.ok) {
+      throw new Error("Adding client failed");
+    }
+    return resp as AddClientResult;
+  };
+
+  // Discover a local/passive client at `hostname` (also across networks)
+  addExtraClient = async (hostname: string) => {
+    const resp = await this.fetchData({ hostname }, "status");
+    return resp as StatusResult;
+  };
+
+  // Stop discovering the client of the hostname entry with id `id`
+  removeExtraClient = async (id: string) => {
+    const resp = await this.fetchData({ hostname: id, remove: "true" }, "status");
+    return resp as StatusResult;
+  };
+
   // Mark clients with ids `clientId` as to be removed
   removeClients = async (clientid: ClientIdType[]): Promise<StatusResult> => {
     const resp = await this.fetchData(
@@ -821,7 +858,11 @@ class UrBackupServer {
   ) => {
     const params = new URLSearchParams();
     params.append("a", "download_client");
-    params.append("ses", this.session);
+    // With the authkey the link works without a session, so it can be
+    // shared (e.g. in an install command) without the session
+    if (authkey === undefined) {
+      params.append("ses", this.session);
+    }
     params.append("clientid", "" + clientid);
     params.append("os", os);
 
