@@ -18,7 +18,11 @@ import {
   createDropdownLabel,
   getSettingState,
 } from "./FileImageBackups/FileImageBackups";
-import { useFileBackups } from "./FileImageBackups/useFileBackups";
+import {
+  GENERAL_SETTINGS,
+  useFileBackups,
+} from "./FileImageBackups/useFileBackups";
+import { GlobalSettings } from "./FileImageBackups/utils";
 import {
   CheckboxTextDropdown,
   type InitialFormState as CheckboxTextDropdownState,
@@ -43,7 +47,10 @@ export interface SettingField
   // "mergeable" settings can combine the values of several sources
   kind: "checkbox" | "text" | "mergeable" | "select" | "custom";
   // Input of "custom" settings, with its own hidden inputs for the form
-  render?: (settings: ClientSettings["settings"]) => React.ReactNode;
+  render?: (
+    settings: ClientSettings["settings"],
+    validationMessage?: string,
+  ) => React.ReactNode;
   // Form entries of "custom" settings
   schema?: Record<string, ZodMiniType>;
   // Values of "select" settings
@@ -54,10 +61,16 @@ export interface SettingField
   format?: { ui: (v: string) => string; api: (v: string) => string };
   // Only shown for main clients, not for virtual sub clients
   mainClientOnly?: boolean;
+  // Only shown in the settings of clients or in the general settings
+  clientOnly?: boolean;
+  generalOnly?: boolean;
+  // Checkbox of "text" settings that disables them with a negative value
+  checkboxLabel?: string;
 }
 
 /**
- * Page of the client settings that shows `fields` in one form
+ * Page of the client settings that shows `fields` in one form, or of the
+ * general settings if the route has no client
  */
 export function ClientSettingsTab({
   title,
@@ -66,9 +79,22 @@ export function ClientSettingsTab({
   title: string;
   fields: SettingField[];
 }) {
-  const { clientId = "" } = useParams();
+  const { clientId } = useParams();
 
   const { navitems } = useSettings();
+
+  if (clientId === undefined) {
+    return (
+      <GlobalSettings.Provider value>
+        <ClientSettingsForm
+          clientId={GENERAL_SETTINGS}
+          clientName="General"
+          title={title}
+          fields={fields}
+        />
+      </GlobalSettings.Provider>
+    );
+  }
 
   const client = navitems.clients.find((c) => c.id === +clientId);
 
@@ -100,20 +126,11 @@ function ClientSettingsForm({
 }) {
   const { settings, handleSubmit } = useFileBackups(clientId);
 
-  const shownFields = fields.filter(
-    (f) => !f.mainClientOnly || settings.main_client !== false,
+  const shownFields = fields.filter((f) =>
+    clientId === GENERAL_SETTINGS
+      ? !f.clientOnly
+      : !f.generalOnly && (!f.mainClientOnly || settings.main_client !== false),
   );
-
-  const onSubmit = (data: Record<string, unknown>) => {
-    const formatted = Object.fromEntries(
-      Object.entries(data).map(([k, v]) => {
-        const format = shownFields.find((f) => f.name === k)?.format;
-        return [k, format ? format.api(String(v)) : v];
-      }),
-    );
-
-    handleSubmit(formatted as ClientSettings["settings"]);
-  };
 
   return (
     <FormContainer>
@@ -129,30 +146,62 @@ function ClientSettingsForm({
           These settings can only be changed on the main client.
         </Body1>
       ) : (
-        <FormCard>
-          <div className={`flow ${styles["settings-form"]}`}>
-            <FormSection
-              // The fields below keep their own state and transform their values
-              fields={[]}
-              schema={createSchema(shownFields)}
-              initialFormState={{}}
-              onSubmit={onSubmit}
-            >
-              {(validationMessages) =>
-                shownFields.map((field) => (
-                  <SettingInput
-                    key={field.name}
-                    field={field}
-                    settings={settings}
-                    validationMessage={validationMessages[field.name]}
-                  />
-                ))
-              }
-            </FormSection>
-          </div>
-        </FormCard>
+        <SettingsFormCard
+          fields={shownFields}
+          settings={settings}
+          onSubmit={handleSubmit}
+        />
       )}
     </FormContainer>
+  );
+}
+
+/**
+ * A form with the inputs of `fields` that saves them with `onSubmit`
+ */
+export function SettingsFormCard({
+  fields,
+  settings,
+  onSubmit,
+}: {
+  fields: SettingField[];
+  settings: ClientSettings["settings"];
+  onSubmit: (settings: ClientSettings["settings"]) => void;
+}) {
+  const submit = (data: Record<string, unknown>) => {
+    const formatted = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => {
+        const format = fields.find((f) => f.name === k)?.format;
+        return [k, format ? format.api(String(v)) : v];
+      }),
+    );
+
+    onSubmit(formatted as ClientSettings["settings"]);
+  };
+
+  return (
+    <FormCard>
+      <div className={`flow ${styles["settings-form"]}`}>
+        <FormSection
+          // The fields below keep their own state and transform their values
+          fields={[]}
+          schema={createSchema(fields)}
+          initialFormState={{}}
+          onSubmit={submit}
+        >
+          {(validationMessages) =>
+            fields.map((field) => (
+              <SettingInput
+                key={field.name}
+                field={field}
+                settings={settings}
+                validationMessage={validationMessages[field.name]}
+              />
+            ))
+          }
+        </FormSection>
+      </div>
+    </FormCard>
   );
 }
 
@@ -173,6 +222,7 @@ function SettingInput({
     return (
       <CheckboxTextDropdown
         name={field.name}
+        checkboxLabel={field.checkboxLabel}
         dropdownLabel={createDropdownLabel(field.label.toLowerCase())}
         field={formField}
         initialFormState={formatState(
@@ -185,7 +235,7 @@ function SettingInput({
   }
 
   if (field.kind === "custom") {
-    return field.render?.(settings);
+    return field.render?.(settings, validationMessage);
   }
 
   if (field.kind === "select") {

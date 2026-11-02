@@ -8,8 +8,8 @@ import { NewTabLink } from "../../../../components/NewTabLink";
 const HOURS_IN_DAY = 24;
 const SECONDS_IN_HOUR = 60 * 60;
 
-const toSecondsFromDays = (v: number) => toSeconds(v) * HOURS_IN_DAY;
-const toDaysFromSeconds = (v: number) => toHours(v) / HOURS_IN_DAY;
+export const toSecondsFromDays = (v: number) => toSeconds(v) * HOURS_IN_DAY;
+export const toDaysFromSeconds = (v: number) => toHours(v) / HOURS_IN_DAY;
 const toHours = (v: number) => v / SECONDS_IN_HOUR;
 const toSeconds = (v: number) => v * SECONDS_IN_HOUR;
 
@@ -24,6 +24,7 @@ const FILEBACKUP_SETTINGS = [
   "include_files",
   "default_dirs",
   "backup_dirs_optional",
+  "ransomware_canary_paths",
 ] as const satisfies ReturnType<UrBackupServer["settingsList"]>[number][];
 
 export type FileBackupsSettingsKey = (typeof FILEBACKUP_SETTINGS)[number];
@@ -47,6 +48,7 @@ export const FILE_BACKUPS_LABELS: Record<FileBackupsSettingsKey, string> = {
   include_files: "Included files (with wildcards)",
   default_dirs: "Default directories to backup",
   backup_dirs_optional: "Directories to backup are optional by default",
+  ransomware_canary_paths: "Ransomware canary paths",
 };
 
 const FORM_MESSAGES = {
@@ -112,6 +114,11 @@ export const includeFilesSchema = z.object({
 export const defaultDirsSchema = z.object({
   default_dirs: z.optional(z.string()),
   "default_dirs.use": SETTINGS_MERGE_ENUM,
+});
+
+export const ransomwareCanaryPathsSchema = z.object({
+  ransomware_canary_paths: z.optional(z.string()),
+  "ransomware_canary_paths.use": SETTINGS_MERGE_ENUM,
 });
 
 const baseFileBackupsFields = [
@@ -244,6 +251,23 @@ const baseFileBackupsFields = [
   },
   {
     name: "default_dirs.use",
+    type: "custom",
+  },
+  {
+    name: "ransomware_canary_paths",
+    type: "custom",
+    description: (
+      <>
+        Canary documents the client places in the backed up directories,
+        separated by a semicolon (";"). Each starts with the name of a backup
+        directory and ends with the document name, "*" matches any directory,
+        e.g. <code>Users/*/Documents/canary</code>. A file backup fails if a
+        canary in the last backup was changed.
+      </>
+    ),
+  },
+  {
+    name: "ransomware_canary_paths.use",
     type: "custom",
   },
   {
