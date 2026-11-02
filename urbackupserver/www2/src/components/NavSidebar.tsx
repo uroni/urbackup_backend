@@ -32,6 +32,7 @@ export const NavSidebar = () => {
       <Tab value={Pages.Statistics}>Statistics</Tab>
       <Tab value={Pages.Logs}>Logs</Tab>
       <Tab value={Pages.Settings}>Settings</Tab>
+      <Tab value={Pages.About}>About</Tab>
     </TabList>
   );
 };

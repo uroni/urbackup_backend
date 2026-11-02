@@ -69,8 +69,11 @@ export const router = createHashRouter([
         element: <StatusPage />,
       },
       {
-        path: "/about",
-        element: <div>About page</div>,
+        path: `/${Pages.About}`,
+        lazy: async () => {
+          const { AboutPage } = await import("./pages/About");
+          return { Component: AboutPage };
+        },
       },
       {
         path: `/${Pages.Activities}`,
