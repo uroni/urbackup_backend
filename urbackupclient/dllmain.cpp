@@ -116,6 +116,7 @@ void init_mutex1(void);
 bool testEscape(void);
 void do_restore(void);
 void restore_wizard(void);
+namespace restore { bool start_restore_client(bool internet_only); }
 void upgrade(void);
 bool upgrade_client(void);
 void parse_devnum_test();
@@ -349,6 +350,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if (Server->getServerParameter("restore_http") == "true")
 	{
+#ifdef _WIN32
+		restore::start_restore_client(false);
+#endif
 		ADD_ACTION(status);
 		ADD_ACTION(login);
 		ADD_ACTION(get_clientnames);

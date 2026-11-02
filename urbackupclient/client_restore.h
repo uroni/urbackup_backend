@@ -87,6 +87,12 @@ namespace restore
 
 	void configure_local_server();
 
+	bool start_restore_client(bool internet_only);
+
+	bool ping_server(const std::string& server);
+
+	bool rereadPartitionLayout(const std::string& devfn);
+
 	struct SLsblk
 	{
 		std::string maj_min;

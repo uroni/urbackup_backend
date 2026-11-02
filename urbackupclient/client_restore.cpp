@@ -32,6 +32,7 @@
 #include <memory.h>
 #include <algorithm>
 #include <thread>
+#include <mutex>
 #include "../urbackupcommon/fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
@@ -82,7 +83,7 @@ const std::string configure_networkcard=configure_wlan;
 extern ICryptoFactory *crypto_fak;
 extern IFSImageFactory* image_fak;
 
-namespace
+namespace restore
 {
 	bool rereadPartitionLayout(const std::string& devfn)
 	{
@@ -101,10 +102,90 @@ namespace
 		}
 
 		close(fd);
+#else
+		std::unique_ptr<IFsFile> dev(Server->openFile(devfn, MODE_RW_DEVICE));
+		DWORD r_bytes;
+		if (dev.get() == nullptr
+			|| !DeviceIoControl(dev->getOsHandle(), IOCTL_DISK_UPDATE_PROPERTIES, NULL, 0, NULL, 0, &r_bytes, NULL))
+		{
+			ret = false;
+			Server->Log("Error re-reading partition layout. " + os_last_error_str(), LL_WARNING);
+		}
 #endif
 		return ret;
 	}
+
+	int64 get_device_size(IFsFile* dev);
 }
+
+#ifdef _WIN32
+namespace
+{
+	const char* win_disk_prefix = "\\\\.\\PhysicalDrive";
+
+	std::mutex restore_client_mutex;
+	HANDLE restore_client_process = NULL;
+
+	void stop_restore_client_win()
+	{
+		if (restore_client_process == NULL)
+			return;
+
+		TerminateProcess(restore_client_process, 1);
+		WaitForSingleObject(restore_client_process, 10000);
+		CloseHandle(restore_client_process);
+		restore_client_process = NULL;
+	}
+
+	bool is_windows_device(const std::string& fn)
+	{
+		return next(fn, 0, "\\\\.\\") || next(fn, 0, "\\\\?\\GLOBALROOT\\");
+	}
+
+	/**
+	* Windows refuses writes into a mounted volume and mounts a partition as soon as
+	* it reads the partition table, so take the volume away from the file system first.
+	* Extended DASD I/O allows writing past the end of the mounted file system (e.g. the NTFS
+	* backup boot sector). A file system that is not recognized (RAW) does not need it and refuses it.
+	*/
+	void lock_and_dismount(IFsFile* f)
+	{
+		HANDLE h = f->getOsHandle();
+		DWORD r_bytes;
+		if (!DeviceIoControl(h, FSCTL_ALLOW_EXTENDED_DASD_IO, NULL, 0, NULL, 0, &r_bytes, NULL))
+			Server->Log("Allowing extended DASD I/O failed. " + os_last_error_str(), LL_DEBUG);
+		if (!DeviceIoControl(h, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &r_bytes, NULL))
+			Server->Log("Locking volume failed. Dismounting it anyway. " + os_last_error_str(), LL_WARNING);
+		if (!DeviceIoControl(h, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &r_bytes, NULL))
+			Server->Log("Dismounting volume failed. " + os_last_error_str(), LL_WARNING);
+	}
+
+	std::string storage_model(HANDLE h)
+	{
+		STORAGE_PROPERTY_QUERY query = {};
+		query.PropertyId = StorageDeviceProperty;
+		query.QueryType = PropertyStandardQuery;
+		std::vector<char> buf(4096);
+		DWORD r_bytes;
+		if (!DeviceIoControl(h, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buf.data(), static_cast<DWORD>(buf.size()), &r_bytes, NULL)
+			|| r_bytes < sizeof(STORAGE_DEVICE_DESCRIPTOR))
+			return std::string();
+
+		STORAGE_DEVICE_DESCRIPTOR* desc = reinterpret_cast<STORAGE_DEVICE_DESCRIPTOR*>(buf.data());
+		std::string ret;
+		DWORD offs[] = { desc->VendorIdOffset, desc->ProductIdOffset };
+		for (DWORD off : offs)
+		{
+			if (off == 0 || off >= r_bytes)
+				continue;
+			std::string str = trim(std::string(buf.data() + off, strnlen(buf.data() + off, r_bytes - off)));
+			if (!str.empty())
+				ret += (ret.empty() ? "" : " ") + str;
+		}
+		return ret;
+	}
+}
+#endif
 
 namespace restore
 {
@@ -575,15 +656,26 @@ namespace restore
 
 		std::string restore_out = outfile;
 		Server->Log("Restoring to " + restore_out);
-		std::unique_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
+		int out_mode = MODE_RW_READNONE;
+#ifdef _WIN32
+		const bool out_device = !mbr && is_windows_device(restore_out);
+		if (out_device)
+			out_mode = MODE_RW_DEVICE;
+#endif
+		std::unique_ptr<IFsFile> out_file(Server->openFile(restore_out, out_mode));
 		if (out_file.get() == nullptr)
 		{
 			Server->Log("Could not open \"" + restore_out + "\" for writing. "+os_last_error_str(), LL_ERROR);
 			return EDownloadResult_OpenError;
 		}
-		else if (o_output_file_size != nullptr)
+#ifdef _WIN32
+		if (out_device)
+			lock_and_dismount(out_file.get());
+#endif
+		const int64 out_size = get_device_size(out_file.get());
+		if (o_output_file_size != nullptr)
 		{
-			*o_output_file_size = out_file->Size();
+			*o_output_file_size = out_size;
 		}
 
 		_i64 imgsize = -1;
@@ -607,9 +699,9 @@ namespace restore
 			return rc;
 		}
 
-		if (!mbr && imgsize > out_file->Size())
+		if (!mbr && imgsize > out_size)
 		{
-			Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = " + convert(imgsize), LL_ERROR);
+			Server->Log("Output device too small. File size = " + convert(out_size) + " needed = " + convert(imgsize), LL_ERROR);
 			return EDownloadResult_DeviceTooSmall;
 		}
 
@@ -643,6 +735,32 @@ namespace restore
 			bool first = true;
 			bool has_data = false;
 			_i64 pos = 0;
+
+			//Consecutive blocks are written together. Windows does not cache writes to a volume,
+			//so writing every block on its own is slow there.
+			const size_t c_write_buffer_size = 1024 * 1024;
+			std::vector<char> wbuf;
+			wbuf.reserve(c_write_buffer_size);
+			int64 wbuf_pos = 0;
+			auto flush_wbuf = [&]() -> bool
+			{
+				size_t woff = 0;
+				while (woff < wbuf.size())
+				{
+					bool has_write_error = false;
+					_u32 w = out_file->Write(wbuf_pos + woff, &wbuf[woff], static_cast<_u32>(wbuf.size() - woff), &has_write_error);
+					if (w == 0 || has_write_error)
+					{
+						Server->Log("Writing to output file failed (at position " + convert(wbuf_pos + static_cast<int64>(woff)) + "). " + os_last_error_str(), LL_ERROR);
+						return false;
+					}
+					woff += w;
+				}
+				wbuf_pos += wbuf.size();
+				wbuf.clear();
+				return true;
+			};
+
 			while (pos < imgsize)
 			{
 				size_t r = client_pipe->Read(&buf[off], c_buffer_size - off, 180000);
@@ -652,6 +770,8 @@ namespace restore
 				if (r == 0)
 				{
 					Server->Log("Read Timeout: Retrying", LL_WARNING);
+					if (!flush_wbuf())
+						return EDownloadResult_WriteFailed;
 					client_pipe.reset(nullptr);
 					out_file.reset(nullptr);
 					if (has_data)
@@ -677,24 +797,12 @@ namespace restore
 							if (imgsize >= pos && imgsize - pos < c_block_size)
 								tw = (_u32)(imgsize - pos);
 
-							//Write to blockdev
-							_u32 woff = 0;
-							do
+							wbuf.insert(wbuf.end(), blockdata, blockdata + tw);
+							if (wbuf.size() >= c_write_buffer_size
+								&& !flush_wbuf())
 							{
-								bool has_write_error = false;
-								_u32 w = out_file->Write(&blockdata[woff], tw - woff, &has_write_error);
-								if (w == 0)
-								{
-									Server->Log("Writing to output file failed", LL_ERROR);
-									return EDownloadResult_WriteFailed;
-								}
-								if (has_write_error)
-								{
-									Server->Log("Writing to output file failed -2", LL_ERROR);
-									return EDownloadResult_WriteFailed;
-								}
-								woff += w;
-							} while (tw - woff > 0);
+								return EDownloadResult_WriteFailed;
+							}
 
 							if (pos > dl_status.offset)
 							{
@@ -736,10 +844,11 @@ namespace restore
 							}
 							else
 							{
-								if (!out_file->Seek(*s))
+								if (*s != wbuf_pos + static_cast<int64>(wbuf.size()))
 								{
-									Server->Log("Seeking in output file failed (to position " + convert(*s) + ")", LL_ERROR);
-									return EDownloadResult_WriteFailed;
+									if (!flush_wbuf())
+										return EDownloadResult_WriteFailed;
+									wbuf_pos = *s;
 								}
 								pos = *s;
 							}
@@ -776,6 +885,9 @@ namespace restore
 					}
 				}
 			}
+
+			if (!flush_wbuf())
+				return EDownloadResult_WriteFailed;
 
 			return EDownloadResult_Ok;
 		}
@@ -874,7 +986,7 @@ namespace restore
 		return true;
 	}
 
-	bool ping_server(void)
+	bool ping_server(const std::string& server)
 	{
 		int type = SOCK_DGRAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
@@ -885,8 +997,6 @@ namespace restore
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
 		fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
-
-		std::string server=Server->getServerParameter("ping_server");
 
 		if(server.empty())
 			return false;
@@ -919,6 +1029,94 @@ namespace restore
 		return true;
 	}
 	
+#ifdef _WIN32
+	/**
+	* Disks are \\.\PhysicalDriveN, partitions \\?\GLOBALROOT\Device\HarddiskN\PartitionM,
+	* where M is the partition number Windows (and with it the image backup) uses.
+	*/
+	std::vector<SLsblk> lsblk(const std::string& dev)
+	{
+		std::vector<SLsblk> ret;
+		int only_disk = -1;
+		if (!dev.empty())
+		{
+			if (!next(dev, 0, win_disk_prefix))
+				return ret;
+			only_disk = watoi(dev.substr(strlen(win_disk_prefix)));
+		}
+
+		for (int n = 0; n < 128; ++n)
+		{
+			if (only_disk != -1 && n != only_disk)
+				continue;
+
+			std::string path = win_disk_prefix + std::to_string(n);
+			HANDLE h = CreateFileW(Server->ConvertToWchar(path).c_str(), GENERIC_READ,
+				FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+			if (h == INVALID_HANDLE_VALUE)
+				continue;
+
+			SLsblk disk;
+			disk.maj_min = std::to_string(n) + ":0";
+			disk.model = storage_model(h);
+			disk.type = "disk";
+			disk.path = path;
+
+			DWORD r_bytes;
+			GET_LENGTH_INFORMATION li;
+			if (DeviceIoControl(h, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &li, sizeof(li), &r_bytes, NULL))
+				disk.size = PrettyPrintBytes(li.Length.QuadPart);
+
+			ret.push_back(disk);
+
+			std::vector<char> buf(sizeof(DRIVE_LAYOUT_INFORMATION_EX) + 128 * sizeof(PARTITION_INFORMATION_EX));
+			BOOL b;
+			while (!(b = DeviceIoControl(h, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, buf.data(), static_cast<DWORD>(buf.size()), &r_bytes, NULL))
+				&& GetLastError() == ERROR_INSUFFICIENT_BUFFER
+				&& buf.size() < 1024 * 1024)
+			{
+				buf.resize(buf.size() * 2);
+			}
+
+			if (b)
+			{
+				DRIVE_LAYOUT_INFORMATION_EX* layout = reinterpret_cast<DRIVE_LAYOUT_INFORMATION_EX*>(buf.data());
+				for (DWORD i = 0; i < layout->PartitionCount; ++i)
+				{
+					PARTITION_INFORMATION_EX& part_info = layout->PartitionEntry[i];
+					if (part_info.PartitionNumber == 0
+						|| part_info.PartitionLength.QuadPart == 0)
+						continue;
+
+					SLsblk part;
+					part.maj_min = std::to_string(n) + ":" + std::to_string(part_info.PartitionNumber);
+					part.size = PrettyPrintBytes(part_info.PartitionLength.QuadPart);
+					part.type = "part";
+					part.path = "\\\\?\\GLOBALROOT\\Device\\Harddisk" + std::to_string(n) + "\\Partition" + std::to_string(part_info.PartitionNumber);
+					ret.push_back(part);
+				}
+			}
+
+			CloseHandle(h);
+		}
+
+		return ret;
+	}
+
+	std::string getPartitionPath(const std::string& dev, int partnum, const bool linux_vol)
+	{
+		std::vector<SLsblk> parts = lsblk(dev);
+		for (auto& it : parts)
+		{
+			if (it.type == "part"
+				&& watoi(getafter(":", it.maj_min)) == partnum)
+			{
+				return it.path;
+			}
+		}
+		return std::string();
+	}
+#else
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
 		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE,PATH -P "+dev+" 1> out").c_str());
@@ -989,9 +1187,10 @@ namespace restore
 			}
 			++idx;
 		}
-		
+
 		return std::string();
 	}
+#endif //_WIN32
 }
 
 namespace restore
@@ -1511,7 +1710,11 @@ namespace restore
 
 		Server->destroy(dev);
 
+#ifdef _WIN32
+		if (next(out_device, 0, win_disk_prefix))
+#else
 		if (out_device.find("/dev/") == 0)
+#endif
 		{
 			rereadPartitionLayout(out_device);
 		}
@@ -1736,7 +1939,7 @@ void do_restore(void)
 	}
 	else if(cmd=="ping_server")
 	{
-		bool b=ping_server();
+		bool b=ping_server(Server->getServerParameter("ping_server"));
 		exit(b?0:1);
 	}
 
@@ -2238,10 +2441,59 @@ namespace restore
 		configure_internet_server(internet_server, internet_authkey, "", true);
 	}
 
+	bool start_restore_client(bool internet_only)
+	{
+#ifdef _WIN32
+		//There are no services on the Windows restore medium, so the restore web server runs the restore client
+		std::lock_guard<std::mutex> lock(restore_client_mutex);
+		stop_restore_client_win();
+
+		//from a file like args.txt, because a parameter value starting with "--" is read as the next parameter
+		std::string args = greplace("\n", " ", greplace("\r", "", trim(getFile("restore_client_args.txt"))));
+		if (args.empty())
+		{
+			Server->Log("Cannot start restore client: restore_client_args.txt missing or empty", LL_ERROR);
+			return false;
+		}
+		if (internet_only)
+			args += " --internet_only_mode true";
+
+		wchar_t exe[MAX_PATH];
+		DWORD exe_len = GetModuleFileNameW(NULL, exe, MAX_PATH);
+		if (exe_len == 0 || exe_len >= MAX_PATH)
+		{
+			Server->Log("Cannot start restore client: getting own file name failed. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+		std::wstring cmd = L"\"" + std::wstring(exe, exe_len) + L"\" " + Server->ConvertToWchar(args);
+
+		STARTUPINFOW si = {};
+		si.cb = sizeof(si);
+		PROCESS_INFORMATION pi = {};
+		if (!CreateProcessW(NULL, &cmd[0], NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+		{
+			Server->Log("Starting restore client failed. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+		CloseHandle(pi.hThread);
+		restore_client_process = pi.hProcess;
+		return true;
+#else
+		return system(internet_only ? "systemctl restart restore-client-internet" : "systemctl restart restore-client") == 0;
+#endif
+	}
+
 	void configure_internet_server(std::string server_url, const std::string& server_authkey, const std::string& server_proxy,
 		bool with_cli)
 	{
+#ifdef _WIN32
+		{
+			std::lock_guard<std::mutex> lock(restore_client_mutex);
+			stop_restore_client_win();
+		}
+#else
 		system("systemctl stop restore-client");
+#endif
 
 		int internet_server_port = 55415;
 
@@ -2261,18 +2513,18 @@ namespace restore
 
 		std::string clientname = "##restore##" + bytesToHex(rnd);
 
-		os_create_dir_recursive("urbackup/data_1");
+		os_create_dir_recursive("urbackup/data");
 
 		writestring("internet_mode_enabled=true\n"
 			"internet_server=" + server_url + "\n"
 			"internet_server_port=" + std::to_string(internet_server_port) + "\n"
 			"internet_authkey=" + server_authkey + "\n"
-			"computername=" + clientname + "\n", "urbackup/data_1/settings.cfg");
+			"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
 
 		if (with_cli)
 			std::cout << "Starting UrBackup Internet restore client..." << std::endl;
 
-		if (system("systemctl restart restore-client-internet") != 0)
+		if (!start_restore_client(true))
 		{
 			std::cout << "Error starting Internet restore client." << std::endl;
 			char ch;
@@ -2305,7 +2557,7 @@ namespace restore
 		std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
 		std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
 		system("systemctl stop restore-client-internet");
-		Server->deleteFile("urbackup/data_1/settings.cfg");
+		Server->deleteFile("urbackup/data/settings.cfg");
 		system("systemctl start restore-client");
 
 		std::string errmsg;
@@ -2344,9 +2596,11 @@ namespace restore
 
 	void configure_local_server()
 	{
+#ifndef _WIN32
 		system("systemctl stop restore-client-internet");
-		Server->deleteFile("urbackup/data_1/settings.cfg");
-		system("systemctl restart restore-client");
+#endif
+		Server->deleteFile("urbackup/data/settings.cfg");
+		start_restore_client(false);
 	}
 }
 
