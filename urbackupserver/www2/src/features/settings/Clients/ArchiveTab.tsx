@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   Body1,
   Button,
@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@fluentui/react-components";
 import { DeleteRegular } from "@fluentui/react-icons";
+
+import { formatDatetime } from "../../../utils/format";
 import { z } from "zod/v4-mini";
 
 import type { ClientSettings } from "../../../api/urbackupserver";
@@ -25,6 +27,7 @@ import {
   serializeArchiveRules,
   type TimeUnit,
 } from "./archiveRules";
+import { SettingsScope } from "./FileImageBackups/utils";
 import styles from "./ArchiveTab.module.css";
 
 const GROUP = 1;
@@ -59,6 +62,15 @@ function formatLength(value: number, unit: TimeUnit | "i") {
   return `${value} ${UNITS[unit][value === 1 ? 0 : 1]}`;
 }
 
+function formatNextArchival({ next, timeLeft }: ArchiveRule) {
+  if (next === undefined || timeLeft === undefined) {
+    return "-";
+  }
+
+  // Due, but the archive window or the next run of the archival is pending
+  return timeLeft <= 0 ? "Waiting for window/next run" : formatDatetime(next);
+}
+
 function ArchiveSettings({
   settings,
 }: {
@@ -67,12 +79,19 @@ function ArchiveSettings({
   const setting = ((settings as Record<string, unknown>).archive ??
     {}) as Setting;
 
+  // The general and group rules have their own prefix, the general rules
+  // have no rules of a group to use
+  const scope = useContext(SettingsScope);
+  const global = scope === "general";
+  const prefix = { general: "d", group: "g", client: "c" }[scope];
+  const groupName = scope === "group" ? "General" : "Group";
+
   const [use, setUse] = useState(setting.use ?? HERE);
 
   const groupRules = parseArchiveRules(setting.value_group ?? "", ["d", "g"]);
 
   const [hereRules, setHereRules] = useState(() =>
-    parseArchiveRules(setting.value ?? "", ["c"]),
+    parseArchiveRules(setting.value ?? "", [prefix]),
   );
 
   const rows: Row[] = [
@@ -103,18 +122,26 @@ function ArchiveSettings({
   // Without any source there are no rules, which is stored as no own rules
   const savedUse = use === 0 ? HERE : use;
   const savedValue =
-    use & HERE ? serializeArchiveRules(hereRules) : setting.value ?? "";
+    use & HERE ? serializeArchiveRules(hereRules, prefix) : setting.value ?? "";
 
   return (
     <div className="flow">
       <input type="hidden" name="archive" value={savedValue} />
       <input type="hidden" name="archive.use" value={savedUse} />
 
-      <Checkbox
-        label="Use the archive rules of the group"
-        checked={(use & GROUP) !== 0}
-        onChange={(_, d) => setUse((u) => (d.checked ? u | GROUP : u & ~GROUP))}
-      />
+      {!global && (
+        <Checkbox
+          label={
+            scope === "group"
+              ? "Use the general archive rules"
+              : "Use the archive rules of the group"
+          }
+          checked={(use & GROUP) !== 0}
+          onChange={(_, d) =>
+            setUse((u) => (d.checked ? u | GROUP : u & ~GROUP))
+          }
+        />
+      )}
 
       <Table size="small" className={styles.table}>
         <TableHeader>
@@ -124,7 +151,10 @@ function ArchiveSettings({
             <TableHeaderCell>Archive window</TableHeaderCell>
             <TableHeaderCell>Backup type</TableHeaderCell>
             <TableHeaderCell>Volume letters</TableHeaderCell>
-            <TableHeaderCell>Source</TableHeaderCell>
+            {scope === "client" && (
+              <TableHeaderCell>Next archival</TableHeaderCell>
+            )}
+            {!global && <TableHeaderCell>Source</TableHeaderCell>}
             <TableHeaderCell>
               <span className="visually-hidden">Actions</span>
             </TableHeaderCell>
@@ -140,7 +170,12 @@ function ArchiveSettings({
                 {BACKUP_TYPES[r.backupType] ?? r.backupType}
               </TableCell>
               <TableCell>{r.letters || "-"}</TableCell>
-              <TableCell>{r.source === GROUP ? "Group" : "Here"}</TableCell>
+              {scope === "client" && (
+                <TableCell>{formatNextArchival(r)}</TableCell>
+              )}
+              {!global && (
+                <TableCell>{r.source === GROUP ? groupName : "Here"}</TableCell>
+              )}
               <TableCell>
                 <Button
                   appearance="subtle"
@@ -153,7 +188,7 @@ function ArchiveSettings({
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7}>
+              <TableCell colSpan={{ general: 6, group: 7, client: 8 }[scope]}>
                 <Body1>No backups are archived automatically.</Body1>
               </TableCell>
             </TableRow>
