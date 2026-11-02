@@ -47,6 +47,7 @@ import {
   parseInterval,
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
+  type BackupSummary as Summary,
 } from "./backupSummaryModel";
 import { TIME_SPAN_PATTERN } from "../timeSpan";
 import {
@@ -133,8 +134,13 @@ function FileImageBackupsForm({
   );
 
   const summary = useMemo(
-    () => describeFileBackups(shownValues),
+    () => describeShownBackups(shownValues, "file", [false]),
     [shownValues],
+  );
+
+  const imageSummary = useMemo(
+    () => describeShownBackups(shownValues, "image", incrImageStyles(settings)),
+    [shownValues, settings],
   );
 
   return (
@@ -276,9 +282,10 @@ function FileImageBackupsForm({
       </Subtitle1>
 
       <SettingsFormCard
-        fields={imageBackupsFields(cowrawAvailable)}
+        fields={imageBackupsFields(cowrawAvailable, imageSummary)}
         settings={settings}
         onSubmit={handleSubmit}
+        onValueChange={handleValueChange}
       />
     </FormContainer>
   );
@@ -289,7 +296,11 @@ type ShownValues = Record<
   { value: string | number | undefined; enabled: boolean }
 >;
 
-function describeFileBackups(shown: ShownValues) {
+function describeShownBackups(
+  shown: ShownValues,
+  kind: "file" | "image",
+  to_last: boolean[],
+) {
   const interval = (name: string, unitSeconds: number) =>
     parseInterval(
       shown[name]?.value,
@@ -299,16 +310,35 @@ function describeFileBackups(shown: ShownValues) {
 
   const count = (name: string) => parseCount(shown[name]?.value);
 
+  const image = kind === "image";
+
   return describeBackups({
-    image: false,
-    incr: interval("update_freq_incr", SECONDS_PER_HOUR),
-    full: interval("update_freq_full", SECONDS_PER_DAY),
-    max_full: count("max_file_full"),
-    min_full: count("min_file_full"),
-    max_incr: count("max_file_incr"),
-    min_incr: count("min_file_incr"),
-    to_last: [false],
+    image,
+    // The incremental image backup interval is shown in days
+    incr: image
+      ? interval("update_freq_image_incr", SECONDS_PER_DAY)
+      : interval("update_freq_incr", SECONDS_PER_HOUR),
+    full: interval(
+      image ? "update_freq_image_full" : "update_freq_full",
+      SECONDS_PER_DAY,
+    ),
+    max_full: count(`max_${kind}_full`),
+    min_full: count(`min_${kind}_full`),
+    max_incr: count(`max_${kind}_incr`),
+    min_incr: count(`min_${kind}_incr`),
+    to_last,
   });
+}
+
+// The incremental image styles of the local and internet image backups:
+// based on the last full image backup (false) or on the last one (true)
+function incrImageStyles(settings: ClientSettings["settings"]) {
+  const styles = ["local_incr_image_style", "internet_incr_image_style"].map(
+    (name) =>
+      transformValue(getValueFromSettings(name, settings)) === "to-last",
+  );
+
+  return [...new Set(styles)];
 }
 
 const INTERVAL_DESCRIPTION = (
@@ -340,7 +370,10 @@ const imageCount = (name: string, label: string): SettingField => ({
   inputProps: { "data-field-width": "33%" },
 });
 
-function imageBackupsFields(cowrawAvailable: boolean): SettingField[] {
+function imageBackupsFields(
+  cowrawAvailable: boolean,
+  summary: Summary,
+): SettingField[] {
   return [
     imageInterval(
       "update_freq_image_incr",
@@ -356,6 +389,12 @@ function imageBackupsFields(cowrawAvailable: boolean): SettingField[] {
     imageCount("min_image_incr", "Min number of incremental image backups"),
     imageCount("max_image_full", "Max number of full image backups"),
     imageCount("min_image_full", "Min number of full image backups"),
+    {
+      name: "image_backup_summary",
+      label: "",
+      kind: "custom",
+      render: () => <BackupSummary summary={summary} />,
+    },
     {
       name: "image_letters",
       label: "Volumes to backup",
