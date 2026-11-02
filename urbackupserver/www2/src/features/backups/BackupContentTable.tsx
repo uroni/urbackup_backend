@@ -10,12 +10,15 @@ import {
   createTableColumn,
   Button,
   TableColumnId,
+  MessageBar,
+  MessageBarBody,
 } from "@fluentui/react-components";
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Document20Filled, Folder20Filled } from "@fluentui/react-icons";
 
-import type { File } from "../../api/urbackupserver";
+import type { File, Files } from "../../api/urbackupserver";
 import { getCellFocusMode } from "../../utils/table";
 import { format_size, formatDatetime } from "../../utils/format";
 import { urbackupServer } from "../../App";
@@ -118,6 +121,9 @@ export function BackupContentTable() {
 
   const path = searchParams.get("path");
 
+  // Image backups are browsed after mounting them
+  const [mount, setMount] = useState(false);
+
   const { data, error, isFetching } = useSuspenseQuery({
     queryKey: [
       "backups",
@@ -125,10 +131,19 @@ export function BackupContentTable() {
       Number(backupId),
       // Create unique keys for each path to save path files in cache for quick load
       ...(path ?? "").split("/").filter(Boolean),
+      ...(mount ? ["mount"] : []),
     ],
     queryFn: () =>
-      urbackupServer.getFiles(Number(clientId), Number(backupId), path ?? "/"),
+      urbackupServer.getFiles(
+        Number(clientId),
+        Number(backupId),
+        path ?? "/",
+        mount,
+      ),
     retry: 1,
+    // Like the old web interface, ask again until the image is mounted
+    refetchInterval: (query) =>
+      query.state.data?.mount_in_progress ? 1000 : false,
   });
 
   const { clientname, backuptime, files } = data;
@@ -151,7 +166,11 @@ export function BackupContentTable() {
         <div className="heading-breadcrumbs">
           <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
         </div>
-        <p>No files exist in this path.</p>
+        {data.image_backup_info ? (
+          <ImageBackup data={data} onMount={() => setMount(true)} />
+        ) : (
+          <p>No files exist in this path.</p>
+        )}
       </TableWrapper>
     );
   }
@@ -272,6 +291,86 @@ export function BackupContentTable() {
         </>
       )}
     </TableWrapper>
+  );
+}
+
+/**
+ * Information about an image backup and mounting it to browse its files
+ */
+function ImageBackup({ data, onMount }: { data: Files; onMount: () => void }) {
+  const info = data.image_backup_info!;
+
+  const details: [string, string | number | undefined][] = [
+    ["Id", info.id],
+    ["Backup time", formatDatetime(info.backuptime)],
+    ["Incremental", info.incremental ? "Yes" : "No"],
+    ["Size", format_size(info.size_bytes)],
+    ["Volume", info.letter],
+    ["Archived", info.archived ? "Yes" : "No"],
+    [
+      "Volume size",
+      info.volume_size === undefined
+        ? undefined
+        : format_size(info.volume_size),
+    ],
+    ["Partition style", info.part_table],
+    ["Disk number", info.disk_number],
+    ["Partition number", info.partition_number],
+    ["File system type", info.fs_type],
+    ["Volume name", info.volume_name],
+    ["Serial number", info.serial_number],
+  ];
+
+  return (
+    <div className="flow">
+      <h4>Image backup information</h4>
+      <dl className="cluster">
+        {details
+          .filter(([, value]) => value !== undefined && value !== "")
+          .map(([label, value]) => (
+            <div key={label}>
+              <dt>
+                <strong>{label}</strong>
+              </dt>
+              <dd style={{ margin: 0 }}>{value}</dd>
+            </div>
+          ))}
+      </dl>
+
+      {data.mount_in_progress && <p>Mounting the image…</p>}
+
+      {data.mount_failed && (
+        <MessageBar intent="error" layout="multiline">
+          <MessageBarBody>
+            Mounting the image failed. Please see the server log file for
+            details. {data.mount_errmsg}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {data.can_mount && !data.mount_in_progress && (
+        <div className="flow">
+          <div>
+            <Button appearance="primary" onClick={onMount}>
+              Mount image
+            </Button>
+          </div>
+          {data.os_mount && (
+            <MessageBar intent="warning" layout="multiline">
+              <MessageBarBody>
+                UrBackup will use non-sandboxed server operating system
+                functionality to mount the image. Only mount the image if you
+                trust its source.
+              </MessageBarBody>
+            </MessageBar>
+          )}
+        </div>
+      )}
+
+      {!data.can_mount && !data.mount_in_progress && !data.mount_failed && (
+        <p>No files exist in this path.</p>
+      )}
+    </div>
   );
 }
 
