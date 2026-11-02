@@ -67,7 +67,7 @@ export function SelectDropdown({
       <FUIField
         label={label}
         orientation="horizontal"
-        className={textStyles.field}
+        className={`${textStyles.field} ${styles.field}`}
       >
         <div className={styles.row}>
           <Select
