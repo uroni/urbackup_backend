@@ -165,6 +165,7 @@ for short_file in server_short_files:
       
     
 replace_in_file("urbackupserver/www/index.htm", "$version_full$", version["server"]["full_rev"])
+replace_in_file("urbackupserver/www2/index.html", "$version_full$", version["server"]["full_rev"])
 replace_in_file("urbackupserver_installer_win/urbackup_server.wxs", "$version_full_numeric$", version["server"]["full_numeric"])
 replace_in_file("urbackupserver_installer_win/urbackup_server.wxi", "$product_id$", str(uuid.uuid1()))
 if os.path.exists("client"):
