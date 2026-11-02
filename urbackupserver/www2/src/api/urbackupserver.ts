@@ -197,6 +197,8 @@ export interface File {
   access: number; // Unix timestamp of last access
   size: undefined | number; // Size of the file in bytes (undefined if it is a directory)
   shahash: undefined | string; // SHA hash of the file (undefined if it is a directory or if the hash is not available)
+  backupid?: number; // Backup containing this version (only when listing versions)
+  backuptime?: number; // Unix timestamp of that backup (only when listing versions)
 }
 
 export interface ImageBackupInfo {
@@ -892,6 +894,16 @@ class UrBackupServer {
         path: path,
         mount: mount ? "1" : "0",
       },
+      "backups",
+    );
+    handleBackupsErr(resp as BackupsErr);
+    return resp as Files;
+  };
+
+  // Get one path in every file backup of a client that contains it, newest first
+  getFileVersions = async (clientid: number, path: string) => {
+    const resp = await this.fetchData(
+      { sa: "files", clientid: "" + clientid, path: path },
       "backups",
     );
     handleBackupsErr(resp as BackupsErr);
