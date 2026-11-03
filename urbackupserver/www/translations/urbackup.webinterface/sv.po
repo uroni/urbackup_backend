@@ -1783,19 +1783,19 @@ msgid "new_alert_script_name"
 msgstr "Ange namn för det nya varningsskriptet"
 
 msgid "confirm_alert_script_remove"
-msgstr "Bekräfta borttagning av varningsscript."
+msgstr "Bekräfta borttagning av varningsskript."
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Antal gånger intervallet för filsäkerhetskopiering får passera innan dess status sätts till inte OK"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Antal gånger intervallet för diskavbildssäkerhetskopiering får passera innan dess status sätts till inte OK"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "E-postadresser (avgränsade med ';') som ska meddelas när statusen för diskavbilds- eller filsäkerhetskopiering inte är OK"
 
 msgid "alert_important"
-msgstr "Lägg till [Important] tagg till varningsscript"
+msgstr "Lägg till taggen [Important] i varningsskriptet"
 
 msgid "alert_mail_ok"
 msgstr "Skicka email efter att backupstatus har ändrats från inte ok till ok"
@@ -1837,10 +1837,10 @@ msgid "tBoolean"
 msgstr "Boolesk"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Med Docker (webbgränssnittet är åtkomligt från klienten):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Med Docker (webbgränssnittet är inte åtkomligt från klienten):"
 
 msgid "tEdit report script"
 msgstr "Redigera rapportskript"
@@ -1858,4 +1858,4 @@ msgid "tEdit scripts"
 msgstr "Redigera skript"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Autentiseringsnyckel för internetåterställning"
