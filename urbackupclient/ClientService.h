@@ -228,6 +228,18 @@ public:
 
 	static bool isBackupRunning();
 
+	static bool isPreventingSleep();
+
+	static bool isPreventSleepEnabled();
+
+	static int64 getPauseTimeoutSeconds();
+
+	static bool isBusy();
+
+	static void updateKeepAwake();
+
+	static void stopKeepAwake();
+
 	static bool tochannelSendChanges(const char* changes, size_t changes_size);
 
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);

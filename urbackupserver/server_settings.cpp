@@ -407,6 +407,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 		settings->internet_calculate_filehashes_on_client = true;
 		settings->internet_parallel_file_hashing = false;
 		settings->internet_connect_always = false;
+		settings->prevent_sleep = true;
+		settings->pause_timeout_hours = "24";
 		settings->verify_using_client_hashes = false;
 		settings->internet_readd_file_entries = true;
 		settings->max_running_jobs_per_client = 1;
@@ -540,6 +542,10 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readBoolClientSetting(q_get_client_setting, "internet_parallel_file_hashing", &settings->internet_parallel_file_hashing, false);
 	
 	readBoolClientSetting(q_get_client_setting, "internet_connect_always", &settings->internet_connect_always, false);
+
+	readBoolClientSetting(q_get_client_setting, "prevent_sleep", &settings->prevent_sleep, false);
+
+	readStringClientSetting(q_get_client_setting, "pause_timeout_hours", std::string(), &settings->pause_timeout_hours, false);
 	
 	readBoolClientSetting(q_get_client_setting, "verify_using_client_hashes", &settings->verify_using_client_hashes, false);
 
@@ -658,6 +664,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readBoolClientSetting(q_get_client_setting, "internet_compress", &settings->internet_compress);
 	readBoolClientSetting(q_get_client_setting, "internet_encrypt", &settings->internet_encrypt);
 	readBoolClientSetting(q_get_client_setting, "internet_connect_always", &settings->internet_connect_always);
+	readBoolClientSetting(q_get_client_setting, "prevent_sleep", &settings->prevent_sleep);
+	readStringClientSetting(q_get_client_setting, "pause_timeout_hours", std::string(), &settings->pause_timeout_hours);
 	readBoolClientSetting(q_get_client_setting, "local_encrypt", &settings->local_encrypt);
 	readBoolClientSetting(q_get_client_setting, "local_compress", &settings->local_compress);
 
@@ -1541,6 +1549,8 @@ std::map<std::string, ServerSettings::SClientSetting> ServerSettings::getClientS
 	SET_SETTING_BOOL(internet_parallel_file_hashing);
 	SET_SETTING(image_file_format, settings_group.getImageFileFormatInt, settings_group.getImageFileFormatInt);
 	SET_SETTING_BOOL(internet_connect_always);
+	SET_SETTING_BOOL(prevent_sleep);
+	SET_SETTING_STR(pause_timeout_hours);
 	SET_SETTING_BOOL(verify_using_client_hashes);
 	SET_SETTING_BOOL(internet_readd_file_entries);
 	SET_SETTING_STR(local_incr_image_style);

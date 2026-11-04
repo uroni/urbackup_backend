@@ -271,6 +271,7 @@ void ClientConnector::init_mutex(void)
 
 void ClientConnector::destroy_mutex(void)
 {
+	stopKeepAwake();
 	Server->destroy(backup_mutex);
 	Server->destroy(ident_mutex);
 	Server->destroy(process_mutex);
@@ -483,6 +484,8 @@ int ClientConnector::Run()
 		}break;
 	case CCSTATE_CHANNEL: //Channel
 		{		
+			IdleCheckerThread::checkPauseTimeout();
+
 			IScopedLock lock(backup_mutex);
 
 			SChannel* chan = getCurrChannel();
@@ -3128,6 +3131,8 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		status_updated = true;
 	}
 
+	updateKeepAwake();
+
 	ScopedRemoveRunningBackup remove_running_backup(local_backup_running_id);
 
 	bool refused = false;
@@ -3771,9 +3776,11 @@ void ClientConnector::sendStatus()
 
 	ret+="#"+convert(pcdone);
 
+	int64 pause_until = 0;
 	if(IdleCheckerThread::getPause())
 	{
 		ret+="#P";
+		pause_until = IdleCheckerThread::getPauseUntil();
 	}
 	else
 	{
@@ -3800,6 +3807,18 @@ void ClientConnector::sendStatus()
 	{
 		ret+="true";
 	}
+
+	ret+="&keeping_awake=";
+	ret+=isPreventingSleep() ? "1" : "0";
+	if (pause_until > 0)
+	{
+		ret += "&pause_until=" + convert(pause_until);
+	}
+	ret += "&pause_timeout=" + convert(getPauseTimeoutSeconds());
+#ifdef _WIN32
+	ret+="&prevent_sleep=";
+	ret+=isPreventSleepEnabled() ? "1" : "0";
+#endif
 
 	if(restore_ok_status==RestoreOk_Wait)
 	{
@@ -4610,6 +4629,8 @@ int64 ClientConnector::addNewProcess(SRunningProcess proc)
 		proc.id = ++curr_backup_running_id;
 	}	
 	running_processes.push_back(proc);
+	lock.relock(NULL);
+	updateKeepAwake();
 	return proc.id;
 }
 
