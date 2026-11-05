@@ -7,13 +7,14 @@ ServerDownloadThreadGroup::ServerDownloadThreadGroup(FileClient& fc, FileClientC
 	IPipe* hashpipe_prepare, ClientMain* client_main, int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes,
 	const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download,
 	bool sc_failure_fatal, size_t n_threads, ServerSettings* server_settings, bool intra_file_diffs, FilePathCorrections& filepath_corrections, MaxFileId& max_file_id)
+	: main_fc(&fc), main_fc_chunked(fc_chunked)
 {
 	for (size_t i = 0; i < n_threads; ++i)
 	{
 		ServerDlThread dl_thread;
 
 		FileClient* curr_fc;
-		FileClientChunked* curr_fc_chunked;
+		FileClientChunked* curr_fc_chunked = NULL;
 		if (i == 0)
 		{
 			curr_fc = &fc;
@@ -256,6 +257,43 @@ ServerDownloadThread* ServerDownloadThreadGroup::getMinQueued()
 		{
 			queue_size = curr_queue_size;
 			ret = dl_threads[i].dl_thread;
+		}
+	}
+	return ret;
+}
+
+std::vector<ServerDownloadThreadGroup::SCurrentTransfer> ServerDownloadThreadGroup::getCurrentTransfers()
+{
+	std::vector<SCurrentTransfer> ret;
+
+	for (size_t i = 0; i < dl_threads.size(); ++i)
+	{
+		FileClient* curr_fc = i == 0 ? main_fc : dl_threads[i].fc;
+		FileClientChunked* curr_fc_chunked = i == 0 ? main_fc_chunked : dl_threads[i].fc_chunked;
+
+		SCurrentTransfer transfer;
+		if ((curr_fc != NULL && curr_fc->getCurrentFile(transfer.name, transfer.size, transfer.done))
+			|| (curr_fc_chunked != NULL && curr_fc_chunked->getCurrentFile(transfer.name, transfer.size, transfer.done)))
+		{
+			ret.push_back(transfer);
+		}
+	}
+
+	return ret;
+}
+
+int64 ServerDownloadThreadGroup::getExtraReceivedDataBytes()
+{
+	int64 ret = 0;
+	for (size_t i = 1; i < dl_threads.size(); ++i)
+	{
+		if (dl_threads[i].fc != NULL)
+		{
+			ret += dl_threads[i].fc->getReceivedDataBytes(true);
+		}
+		if (dl_threads[i].fc_chunked != NULL)
+		{
+			ret += dl_threads[i].fc_chunked->getReceivedDataBytes(true);
 		}
 	}
 	return ret;
