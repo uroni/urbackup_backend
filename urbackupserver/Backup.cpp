@@ -78,26 +78,30 @@ void Backup::operator()()
 
 	if(is_file_backup)
 	{
+		//For file backups "details" is the backup group number (e.g. "0"), which is not meant to be displayed.
+		//Start with empty details, the phases fill them in.
+		std::string no_details;
+
 		if(r_incremental)
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file, details, logid, true);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file, no_details, logid, true);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_incr_file, details, logid, true);
+				status_id = ServerStatus::startProcess(clientname, sa_incr_file, no_details, logid, true);
 			}
 		}
 		else
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file, details, logid, true);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file, no_details, logid, true);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_full_file, details, logid, true);
+				status_id = ServerStatus::startProcess(clientname, sa_full_file, no_details, logid, true);
 			}
 		}
 	}

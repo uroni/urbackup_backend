@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "client.h"
+#include <mutex>
 #include "ParallelHash.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
@@ -105,6 +106,40 @@ std::map<std::string, int> IndexThread::cbt_shadow_ids;
 std::map<unsigned int, IndexThread::SResult> IndexThread::index_results;
 unsigned int IndexThread::next_result_id = 1;
 IMutex* IndexThread::result_mutex = NULL;
+
+namespace
+{
+	std::mutex index_progress_mutex;
+	std::string index_progress_phase;
+	int64 index_progress_files = 0;
+	std::string index_progress_dir;
+	const size_t index_progress_max_dir = 200;
+}
+
+void IndexThread::setIndexProgress(const std::string& phase, int64 files, const std::string& dir)
+{
+	std::lock_guard<std::mutex> lock(index_progress_mutex);
+	index_progress_phase = phase;
+	index_progress_files = files;
+	index_progress_dir = dir;
+	if (index_progress_dir.size() > index_progress_max_dir)
+	{
+		//cut at the end of the path, but never inside a UTF-8 sequence
+		size_t cut = index_progress_max_dir;
+		while (cut > 0 && (static_cast<unsigned char>(index_progress_dir[cut]) & 0xC0) == 0x80)
+			--cut;
+		index_progress_dir.resize(cut);
+	}
+}
+
+std::string IndexThread::getIndexProgress()
+{
+	std::lock_guard<std::mutex> lock(index_progress_mutex);
+	if (index_progress_phase.empty())
+		return std::string();
+	return "ph=" + index_progress_phase + "&n=" + convert(index_progress_files)
+		+ "&dir=" + EscapeParamString(index_progress_dir);
+}
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -1609,6 +1644,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		index_exclude_dirs, index_include_dirs,
 		index_backup_dirs_optional);
 	file_id = 0;
+	index_files_seen = 0;
+	setIndexProgress("start", 0, std::string());
 
 	updateDirs();
 
@@ -2503,6 +2540,8 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 		return false;
 	}
 
+	setIndexProgress("index", index_files_seen, named_path.empty() ? dir : named_path);
+
 	SFirstInfo first_info;
 	bool close_dir=false;
 	std::string extra;
@@ -2657,6 +2696,11 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			}
 
 			has_include=true;
+
+			if ((++index_files_seen & 255) == 0)
+			{
+				setIndexProgress("index", index_files_seen, named_path.empty() ? dir : named_path);
+			}
 
 			std::string listname = files[i].name;
 

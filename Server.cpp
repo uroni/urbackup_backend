@@ -411,9 +411,27 @@ void CServer::setServerParameter(const std::string &key, const std::string &valu
 	server_params[key]=value;
 }
 
+void CServer::LogAlways(const std::string &pStr)
+{
+	logLine(pStr, LL_INFO);
+}
+
 void CServer::Log( const std::string &pStr, int LogLevel)
 {
 	if( loglevel <=LogLevel )
+	{
+		logLine(pStr, LogLevel);
+	}
+	else if(has_circular_log_buffer)
+	{
+		IScopedLock lock(log_mutex);
+
+		logToCircularBuffer(pStr, LogLevel);
+	}
+}
+
+void CServer::logLine(const std::string &pStr, int LogLevel)
+{
 	{
 		IScopedLock lock(log_mutex);
 
@@ -466,12 +484,6 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		{
 			logToCircularBuffer(pStr, LogLevel);
 		}
-	}
-	else if(has_circular_log_buffer)
-	{
-		IScopedLock lock(log_mutex);
-
-		logToCircularBuffer(pStr, LogLevel);
 	}
 }
 
