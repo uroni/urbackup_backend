@@ -419,6 +419,11 @@ public:
 
 	static void removeResult(unsigned int id);
 
+	//Live indexing progress, published by the index thread and read by the connection
+	//thread that answers the server's BUSY keepalive (see ClientConnector::Run)
+	static void setIndexProgress(const std::string& phase, int64 files, const std::string& dir);
+	static std::string getIndexProgress();
+
 #ifndef _WIN32
 	static std::string get_snapshot_script_location(const std::string& scriptname, const std::string& index_clientsubname);
 #endif
@@ -895,6 +900,7 @@ private:
 	int64 phash_queue_write_pos;
 	std::vector<char> phash_queue_buffer;
 	int64 file_id;
+	int64 index_files_seen;
 
 	bool dataless_warning_logged;
 

@@ -30,6 +30,7 @@
 #include <memory.h>
 #include "../common/adler32.h"
 #include "../urbackupcommon/file_metadata.h"
+#include "PostTransferProgress.h"
 
 namespace
 {
@@ -49,10 +50,33 @@ namespace
 	const size_t hash_bsize = 512*1024;
 }
 
-BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid,
-	logid_t logid, bool ignore_hash_mismatch)
-	: logid(logid), ignore_hash_mismatch(ignore_hash_mismatch)
+namespace
 {
+	class HashProgressToSlot : public BackupServerPrepareHash::IHashProgressCallback
+	{
+	public:
+		HashProgressToSlot(PostTransferProgress* progress, size_t slot)
+			: writer(progress, slot) {}
+
+		virtual void hash_progress(int64 curr)
+		{
+			writer.setDone(curr, Server->getTimeMS());
+		}
+
+	private:
+		PostTransferProgressWriter writer;
+	};
+}
+
+BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid,
+	logid_t logid, bool ignore_hash_mismatch, PostTransferProgress* progress)
+	: logid(logid), ignore_hash_mismatch(ignore_hash_mismatch), progress(progress), progress_slot(0)
+{
+	if (progress != NULL)
+	{
+		progress_slot = progress->addSlot();
+	}
+
 	pipe=pPipe;
 	output=pOutput;
 	clientid=pClientid;
@@ -178,6 +202,12 @@ void BackupServerPrepareHash::operator()(void)
 				}
 
 				ServerLogger::Log(logid, "PT: Hashing file \""+ExtractFileName(tfn)+"\"", LL_DEBUG);
+				if (progress != NULL)
+				{
+					progress->start(progress_slot, "Hashing", ExtractFileName(tfn), t_filesize, Server->getTimeMS());
+				}
+				HashProgressToSlot hash_progress_cb(progress, progress_slot);
+				IHashProgressCallback* hash_progress = progress != NULL ? &hash_progress_cb : NULL;
 				std::string h;
 				if(!diff_file)
 				{
@@ -185,7 +215,7 @@ void BackupServerPrepareHash::operator()(void)
 						|| c_hash_func == HASH_FUNC_SHA512)
 					{
 						HashSha512 hashsha;
-						if (hash_sha(tf, extent_iterator.get(), c_hash_func != HASH_FUNC_SHA512_NO_SPARSE, hashsha))
+						if (hash_sha(tf, extent_iterator.get(), c_hash_func != HASH_FUNC_SHA512_NO_SPARSE, hashsha, hash_progress))
 						{
 							h = hashsha.finalize();
 						}
@@ -193,7 +223,7 @@ void BackupServerPrepareHash::operator()(void)
 					else
 					{
 						TreeHash treehash(NULL);
-						if (hash_sha(tf, extent_iterator.get(), true, treehash))
+						if (hash_sha(tf, extent_iterator.get(), true, treehash, hash_progress))
 						{
 							h = treehash.finalize();
 						}
@@ -257,6 +287,11 @@ void BackupServerPrepareHash::operator()(void)
 							"The backed up file may be corrupt and not a valid, consistent backup. "
 							"(Hash: "+print_hash_func(c_hash_func) + ")", LL_WARNING);
 					}
+				}
+
+				if (progress != NULL)
+				{
+					progress->finish(progress_slot);
 				}
 
 				Server->destroy(tf);

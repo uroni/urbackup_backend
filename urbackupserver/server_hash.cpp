@@ -34,6 +34,7 @@
 #include <memory.h>
 #include "../urbackupcommon/file_metadata.h"
 #include "FileBackup.h"
+#include "PostTransferProgress.h"
 #include <assert.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -55,10 +56,15 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid,
-	bool snapshot_file_inplace, MaxFileId& max_file_id)
+	bool snapshot_file_inplace, MaxFileId& max_file_id, PostTransferProgress* progress)
 	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), filesdao(NULL), old_backupfolders_loaded(false),
-	  logid(logid), snapshot_file_inplace(snapshot_file_inplace), max_file_id(max_file_id)
+	  logid(logid), snapshot_file_inplace(snapshot_file_inplace), max_file_id(max_file_id), progress(progress), progress_slot(0)
 {
+	if (progress != NULL)
+	{
+		progress_slot = progress->addSlot();
+	}
+
 	pipe=pPipe;
 	clientid=pClientid;
 	link_logcnt=0;
@@ -856,6 +862,12 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int entryclientid = 0;
 	int64 next_entryid = 0;
 	int64 rsize = 0;
+
+	if (progress != NULL)
+	{
+		progress->start(progress_slot, "Linking", ExtractFileName(tfn), t_filesize, Server->getTimeMS());
+	}
+
 	if(t_filesize>= link_file_min_size
 		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024 || tf->Size()<=8)
 		&& findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
@@ -891,6 +903,10 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	if(copy)
 	{
 		ServerLogger::Log(logid, "HT: Copying file: \""+tfn+"\" (id=" + convert(fileid) + ")", LL_DEBUG);
+		if (progress != NULL)
+		{
+			progress->setPhase(progress_slot, use_tmpfiles ? "Copying" : "Moving");
+		}
 		int64 fs=tf->Size();
 		if(!use_reflink)
 		{
@@ -1043,6 +1059,11 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 						metadata.rsize=cow_filesize;
 					}
 
+					if (progress != NULL)
+					{
+						progress->setPhase(progress_slot, "Writing metadata of");
+					}
+
 					if(!write_file_metadata(hash_fn, this, metadata, false))
 					{
 						ServerLogger::Log(logid, "Writing metadata to "+hash_fn+" failed", LL_ERROR);
@@ -1053,6 +1074,11 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 				}
 			}
 		}
+	}
+
+	if (progress != NULL)
+	{
+		progress->finish(progress_slot);
 	}
 }
 
@@ -1268,6 +1294,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 	char buf[BUFFER_SIZE];
 	int64 fpos = 0;
 	IFsFile::SSparseExtent curr_extent;
+	PostTransferProgressWriter progress_writer(progress, progress_slot);
 
 	if (extent_iterator != NULL)
 	{
@@ -1333,6 +1360,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 		else
 		{
 			fpos += read;
+			progress_writer.setDone(fpos, Server->getTimeMS());
 		}
 	}
 	while(read>0);

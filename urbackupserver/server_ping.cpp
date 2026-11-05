@@ -26,6 +26,49 @@
 
 const int64 ping_intervall=10000;
 
+namespace
+{
+	bool isFileBackup(const SProcess& proc)
+	{
+		return proc.action == sa_incr_file
+			|| proc.action == sa_full_file
+			|| proc.action == sa_resume_incr_file
+			|| proc.action == sa_resume_full_file;
+	}
+
+	//Text of file backup activities (phase, current file), shown in the tray of the client
+	std::string getPingDetails(const SProcess& proc)
+	{
+		const size_t max_len = 400;
+		std::string ret;
+		for (size_t i = 0; i < proc.details.size() && ret.size() < max_len; ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(proc.details[i]);
+			if (ch >= 32 && ch != 127)
+			{
+				ret += proc.details[i];
+			}
+		}
+
+		//Do not cut in the middle of a UTF-8 sequence
+		if (ret.size() >= max_len)
+		{
+			while (!ret.empty()
+				&& (static_cast<unsigned char>(ret[ret.size() - 1]) & 0xC0) == 0x80)
+			{
+				ret.erase(ret.size() - 1);
+			}
+			if (!ret.empty()
+				&& (static_cast<unsigned char>(ret[ret.size() - 1]) & 0xC0) == 0xC0)
+			{
+				ret.erase(ret.size() - 1);
+			}
+		}
+
+		return ret;
+	}
+}
+
 ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& clientname,
 	size_t status_id, bool with_eta, std::string server_token)
 	: client_main(client_main), clientname(clientname), status_id(status_id),
@@ -79,6 +122,7 @@ void ServerPingThread::operator()(void)
 							+"&speed_bpms="+convert(proc.speed_bpms)
 							+"&total_bytes="+convert(proc.total_bytes)
 							+"&done_bytes="+convert(proc.done_bytes)
+							+(isFileBackup(proc) ? "&details=" + EscapeParamString(getPingDetails(proc)) : std::string())
 							+"&paused_fb=1"
 							+"#token="+server_token, "Error sending 'running' (2) ping to client",
 									30000, false, LL_DEBUG, &connection);

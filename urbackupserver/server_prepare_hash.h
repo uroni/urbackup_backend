@@ -29,10 +29,13 @@ namespace
 	}
 }
 
+class PostTransferProgress;
+
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
-	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid, bool ignore_hash_mismatch);
+	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid, bool ignore_hash_mismatch,
+		PostTransferProgress* progress=NULL);
 	~BackupServerPrepareHash(void);
 
 	void operator()(void);
@@ -86,6 +89,9 @@ private:
 	logid_t logid;
 
 	bool ignore_hash_mismatch;
+
+	PostTransferProgress* progress;
+	size_t progress_slot;
 
 };
 

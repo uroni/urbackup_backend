@@ -73,6 +73,7 @@ public:
 	virtual void setLogCircularBufferSize(size_t size);
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid);
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
+	virtual void LogAlways(const std::string &pStr);
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true);
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true);
 
@@ -224,6 +225,7 @@ public:
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
+	void logLine(const std::string& pStr, int LogLevel);
 
 	bool UnloadDLLs(void);
 	void UnloadDLLs2(void);

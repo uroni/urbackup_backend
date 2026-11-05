@@ -686,6 +686,9 @@
     <ClInclude Include="PhashLoad.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="PostTransferProgress.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="Mailer.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>

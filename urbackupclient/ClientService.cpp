@@ -303,6 +303,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	internet_conn=false;
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
+	send_index_progress=false;
 	endpoint_name = pEndpointName;
 	make_conn.store(0, std::memory_order_relaxed);
 	local_backup_running_id = 0;
@@ -439,7 +440,13 @@ int ClientConnector::Run()
 				&& Server->getTimeMS()-last_update_time>30000 )
 			{
 				last_update_time=Server->getTimeMS();
-				tcpstack.Send(pipe, "BUSY");
+				std::string progress;
+				if (send_index_progress
+					&& state == CCSTATE_START_FILEBACKUP_ASYNC)
+				{
+					progress = IndexThread::getIndexProgress();
+				}
+				tcpstack.Send(pipe, progress.empty() ? std::string("BUSY") : "BUSY-" + progress);
 			}
 		}break;
 	case CCSTATE_SHADOWCOPY:

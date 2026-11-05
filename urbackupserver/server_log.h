@@ -50,6 +50,9 @@ class ServerLogger
 public:
 	static void Log(logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
 	static void Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
+	//Like Log(..., LL_INFO) but the line also reaches the server log file when LOGLEVEL is warn (the default).
+	//For progress heartbeats that are at least minutes apart.
+	static void LogProgress(logid_t logid, const std::string &pStr);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
