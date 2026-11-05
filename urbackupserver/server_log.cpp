@@ -47,6 +47,17 @@ void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 	logMemory(Server->getTimeSeconds(), logid, pStr, LogLevel);
 }
 
+void ServerLogger::LogProgress(logid_t logid, const std::string &pStr)
+{
+	Server->LogAlways(pStr);
+
+	IScopedLock lock(mutex);
+
+	logCircular(logid_client[logid], logid, pStr, LL_INFO);
+
+	logMemory(Server->getTimeSeconds(), logid, pStr, LL_INFO);
+}
+
 void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	Server->Log(pStr, LogLevel);
