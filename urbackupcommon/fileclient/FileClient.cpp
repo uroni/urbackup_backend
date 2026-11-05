@@ -55,6 +55,7 @@ namespace
 	const unsigned int DISCOVERY_TIMEOUT=1000; //1sec
 #endif
 
+	const int64 progress_log_intervall = 300000; //5min
 	const size_t maxQueuedFiles = 3000;
 	const size_t queuedFilesLow = 100;
 	const char* multicast_group = "ff12::f894:d:dd00:ef91";
@@ -1931,7 +1932,7 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 {
 	int64 ct = Server->getTimeMS();
 	if(filesize>0 && (last_progress_log==0 ||
-		ct-last_progress_log>60000) )
+		ct-last_progress_log>progress_log_intervall) )
 	{
 		int64 new_transferred=getTransferredBytes();
 		if( last_transferred_bytes!=0 &&

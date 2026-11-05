@@ -708,6 +708,7 @@ bool IncrFileBackup::doFileBackup()
 							ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 							ServerStatus::setProcessPcDone(clientname, status_id,
 								(std::min)(100, (int)(((float)done_bytes) / ((float)files_size / 100.f) + 0.5f)));
+							logTransferProgress(ctime, done_bytes, files_size);
 						}
 
 						ServerStatus::setProcessQueuesize(clientname, status_id,
@@ -1391,6 +1392,7 @@ bool IncrFileBackup::doFileBackup()
 			ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 			ServerStatus::setProcessPcDone(clientname, status_id,
 				(std::min)(100,(int)(((float)done_bytes)/((float)files_size/100.f)+0.5f)) );
+			logTransferProgress(Server->getTimeMS(), done_bytes, files_size);
 		}
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,
