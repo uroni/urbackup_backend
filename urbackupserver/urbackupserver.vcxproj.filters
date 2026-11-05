@@ -485,6 +485,9 @@
     <ClInclude Include="..\urbackupcommon\escape.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="..\urbackupcommon\BlameStats.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="..\urbackupcommon\bufmgr.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -684,6 +687,9 @@
       <Filter>apps</Filter>
     </ClInclude>
     <ClInclude Include="PhashLoad.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PostTransferProgress.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="Mailer.h">

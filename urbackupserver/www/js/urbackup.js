@@ -647,6 +647,13 @@ function show_progress2(data)
 				data.progress[i].client_update=true;
 			}
 			
+			if(action==1 || action==2 || action==5 || action==6) //incremental/full file backup (and resumed)
+			{
+				data.progress[i].file_backup=true;
+				//getJSON already escaped the strings, the template escapes again
+				data.progress[i].details=unescapeHTML(data.progress[i].details);
+			}
+			
 			if(action==11 || action==12) //check database integrity, backup database
 			{
 				data.progress[i].show_details=true;

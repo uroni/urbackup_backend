@@ -400,6 +400,8 @@ private:
 	ClientConnectorState state;
 	int64 lasttime;
 	int64 last_update_time;
+	//server asked for index progress in the BUSY keepalive (WAIT FOR INDEX ... &progress=1)
+	bool send_index_progress;
 	int file_version;
 	CTCPStack tcpstack;
 	volatile bool do_quit;

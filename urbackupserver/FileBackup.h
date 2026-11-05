@@ -10,6 +10,7 @@
 #include "../urbackupcommon/file_metadata.h"
 #include "server_log.h"
 #include "FileMetadataDownloadThread.h"
+#include "PostTransferProgress.h"
 #include <set>
 
 class ClientMain;
@@ -18,11 +19,14 @@ class BackupServerPrepareHash;
 class ServerPingThread;
 class FileIndex;
 class PhashLoad;
+class ServerDownloadThreadGroup;
 
 namespace
 {
 	const unsigned int status_update_intervall=1000;
 	const unsigned int eta_update_intervall=60000;
+	const unsigned int progress_log_intervall=300000;
+	const unsigned int blame_eval_intervall=10000;
 	const char* sync_fn = ".sync_f3a50226-f49a-4195-afef-c75b21781ae1";
 }
 
@@ -203,6 +207,10 @@ public:
 
 	static bool create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links, bool* copy);
 
+	//Same, but the time is counted as main thread file system time (blame)
+	bool create_hardlink_timed(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links, bool* copy);
+	bool create_dir_timed(const std::string &path);
+
 protected:
 	virtual bool doBackup();
 
@@ -211,6 +219,7 @@ protected:
 	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations);
 	bool request_filelist_construct(bool full, bool resume, int group,
 		bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::string& clientsubname);
+	static std::string parseIndexProgress(const std::string& busy_msg);
 	bool wait_for_async(const std::string& async_id, int64 timeout_time=10*60*1000);
 	bool request_client_write_tokens();
 	void logVssLogdata(int64 vss_duration_s);
@@ -222,6 +231,15 @@ protected:
 	void calculateDownloadSpeed(int64 ctime, FileClient &fc, FileClientChunked* fc_chunked);
 	void calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 		int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
+	void logTransferProgress(int64 ctime, int64 done_bytes, int64 total_bytes);
+	void updateTransferDetails(ServerDownloadThreadGroup& server_download);
+
+	//What the hashing and linking threads are doing, empty if idle
+	std::string getPostTransferDetails();
+
+	//Who is waiting on whom, e.g. "waiting for server storage (slow writes)", empty if unclear.
+	//server_download is NULL after the transfer. Re-evaluated every blame_eval_intervall.
+	std::string updateBlame(ServerDownloadThreadGroup* server_download);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	bool link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
@@ -269,6 +287,7 @@ protected:
 	std::vector<BackupServerHash*> bsh;
 	std::vector<THREADPOOL_TICKET> bsh_ticket;
 	std::vector<BackupServerPrepareHash*> bsh_prepare;
+	PostTransferProgress post_transfer_progress;
 	std::vector<THREADPOOL_TICKET> bsh_prepare_ticket;
 	std::auto_ptr<BackupServerHash> local_hash;
 	std::auto_ptr<BackupServerHash> local_hash2;
@@ -297,6 +316,30 @@ protected:
 
 	int64 last_speed_received_bytes;
 	int64 speed_set_time;
+	int64 progress_log_time;
+
+	struct SBlameSample
+	{
+		SBlameSample()
+			: time_us(0), with_download(false), net_us(0), write_us(0), received(0),
+			main_fs_us(0), hash_busy_us(0), hash_read_us(0), link_busy_us(0) {}
+
+		int64 time_us;
+		bool with_download;
+		int64 net_us;
+		int64 write_us;
+		int64 received;
+		int64 main_fs_us;
+		int64 hash_busy_us;
+		int64 hash_read_us;
+		int64 link_busy_us;
+	};
+
+	BlameCounter main_fs_wait;
+	SBlameSample blame_last;
+	std::string blame_candidate;
+	std::string blame;
+	bool blame_paused;
 
 	std::auto_ptr<PhashLoad> phash_load;
 	THREADPOOL_TICKET phash_load_ticket;

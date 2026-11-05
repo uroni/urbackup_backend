@@ -11,7 +11,7 @@
 				{?file_restore}
 					{tPath:} {details|s}
 				{:else}
-					-
+					{?file_backup}{details}{:else}-{/file_backup}
 				{/file_restore}
 			{/client_update}
 		{/image}
