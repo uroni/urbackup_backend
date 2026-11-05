@@ -38,6 +38,8 @@ size_t FileServ::active_generation = 0;
 FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
 std::vector<std::string> FileServ::read_error_files;
 std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo> FileServ::cbt_hash_files;
+BlameCounter FileServ::read_wait;
+BlameCounter FileServ::send_wait;
 
 
 FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
@@ -458,4 +460,10 @@ size_t FileServ::incrActiveGeneration()
 {
 	IScopedLock lock(mutex);
 	return active_generation++;
+}
+
+void FileServ::getTransferWaitTimes(int64& read_us, int64& send_us)
+{
+	read_us = read_wait.get();
+	send_us = send_wait.get();
 }

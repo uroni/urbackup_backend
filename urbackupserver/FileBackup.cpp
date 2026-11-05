@@ -16,6 +16,7 @@
 **************************************************************************/
 
 #include "FileBackup.h"
+#include "ServerDownloadThreadGroup.h"
 #include "ClientMain.h"
 #include "server_status.h"
 #include "server_log.h"
@@ -57,7 +58,8 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clien
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET),
-	last_speed_received_bytes(0), speed_set_time(0)
+	last_speed_received_bytes(0), speed_set_time(0), progress_log_time(0),
+	blame_paused(false)
 {
 }
 
@@ -93,6 +95,97 @@ ServerBackupDao::SDuration FileBackup::interpolateDurations(const std::vector<Se
 		return ret;
 }
 
+//"waiting for client (indexing[, <reason>])". Newer clients add the time spent in total, listing directories,
+//hashing, in their database and throttled (t_all, t_list, t_hash, t_db, t_throttle; ms since indexing started)
+//to the BUSY- keepalive; the shares of the time since the previous keepalive give the reason.
+std::string FileBackup::indexBlame(const std::string& busy_msg, SIndexBlameTimes& last)
+{
+	std::string ret = "waiting for client (indexing";
+	if (busy_msg.size() <= 5)
+	{
+		return ret + ")";
+	}
+
+	str_map params;
+	ParseParamStrHttp(busy_msg.substr(5), &params);
+	if (params.find("t_all") == params.end())
+	{
+		return ret + ")";
+	}
+
+	SIndexBlameTimes curr;
+	curr.all = watoi64(params["t_all"]);
+	curr.list = watoi64(params["t_list"]);
+	curr.hash = watoi64(params["t_hash"]);
+	curr.db = watoi64(params["t_db"]);
+	curr.throttle = watoi64(params["t_throttle"]);
+
+	if (curr.all < last.all)
+	{
+		//new indexing run on the client
+		last = SIndexBlameTimes();
+	}
+
+	double window = static_cast<double>(curr.all - last.all);
+	double list = window > 0 ? (curr.list - last.list) / window : 0;
+	double hash = window > 0 ? (curr.hash - last.hash) / window : 0;
+	double db = window > 0 ? (curr.db - last.db) / window : 0;
+	double throttle = window > 0 ? (curr.throttle - last.throttle) / window : 0;
+	last = curr;
+
+	std::string reason;
+	double max_share = 0.5;
+	if (list >= max_share) { reason = "slow directory reads"; max_share = list; }
+	if (hash >= max_share) { reason = "hashing files"; max_share = hash; }
+	if (db >= max_share) { reason = "client database"; max_share = db; }
+	if (throttle >= max_share) { reason = "slowed down while the PC is in use or paused"; max_share = throttle; }
+
+	Server->Log("Blame " + clientname + " (indexing): list=" + convert(list) + " hash=" + convert(hash) + " db=" + convert(db)
+		+ " throttle=" + convert(throttle) + " window_ms=" + convert(static_cast<int64>(window)) + " -> " + (reason.empty() ? "-" : reason), LL_DEBUG);
+
+	if (!reason.empty())
+	{
+		ret += ", " + reason;
+	}
+	return ret + ")";
+}
+
+//Text for the activities from the client's "BUSY-ph=index&n=<files>&dir=<dir>" keepalive.
+//The values come from the client and are shown in the web interface, so they are length limited and
+//stripped of control characters here; the interface escapes them again on output.
+std::string FileBackup::parseIndexProgress(const std::string& busy_msg)
+{
+	if (busy_msg.size() <= 5)
+	{
+		return std::string();
+	}
+
+	str_map params;
+	ParseParamStrHttp(busy_msg.substr(5), &params);
+
+	if (params["ph"] != "index")
+	{
+		return std::string();
+	}
+
+	std::string dir = params["dir"];
+	std::string clean;
+	for (size_t i = 0; i < dir.size() && clean.size() < 300; ++i)
+	{
+		if (static_cast<unsigned char>(dir[i]) >= 32 && dir[i] != 127)
+		{
+			clean += dir[i];
+		}
+	}
+
+	std::string ret = "Indexing: " + convert(watoi64(params["n"])) + " files";
+	if (!clean.empty())
+	{
+		ret += ", " + clean;
+	}
+	return ret;
+}
+
 bool FileBackup::getResult()
 {
 	return backup_result;
@@ -117,6 +210,10 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	{
 		timeout_time=120000;
 	}
+
+	int64 indexing_wait_start = Server->getTimeMS();
+	int64 last_busy_log = indexing_wait_start;
+	SIndexBlameTimes index_blame_times;
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
@@ -270,7 +367,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			tcpstack.reset();
 			tcpstack.setAddChecksum(client_main->isOnInternetConnection());
 
-			std::string cmd = identity + "WAIT FOR INDEX async_id=" + async_id;
+			std::string cmd = identity + "WAIT FOR INDEX async_id=" + async_id + "&progress=1"; //ask for BUSY-<progress>; older clients ignore the parameter
 
 			if (with_token)
 			{
@@ -332,9 +429,21 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 					
 				}
-				else if(ret=="BUSY")
+				else if(ret=="BUSY" || next(ret, 0, "BUSY-"))
 				{
 					starttime=Server->getTimeMS();
+
+					std::string index_details = parseIndexProgress(ret);
+					blame = indexBlame(ret, index_blame_times);
+					ServerStatus::setProcessDetails(clientname, status_id,
+						(index_details.empty() ? std::string("Indexing") : index_details) + " | " + blame, -1);
+
+					if (starttime - last_busy_log > progress_log_intervall)
+					{
+						ServerLogger::LogProgress(logid, "Waiting for \"" + clientname + "\" to finish indexing (" + PrettyPrintTime(starttime - indexing_wait_start) + " so far)"
+							+ (index_details.empty() ? std::string() : ": " + index_details) + "...");
+						last_busy_log = starttime;
+					}
 				}
 				else if (ret == "PHASH")
 				{
@@ -377,6 +486,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			else
 			{
 				logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
+				ServerStatus::setProcessDetails(clientname, status_id, std::string(), -1);
+				blame.clear();
 				Server->destroy(cc);
 				return true;
 			}
@@ -600,8 +711,8 @@ void FileBackup::createHashThreads(bool use_reflink, bool ignore_hash_mismatches
 
 	for (size_t i = 0; i < h_cnt; ++i)
 	{
-		BackupServerHash* curr_bsh = new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id);
-		BackupServerPrepareHash* curr_bsh_prepare = new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches);
+		BackupServerHash* curr_bsh = new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id, &post_transfer_progress);
+		BackupServerPrepareHash* curr_bsh_prepare = new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches, &post_transfer_progress);
 		bsh.push_back(curr_bsh);
 		bsh_prepare.push_back(curr_bsh_prepare);
 		bsh_ticket.push_back(Server->getThreadPool()->execute(curr_bsh, "fbackup write" + convert(i)));
@@ -790,6 +901,337 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 	}
 }
 
+void FileBackup::logTransferProgress(int64 ctime, int64 done_bytes, int64 total_bytes)
+{
+	if (progress_log_time == 0)
+	{
+		progress_log_time = ctime;
+		return;
+	}
+
+	if (ctime - progress_log_time < progress_log_intervall)
+	{
+		return;
+	}
+
+	progress_log_time = ctime;
+
+	std::string msg = "Transferred " + PrettyPrintBytes(done_bytes);
+	if (total_bytes > 0)
+	{
+		msg += " of " + PrettyPrintBytes(total_bytes) + " (" + convert((std::min)(100, (int)(((float)done_bytes) / ((float)total_bytes / 100.f) + 0.5f))) + "%)";
+	}
+	msg += ". File hashing queue: " + convert(hashpipe_prepare->getNumElements())
+		+ ", file linking queue: " + convert(hashpipe->getNumElements());
+
+	std::string post_details = getPostTransferDetails();
+	if (!post_details.empty())
+	{
+		msg += ". " + post_details;
+	}
+
+	if (!blame.empty())
+	{
+		msg += " | " + blame;
+	}
+
+	ServerLogger::LogProgress(logid, msg);
+}
+
+namespace
+{
+	std::string blameRate(int64 bytes_per_s)
+	{
+		if (bytes_per_s < 1024)
+			return convert(bytes_per_s) + " bytes/s";
+		if (bytes_per_s < 1024 * 1024)
+			return convert(bytes_per_s / 1024) + " KB/s";
+		int64 tenths = bytes_per_s * 10 / (1024 * 1024);
+		return convert(tenths / 10) + "." + convert(tenths % 10) + " MB/s";
+	}
+
+	double blameShare(int64 delta_us, double window_us, size_t n_threads)
+	{
+		if (n_threads == 0 || window_us <= 0)
+			return 0;
+		return delta_us / (window_us * n_threads);
+	}
+}
+
+std::string FileBackup::updateBlame(ServerDownloadThreadGroup* server_download)
+{
+	//The ping thread knows whether the client paused the backup (PAUSED reply). That is a known state,
+	//not a measurement: show it at once, and measure from scratch once the client continues
+	if (server_download != NULL)
+	{
+		SProcess proc = ServerStatus::getProcess(clientname, status_id);
+		if (proc.paused)
+		{
+			blame = "waiting for client (paused)";
+			blame_paused = true;
+			blame_last = SBlameSample();
+			blame_candidate.clear();
+			return blame;
+		}
+	}
+	if (blame_paused)
+	{
+		blame_paused = false;
+		blame.clear();
+	}
+
+	SBlameSample curr;
+	curr.time_us = BlameCounter::nowUs();
+	curr.with_download = server_download != NULL;
+
+	//Evaluate every blame_eval_intervall, but at once when the phase changed (transfer -> hashing/linking)
+	if (blame_last.time_us != 0
+		&& blame_last.with_download == curr.with_download
+		&& curr.time_us - blame_last.time_us < static_cast<int64>(blame_eval_intervall) * 1000)
+	{
+		return blame;
+	}
+
+	size_t n_dl = 0;
+	if (server_download != NULL)
+	{
+		server_download->getWaitTimes(curr.net_us, curr.write_us, curr.received, n_dl);
+	}
+	curr.main_fs_us = main_fs_wait.get();
+	size_t n_hash, n_link;
+	post_transfer_progress.getBusyTimes(curr.hash_busy_us, curr.link_busy_us, n_hash, n_link);
+	curr.hash_read_us = post_transfer_progress.hash_read_wait.get();
+
+	if (blame_last.time_us == 0
+		|| blame_last.with_download != curr.with_download)
+	{
+		//First sample of this phase. The verdict of the previous phase (e.g. "waiting for network" of the
+		//transfer) says nothing about the hashing/linking after it: do not carry it over
+		blame_last = curr;
+		blame_candidate.clear();
+		blame.clear();
+		return blame;
+	}
+
+	double window = static_cast<double>(curr.time_us - blame_last.time_us);
+	double net = blameShare(curr.net_us - blame_last.net_us, window, n_dl);
+	double write = blameShare(curr.write_us - blame_last.write_us, window, n_dl);
+	double main_fs = blameShare(curr.main_fs_us - blame_last.main_fs_us, window, 1);
+	double hash = blameShare(curr.hash_busy_us - blame_last.hash_busy_us, window, n_hash);
+	double hash_read = blameShare(curr.hash_read_us - blame_last.hash_read_us, window, n_hash);
+	double link = blameShare(curr.link_busy_us - blame_last.link_busy_us, window, n_link);
+	int64 rate = static_cast<int64>((curr.received - blame_last.received) * 1000000.0 / window);
+	size_t queue_prepare = hashpipe_prepare->getNumElements();
+	size_t queue_link = hashpipe->getNumElements();
+	if (server_download == NULL)
+	{
+		//After the transfer waitForFileThreads put a "flush" marker at the end of both queues, it is not a file
+		//(the link queue's marker may be consumed already, then this is one low while linking is behind)
+		queue_prepare = queue_prepare > 0 ? queue_prepare - 1 : 0;
+		queue_link = queue_link > 0 ? queue_link - 1 : 0;
+	}
+	size_t queue = queue_prepare + queue_link;
+
+	//The verdict is "<who> (<reason>" + numbers + ")". Hysteresis compares only "<who> (<reason>", the numbers change every time.
+	//Hashing/linking of received files
+	std::string post_blame;
+	std::string queued = queue > 0 ? ", " + convert(queue) + " files queued" : std::string();
+	if (link >= 0.5 && link >= hash)
+	{
+		post_blame = "waiting for server storage (filesystem busy";
+	}
+	else if (hash >= 0.5)
+	{
+		if (hash_read >= hash / 2)
+			post_blame = "waiting for server storage (slow reads";
+		else
+			post_blame = "waiting for server CPU (hashing";
+	}
+
+	std::string verdict;
+	std::string verdict_numbers;
+	double client_read = -1;
+	double client_send = -1;
+	if (server_download != NULL)
+	{
+		if (write >= 0.5)
+		{
+			verdict = "waiting for server storage (slow writes";
+			verdict_numbers = ", " + blameRate(rate);
+		}
+		else if (net >= 0.5)
+		{
+			bool internet = client_main->isOnInternetConnection();
+			int speed = internet ? server_settings->getInternetSpeed() : server_settings->getLocalSpeed();
+			int global_speed = internet ? server_settings->getGlobalInternetSpeed() : server_settings->getGlobalLocalSpeed();
+			bool speed_limit = (speed != 0 && speed != -1) || (global_speed != 0 && global_speed != -1);
+
+			//Newer clients report how long their file server waited for its disk and for the network
+			if (pingthread != NULL
+				&& pingthread->getClientWaitShares(client_read, client_send)
+				&& client_read + client_send >= 0.3
+				&& client_read >= client_send)
+			{
+				verdict = "waiting for client (slow disk reads";
+				verdict_numbers = ", " + blameRate(rate);
+			}
+			else
+			{
+				if (client_read + client_send >= 0.3)
+					verdict = std::string("waiting for network (") + (speed_limit ? "speed limit set" : "");
+				else
+					verdict = std::string("waiting for client or network (") + (speed_limit ? "speed limit set" : "");
+				verdict_numbers = (speed_limit ? ", " : "") + blameRate(rate);
+			}
+		}
+		else if (main_fs >= 0.5)
+		{
+			//Creating directories and hard links of unchanged files
+			verdict = "waiting for server storage (filesystem busy";
+		}
+		else if (queue >= 100)
+		{
+			verdict = post_blame;
+			verdict_numbers = queued;
+		}
+	}
+	else
+	{
+		verdict = post_blame;
+		verdict_numbers = queued;
+	}
+
+	Server->Log("Blame " + clientname + ": net=" + convert(net) + " write=" + convert(write) + " main_fs=" + convert(main_fs)
+		+ " hash=" + convert(hash) + " hash_read=" + convert(hash_read) + " link=" + convert(link)
+		+ " queue=" + convert(queue) + " rate=" + convert(rate) + " client_read=" + convert(client_read) + " client_send=" + convert(client_send) + " -> " + (verdict.empty() ? "-" : verdict + verdict_numbers + ")"), LL_DEBUG);
+
+	//Change the shown line only if the same verdict came twice in a row (no flicker). After the transfer,
+	//while nothing is shown, the first verdict is shown at once: the hash/link phase is often short and
+	//the busy share of its workers does not jump around like network/disk wait times do
+	if (verdict == blame_candidate
+		|| (!curr.with_download && blame.empty()))
+	{
+		blame = verdict.empty() ? std::string() : verdict + verdict_numbers + ")";
+	}
+	blame_candidate = verdict;
+	blame_last = curr;
+
+	return blame;
+}
+
+std::string FileBackup::getPostTransferDetails()
+{
+	std::vector<PostTransferProgress::SItem> items = post_transfer_progress.getActive();
+
+	if (items.empty())
+	{
+		return std::string();
+	}
+
+	//Show the one that has been working the longest
+	size_t shown = 0;
+	for (size_t i = 1; i < items.size(); ++i)
+	{
+		if (items[i].start_ms < items[shown].start_ms)
+		{
+			shown = i;
+		}
+	}
+
+	const PostTransferProgress::SItem& item = items[shown];
+
+	std::string ret = item.phase + " " + item.name;
+
+	if (item.size > 0
+		&& item.done > 0)
+	{
+		int64 done = (std::min)(item.done, item.size);
+		ret += " - " + PrettyPrintBytes(done) + " of " + PrettyPrintBytes(item.size)
+			+ " (" + convert(done * 100 / item.size) + "%)";
+	}
+
+	if (items.size() > 1)
+	{
+		ret += " (+" + convert(items.size() - 1) + " more)";
+	}
+
+	return ret;
+}
+
+void FileBackup::updateTransferDetails(ServerDownloadThreadGroup& server_download)
+{
+	std::vector<ServerDownloadThreadGroup::SCurrentTransfer> transfers = server_download.getCurrentTransfers();
+
+	//Hashing/linking of already received files runs in parallel to the transfer
+	std::string post_details = getPostTransferDetails();
+	if (!post_details.empty())
+	{
+		post_details = " | " + post_details;
+	}
+
+	std::string curr_blame = updateBlame(&server_download);
+	if (!curr_blame.empty())
+	{
+		post_details += " | " + curr_blame;
+	}
+
+	if (transfers.empty())
+	{
+		ServerStatus::setProcessDetails(clientname, status_id, post_details.empty() ? std::string() : post_details.substr(3), -1);
+		return;
+	}
+
+	//Show the biggest file in progress, as that is the one that takes longest
+	size_t shown = 0;
+	for (size_t i = 1; i < transfers.size(); ++i)
+	{
+		if (transfers[i].size > transfers[shown].size)
+		{
+			shown = i;
+		}
+	}
+
+	if (transfers[shown].size <= 0
+		&& transfers[shown].done <= 0)
+	{
+		//Only empty files (or files just started): "Receiving x - 0 bytes" would be noise at phase transitions
+		ServerStatus::setProcessDetails(clientname, status_id, "Receiving files" + post_details, -1);
+		return;
+	}
+
+	const ServerDownloadThreadGroup::SCurrentTransfer& transfer = transfers[shown];
+
+	std::string fn = transfer.name;
+	std::string share = getuntil("/", fn);
+	if (!share.empty()
+		&& share.find("|") != std::string::npos)
+	{
+		fn = getafter("|", fn);
+	}
+
+	std::string details = "Receiving " + fn;
+	int detail_pc = -1;
+
+	if (transfer.size > 0)
+	{
+		detail_pc = static_cast<int>((std::min)(transfer.done, transfer.size) * 100 / transfer.size);
+		details += " - " + PrettyPrintBytes(transfer.done) + " of " + PrettyPrintBytes(transfer.size) + " (" + convert(detail_pc) + "%)";
+	}
+	else
+	{
+		details += " - " + PrettyPrintBytes(transfer.done);
+	}
+
+	if (transfers.size() > 1)
+	{
+		details += " (+" + convert(transfers.size() - 1) + " more in progress)";
+	}
+
+	details += post_details;
+
+	ServerStatus::setProcessDetails(clientname, status_id, details, detail_pc);
+}
+
 bool FileBackup::doBackup()
 {
 	if(!client_main->handle_not_enough_space("", logid, *server_settings.get()))
@@ -846,7 +1288,7 @@ bool FileBackup::doBackup()
 		}
 	}
 
-	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token);
+	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token, true);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread, "client ping");
 
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id));
@@ -1123,11 +1565,11 @@ void FileBackup::log_progress(const std::string & fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded) / total)*100.f);
 		}
-		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". " + convert(pc_complete) + "% finished " + PrettyPrintBytes(downloaded) + "/" + PrettyPrintBytes(total) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::LogProgress(logid, "Loading \"" + fn_wo_token + "\". " + convert(pc_complete) + "% finished " + PrettyPrintBytes(downloaded) + "/" + PrettyPrintBytes(total) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)));
 	}
 	else
 	{
-		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". Loaded " + PrettyPrintBytes(downloaded) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::LogProgress(logid, "Loading \"" + fn_wo_token + "\". Loaded " + PrettyPrintBytes(downloaded) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)));
 	}
 }
 
@@ -1140,6 +1582,18 @@ bool FileBackup::create_hardlink(const std::string & linkname, const std::string
 	}
 
 	return os_create_hardlink(linkname, fname, use_ioref, too_many_links);
+}
+
+bool FileBackup::create_hardlink_timed(const std::string & linkname, const std::string & fname, bool use_ioref, bool * too_many_links, bool* copy)
+{
+	ScopedBlameTimer fs_timer(main_fs_wait);
+	return create_hardlink(linkname, fname, use_ioref, too_many_links, copy);
+}
+
+bool FileBackup::create_dir_timed(const std::string & path)
+{
+	ScopedBlameTimer fs_timer(main_fs_wait);
+	return os_create_dir(path);
 }
 
 bool FileBackup::handle_not_enough_space(const std::string & path)
@@ -1168,6 +1622,7 @@ std::string FileBackup::systemErrorInfo()
 bool FileBackup::link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata)
 {
+	ScopedBlameTimer fs_timer(main_fs_wait);
 	std::string os_curr_path=convertToOSPathFromFileClient(os_path+"/"+short_fn);
 	std::string os_curr_hash_path=convertToOSPathFromFileClient(os_path+"/"+escape_metadata_fn(short_fn));
 	std::string dstpath=backuppath+os_curr_path;
@@ -1269,14 +1724,38 @@ void FileBackup::waitForFileThreads(void)
 	hashpipe->Write("flush");
 	hashpipe_prepare->Write("flush");
 	
+	ServerStatus::setProcessDetails(clientname, status_id, "Hashing and linking received files", -1);
+
 	size_t hashqueuesize=std::string::npos;
 	size_t prepare_hashqueuesize=0;
+	int64 last_queue_log = Server->getTimeMS();
+	std::string last_post_details;
 	while(hashqueuesize==std::string::npos || hashqueuesize>0 || prepare_hashqueuesize>0)
 	{
 		if (hashqueuesize != std::string::npos)
 		{
 			ServerStatus::setProcessQueuesize(clientname, status_id, prepare_hashqueuesize, hashqueuesize);
+
+			std::string post_details = getPostTransferDetails();
+			std::string curr_blame = updateBlame(NULL);
+			if (!curr_blame.empty())
+			{
+				post_details += (post_details.empty() ? std::string() : " | ") + curr_blame;
+			}
+			ServerStatus::setProcessDetails(clientname, status_id, "Hashing and linking received files"
+				+ (post_details.empty() ? std::string() : ": " + post_details), -1);
+			last_post_details = post_details;
+
 			Server->wait(1000);
+
+			int64 ctime = Server->getTimeMS();
+			if (ctime - last_queue_log > progress_log_intervall)
+			{
+				last_queue_log = ctime;
+				ServerLogger::LogProgress(logid, "Still hashing and linking received files. File hashing queue: " + convert(prepare_hashqueuesize)
+					+ ", file linking queue: " + convert(hashqueuesize)
+					+ (last_post_details.empty() ? std::string() : ". " + last_post_details));
+			}
 		}
 
 		size_t bsh_working = bsh.size() - hashpipe->getNumWaiters();
@@ -1295,6 +1774,8 @@ void FileBackup::waitForFileThreads(void)
 	}	
 
 	ServerStatus::setProcessQueuesize(clientname, status_id, 0, 0);
+	ServerStatus::setProcessDetails(clientname, status_id, std::string(), -1);
+	blame.clear();
 }
 
 bool FileBackup::verify_file_backup(IFile *fileentries)

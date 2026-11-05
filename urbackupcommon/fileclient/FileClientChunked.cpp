@@ -37,6 +37,7 @@
 
 namespace
 {
+	const int64 progress_log_intervall = 300000; //5min
 	const char* fc_err_strs[] = {
 		"Seeking in file failed",
 		"Reading from file failed"
@@ -64,7 +65,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback
 	, std::string identity, FileClientChunked* prev)
 	: pipe(pipe), destroy_pipe(del_pipe), stack(stack), transferred_bytes(0), reconnection_callback(reconnection_callback),
-	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0),
+	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0), current_size(-1), current_done(0),
 	  parent(prev), queue_only(false), queue_callback(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0),
 	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false), needs_flush(false),
 	  real_transferred_bytes(0), queue_next(false), sparse_bytes(0)
@@ -82,7 +83,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 
 FileClientChunked::FileClientChunked(void)
 	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000), received_data_bytes(0),
-	  parent(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
+	  parent(NULL), current_size(-1), current_done(0), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
 	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0), queue_next(false), sparse_bytes(0)
 {
 	has_error=true;
@@ -175,6 +176,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		was_prepared = true;
 	}
 
+	if (!queue_only)
+	{
+		setCurrentFile(remotefn, -1, 0);
+	}
+
+	ScopedCurrentFile scoped_current_file(this);
 
 	getfile_done=false;
 	retval=ERR_SUCCESS;
@@ -423,6 +430,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			{
 				if(!queue_only && (!was_prepared || !initial_read) )
 				{
+					ScopedBlameTimer net_timer(getRoot()->wait_net);
 					getPipe()->isReadable(100);
 				}
 			}
@@ -607,7 +615,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		else
 		{
 			buf = stack_buf;
-			rc = getPipe()->Read(buf, BUFFERSIZE, 0);
+			{
+				ScopedBlameTimer net_timer(getRoot()->wait_net);
+				rc = getPipe()->Read(buf, BUFFERSIZE, 0);
+			}
 
 			if (initial_read && rc > 0 && rc < 10 && buf[0] == ID_ERR)
 			{
@@ -1455,6 +1466,7 @@ void FileClientChunked::State_Block(void)
 
 void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 {
+	ScopedBlameTimer write_timer(getRoot()->wait_write);
 	_u32 written=0;
 	_u32 rc;
 	int tries=50;
@@ -2252,11 +2264,63 @@ void FileClientChunked::logPendingChunks()
 	}
 }
 
+FileClientChunked* FileClientChunked::getRoot()
+{
+	FileClientChunked* root = this;
+	while (root->parent != NULL)
+	{
+		root = root->parent;
+	}
+	return root;
+}
+
+void FileClientChunked::setCurrentFile(const std::string& name, int64 size, int64 done)
+{
+	FileClientChunked* root = getRoot();
+	IScopedLock lock(root->mutex);
+	root->current_name = name;
+	root->current_size = size;
+	root->current_done = done;
+}
+
+void FileClientChunked::clearCurrentFile()
+{
+	FileClientChunked* root = getRoot();
+	IScopedLock lock(root->mutex);
+	root->current_name.clear();
+}
+
+void FileClientChunked::getWaitTimes(int64& net_us, int64& write_us)
+{
+	net_us = wait_net.get();
+	write_us = wait_write.get();
+}
+
+bool FileClientChunked::getCurrentFile(std::string& name, int64& size, int64& done)
+{
+	IScopedLock lock(mutex);
+
+	if (current_name.empty())
+	{
+		return false;
+	}
+
+	name = current_name;
+	size = current_size;
+	done = current_done;
+	return true;
+}
+
 void FileClientChunked::logTransferProgress()
 {
+	if (remote_filesize > 0)
+	{
+		setCurrentFile(remote_filename, remote_filesize == LLONG_MAX ? -1 : remote_filesize, file_pos);
+	}
+
 	int64 ct = Server->getTimeMS();
 	if(remote_filesize>0 && (last_progress_log==0 ||
-		ct-last_progress_log>60000) )
+		ct-last_progress_log>progress_log_intervall) )
 	{
 		int64 newTransferred=getTransferredBytes();
 

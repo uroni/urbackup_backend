@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "client.h"
+#include <mutex>
 #include "ParallelHash.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
@@ -47,6 +48,7 @@
 #include "../common/adler32.h"
 #include <string.h>
 #include "CachedFile.h"
+#include "../urbackupcommon/BlameStats.h"
 
 #ifdef __APPLE__
 #include <iostream>
@@ -105,6 +107,65 @@ std::map<std::string, int> IndexThread::cbt_shadow_ids;
 std::map<unsigned int, IndexThread::SResult> IndexThread::index_results;
 unsigned int IndexThread::next_result_id = 1;
 IMutex* IndexThread::result_mutex = NULL;
+
+namespace
+{
+	std::mutex index_progress_mutex;
+	std::string index_progress_phase;
+	int64 index_progress_files = 0;
+	std::string index_progress_dir;
+	const size_t index_progress_max_dir = 200;
+
+	//Where the time of the current indexing run goes, reported with the progress
+	BlameCounter index_list_wait;
+	BlameCounter index_hash_wait;
+	BlameCounter index_db_wait;
+	BlameCounter index_throttle_wait;
+	struct SIndexTimes
+	{
+		int64 start, list, hash, db, throttle;
+	} index_times_start = {};
+}
+
+void IndexThread::setIndexProgress(const std::string& phase, int64 files, const std::string& dir)
+{
+	std::lock_guard<std::mutex> lock(index_progress_mutex);
+	if (phase == "start")
+	{
+		index_times_start.start = BlameCounter::nowUs();
+		index_times_start.list = index_list_wait.get();
+		index_times_start.hash = index_hash_wait.get();
+		index_times_start.db = index_db_wait.get();
+		index_times_start.throttle = index_throttle_wait.get();
+	}
+	index_progress_phase = phase;
+	index_progress_files = files;
+	index_progress_dir = dir;
+	if (index_progress_dir.size() > index_progress_max_dir)
+	{
+		//cut at the end of the path, but never inside a UTF-8 sequence
+		size_t cut = index_progress_max_dir;
+		while (cut > 0 && (static_cast<unsigned char>(index_progress_dir[cut]) & 0xC0) == 0x80)
+			--cut;
+		index_progress_dir.resize(cut);
+	}
+}
+
+std::string IndexThread::getIndexProgress()
+{
+	std::lock_guard<std::mutex> lock(index_progress_mutex);
+	if (index_progress_phase.empty())
+		return std::string();
+	//t_*: ms since the start of indexing in total, listing directories, hashing files,
+	//client database lookups and throttling (PC in use or paused)
+	return "ph=" + index_progress_phase + "&n=" + convert(index_progress_files)
+		+ "&dir=" + EscapeParamString(index_progress_dir)
+		+ "&t_all=" + convert((BlameCounter::nowUs() - index_times_start.start) / 1000)
+		+ "&t_list=" + convert((index_list_wait.get() - index_times_start.list) / 1000)
+		+ "&t_hash=" + convert((index_hash_wait.get() - index_times_start.hash) / 1000)
+		+ "&t_db=" + convert((index_db_wait.get() - index_times_start.db) / 1000)
+		+ "&t_throttle=" + convert((index_throttle_wait.get() - index_times_start.throttle) / 1000);
+}
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -1609,6 +1670,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		index_exclude_dirs, index_include_dirs,
 		index_backup_dirs_optional);
 	file_id = 0;
+	index_files_seen = 0;
+	setIndexProgress("start", 0, std::string());
 
 	updateDirs();
 
@@ -2491,10 +2554,12 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 
 	if( IdleCheckerThread::getIdle()==false )
 	{
+		ScopedBlameTimer throttle_timer(index_throttle_wait);
 		Server->wait(nonidlesleeptime);
 	}
 	if(IdleCheckerThread::getPause())
 	{
+		ScopedBlameTimer throttle_timer(index_throttle_wait);
 		Server->wait(5000);
 	}
 
@@ -2502,6 +2567,8 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 	{
 		return false;
 	}
+
+	setIndexProgress("index", index_files_seen, named_path.empty() ? dir : named_path);
 
 	SFirstInfo first_info;
 	bool close_dir=false;
@@ -2657,6 +2724,11 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			}
 
 			has_include=true;
+
+			if ((++index_files_seen & 255) == 0)
+			{
+				setIndexProgress("index", index_files_seen, named_path.empty() ? dir : named_path);
+			}
 
 			std::string listname = files[i].name;
 
@@ -3325,7 +3397,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		std::string tpath = os_file_prefix(path);
 
 		bool has_error;
-		std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+		std::vector<SFile> os_files;
+		{
+			ScopedBlameTimer list_timer(index_list_wait);
+			os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+		}
 		filterEncryptedFiles(path, orig_path, os_files);
 		fs_files = convertToFileAndHash(orig_path, named_path, exclude_dirs, include_dirs, os_files, fn_filter);
 
@@ -3372,6 +3448,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if (calculate_filehashes_on_client)
 			{
 #endif
+				ScopedBlameTimer db_timer(index_db_wait);
 				has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files, target_generation);
 #ifndef _WIN32
 			}
@@ -3461,7 +3538,12 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 #ifdef _WIN32
 	else
 	{	
-		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files, target_generation) )
+		bool has_db_files;
+		{
+			ScopedBlameTimer db_timer(index_db_wait);
+			has_db_files = cd->getFiles(path_lower, get_db_tgroup(), fs_files, target_generation);
+		}
+		if( has_db_files )
 		{
 			++index_c_db;
 
@@ -3487,7 +3569,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			std::string tpath=os_file_prefix(path);
 
 			bool has_error;
-			std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+			std::vector<SFile> os_files;
+			{
+				ScopedBlameTimer list_timer(index_list_wait);
+				os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+			}
 			filterEncryptedFiles(path, orig_path, os_files);
 			fs_files=convertToFileAndHash(orig_path, named_path, exclude_dirs, include_dirs, os_files, fn_filter);
 			if(has_error)
@@ -5812,6 +5898,7 @@ std::string IndexThread::escapeListName( const std::string& listname )
 std::string IndexThread::getShaBinary(const std::string& fn)
 {
 	VSSLog("Hashing file \"" + fn + "\"", LL_DEBUG);
+	ScopedBlameTimer hash_timer(index_hash_wait);
 
 	if (sha_version == 256)
 	{

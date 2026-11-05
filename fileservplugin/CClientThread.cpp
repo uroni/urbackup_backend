@@ -334,6 +334,7 @@ int CClientThread::SendInt(const char *buf, size_t bsize, bool flush)
 	}
 	else
 	{
+		ScopedBlameTimer send_timer(FileServ::send_wait);
         return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT, flush)?bsize:SOCKET_ERROR);
 	}
 }
@@ -852,6 +853,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 						}
 						else if(rc==0)
 						{
+							//Next buffer not read yet: waiting for the disk
+							ScopedBlameTimer read_timer(FileServ::read_wait);
 							SleepEx(1,true);
 						}
 					}
@@ -936,6 +939,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					else if(rc==0)
 					{
+						ScopedBlameTimer read_timer(FileServ::read_wait);
 						SleepEx(1,true);
 					}
 				}
@@ -1229,7 +1233,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if (count > 0)
 						{
-							ssize_t rc = read(hFile, buf.data(), count);
+							ssize_t rc;
+							{
+								ScopedBlameTimer read_timer(FileServ::read_wait);
+								rc = read(hFile, buf.data(), count);
+							}
 
 							if (rc == 0 && rc < count && errno == 0)  //other process made the file smaller
 							{
@@ -1518,7 +1526,10 @@ int CClientThread::SendData()
 	SSendData* ldata=t_send[0];
 
 	_i32 ret;
-	ret=clientpipe->isWritable(CLIENT_TIMEOUT*1000)?1:0;
+	{
+		ScopedBlameTimer send_timer(FileServ::send_wait);
+		ret=clientpipe->isWritable(CLIENT_TIMEOUT*1000)?1:0;
+	}
 
 	if(ret < 1)
 	{
@@ -2328,6 +2339,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			
 		bool has_error = false;
 		
+		//Pipe files (metadata stream, scripts) block here until they produce data: not disk read time
 		_u32 rc = file->Read(foffset, &buf[0], static_cast<_u32>(count), &has_error);
 
 		if(rc==0 && curr_filesize==-1 && file->Size()!=-1)
