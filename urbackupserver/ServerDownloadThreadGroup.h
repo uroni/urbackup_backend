@@ -53,6 +53,19 @@ public:
 
 	bool join(int waitms);
 
+	struct SCurrentTransfer
+	{
+		std::string name;
+		int64 size;
+		int64 done;
+	};
+
+	//Files currently being loaded by the download threads
+	std::vector<SCurrentTransfer> getCurrentTransfers();
+
+	//Bytes received by the additional download threads (the first one uses the FileClient passed to the constructor)
+	int64 getExtraReceivedDataBytes();
+
 private:
 	ServerDownloadThread* getMinQueued();
 
@@ -64,6 +77,9 @@ private:
 		FileClient* fc;
 		FileClientChunked* fc_chunked;
 	};
+
+	FileClient* main_fc;
+	FileClientChunked* main_fc_chunked;
 
 	std::vector<ServerDlThread> dl_threads;
 	std::vector<THREADPOOL_TICKET> tickets;

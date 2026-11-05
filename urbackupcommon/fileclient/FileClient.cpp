@@ -55,6 +55,7 @@ namespace
 	const unsigned int DISCOVERY_TIMEOUT=1000; //1sec
 #endif
 
+	const int64 progress_log_intervall = 300000; //5min
 	const size_t maxQueuedFiles = 3000;
 	const size_t queuedFilesLow = 100;
 	const char* multicast_group = "ff12::f894:d:dd00:ef91";
@@ -97,7 +98,7 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	protocol_version(protocol_version), 
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
-	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
+	identity(identity), received_data_bytes(0), current_size(-1), current_done(0), queue_callback(NULL), dl_off(0),
 	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
 	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL), sparse_bytes(0),
 	reconnect_tries(50)
@@ -1021,7 +1022,13 @@ bool FileClient::Reconnect(void)
 		IScopedLock lock(mutex);
 		if (reconnect_tries < 50)
 			reconnect_tries = 50;
+
+		current_name = remotefn;
+		current_size = -1;
+		current_done = 0;
 	}
+
+	ScopedCurrentFile scoped_current_file(this);
 
 	if(!hashed && protocol_version>1)
 	{
@@ -1772,6 +1779,21 @@ _i64 FileClient::getReceivedDataBytes( bool with_sparse )
 	}
 }
 
+bool FileClient::getCurrentFile(std::string& name, int64& size, int64& done)
+{
+	IScopedLock lock(mutex);
+
+	if (current_name.empty())
+	{
+		return false;
+	}
+
+	name = current_name;
+	size = current_size;
+	done = current_done;
+	return true;
+}
+
 void FileClient::resetReceivedDataBytes(bool with_sparse)
 {
 	IScopedLock lock(mutex);
@@ -1927,11 +1949,24 @@ _u32 FileClient::fillQueue()
 	return ERR_SUCCESS;
 }
 
+void FileClient::clearCurrentFile()
+{
+	IScopedLock lock(mutex);
+	current_name.clear();
+}
+
 void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 received)
 {
+	if (filesize > 0)
+	{
+		IScopedLock lock(mutex);
+		current_size = filesize == static_cast<_u64>(LLONG_MAX) ? -1 : static_cast<int64>(filesize);
+		current_done = received;
+	}
+
 	int64 ct = Server->getTimeMS();
 	if(filesize>0 && (last_progress_log==0 ||
-		ct-last_progress_log>60000) )
+		ct-last_progress_log>progress_log_intervall) )
 	{
 		int64 new_transferred=getTransferredBytes();
 		if( last_transferred_bytes!=0 &&

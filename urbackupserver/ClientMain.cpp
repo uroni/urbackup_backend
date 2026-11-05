@@ -3754,11 +3754,11 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
 		}
-		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". "+convert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". "+convert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_INFO);
 	}
 	else
 	{
-		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_INFO);
 	}
 }
 

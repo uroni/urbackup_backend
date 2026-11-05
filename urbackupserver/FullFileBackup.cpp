@@ -310,11 +310,14 @@ bool FullFileBackup::doFileBackup()
 						}
 						else
 						{
-							int64 done_bytes = fc.getReceivedDataBytes(true) + linked_bytes;
+							int64 done_bytes = fc.getReceivedDataBytes(true) + server_download->getExtraReceivedDataBytes() + linked_bytes;
 							ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 							ServerStatus::setProcessPcDone(clientname, status_id,
 								(std::min)(100, (int)(((float)done_bytes) / ((float)files_size / 100.f) + 0.5f)));
+							logTransferProgress(ctime, done_bytes, files_size);
 						}
+
+						updateTransferDetails(*server_download);
 
 						ServerStatus::setProcessQueuesize(clientname, status_id,
 							(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
@@ -632,11 +635,14 @@ bool FullFileBackup::doFileBackup()
 		}
 		else
 		{
-			int64 done_bytes = fc.getReceivedDataBytes(true) + linked_bytes;
+			int64 done_bytes = fc.getReceivedDataBytes(true) + server_download->getExtraReceivedDataBytes() + linked_bytes;
 			ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 			ServerStatus::setProcessPcDone(clientname, status_id,
 				(std::min)(100,(int)(((float)done_bytes)/((float)files_size/100.f)+0.5f)));
+			logTransferProgress(Server->getTimeMS(), done_bytes, files_size);
 		}
+
+		updateTransferDetails(*server_download);
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,
 			(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
