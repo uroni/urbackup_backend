@@ -59,6 +59,7 @@ const clientFields: SettingField[] = [
     label: "Client name",
     kind: "text",
     mainClientOnly: true,
+    clientOnly: true,
   },
   {
     name: "silent_update",
@@ -81,6 +82,7 @@ const clientFields: SettingField[] = [
     label: "Additional virtual sub client names",
     kind: "mergeable",
     mainClientOnly: true,
+    clientOnly: true,
     description: (
       <>
         Names separated by "|", e.g. <code>db|mail</code>
