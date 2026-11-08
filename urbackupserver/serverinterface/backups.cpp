@@ -525,8 +525,8 @@ namespace backupaccess
 		{
 			if(valid_path_component(t_path[i]))
 			{
-				ret.rel_path+=UnescapeSQLString(t_path[i]);
-				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]));
+				ret.rel_path+=t_path[i];
+				ret.rel_metadata_path+=escape_metadata_fn(t_path[i]);
 				
 				std::string curr_full_dir = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?"":(os_file_sep()+ret.rel_path));
 				
@@ -1818,7 +1818,7 @@ ACTION_IMPL(backups)
 								restore_flags |= restore_flag_ignore_permissions;
 							}
 
-							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, CURRP["filter"],
+							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, UnescapeHTML(UnescapeSQLString(CURRP["filter"])),
 								path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string(),
 								std::vector< std::pair<std::string, std::string> >(), true, true, greplace(os_file_sep(), "/", path_info.rel_path), false,
 								restore_flags, ticket, tokens, path_info.backup_tokens, false))

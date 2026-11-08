@@ -1,0 +1,93 @@
+import {
+  Button,
+  Combobox,
+  ComboboxProps,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
+  useComboboxFilter,
+} from "@fluentui/react-components";
+import { useId, useState } from "react";
+
+import { urbackupServer } from "../../App";
+import { OsType, StatusClientItem } from "../../api/urbackupserver";
+
+export function DownloadClient({
+  clients,
+  os,
+  children,
+}: {
+  clients: StatusClientItem[];
+  os: OsType;
+  children: React.ReactNode;
+}) {
+  const id = useId();
+
+  const [open, setOpen] = useState(false);
+
+  const options = clients.map((client) => ({
+    children: client.name,
+    value: client.name,
+  }));
+
+  const comboId = useId();
+
+  const [query, setQuery] = useState<string>("");
+  const comboBoxChildren = useComboboxFilter(query, options, {
+    noOptionsMessage: `No results matched "${query}"`,
+  });
+
+  const onOptionSelect: ComboboxProps["onOptionSelect"] = (_, data) => {
+    const text = data.optionValue;
+    const selectedClient = clients.find((client) => client.name === text);
+
+    if (!selectedClient) {
+      return;
+    }
+
+    downloadClientFromId(selectedClient?.id, os);
+
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <Popover
+      trapFocus
+      positioning="above-start"
+      open={open}
+      onOpenChange={(_, data) => {
+        const state = data.open ?? false;
+        setOpen(state);
+
+        if (state === false) {
+          setQuery("");
+        }
+      }}
+    >
+      <PopoverTrigger disableButtonEnhancement>
+        <Button>{children}</Button>
+      </PopoverTrigger>
+
+      <PopoverSurface aria-labelledby={id}>
+        <div className="cluster gutter-s">
+          <label htmlFor={comboId}>Select client</label>
+          <Combobox
+            id={comboId}
+            defaultOpen
+            onOptionSelect={onOptionSelect}
+            onChange={(ev) => setQuery(ev.target.value)}
+            value={query}
+            inlinePopup
+          >
+            {comboBoxChildren}
+          </Combobox>
+        </div>
+      </PopoverSurface>
+    </Popover>
+  );
+}
+
+function downloadClientFromId(id: number, os: OsType) {
+  location.href = urbackupServer.downloadClientURL(id, undefined, os);
+}

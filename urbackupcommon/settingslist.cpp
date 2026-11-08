@@ -113,6 +113,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("allow_config_max_backups");
 	ret.push_back("client_rename_detection");
 	ret.push_back("max_running_jobs_per_client_group");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 
@@ -165,6 +166,7 @@ std::vector<std::string> getClientMergableSettingsList()
 	ret.push_back("image_letters");
 	ret.push_back("vss_select_components");
 	ret.push_back("archive");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 
@@ -207,6 +209,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("client_rename_detection");
 	ret.push_back("allow_all_clients_restore");
 	ret.push_back("max_running_jobs_per_client_group");
+	ret.push_back("ransomware_canary_paths");
 	return ret;
 }
 
@@ -234,6 +237,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("no_images");
 	ret.push_back("no_file_backups");
 	ret.push_back("autoshutdown");
+	ret.push_back("startup_cleanup");
 	ret.push_back("download_client");
 	ret.push_back("autoupdate_clients");
 	ret.push_back("max_sim_backups");

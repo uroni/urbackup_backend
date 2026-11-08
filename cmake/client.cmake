@@ -69,7 +69,7 @@ add_executable(urbackupclientbackend
 	urbackupclient/lin_tokens.cpp urbackupclient/common_tokens.cpp urbackupclient/FileMetadataDownloadThread.cpp
 	urbackupclient/RestoreFiles.cpp urbackupclient/RestoreDownloadThread.cpp urbackupclient/TokenCallback.cpp
 	urbackupclient/cmdline_preprocessor.cpp urbackupclient/ParallelHash.cpp urbackupclient/ClientHash.cpp
-	urbackupclient/SambaService.cpp urbackupclient/CachedFile.cpp)
+	urbackupclient/SambaService.cpp urbackupclient/CachedFile.cpp urbackupclient/RansomwareCanary.cpp)
 
 urbackup_setup_backend(urbackupclientbackend ${URBACKUP_CLIENT_CONFIG_DIR})
 urbackup_link_cryptopp(urbackupclientbackend)
@@ -84,9 +84,10 @@ endif()
 if(NOT URBACKUP_CLIENT_NOATIME)
 	target_compile_definitions(urbackupclientbackend PRIVATE URB_NO_NOATIME)
 endif()
-# The restore code uses C++11 (lambdas, std::thread). Apple clang defaults to C++98.
+# The restore code and ransomware canary use C++11 (lambdas, std::thread). Apple clang defaults to C++98.
 if(APPLE)
 	set_source_files_properties(urbackupclient/client_restore.cpp urbackupclient/client_restore_http.cpp
+		urbackupclient/RansomwareCanary.cpp
 		PROPERTIES COMPILE_OPTIONS "-std=c++14")
 endif()
 if(URBACKUP_CLIENT_RESTORE_HTTP)

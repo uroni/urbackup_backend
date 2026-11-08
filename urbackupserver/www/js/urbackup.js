@@ -110,6 +110,15 @@ function startup()
 	new getJSON("login", available_langs, try_anonymous_login);
 }
 
+function switch_to_www2()
+{
+	var d = new Date();
+	d.setTime(d.getTime() + 10*365*24*60*60*1000);
+	var path = location.pathname.substring(0, location.pathname.lastIndexOf("/")+1);
+	document.cookie="urbackup_www2=1; expires="+d.toUTCString()+"; path="+path;
+	window.location.href="www2/";
+}
+
 
 function refresh_page()
 {
@@ -168,6 +177,8 @@ function change_lang(l, refresh)
 	I('languages').innerHTML=c;
 	
 	window.curr_trans=window.translations[l];
+
+	I('switch_www2').innerHTML=trans("switch_to_www2");
 
 	if(refresh)
 	{
@@ -1752,15 +1763,29 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 	}
 }
 
-function downloadClientURL(clientid, authkey, os)
+function getSiteURL()
 {
 	var site_url = location.protocol+'//'+location.host+location.pathname;
+
+	if(site_url.endsWith("index.htm"))
+	{
+		site_url = site_url.slice(0, -9);
+	}
+	else if(site_url.endsWith("index.html"))
+	{
+		site_url = site_url.slice(0, -10);	
+	}
 	
 	if(site_url.substr(site_url.length-1)!="/")
 	{
 		site_url+="/";
 	}
 
+	return site_url;
+}
+
+function downloadClientURL(clientid, authkey, os)
+{
 	if(authkey)
 	{
 		authkey = "&authkey="+encodeURIComponent(authkey);
@@ -1771,7 +1796,7 @@ function downloadClientURL(clientid, authkey, os)
 	}
 	var ses = g.session;
 	g.session=null;
-	var ret = site_url + getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
+	var ret = getSiteURL() + getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
 	g.session = ses;
 	return ret;
 }
@@ -4355,13 +4380,15 @@ g.settings_list=[
 "image_compress_threads",
 "allow_config_max_backups",
 "client_rename_detection",
-"max_running_jobs_per_client_group"
+"max_running_jobs_per_client_group",
+"ransomware_canary_paths"
 ];
 g.general_settings_list=[
 "backupfolder",
 "no_images",
 "no_file_backups",
 "autoshutdown",
+"startup_cleanup",
 "download_client",
 "autoupdate_clients",
 "max_sim_backups",
@@ -4418,7 +4445,8 @@ g.mergable_settings_list=[
 "default_dirs",
 "image_letters",
 "vss_select_components",
-"archive"
+"archive",
+"ransomware_canary_paths"
 ];
 g.client_settings_list=[
 "update_freq_incr",
@@ -6137,16 +6165,7 @@ g.maximize_or_minimize = function(refresh)
 
 function getServerUrlPlaceholder()
 {
-	var site_url = (location.protocol == "http:" ? "ws:" : "wss:") + "//" + location.host + location.pathname;
-	
-	if(site_url.substr(site_url.length-1)!="/")
-	{
-		site_url+="/";
-	}
-
-	site_url+="socket";
-
-	return site_url;
+	return getSiteURL().replace(/^http/, "ws")+"socket";
 }
 
 function addNewClient1()
@@ -6541,14 +6560,7 @@ function linux_image_restore1(data)
 		alert("Error getting linux image restore information");
 	}
 
-	var site_url = location.protocol+'//'+location.host+location.pathname;
-	
-	if(site_url.substr(site_url.length-1)!="/")
-	{
-		site_url+="/";
-	}
-
-	data.linux_restore_url = site_url+"x?a=download_client&restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token);
+	data.linux_restore_url = getSiteURL()+"x?a=download_client&restore_image=1&os=linux&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token);
 	
 	var ndata=dustRender("restore_linux_img", data);
 	if(g.data_f!=ndata)

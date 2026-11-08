@@ -270,6 +270,7 @@
     <ClInclude Include="HTTPClient.h" />
     <ClInclude Include="HTTPFile.h" />
     <ClInclude Include="HTTPProxy.h" />
+    <ClInclude Include="HTTPRequestDone.h" />
     <ClInclude Include="HTTPService.h" />
     <ClInclude Include="HTTPSocket.h" />
     <ClInclude Include="IndexFiles.h" />

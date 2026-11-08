@@ -1,0 +1,52 @@
+{
+  "name": "urbackup-server-webinterface",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "messages:extract": "lingui extract",
+    "format": "pnpm exec prettier . --write",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@fluentui/react-charting": "^5.23.11",
+    "@fluentui/react-charts-preview": "^0.1.6",
+    "@fluentui/react-components": "^9.75.0",
+    "@fluentui/react-experiments": "^8.14.152",
+    "@fluentui/react-icons": "^2.0.345",
+    "@lingui/core": "^4.10.1",
+    "@lingui/react": "^4.10.1",
+    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-query-devtools": "^5.61.5",
+    "@types/crypto-js": "^4.2.2",
+    "crypto-js": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.0",
+    "urbackup-server-webinterface": "link:",
+    "valtio": "^1.13.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.2.0",
+    "@lingui/cli": "^4.10.1",
+    "@lingui/macro": "^4.10.1",
+    "@lingui/vite-plugin": "^4.10.1",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "babel-plugin-macros": "^3.1.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-lingui": "^0.3.0",
+    "prettier": "3.2.5",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^7.9.0",
+    "vite": "^5.4.21",
+    "vitest": "^4.0.15"
+  }
+}

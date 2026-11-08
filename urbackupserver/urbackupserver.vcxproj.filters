@@ -369,6 +369,9 @@
     <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\logout.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
     <ClCompile Include="serverinterface\status_check.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>

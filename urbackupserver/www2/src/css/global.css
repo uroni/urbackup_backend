@@ -1,0 +1,237 @@
+@import url("reset.css") layer(reset);
+
+:root {
+  /* FluentUI Spacing - https://react.fluentui.dev/?path=/docs/theme-spacing--docs */
+  --spacingXXS: 2px;
+  --spacingXS: 4px;
+  --spacingSNudge: 6px;
+  --spacingS: 8px;
+  --spacingMNudge: 10px;
+  --spacingM: 12px;
+  --spacingL: 16px;
+  --spacingXL: 20px;
+  --spacingXXL: 24px;
+  --spacingXXXL: 32px;
+
+  /* App variables */
+  --gutter: var(--spacingM);
+
+  /* 
+  tokens color variables to apply to charting callout components
+  rendered out of FluentProvider 
+  */
+  --colorNeutralForeground1: #242424;
+  --colorNeutralCardBackground: #fafafa;
+
+  --colorTooltipBackground: var(--colorNeutralCardBackground);
+  --colorTooltipForeground: var(--colorNeutralForeground1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralCardBackground: #333333;
+  }
+}
+
+@layer base {
+  html,
+  body {
+    overflow: hidden;
+  }
+
+  code {
+    padding: var(--spacingXXS) var(--spacingXS);
+    display: inline-block;
+    background-color: var(--colorNeutralBackgroundAlpha);
+    border-radius: var(--spacingXXS);
+  }
+}
+
+@layer composition {
+  /* 
+  Based on https://github.com/Set-Creative-Studio/cube-boilerplate/tree/main/src/css/compositions 
+  */
+
+  /* 
+  FLOW COMPOSITION 
+  Like the Every Layout stack: https://every-layout.dev/layouts/stack/
+  Info about this implementation: https://piccalil.li/quick-tip/flow-utility/ 
+  */
+  .flow > * + * {
+    margin-top: var(--flow-space, 1em);
+  }
+
+  /*
+  CLUSTER
+  More info: https://every-layout.dev/layouts/cluster/
+  A layout that lets you distribute items with consitent
+  spacing, regardless of their size
+
+  CUSTOM PROPERTIES AND CONFIGURATION
+  --gutter: This defines the space
+  between each item.
+
+  --cluster-horizontal-alignment (flex-start) How items should align
+  horizontally. Can be any acceptable flexbox aligmnent value.
+
+  --cluster-vertical-alignment How items should align vertically.
+  Can be any acceptable flexbox alignment value.
+  */
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gutter);
+    justify-content: var(--cluster-horizontal-alignment, flex-start);
+    align-items: var(--cluster-vertical-alignment, center);
+  }
+
+  .cluster[data-justify-content="space-between"] {
+    --cluster-horizontal-alignment: space-between;
+  }
+
+  /*
+  REPEL
+  A little layout that pushes items away from each other where
+  there is space in the viewport and stacks on small viewports
+
+  CUSTOM PROPERTIES AND CONFIGURATION
+  --gutter: This defines the space
+  between each item.
+
+  --repel-vertical-alignment How items should align vertically.
+  Can be any acceptable flexbox alignment value.
+  */
+  .repel {
+    display: flex;
+    flex-wrap: var(--repel-wrap, wrap);
+    justify-content: space-between;
+    align-items: var(--repel-vertical-alignment, center);
+    gap: var(--gutter);
+  }
+
+  .centered {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+@layer blocks {
+  .icon {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .heading-breadcrumbs {
+    --_spacing: 7px;
+  }
+
+  .heading-breadcrumbs:has(nav) {
+    --_negative-spacing: calc(-1 * var(--_spacing));
+
+    margin-inline-start: var(--_negative-spacing);
+    margin-block-start: var(--_negative-spacing);
+  }
+
+  .heading-breadcrumbs:not(:has(nav)) {
+    padding-block-end: var(--_spacing);
+  }
+}
+
+@layer utilities {
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  /* Spacing */
+  .flow-s {
+    --flow-space: var(--spacingS);
+  }
+
+  .flow-xs {
+    --flow-space: var(--spacingXS);
+  }
+
+  .flow-xl {
+    --flow-space: var(--spacingXL);
+  }
+
+  .gutter-s {
+    --gutter: var(--spacingS);
+  }
+
+  .gutter-xs {
+    --gutter: var(--spacingXS);
+  }
+
+  /* Colors */
+  .fg-color-info {
+    color: var(--colorBrandForeground1);
+  }
+
+  .fg-color-error {
+    color: var(--colorStatusDangerForeground1);
+  }
+
+  .fg-color-success {
+    color: var(--colorStatusSuccessForeground1);
+  }
+
+  .fg-color-warning {
+    color: var(--colorStatusWarningForeground1);
+  }
+}
+
+/* Table */
+.table-wrapper {
+  --flow-space: 1.5em;
+}
+
+[role="gridcell"]:has(a) {
+  align-items: normal;
+}
+
+[role="gridcell"] a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* Chart */
+.donut-chart {
+  transform: translateY(-20px);
+}
+
+.donut-chart__legend {
+  transform: translateY(-30px);
+}
+
+.donut-chart__legend-rect {
+  border-radius: var(--borderRadiusSmall);
+}
+
+/* 
+TODO: Review after @fluentui/react-charts-preview is updated,
+if there's another way to target the following styles without FUI classes.
+*/
+.donut-chart__legend .fui-legend__resizableArea {
+  justify-content: center;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.donut-chart__legend .fui-legend__resizableArea > * {
+  margin: 0 !important;
+}

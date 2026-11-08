@@ -23,3 +23,23 @@ margin-bottom: 0px;
 .move_left {
 	margin-left: -10pt;
 }
+
+.navbar .navbar-nav > li > a.switch-www2 {
+	margin: 12px 45px 0 0;
+	padding: 4px 12px;
+	font-size: 12px;
+	line-height: 18px;
+	color: #bbb;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 13px;
+	transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+.navbar .navbar-nav > li > a.switch-www2:hover, .navbar .navbar-nav > li > a.switch-www2:focus {
+	color: #fff;
+	border-color: rgba(255, 255, 255, 0.6);
+	background-color: rgba(255, 255, 255, 0.08);
+}
+.navbar .navbar-nav > li > a.switch-www2 .glyphicon {
+	font-size: 10px;
+	color: #f0ad4e;
+}

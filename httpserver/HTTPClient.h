@@ -3,6 +3,7 @@
 #include "../Interface/Types.h"
 #include "../Interface/CustomClient.h"
 #include "../Interface/Mutex.h"
+#include "HTTPRequestDone.h"
 
 class IPipe;
 class IThread;
@@ -64,6 +65,8 @@ private:
 
 	IObject *request_handler;
 	THREADPOOL_TICKET request_ticket;
+	CHTTPRequestDone request_done;
+	const IClientWakeup* wakeup;
 	POSTFILE_KEY pfilekey;
 	
 

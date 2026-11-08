@@ -59,6 +59,9 @@
     <ClInclude Include="HTTPProxy.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="HTTPRequestDone.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="HTTPService.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>

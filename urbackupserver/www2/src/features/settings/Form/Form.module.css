@@ -1,0 +1,51 @@
+.container {
+  --border-color: var(--colorNeutralStroke2);
+  --flow-space: 2em;
+
+  width: var(--container-width, min(74ch, 100%));
+  margin: 0 auto;
+  padding-block-end: --spacing;
+}
+
+.card {
+  display: "flex";
+  flex-direction: "column";
+  background: var(--colorNeutralCardBackground);
+  padding: var(--spacingL);
+  border-radius: var(--borderRadiusLarge);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border-color);
+}
+
+.form > :has(label) {
+  padding-block: 0.5em;
+}
+
+.form > :first-child:has(label) {
+  padding-block-start: 0em;
+}
+
+.form > :last-child:has(label) {
+  padding-block-end: 0em;
+}
+
+.form > :has(label):not(:last-of-type) {
+  border-block-end: 1px solid var(--border-color);
+}
+
+.form > [type="submit"] {
+  display: block;
+  margin-block-start: var(--spacingXL);
+}
+
+.form > :has([type="checkbox"]) {
+  --margin-inline-start: -8px;
+  /* Fix alignment with the text control labels */
+  margin-inline-start: var(--margin-inline-start);
+}
+
+input[readonly] {
+  background-color: var(--colorNeutralCardBackground);
+  color: var(--colorNeutralForeground2);
+}

@@ -8,6 +8,10 @@
 	<meta http-equiv="cache-control" content="no-cache" />
 	
 	<title>UrBackup - Keeps your data safe</title>
+
+	<script language="JavaScript">
+		if(/(?:^|;\s*)urbackup_www2=1(?:;|$)/.test(document.cookie)) window.location.replace("www2/");
+	</script>
 	
 	<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
 	<link rel="stylesheet" type="text/css" href="css/bootstrap-theme.min.css" />
@@ -74,6 +78,9 @@
 				</div>
 				<div class="collapse navbar-collapse" id="navbar-collapse-1">
 					<ul class="nav navbar-nav" id="main_nav">
+					</ul>
+					<ul class="nav navbar-nav navbar-right">
+						<li><a href="#" class="switch-www2" onClick="switch_to_www2(); return false;"><span class="glyphicon glyphicon-star" aria-hidden="true"></span> <span id="switch_www2">Try the new interface</span></a></li>
 					</ul>
 				</div>
 			</div>

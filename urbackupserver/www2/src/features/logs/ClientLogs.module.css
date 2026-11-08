@@ -1,0 +1,15 @@
+.root {
+  display: grid;
+  gap: var(--spacingXXL);
+  grid-template-columns: 1fr 320px;
+  align-items: start;
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  background: var(--colorNeutralCardBackground);
+  padding: var(--spacingL);
+  border-radius: var(--borderRadiusLarge);
+  height: min-content;
+}

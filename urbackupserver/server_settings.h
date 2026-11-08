@@ -57,6 +57,7 @@ struct SSettings
 	bool no_file_backups;
 	bool allow_overwrite;
 	bool autoshutdown;
+	bool startup_cleanup;
 	int startup_backup_delay;
 	bool download_client;
 	bool autoupdate_clients;
@@ -157,6 +158,7 @@ struct SSettings
 	bool allow_config_max_backups;
 	bool client_rename_detection;
 	int max_running_jobs_per_client_group;
+	std::string ransomware_canary_paths;
 	int group_id;
 };
 

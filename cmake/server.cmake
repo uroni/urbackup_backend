@@ -74,7 +74,7 @@ add_executable(urbackupsrv
 	urbackupserver/serverinterface/restore_prepare_wait.cpp urbackupserver/copy_storage.cpp
 	urbackupserver/ImageMount.cpp urbackupserver/DataplanDb.cpp urbackupserver/PhashLoad.cpp
 	urbackupserver/serverinterface/scripts.cpp urbackupserver/Alerts.cpp urbackupserver/Mailer.cpp
-	urbackupserver/LogReport.cpp urbackupserver/serverinterface/status_check.cpp urbackupserver/apps/blockalign.cpp
+	urbackupserver/LogReport.cpp urbackupserver/serverinterface/status_check.cpp urbackupserver/serverinterface/logout.cpp urbackupserver/apps/blockalign.cpp
 	urbackupserver/serverinterface/restore_image.cpp urbackupserver/WebSocketConnector.cpp
 	luaplugin/dllmain.cpp luaplugin/LuaInterpreter.cpp luaplugin/pluginmgr.cpp)
 
@@ -180,6 +180,9 @@ install(FILES ${_www_css} DESTINATION ${_share}/urbackup/www/css)
 install(FILES ${_www_images} DESTINATION ${_share}/urbackup/www/images)
 install(DIRECTORY ${_www}/swf/ DESTINATION ${_share}/urbackup/www/swf)
 install(DIRECTORY ${_www}/fonts/ DESTINATION ${_share}/urbackup/www/fonts)
+if(EXISTS ${CMAKE_SOURCE_DIR}/${_www}/www2/index.html)
+	install(DIRECTORY ${_www}/www2/ DESTINATION ${_share}/urbackup/www/www2)
+endif()
 install(FILES urbackupserver/urbackup_ecdsa409k1.pub server-license.txt DESTINATION ${_share}/urbackup)
 
 if(NOT URBACKUP_PACKAGING)

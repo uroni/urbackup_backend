@@ -28,10 +28,11 @@
 
 #define FP_READ_SIZE 8192
 
-CHTTPFile::CHTTPFile(std::string pFilename, IPipe *pOutput)
+CHTTPFile::CHTTPFile(std::string pFilename, IPipe *pOutput, CHTTPRequestDone* pRequestDone)
 {
 	filename=pFilename;
 	output=pOutput;
+	request_done=pRequestDone;
 }
 
 std::string CHTTPFile::getContentType(void)
@@ -42,6 +43,8 @@ std::string CHTTPFile::getContentType(void)
 
 void CHTTPFile::operator ()(void)
 {
+	CHTTPRequestDone::Guard done_guard(request_done);
+
 	Server->Log("Sending file \""+filename+"\"", LL_DEBUG);
 	IFile *fp=Server->openFile(filename);
 

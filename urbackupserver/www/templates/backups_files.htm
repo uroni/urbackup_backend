@@ -77,7 +77,7 @@
 					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{access}</td>
 					<td style="white-space: nowrap;">
 						{?list_items}<a class="btn btn-default" href="#" onClick="tabMouseClick{proc}Access({clientid},{backupid},'{path|j}'); return false">{tList}</a>{/list_items}
-						{?can_restore}<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}'); return false">{tRestore}</a>{/can_restore}</td>
+						{?can_restore}<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|j}'); return false">{tRestore}</a>{/can_restore}</td>
 					<td>
 				</tr>
 			{/files}
