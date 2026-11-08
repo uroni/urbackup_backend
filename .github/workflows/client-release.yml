@@ -297,7 +297,7 @@ jobs:
 
   macos:
     needs: source
-    runs-on: macos-14
+    runs-on: macos-15
     environment: build
     env:
       VERSION: ${{ needs.source.outputs.version }}

@@ -127,7 +127,7 @@ jobs:
 
   # Only the client is supported on macOS
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     environment: build
     env:
       # Without the secret (e.g. act or pull requests from forks), vcpkg uses its default local binary cache
