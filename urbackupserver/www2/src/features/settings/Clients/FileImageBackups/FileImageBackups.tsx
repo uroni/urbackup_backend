@@ -50,6 +50,7 @@ import {
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
 } from "./backupSummaryModel";
+import { TIME_SPAN_PATTERN } from "../timeSpan";
 import { SettingsFormCard, type SettingField } from "../ClientSettingsTab";
 
 const checkboxFieldInputs = [
@@ -323,6 +324,12 @@ function describeFileBackups(shown: ShownValues) {
   });
 }
 
+const INTERVAL_DESCRIPTION = (
+  <>
+    Can depend on the time, e.g. <code>1@Mon-Fri/8-17;7</code>
+  </>
+);
+
 const imageInterval = (
   name: string,
   label: string,
@@ -332,7 +339,8 @@ const imageInterval = (
   label,
   checkboxLabel,
   kind: "text",
-  pattern: /^-?\d*\.?\d*$/,
+  pattern: TIME_SPAN_PATTERN,
+  description: INTERVAL_DESCRIPTION,
   inputProps: { contentAfter: "days", "data-field-width": "50%" },
   transformer: { ui: toDaysFromSeconds, api: toSecondsFromDays },
 });

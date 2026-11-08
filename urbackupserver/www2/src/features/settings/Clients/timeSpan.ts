@@ -48,3 +48,27 @@ export const KBIT_PER_S = 1024 / 8;
 // Same check as the old web interface
 export const SPEED_PATTERN =
   /^-$|^([\d.]*[%]?(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
+
+/**
+ * Applies `f` to each value of a time span setting like "5@1-5/8-17;24"
+ */
+export function mapTimeSpan(ts: string, f: (v: number) => number | string) {
+  return ts
+    .split(";")
+    .map((timespan) => {
+      if (timespan === "") {
+        return timespan;
+      }
+
+      const idx = timespan.indexOf("@");
+      const window = idx === -1 ? "" : timespan.substring(idx);
+      const value = idx === -1 ? timespan : timespan.substring(0, idx);
+
+      return `${f(parseFloat(value))}${window}`;
+    })
+    .join(";");
+}
+
+// Same check as the old web interface, negative values disable the backups
+export const TIME_SPAN_PATTERN =
+  /^([-]?[\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
