@@ -1,6 +1,6 @@
 import { Alert, Button, Select } from "antd";
-import { useEffect, useState } from "react";
-import { serverTimezoneDef, useMountEffect } from "./App";
+import { useEffect, useRef, useState } from "react";
+import { browserTimezones, serverTimezoneDef, useMountEffect } from "./App";
 import { WizardComponent, WizardState } from "./WizardState";
 import produce from "immer";
 
@@ -15,6 +15,9 @@ function SelectTimezone(props: WizardComponent) {
     const [timezoneArea, setTimezoneArea] = useState(props.props.timezoneArea);
     const [timezoneCity, setTimezoneCity] = useState(props.props.timezoneCity);
     const [loadedArea, setLoadedArea] = useState("");
+    const [localTzs, setLocalTzs] = useState<string[]>([]);
+    // The server time zone lookup can take a while; it must not override a selection made in the meantime
+    const userSelected = useRef(false);
 
     useMountEffect( () => {
         (async () => {
@@ -35,6 +38,14 @@ function SelectTimezone(props: WizardComponent) {
             }
 
             let areas : string[] = jdata["areas"];
+            if(areas.length===0) {
+                // No timedatectl (Windows PE): list the browser's time zones, the selection is then only used to show the image times
+                const tzs = browserTimezones();
+                setLocalTzs(tzs);
+                areas = tzs.map(tz => tz.split("/")[0]).filter((area, idx, arr) => arr.indexOf(area)===idx);
+                if(areas.indexOf("UTC")===-1)
+                    areas.push("UTC");
+            }
             areas.unshift(serverTimezoneDef);
 
             setTzAreas(areas);
@@ -58,7 +69,7 @@ function SelectTimezone(props: WizardComponent) {
                     if(sd.length>1)
                     {
                         tzArea = sd[0];
-                        tzCity = sd[1];
+                        tzCity = sd.slice(1).join("/");
                     }
                     else
                     {
@@ -66,7 +77,7 @@ function SelectTimezone(props: WizardComponent) {
                     }
                 }
 
-                if(areas.indexOf(tzArea)!==-1)
+                if(!userSelected.current && areas.indexOf(tzArea)!==-1)
                 {
                     setTimezoneCity(tzCity);
                     setTimezoneArea(tzArea);
@@ -79,6 +90,9 @@ function SelectTimezone(props: WizardComponent) {
 
     useEffect(() => {
         (async () => {
+            if(isLoadingAreas)
+                return;
+
             if(timezoneArea===loadedArea)
             {
                 setIsLoadingCities(false);
@@ -90,6 +104,17 @@ function SelectTimezone(props: WizardComponent) {
                 setTzCities([]);
                 setIsLoadingCities(false);
                 setLoadedArea(timezoneArea);
+                return;
+            }
+
+            if(localTzs.length>0)
+            {
+                const cities = localTzs.filter(tz => tz.startsWith(timezoneArea+"/")).map(tz => tz.substring(timezoneArea.length+1));
+                setTzCities(cities);
+                if(cities.indexOf(timezoneCity)===-1)
+                    setTimezoneCity(cities.length>0 && timezoneCity.length===0 ? cities[0] : "");
+                setLoadedArea(timezoneArea);
+                setIsLoadingCities(false);
                 return;
             }
 
@@ -132,14 +157,16 @@ function SelectTimezone(props: WizardComponent) {
             setIsLoadingCities(false);
             setLoadedArea(timezoneArea);
         })();
-    }, [timezoneArea, timezoneCity, loadedArea]);
+    }, [timezoneArea, timezoneCity, loadedArea, localTzs, isLoadingAreas]);
 
     const onAreaSelectChange = (value: string) => {
+        userSelected.current = true;
         setTimezoneArea(value);
         setTimezoneCity("");
     }
 
     const onCitySelectChange = (value: string) => {
+        userSelected.current = true;
         setTimezoneCity(value);
     }
 

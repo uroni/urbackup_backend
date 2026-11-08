@@ -34,6 +34,20 @@ export const toIsoDateTime = (d: Date) => {
   return dstr+" "+tstr;
 }
 
+// Uses the browser's time zone data, so it also works where the OS time zone cannot be set (Windows PE)
+export const toIsoDateTimeInZone = (d: Date, tz: string) => {
+  let parts: {[key: string]: string} = {};
+  for (const p of new Intl.DateTimeFormat("en-US", {timeZone: tz, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"}).formatToParts(d))
+    parts[p.type] = p.value;
+  return parts.year+"-"+parts.month+"-"+parts.day+" "+parts.hour+":"+parts.minute;
+}
+
+export const browserTimezones = (): string[] => {
+  const supportedValuesOf = (Intl as any).supportedValuesOf;
+  return supportedValuesOf ? supportedValuesOf("timeZone") : [];
+}
+
 function CurrentContent(args: WizardComponent) {
   switch(args.props.state)
   {
