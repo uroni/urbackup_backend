@@ -91,7 +91,7 @@ function ClientSettingsForm({
   clientId,
   clientName,
   title,
-  fields,
+  fields: allFields,
 }: {
   clientId: number;
   clientName: string;
@@ -99,6 +99,10 @@ function ClientSettingsForm({
   fields: SettingField[];
 }) {
   const { settings, handleSubmit } = useFileBackups(clientId);
+  // The dev server has settings 2.6.x doesn't, e.g. backup_dest_url
+  const fields = allFields.filter(
+    (f) => f.kind === "custom" || f.name in settings,
+  );
 
   const shownFields = fields.filter(
     (f) => !f.mainClientOnly || settings.main_client !== false,
