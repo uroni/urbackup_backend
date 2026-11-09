@@ -66,6 +66,22 @@ bool do_task_simple(int task, const std::string& dev)
     return true;
 }
 
+bool do_resume_dev(const std::string& dev, uint32_t cookie)
+{
+    struct dm_task* dmt;
+    if (!(dmt = dm_task_create(DM_DEVICE_RESUME)))
+        return false;
+
+    // Without a cookie libdevmapper sets DM_UDEV_DISABLE_DM_RULES_FLAG
+    // on the uevent, so udev drops the /dev/mapper/<name> symlink
+    bool ret = dm_task_set_name(dmt, strip_mapper(dev).c_str())
+        && dm_task_set_cookie(dmt, &cookie, 0)
+        && dm_task_run(dmt);
+
+    dm_task_destroy(dmt);
+    return ret;
+}
+
 bool do_create_dm_dev(uint64_t start, uint64_t size, const std::string& ttype, const std::string& params, bool readonly, const std::string& dev, uint32_t cookie)
 {
     struct dm_task* dmt;
@@ -255,7 +271,7 @@ struct DMResumeDev
 
     ~DMResumeDev()
     {
-        if (!do_task_simple(DM_DEVICE_RESUME, dev))
+        if (!do_resume_dev(dev, cookie))
         {
             std::cerr << "Error resuming dev " << dev << std::endl;
         }
