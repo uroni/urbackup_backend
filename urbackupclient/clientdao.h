@@ -65,6 +65,7 @@ struct SBackupDir
 	bool symlinked_confirmed;
 	EBackupDirServerDefault server_default;
 	bool reset_keep;
+	int facet;
 };
 
 struct SShadowCopy
@@ -199,7 +200,7 @@ public:
 	void removeGroupMembership(int64 uid);
 	void updateGroupMembership(int64 uid, const std::string& accountname);
 	std::vector<int> getGroupMembership(int uid);
-	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
+	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked, int facet);
 	void delBackupDir(int64 id);
 	void setResetKeep(int val, int64 id);
 	void resetHardlink(const std::string& vol, int64 frn_high, int64 frn_low);
