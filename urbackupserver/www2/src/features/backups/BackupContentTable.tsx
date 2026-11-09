@@ -10,12 +10,15 @@ import {
   createTableColumn,
   Button,
   TableColumnId,
+  MessageBar,
+  MessageBarBody,
 } from "@fluentui/react-components";
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Document20Filled, Folder20Filled } from "@fluentui/react-icons";
 
-import type { File } from "../../api/urbackupserver";
+import { BackupsAccessError, type File } from "../../api/urbackupserver";
 import { getCellFocusMode } from "../../utils/table";
 import { format_size, formatDatetime } from "../../utils/format";
 import { urbackupServer } from "../../App";
@@ -133,6 +136,62 @@ export function BackupContentTable() {
 
   const { clientname, backuptime, files } = data;
 
+  const [restoreMessage, setRestoreMessage] = useState<{
+    intent: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const folderPath = path ?? "/";
+
+  // Restores the folder, or only its file or folder `name`
+  const restore = async (name?: string) => {
+    if (
+      data.server_confirms_restore &&
+      !window.confirm(
+        "Are you sure you want to restore the selected files? Existing files will be overwritten. Files created within the selected folder since the backup will be deleted. When in doubt please cancel and run a file backup before proceeding.",
+      )
+    ) {
+      return;
+    }
+
+    setRestoreMessage(null);
+
+    try {
+      await urbackupServer.restoreFiles(
+        Number(clientId),
+        Number(backupId),
+        folderPath,
+        name,
+      );
+      setRestoreMessage({
+        intent: "success",
+        text: `Started restoring ${name ?? "the folder"} to ${clientname}. The restore shows in the activities.`,
+      });
+    } catch (e) {
+      setRestoreMessage({
+        intent: "error",
+        text:
+          e instanceof BackupsAccessError && e.message === "client_not_online"
+            ? `Restoring failed: ${clientname} is not online.`
+            : "Restoring failed. See the server log for details.",
+      });
+    }
+  };
+
+  const tableColumns = columns.map((c) =>
+    c.columnId === "actions" && data.can_restore
+      ? {
+          ...c,
+          renderCell: (item: File) => (
+            <div className="cluster gutter-s">
+              {c.renderCell(item)}
+              <Button onClick={() => restore(item.name)}>Restore</Button>
+            </div>
+          ),
+        }
+      : c,
+  );
+
   const breadcrumbItems = makeBackupsBreadcrumbs({
     clientId: Number(clientId),
     backupId: Number(backupId),
@@ -168,22 +227,31 @@ export function BackupContentTable() {
     <TableWrapper>
       <div className="repel heading-breadcrumbs">
         <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
-        <Button
-          appearance="primary"
-          onClick={() => {
-            const folderPath = path ?? "/";
-            if (folderPath) {
-              location.href = urbackupServer.downloadZipURL(
-                Number(clientId),
-                Number(backupId),
-                folderPath,
-              );
-            }
-          }}
-        >
-          Download Folder as ZIP
-        </Button>
+        <div className="cluster gutter-s">
+          {data.can_restore && (
+            <Button onClick={() => restore()}>Restore folder to client</Button>
+          )}
+          <Button
+            appearance="primary"
+            onClick={() => {
+              if (folderPath) {
+                location.href = urbackupServer.downloadZipURL(
+                  Number(clientId),
+                  Number(backupId),
+                  folderPath,
+                );
+              }
+            }}
+          >
+            Download Folder as ZIP
+          </Button>
+        </div>
       </div>
+      {restoreMessage && (
+        <MessageBar intent={restoreMessage.intent}>
+          <MessageBarBody>{restoreMessage.text}</MessageBarBody>
+        </MessageBar>
+      )}
       <div className="cluster">
         <SearchBox onSearch={setSearch} />
         <PaginationItemsPerPageSelector
@@ -196,7 +264,7 @@ export function BackupContentTable() {
           <DataGrid
             items={pageData[page]}
             getRowId={(item) => item.id}
-            columns={columns}
+            columns={tableColumns}
           >
             <DataGridHeader>
               <DataGridRow>
