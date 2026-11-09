@@ -1484,7 +1484,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	if(logerr)
 		ServerLogger::Log(curr_logid, "Timeout: "+errmsg, max_loglevel);
 	else
-		Server->Log("Timeout: "+errmsg, max_loglevel);
+		Server->Log("Timeout: "+errmsg+" (client \""+clientname+"\")", max_loglevel);
 
 	return "";
 }
@@ -1590,7 +1590,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 				if (logerr)
 					ServerLogger::Log(curr_logid, errmsg, max_loglevel);
 				else
-					Server->Log(errmsg, max_loglevel);
+					Server->Log(errmsg+" (client \""+clientname+"\")", max_loglevel);
 
 				if(retok_err!=NULL)
 					*retok_err=true;
@@ -1615,7 +1615,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 		if(logerr)
 			ServerLogger::Log(curr_logid, reason+errmsg, max_loglevel);
 		else
-			Server->Log(reason +errmsg, max_loglevel);
+			Server->Log(reason +errmsg+" (client \""+clientname+"\")", max_loglevel);
 	}
 
 	if (conn!=NULL && (ok || herr) )
