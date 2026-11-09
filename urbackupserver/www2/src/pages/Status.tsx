@@ -27,6 +27,7 @@ import {
   StatusMenuAction,
 } from "../features/status";
 import { useStatusClientActions } from "../features/status/useStatusClientActions";
+import { StatusWarnings } from "../features/status/StatusWarnings";
 import { formatDatetime } from "../utils/format";
 import { TableWrapper } from "../components/TableWrapper";
 import {
@@ -158,6 +159,7 @@ const Status = () => {
       <Suspense fallback={<Spinner />}>
         <TableWrapper className="centered">
           <h3>Status page</h3>
+          <StatusWarnings status={statusResult.data} />
           <div className="cluster">
             <SearchBox onSearch={setSearch} />
             <PaginationItemsPerPageSelector
