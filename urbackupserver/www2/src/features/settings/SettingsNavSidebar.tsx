@@ -14,21 +14,38 @@ import {
   ArrowLeftRegular,
   BoxRegular,
   DesktopRegular,
+  GlobeRegular,
+  HomeRegular,
   LaptopRegular,
   MailRegular,
   PeopleTeamRegular,
   PersonRegular,
   ServerRegular,
+  ShieldRegular,
   WrenchRegular,
 } from "@fluentui/react-icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useSettings } from "./useSettings";
 import { type TabItem } from "./useSettingsTabs";
 import { SwitchToClassic } from "../../components/SwitchToClassic";
 
 const BACK_TO_APP = "__back";
 
 export const SettingsNavSidebar = () => {
+  const { navitems } = useSettings();
+
+  // Like the client tabs, the Internet settings only for users that may
+  // change them
+  const tabs = SETTINGS_TABS.filter(
+    (t) => t.value !== "change-password" || !navitems.disable_change_pw,
+  ).map((t) => ({
+    ...t,
+    children: t.children?.filter(
+      (c) => c.value !== "internet-active" || navitems.internet,
+    ),
+  }));
+
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -54,7 +71,7 @@ export const SettingsNavSidebar = () => {
           Back to app
         </NavItem>
         <NavDivider />
-        <SettingsItems tabs={SETTINGS_TABS} />
+        <SettingsItems tabs={tabs} />
       </NavDrawerBody>
       <NavDrawerFooter>
         <SwitchToClassic />
@@ -147,6 +164,10 @@ const SETTINGS_TABS: TabItem[] = [
     icon: <DesktopRegular />,
   },
   {
+    value: "change-password",
+    title: "Change password",
+  },
+  {
     value: "general",
     title: "General",
     children: [
@@ -154,6 +175,11 @@ const SETTINGS_TABS: TabItem[] = [
         value: "backups",
         title: "Backups",
         icon: <ArchiveRegular />,
+      },
+      {
+        value: "permissions",
+        title: "Permissions",
+        icon: <ShieldRegular />,
       },
       {
         value: "client",
@@ -169,6 +195,16 @@ const SETTINGS_TABS: TabItem[] = [
         value: "alerts",
         title: "Alerts",
         icon: <AlertRegular />,
+      },
+      {
+        value: "local-passive",
+        title: "Local/Passive",
+        icon: <HomeRegular />,
+      },
+      {
+        value: "internet-active",
+        title: "Internet/Active",
+        icon: <GlobeRegular />,
       },
       {
         value: "advanced",
