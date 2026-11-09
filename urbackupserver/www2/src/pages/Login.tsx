@@ -217,7 +217,8 @@ const Login = () => {
             validationMessage={usernameValidationMessage}
           >
             <Input
-              id="username"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => {
                 setUsername(e.target.value);
@@ -230,7 +231,8 @@ const Login = () => {
             validationMessage={passwordValidationMessage}
           >
             <Input
-              id="password"
+              name="password"
+              autoComplete="current-password"
               type="password"
               value={password}
               onChange={(e) => {
