@@ -85,6 +85,16 @@ ACTION_IMPL(logs)
 		if(clientid.empty())
 		{
 			ret.set("all_clients", JSON::Value(true));
+
+			db_results res_cleanup=db->Read("SELECT id FROM logs WHERE clientid IS NULL LIMIT 1");
+			if(!res_cleanup.empty())
+			{
+				JSON::Object obj;
+				obj.set("id", 0);
+				obj.set("name", "");
+				obj.set("cleanup", true);
+				clients.add(obj);
+			}
 		}
 		ret.set("clients", clients);
 		ret.set("has_user", session->id!=SESSION_ID_TOKEN_AUTH && session->id!=SESSION_ID_ADMIN);
@@ -123,11 +133,18 @@ ACTION_IMPL(logs)
 				bed="(l.warnings>0 OR l.errors>0)";
 			}
 			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, l.errors AS errors, l.warnings AS warnings, "
-				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed, l.restore AS restore FROM logs l INNER JOIN clients c ON l.clientid=c.id";
+				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed, l.restore AS restore, l.clientid IS NULL AS cleanup "
+				"FROM logs l LEFT JOIN clients c ON l.clientid=c.id";
 
 			if(!v_filter.empty())
 			{
-				qstr+=" WHERE "+backupaccess::constructFilter(v_filter, "l.clientid");
+				std::string client_filter = backupaccess::constructFilter(v_filter, "l.clientid");
+				if(clientid.empty()
+					&& std::find(v_filter.begin(), v_filter.end(), 0)!=v_filter.end())
+				{
+					client_filter = "("+client_filter+" OR l.clientid IS NULL)";
+				}
+				qstr+=" WHERE "+client_filter;
 				if(!bed.empty())
 				{
 					qstr+=" AND "+bed;
@@ -152,6 +169,7 @@ ACTION_IMPL(logs)
 				obj.set("incremental", watoi(res[i]["incremental"]));
 				obj.set("resumed", watoi(res[i]["resumed"]));
 				obj.set("restore", watoi(res[i]["restore"]));
+				obj.set("cleanup", watoi(res[i]["cleanup"])!=0);
 				logs.add(obj);
 			}
 			ret.set("logs", logs);
@@ -214,8 +232,8 @@ ACTION_IMPL(logs)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, c.name AS name "
-				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) INNER JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
+			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, c.name AS name, l.clientid IS NULL AS cleanup "
+				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) LEFT JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
 			q->Bind(logid);
 			db_results res=q->Read();
 			q->Reset();
@@ -243,6 +261,7 @@ ACTION_IMPL(logs)
 					log.set("data", res[0]["logdata"]);
 					log.set("time", watoi64(res[0]["time"]));
 					log.set("clientname", res[0]["name"]);
+					log.set("cleanup", watoi(res[0]["cleanup"])!=0);
 					ret.set("log", log);
 				}
 			}
