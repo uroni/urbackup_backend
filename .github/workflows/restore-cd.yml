@@ -1,0 +1,35 @@
+name: Restore CD
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+  workflow_dispatch:
+
+jobs:
+  build-restore-cd:
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential autoconf automake libtool pkg-config \
+          libssl-dev libcurl4-openssl-dev libzstd-dev zlib1g-dev wget unzip xz-utils
+    # restorewww uses react-scripts 4 (webpack 4), which does not build on Node >= 17
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 16
+        cache: npm
+        cache-dependency-path: urbackupclient/restorewww/package-lock.json
+    - name: Build restore CD
+      run: sh ./update_restore.sh
+    - name: Upload restore CD archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: restore_cd_2_amd64
+        path: restore_cd_2_amd64.tar.xz
+        if-no-files-found: error

@@ -37,6 +37,9 @@ tar -cJf ../restore_cd_2_amd64.tar.xz *
 if [ "x$SCP_RESTORE" = x1 ]
 then
 	scp ../restore_cd_2_amd64.tar.xz 192.168.0.40:/var/www/ssl/
+elif [ "x$CI" = xtrue ]
+then
+	echo "Running in CI, not copying restore_cd_2_amd64.tar.xz"
 else
 	cp ../restore_cd_2_amd64.tar.xz /var/www/restore_cd_2_amd64.tar.xz
 fi
