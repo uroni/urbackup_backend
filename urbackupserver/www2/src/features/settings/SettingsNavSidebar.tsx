@@ -109,7 +109,9 @@ function getSelectedPage(pathname: string) {
     (v) => settingsPage === v || settingsPage.startsWith(`${v}/`),
   );
 
-  return selected ?? values[0];
+  // /settings shows the first page; pages without an entry select none ("",
+  // not undefined, which would make the selection uncontrolled)
+  return settingsPage === "" ? values[0] : selected ?? "";
 }
 
 function flattenValues(tabs: TabItem[], baseValue = ""): string[] {
