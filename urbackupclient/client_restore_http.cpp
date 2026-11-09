@@ -460,10 +460,6 @@ ACTION_IMPL(get_partition)
 		return;
 	}
 
-	bool t_gpt_style;
-	std::vector<IFSImageFactory::SPartition> partitions 
-		= image_fak->readPartitions(mbrdata.mbr_data, mbrdata.gpt_header, mbrdata.gpt_table, t_gpt_style);
-
 	std::string seldrive = POST["out_device"];
 
 	Server->Log("Selected device: "+seldrive+" Partition: "+convert(mbrdata.partition_number));
@@ -475,9 +471,9 @@ ACTION_IMPL(get_partition)
 		dev.reset(Server->openFile(partpath, MODE_RW));
 	}
 	int try_c=0;
-	int delete_parts = 0;
-	bool fix_gpt=true;
 
+	// Partitions that do not fit on the disk were already fixed up by write_mbr.
+	// Wait for the kernel to pick up the partition
 	while(!dev && try_c<10)
 	{
 		system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
@@ -488,43 +484,11 @@ ACTION_IMPL(get_partition)
 			dev.reset(Server->openFile(partpath, MODE_RW));
 		}
 
-		if(!dev)
+		if(!dev && !mbrdata.gpt_style)
 		{
-			if (!mbrdata.gpt_style)
-			{
-				Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
-				//Fix LBA partition signature
-				system(("echo w | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
-				system(("echo -e \"w\\nY\" | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
-			}
-			else
-			{
-				Server->Log("Trying to fix GPT partitioning scheme via gdisk...");
-				system(("echo -e \"w\\nY\" | gdisk " + seldrive).c_str());
-			}
-
-			if (fix_gpt && try_c>5
-				&& !partitions.empty())
-			{
-				//TODO: the last partition might not be the one with the highest offset
-				Server->Log("Deleting last GPT partition...");
-				++delete_parts;
-				std::string cmd;
-				for (int i = 0; i < delete_parts; ++i)
-				{
-					if (partitions.size() - i == mbrdata.partition_number)
-					{
-						Server->Log("Cannot delete last GPT partition. This is the partition to be restored. DISK IS PROBABLY TOO SMALL TO RESTORE TO.", LL_ERROR);
-						try_c = 100;
-					}
-
-					cmd += "d\\n" + convert(partitions.size() - i);
-				}
-				cmd += "\\nw\\nY";
-
-				if(fix_gpt)
-					system(("echo -e \""+cmd+"\" | gdisk " + seldrive).c_str());
-			}
+			Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
+			//Fix LBA partition signature
+			system(("echo w | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
 		}
 
 		++try_c;

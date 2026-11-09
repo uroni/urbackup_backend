@@ -1154,22 +1154,14 @@ namespace restore
 		return ret;
 	}
 
-	std::string createSgdiskPart(const SgdiskPart& lp, const std::string& out_device)
+	// sgdisk arguments to re-create partition lp from its start to the end of the disk
+	std::string getSgdiskRecreatePartArgs(const SgdiskPart& lp)
 	{
-		std::string out;
-		int rc = os_popen("sgdisk -n "+std::to_string(lp.number)+":"+std::to_string(lp.start)+":0 "
-							"-A "+std::to_string(lp.number)+":=:"+lp.flags+" "
-							"-c "+std::to_string(lp.number)+":\""+lp.name+"\" "
-							"-t "+std::to_string(lp.number)+":"+lp.part_guid+" "
-							"-u "+std::to_string(lp.number)+":"+lp.unique_guid+" "
-							+out_device, out);
-
-		if(rc!=0)
-		{
-			return "Error creating partition "+std::to_string(lp.number)+": "+trim(out);
-		}
-
-		return std::string();
+		return "-n "+std::to_string(lp.number)+":"+std::to_string(lp.start)+":0 "
+			"-A "+std::to_string(lp.number)+":=:"+lp.flags+" "
+			"-c "+std::to_string(lp.number)+":\""+lp.name+"\" "
+			"-t "+std::to_string(lp.number)+":"+lp.part_guid+" "
+			"-u "+std::to_string(lp.number)+":"+lp.unique_guid;
 	}
 
 	int64 getSgdiskDiskSize(const std::string& dev)
@@ -1297,61 +1289,49 @@ namespace restore
 			if(fix_output.find("too big for the disk")!=std::string::npos)
 			{
 				std::vector<SgdiskPart> partitions = getSgdiskParts(out_device);
-
 				int64 sgdisk_size = getSgdiskDiskSize(out_device);
-				while(!partitions.empty())
+
+				if (partitions.empty() || sgdisk_size < 0)
 				{
-					if(sgdisk_size<0)
-						break;
-
-					SgdiskPart lp = partitions[partitions.size()-1];
-
-					if(lp.start>=sgdisk_size)
-					{
-						Server->Log("Partition "+std::to_string(lp.number)+" not on disk. Removing...");
-						std::string out;
-						rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
-
-						if(rc!=0)
-						{
-							errmsg="Error deleting last partition (1): "+trim(out);
-							Server->Log(errmsg, LL_ERROR);
-						}
-					}
-					else
-					{
-						break;
-					}
-				}
-
-				if(!partitions.empty())
-				{
-					Server->Log("Partition too big. Resizing last partition", LL_WARNING);
-					SgdiskPart lp = partitions[partitions.size()-1];
-
-					Server->Log("Last partition num="+std::to_string(lp.number)+" start="+std::to_string(lp.start)+" end="+std::to_string(lp.end)
-						+" size="+lp.size, LL_INFO);
-
-					std::string out;
-					rc = os_popen("sgdisk -d "+std::to_string(lp.number)+" "+out_device+" 2>&1", out);
-
-					if(rc!=0)
-					{
-						errmsg="Error deleting last partition: "+trim(out);
-						Server->Log(errmsg, LL_ERROR);
-					}
-
-					std::string err = createSgdiskPart(lp, out_device);
-
-					if(!err.empty())
-					{
-						errmsg="Error re-creating last partition: "+trim(err);
-						Server->Log(errmsg, LL_ERROR);
-					}
+					errmsg = "Cannot read partitions or size of " + out_device + " to fix up GPT";
+					Server->Log(errmsg, LL_ERROR);
 				}
 				else
 				{
-					Server->Log("No partitions found", LL_ERROR);
+					// Backup GPT header and 128 partition entries are at the end of the disk
+					const int64 last_usable_sector = sgdisk_size - 34;
+
+					std::sort(partitions.begin(), partitions.end(),
+						[](const SgdiskPart& a, const SgdiskPart& b) { return a.start < b.start; });
+
+					// sgdisk refuses to write while any partition does not fit on the disk,
+					// so all changes have to be done in one sgdisk call
+					std::string cmd = "sgdisk -e";
+
+					while (!partitions.empty()
+						&& partitions.back().start > last_usable_sector)
+					{
+						Server->Log("Partition " + std::to_string(partitions.back().number) + " not on disk. Removing...", LL_WARNING);
+						cmd += " -d " + std::to_string(partitions.back().number);
+						partitions.pop_back();
+					}
+
+					if (!partitions.empty()
+						&& partitions.back().end > last_usable_sector)
+					{
+						const SgdiskPart& lp = partitions.back();
+						Server->Log("Partition too big. Resizing last partition num=" + std::to_string(lp.number) + " start=" + std::to_string(lp.start)
+							+ " end=" + std::to_string(lp.end) + " size=" + lp.size, LL_WARNING);
+						cmd += " -d " + std::to_string(lp.number) + " " + getSgdiskRecreatePartArgs(lp);
+					}
+
+					std::string out;
+					rc = os_popen(cmd + " \"" + out_device + "\" 2>&1", out);
+					if (rc != 0)
+					{
+						errmsg = "Error fixing up partitions that do not fit on the disk: " + trim(out);
+						Server->Log(errmsg, LL_ERROR);
+					}
 				}
 			}
 		}
@@ -2549,26 +2529,6 @@ void restore_wizard(void)
 					break;
 				}
 
-				system("cat urbackup/restore/writing_mbr");
-				system("echo");
-				IFile *dev=Server->openFile(seldrive, MODE_RW);
-				if(dev==nullptr)
-				{
-					err="cannot_open_disk";
-					state=101;
-					break;
-				}
-				dev->Seek(0);
-				if(dev->Write(mbrdata.mbr_data)!=mbrdata.mbr_data.size())
-				{
-					err="error_writing_mbr";
-					state=101;
-					break;
-				}
-
-				bool fix_gpt = false;
-				std::vector<IFSImageFactory::SPartition> partitions;
-
 				const bool linux_vol = next(mbrdata.volume_name, 0, "LINUX:");
 
 				if(mbrdata.gpt_style)
@@ -2592,69 +2552,23 @@ void restore_wizard(void)
 					{
 						Server->Log("Could not get logical block size");
 					}
-
-					system("cat urbackup/restore/writing_gpt_header");
-					system("echo");
-
-					if(!dev->Seek(mbrdata.gpt_header_pos) || dev->Write(mbrdata.gpt_header)!=mbrdata.gpt_header.size())
-					{
-						err="error_writing_gpt";
-						state=101;
-						break;
-					}
-
-					system("cat urbackup/restore/writing_gpt_table");
-					system("echo");
-
-					if(!dev->Seek(mbrdata.gpt_table_pos) || dev->Write(mbrdata.gpt_table)!=mbrdata.gpt_table.size())
-					{
-						err="error_writing_gpt";
-						state=101;
-						break;
-					}
-
-					system("cat urbackup/restore/writing_backup_gpt_header");
-					system("echo");
-
-					if(!dev->Seek(mbrdata.backup_gpt_header_pos) || dev->Write(mbrdata.backup_gpt_header)!=mbrdata.backup_gpt_header.size())
-					{
-						std::cout << "Error writing backup GPT header. " << os_last_error_str() << ". Fixing with GNU parted..." << std::endl;
-						fix_gpt = true;
-					}
-
-					system("cat urbackup/restore/writing_backup_gpt_table");
-					system("echo");
-
-					if(!dev->Seek(mbrdata.backup_gpt_table_pos) || dev->Write(mbrdata.backup_gpt_table)!=mbrdata.backup_gpt_table.size())
-					{
-						std::cout << "Error writing backup GPT table. " << os_last_error_str() << ". Fixing with GNU parted..." << std::endl;
-						fix_gpt = true;
-					}
-
-					if (fix_gpt)
-					{
-						system(("echo -e \"w\\nY\\nY\" | gdisk " + seldrive).c_str());
-
-						bool t_gpt_style;
-						partitions = image_fak->readPartitions(mbrdata.mbr_data, mbrdata.gpt_header, mbrdata.gpt_table, t_gpt_style);
-					}
-					else
-					{
-						system(("echo -e \"w\\nY\\nY\" | gdisk " + seldrive + " > /dev/null 2>&1").c_str());
-					}
 				}
 
-				if (mbrdata.extra_data_pos != -1)
+				system("cat urbackup/restore/writing_mbr");
+				system("echo");
+
+				std::string write_mbr_errmsg;
+				if (!do_restore_write_mbr("mbr.dat", seldrive, true, write_mbr_errmsg))
 				{
-					std::cout << "Writing extra data..." << std::endl;
-					if (dev->Write(mbrdata.extra_data_pos,
-						mbrdata.extra_data) != mbrdata.extra_data.size())
-					{
-						std::cout << "Error writing extra data. Ignoring...";
-					}
+					Server->Log("Writing MBR failed: " + write_mbr_errmsg, LL_ERROR);
+					err="error_writing_mbr";
+					state=101;
+					break;
 				}
-
-				Server->destroy(dev);
+				if (!write_mbr_errmsg.empty())
+				{
+					std::cout << write_mbr_errmsg << std::endl;
+				}
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
@@ -2663,14 +2577,15 @@ void restore_wizard(void)
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
 				system("echo");
-				dev=nullptr;
+				IFile* dev=nullptr;
 				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number, linux_vol);
 				if(!partpath.empty())
 				{
 					dev=Server->openFile(partpath, MODE_RW);
 				}
 				int try_c=0;
-				int delete_parts = 0;
+				// Partitions that do not fit on the disk were already fixed up by do_restore_write_mbr.
+				// Wait for the kernel to pick up the partition
 				while(dev==nullptr && try_c<10)
 				{
 					system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
@@ -2683,45 +2598,11 @@ void restore_wizard(void)
 						dev=Server->openFile(partpath, MODE_RW);
 					}
 
-					if(dev==nullptr)
+					if(dev==nullptr && !mbrdata.gpt_style)
 					{
-						if (!mbrdata.gpt_style)
-						{
-							Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
-							//Fix LBA partition signature
-							system(("echo w | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
-							system(("echo -e \"w\\nY\" | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
-						}
-						else
-						{
-							Server->Log("Trying to fix GPT partitioning scheme via gdisk...");
-							system(("echo -e \"w\\nY\" | gdisk " + seldrive).c_str());
-						}
-
-						if (fix_gpt && try_c>5
-							&& !partitions.empty())
-						{
-							//TODO: the last partition might not be the one with the highest offset
-							Server->Log("Deleting last GPT partition...");
-							++delete_parts;
-							std::string cmd;
-							for (int i = 0; i < delete_parts; ++i)
-							{
-								if (partitions.size() - i == mbrdata.partition_number)
-								{
-									Server->Log("Cannot delete last GPT partition. This is the partition to be restored. DISK IS PROBABLY TOO SMALL TO RESTORE TO.", LL_ERROR);
-									system("read -n1 -r -p \"Press any key to continue...\" key");
-									fix_gpt = false;
-									try_c = 100;
-								}
-
-								cmd += "d\\n" + convert(partitions.size() - i);
-							}
-							cmd += "\\nw\\nY";
-
-							if(fix_gpt)
-								system(("echo -e \""+cmd+"\" | gdisk " + seldrive).c_str());
-						}
+						Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
+						//Fix LBA partition signature
+						system(("echo w | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
 					}
 
 					++try_c;
