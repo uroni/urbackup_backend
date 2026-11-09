@@ -12,6 +12,9 @@ jobs:
 
     runs-on: ubuntu-22.04
 
+    permissions:
+      contents: write
+
     steps:
     - uses: actions/checkout@v4
     - name: Install build dependencies
@@ -33,3 +36,18 @@ jobs:
         name: restore_cd_2_amd64
         path: restore_cd_2_amd64.tar.xz
         if-no-files-found: error
+    - name: Publish to rolling release
+      if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: restore-cd-latest
+      run: |
+        git tag -f "$TAG"
+        git push -f origin "refs/tags/$TAG"
+        NOTES="Automatic restore CD build from dev at ${GITHUB_SHA}"
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          gh release edit "$TAG" --prerelease --notes "$NOTES"
+        else
+          gh release create "$TAG" --prerelease --title "Restore CD (latest dev)" --notes "$NOTES"
+        fi
+        gh release upload "$TAG" restore_cd_2_amd64.tar.xz --clobber
