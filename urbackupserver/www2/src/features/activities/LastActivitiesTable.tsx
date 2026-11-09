@@ -96,7 +96,7 @@ export function LastActivitiesTable({
   }
 
   return (
-    <DataGrid items={data} getRowId={(item) => item.id} columns={columns}>
+    <DataGrid items={data} getRowId={activityKey} columns={columns}>
       <DataGridHeader>
         <DataGridRow>
           {({ renderHeaderCell }) => (
@@ -106,7 +106,7 @@ export function LastActivitiesTable({
       </DataGridHeader>
       <DataGridBody<ActivityItem>>
         {({ item }) => (
-          <DataGridRow<ActivityItem> key={item.id}>
+          <DataGridRow<ActivityItem> key={activityKey(item)}>
             {({ renderCell }) => (
               <DataGridCell>{renderCell(item)}</DataGridCell>
             )}
@@ -115,4 +115,9 @@ export function LastActivitiesTable({
       </DataGridBody>
     </DataGrid>
   );
+}
+
+// File backups, image backups and restores have ids of their own
+function activityKey(item: ActivityItem) {
+  return `${item.restore}-${item.image}-${item.del ? 1 : 0}-${item.id}`;
 }
