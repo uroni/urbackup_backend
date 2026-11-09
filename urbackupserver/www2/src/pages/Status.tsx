@@ -134,7 +134,8 @@ const Status = () => {
 
   const selectedRowsArray = transformSelectedRows(selectedRows);
 
-  const data = statusResult.data!.status;
+  // Like the old web interface, without the clients of other servers
+  const data = statusResult.data!.status.filter((c) => !c.rejected);
 
   const [sortState, setSortState] =
     useState<Parameters<NonNullable<DataGridProps["onSortChange"]>>[1]>();
@@ -143,7 +144,18 @@ const Status = () => {
     e.preventDefault();
   };
 
-  const [sortedData, setSortedData] = useState(data);
+  // Sorted on every refetch, not only when a column is clicked
+  const compare = columns.find(
+    (c) => c.columnId === sortState?.sortColumn,
+  )?.compare;
+
+  const sortedData = compare
+    ? data.sort((a, b) =>
+        sortState?.sortDirection === "descending"
+          ? compare(b, a)
+          : compare(a, b),
+      )
+    : data;
 
   const { setSearch, filteredItems } = useFilteredBySearch<StatusClientItem>(
     sortedData,
@@ -184,7 +196,7 @@ const Status = () => {
                   <DataGridRow
                     selectionCell={{ "aria-label": "Select all rows" }}
                   >
-                    {({ renderHeaderCell, columnId, compare }) => (
+                    {({ renderHeaderCell, columnId }) => (
                       <DataGridHeaderCell
                         sortDirection={
                           sortState?.sortColumn === columnId
@@ -193,29 +205,14 @@ const Status = () => {
                         }
                         button={{
                           onClick: () => {
-                            const newSortState: typeof sortState = {
+                            setSortState({
                               sortColumn: columnId,
                               sortDirection:
                                 sortState?.sortDirection === "descending" ||
                                 sortState?.sortColumn !== columnId
                                   ? "ascending"
                                   : "descending",
-                            };
-
-                            if (newSortState.sortDirection === "ascending") {
-                              const newSortedData = sortedData.sort(compare);
-                              setSortedData(newSortedData);
-                            }
-
-                            if (newSortState.sortDirection === "descending") {
-                              const newSortedData = sortedData.sort((a, b) =>
-                                // Reverse compare function params for descending order
-                                compare(b, a),
-                              );
-                              setSortedData(newSortedData);
-                            }
-
-                            setSortState(newSortState);
+                            });
                           },
                         }}
                       >
