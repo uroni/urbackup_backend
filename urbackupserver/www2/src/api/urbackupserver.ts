@@ -177,6 +177,7 @@ export interface Backup {
   archived: number; // !=0 if this backup is archived
   disable_delete: true | undefined; // If true backup cannot be deleted
   delete_pending: true | undefined; // If true the backup is marked for deletion
+  letter?: string; // Volume of an image backup
 }
 
 export interface Backups {

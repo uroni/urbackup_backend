@@ -10,6 +10,7 @@ import {
   createTableColumn,
   Badge,
   PresenceBadge,
+  Subtitle2,
   TableColumnId,
 } from "@fluentui/react-components";
 import { Link, useParams } from "react-router-dom";
@@ -72,6 +73,15 @@ export const columns: TableColumnDefinition<Backup>[] = [
     },
   }),
   createTableColumn<Backup>({
+    columnId: "volume",
+    renderHeaderCell: () => {
+      return "Volume";
+    },
+    renderCell: (item) => {
+      return <TableCellLayout>{item.letter}</TableCellLayout>;
+    },
+  }),
+  createTableColumn<Backup>({
     columnId: "incremental",
     renderHeaderCell: () => {
       return "Incremental";
@@ -111,6 +121,11 @@ export const columns: TableColumnDefinition<Backup>[] = [
   }),
 ];
 
+const fileColumns = columns.filter((c) => c.columnId !== "volume");
+
+// Like the old web interface: the volume instead of the id
+const imageColumns = columns.filter((c) => c.columnId !== "id");
+
 export function ClientBackupsTable() {
   const { clientId } = useParams();
 
@@ -120,6 +135,7 @@ export function ClientBackupsTable() {
   });
 
   const { clientname, clientid, backups } = backupsResult.data!;
+  const backupImages = backupsResult.data!.backup_images ?? [];
 
   const breadcrumbItems = makeBackupsBreadcrumbs({
     clientId: Number(clientId),
@@ -131,32 +147,67 @@ export function ClientBackupsTable() {
     throw new Error(`No such client with ID: ${clientId}`);
   }
 
-  if (backups.length === 0) {
-    return (
-      <TableWrapper>
-        <div className="heading-breadcrumbs">
-          <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
-        </div>
+  return (
+    <TableWrapper>
+      <div className="heading-breadcrumbs">
+        <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
+      </div>
+      {backups.length === 0 && backupImages.length === 0 ? (
         <p>
           No Backup created for <strong>{clientname}</strong> yet.
         </p>
-      </TableWrapper>
-    );
-  }
+      ) : (
+        <>
+          {backupImages.length > 0 && (
+            <Subtitle2 as="h4">File backups</Subtitle2>
+          )}
+          {backups.length > 0 ? (
+            <BackupsGrid
+              items={backups}
+              columns={fileColumns}
+              clientid={clientid}
+            />
+          ) : (
+            <p>No file backups yet.</p>
+          )}
+          {backupImages.length > 0 && (
+            <>
+              <Subtitle2 as="h4">Image backups</Subtitle2>
+              {/* Image backups have negative ids, which open them as images */}
+              <BackupsGrid
+                items={backupImages}
+                columns={imageColumns}
+                clientid={clientid}
+              />
+            </>
+          )}
+        </>
+      )}
+    </TableWrapper>
+  );
+}
 
+function BackupsGrid({
+  items,
+  columns,
+  clientid,
+}: {
+  items: Backup[];
+  columns: TableColumnDefinition<Backup>[];
+  clientid: number;
+}) {
   const { setSearch, filteredItems } = useFilteredBySearch<Backup>(
-    backups,
+    items,
     filterData,
   );
 
   const { itemsPerPage, setItemsPerPage, pageData, page, setPage } =
     usePagination(filteredItems);
 
+  const columnIds = columns.map((c) => String(c.columnId));
+
   return (
-    <TableWrapper>
-      <div className="heading-breadcrumbs">
-        <Breadcrumbs items={breadcrumbItems} wrapper={"h3"} />
-      </div>
+    <>
       <div className="cluster">
         <SearchBox onSearch={setSearch} />
         <PaginationItemsPerPageSelector
@@ -184,14 +235,6 @@ export function ClientBackupsTable() {
               {({ item }) => (
                 <DataGridRow<Backup> key={item.id}>
                   {({ renderCell, columnId }) => {
-                    const noneColumns = [
-                      "backuptime",
-                      "id",
-                      "incremental",
-                      "size",
-                      "archived",
-                      "actions",
-                    ];
                     const isInteractive = ["archived", "actions"].includes(
                       String(columnId),
                     );
@@ -200,7 +243,7 @@ export function ClientBackupsTable() {
                       <DataGridCell
                         focusMode={getCellFocusMode(columnId, {
                           group: ["actions"],
-                          none: noneColumns,
+                          none: columnIds,
                         })}
                         style={getNarrowColumnStyles(columnId)}
                       >
@@ -224,7 +267,7 @@ export function ClientBackupsTable() {
           />
         </>
       )}
-    </TableWrapper>
+    </>
   );
 }
 
@@ -252,10 +295,11 @@ function getNarrowColumnStyles(columnId: TableColumnId) {
 }
 
 function filterData<T extends Backup>(item: T, search: string) {
-  const { id } = item;
+  const { id, letter } = item;
 
   const searchableFields = {
     id,
+    letter,
     backuptime: formatter.backuptime(item),
     archived: formatter.archived(item),
     incremental: formatter.incremental(item),
