@@ -14,21 +14,36 @@ import {
   ArrowLeftRegular,
   BoxRegular,
   DesktopRegular,
+  GlobeRegular,
+  HomeRegular,
   LaptopRegular,
   MailRegular,
   PeopleTeamRegular,
   PersonRegular,
   ServerRegular,
+  ShieldRegular,
   WrenchRegular,
 } from "@fluentui/react-icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useSettings } from "./useSettings";
 import { type TabItem } from "./useSettingsTabs";
 import { SwitchToClassic } from "../../components/SwitchToClassic";
 
 const BACK_TO_APP = "__back";
 
 export const SettingsNavSidebar = () => {
+  const { navitems } = useSettings();
+
+  // Like the client tabs, the Internet settings only for users that may
+  // change them
+  const tabs = SETTINGS_TABS.map((t) => ({
+    ...t,
+    children: t.children?.filter(
+      (c) => c.value !== "internet-active" || navitems.internet,
+    ),
+  }));
+
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -54,7 +69,7 @@ export const SettingsNavSidebar = () => {
           Back to app
         </NavItem>
         <NavDivider />
-        <SettingsItems tabs={SETTINGS_TABS} />
+        <SettingsItems tabs={tabs} />
       </NavDrawerBody>
       <NavDrawerFooter>
         <SwitchToClassic />
@@ -156,6 +171,11 @@ const SETTINGS_TABS: TabItem[] = [
         icon: <ArchiveRegular />,
       },
       {
+        value: "permissions",
+        title: "Permissions",
+        icon: <ShieldRegular />,
+      },
+      {
         value: "client",
         title: "Client",
         icon: <LaptopRegular />,
@@ -169,6 +189,16 @@ const SETTINGS_TABS: TabItem[] = [
         value: "alerts",
         title: "Alerts",
         icon: <AlertRegular />,
+      },
+      {
+        value: "local-passive",
+        title: "Local/Passive",
+        icon: <HomeRegular />,
+      },
+      {
+        value: "internet-active",
+        title: "Internet/Active",
+        icon: <GlobeRegular />,
       },
       {
         value: "advanced",

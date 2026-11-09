@@ -25,6 +25,14 @@ describe("archive rules", () => {
     ]);
   });
 
+  it("reads the next archival but doesn't save it", () => {
+    const value = `${stored}&next_archival_c0=1792465714&timeleft_c0=3600`;
+    const [rule] = parseArchiveRules(value, ["c"]);
+
+    expect([rule.next, rule.timeLeft]).toEqual([1792465714, 3600]);
+    expect(serializeArchiveRules([rule])).not.toContain("next_archival");
+  });
+
   it("keeps the rules when saved again", () => {
     const again = serializeArchiveRules(parseArchiveRules(stored, ["c"]));
     expect(parseArchiveRules(again, ["c"])).toEqual(
@@ -66,6 +74,16 @@ describe("archive rules", () => {
       window_c0: "*;*;*;*",
       letters_c0: "ALL",
     });
+  });
+
+  it("stores the general rules with their own prefix", () => {
+    const general =
+      "every_d0=3600&every_unit_d0=h&for_d0=-1&for_unit_d0=i&backup_type_d0=image&window_d0=*;*;*;*&letters_d0=C&uuid_d0=eb9ad287e82c95df711cee77aa7ea1ae";
+    const again = serializeArchiveRules(parseArchiveRules(general, ["d"]), "d");
+
+    expect(Object.fromEntries(new URLSearchParams(again))).toEqual(
+      Object.fromEntries(new URLSearchParams(general)),
+    );
   });
 
   it.each(["*;*;*;*", "3;1,15;*;*", "1,2,3;*;12;7"])("accepts window %s", (w) =>
