@@ -3,6 +3,11 @@
 #include <mutex>
 #include <thread>
 #include <set>
+#include <functional>
+#include <algorithm>
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
 #include "../fsimageplugin/IFSImageFactory.h"
@@ -600,6 +605,9 @@ std::string get_fs(const std::string& dev)
 	if(out.find("XFS ")!=std::string::npos)
 		return "xfs";
 
+	if(out.find("BTRFS ")!=std::string::npos)
+		return "btrfs";
+
 	return "unknown";
 }
 
@@ -1012,15 +1020,7 @@ ACTION_IMPL(resize_disk)
 
 	std::thread t([disk_fn, new_size, restore_res]()
 	{
-		if(get_fs(disk_fn)!="ntfs")
-		{
-			restore_res->err = "Only resizing NTFS is currently supported";
-			restore_res->ec=restore::EDownloadResult_Ok;
-			restore_res->finished=true;
-			return;	
-		}
-
-		std::string err = restore::resize_ntfs(new_size*512, disk_fn, restore_res->pc_complete);
+		const std::string err = restore::resize_fs(new_size*512, disk_fn, restore_res->pc_complete);
 
 		restore_res->err = err;
 		restore_res->ec=restore::EDownloadResult_Ok;
@@ -1138,19 +1138,20 @@ ACTION_IMPL(resize_part)
 	restore::writeJsonResponse(tid, ret);
 }
 
-namespace restore
+namespace
 {
-	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
-	{
 #ifndef _WIN32
-		FILE* in = NULL;
-		in = popen(("stdbuf -o0 ntfsresize -f -f -s "+std::to_string(new_size)+" \""+disk_fn+"\" 2>&1").c_str(), "re");
+
+	std::string run_resize_cmd(const std::string& cmd, const std::string& name,
+		const std::function<bool(const std::string& line, bool complete)>& parse_progress,
+		int max_ok_rc = 0)
+	{
+		FILE* in = popen(("stdbuf -o0 " + cmd + " 2>&1").c_str(), "re");
 		if(in==NULL)
 		{
 			return "Error opening command: "+ os_last_error_str();
 		}
 
-		char buf[4096];
 		std::string out;
 		std::string line;
 		while(true)
@@ -1165,19 +1166,14 @@ namespace restore
 			if(ch!='\n' && ch!='\r')
 			{
 				line += ch;
+				parse_progress(line, false);
 			}
 			else
 			{
-				if(line.find("percent completed")!=std::string::npos)
+				if(!parse_progress(line, true)
+					&& !trim(line).empty())
 				{
-					std::string str_pc = trim(getuntil("percent", line));
-					if(!str_pc.empty())
-						pc_complete = watoi(str_pc);
-				}
-				else
-				{
-					Server->Log("ntrfsresize: "+line, LL_INFO);
-
+					Server->Log(name+": "+line, LL_INFO);
 					out += line + "\n";
 				}
 
@@ -1185,16 +1181,138 @@ namespace restore
 			}
 		}
 
-		int rc = pclose(in);
-
-		if(rc!=0)
+		if (!line.empty())
 		{
-			return "Error runnning resize command. Rc: "+std::to_string(rc)+". Output: "+out;
+			Server->Log(name + ": " + line, LL_INFO);
+			out += line + "\n";
 		}
 
-#endif
+		const int status = pclose(in);
+
+		if(status==-1 || !WIFEXITED(status)
+			|| WEXITSTATUS(status)>max_ok_rc)
+		{
+			return "Error running "+name+". Rc: "+std::to_string(WIFEXITED(status) ? WEXITSTATUS(status) : status)+". Output: "+out;
+		}
 
 		return std::string();
+	}
+
+	bool has_command(const std::string& cmd)
+	{
+		return system(("command -v "+cmd+" > /dev/null 2>&1").c_str())==0;
+	}
+
+	std::string resize_ext(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
+	{
+		if(!has_command("resize2fs") || !has_command("e2fsck"))
+		{
+			return "resize2fs or e2fsck not available (install e2fsprogs)";
+		}
+
+		// resize2fs requires a freshly checked file system.
+		// e2fsck exit codes 1 and 2 mean errors were corrected
+		const std::string err = run_resize_cmd("e2fsck -f -y \""+disk_fn+"\"", "e2fsck",
+			[](const std::string&, bool) { return false; }, 2);
+
+		if(!err.empty())
+			return err;
+
+		return run_resize_cmd("resize2fs -p \""+disk_fn+"\" "+std::to_string(new_size/512)+"s", "resize2fs",
+			[&pc_complete](const std::string& line, bool complete)
+			{
+				const size_t bar_start = line.find_last_not_of('X');
+				const size_t xs = bar_start==std::string::npos ? line.size() : line.size() - bar_start - 1;
+				if(xs==0)
+				{
+					if(complete && next(line, 0, "Begin pass"))
+						pc_complete = 0;
+					return false;
+				}
+
+				pc_complete = static_cast<int>((std::min)(static_cast<size_t>(100), xs * 100 / 40));
+				return true;
+			});
+	}
+
+	std::string resize_btrfs(int64 new_size, const std::string& disk_fn)
+	{
+		if(!has_command("btrfs"))
+		{
+			return "btrfs command not available (install btrfs-progs)";
+		}
+
+		const std::string mntpath = "/mnt/resize_btrfs";
+		os_create_dir_recursive(mntpath);
+
+		std::string out;
+		int rc = os_popen("mount -t btrfs \""+disk_fn+"\" "+mntpath+" 2>&1", out);
+		if(rc!=0)
+		{
+			return "Error mounting btrfs file system at "+disk_fn+": "+trim(out);
+		}
+
+		std::string err = run_resize_cmd("btrfs filesystem resize "+std::to_string(new_size)+" "+mntpath, "btrfs resize",
+			[](const std::string&, bool) { return false; });
+
+		out.clear();
+		rc = os_popen("umount "+mntpath+" 2>&1", out);
+		if(rc!=0 && err.empty())
+		{
+			err = "Error unmounting btrfs file system at "+mntpath+": "+trim(out);
+		}
+
+		os_remove_dir(mntpath);
+
+		return err;
+	}
+#endif
+}
+
+namespace restore
+{
+	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
+	{
+#ifndef _WIN32
+		return run_resize_cmd("ntfsresize -f -f -s "+std::to_string(new_size)+" \""+disk_fn+"\"", "ntfsresize",
+			[&pc_complete](const std::string& line, bool complete)
+			{
+				if(line.find("percent completed")==std::string::npos)
+					return false;
+
+				if(complete)
+				{
+					const std::string str_pc = trim(getuntil("percent", line));
+					if(!str_pc.empty())
+						pc_complete = watoi(str_pc);
+				}
+				return true;
+			});
+#else
+		return std::string();
+#endif
+	}
+
+	std::string resize_fs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete)
+	{
+#ifndef _WIN32
+		const std::string fs = get_fs(disk_fn);
+
+		Server->Log("Resizing "+fs+" file system at "+disk_fn+" to "+std::to_string(new_size)+" bytes", LL_INFO);
+
+		if(fs=="ntfs")
+			return resize_ntfs(new_size, disk_fn, pc_complete);
+		if(fs=="ext")
+			return resize_ext(new_size, disk_fn, pc_complete);
+		if(fs=="btrfs")
+			return resize_btrfs(new_size, disk_fn);
+		if(fs=="xfs")
+			return "XFS file systems cannot be shrunk";
+
+		return "Shrinking file system type \""+fs+"\" is not supported";
+#else
+		return "Not supported";
+#endif
 	}
 }
 

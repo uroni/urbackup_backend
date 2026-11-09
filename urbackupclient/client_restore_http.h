@@ -55,4 +55,7 @@ namespace restore
 	}
 
 	std::string resize_ntfs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete);
+
+	// Shrinks the file system at disk_fn to new_size bytes (NTFS, ext2/3/4, btrfs)
+	std::string resize_fs(int64 new_size, const std::string& disk_fn, std::atomic<int>& pc_complete);
 }
