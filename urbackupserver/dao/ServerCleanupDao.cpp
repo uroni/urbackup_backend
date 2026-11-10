@@ -1106,13 +1106,13 @@ std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncomp
 * @sql
 *      SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM
 *		backups b INNER JOIN clients c ON b.clientid=c.id
-*        WHERE b.delete_pending=1
+*        WHERE b.delete_pending=1 AND b.archived=0
 */
 std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getDeletePendingFileBackups(void)
 {
 	if(q_getDeletePendingFileBackups==NULL)
 	{
-		q_getDeletePendingFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE b.delete_pending=1", false);
+		q_getDeletePendingFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE b.delete_pending=1 AND b.archived=0", false);
 	}
 	db_results res=q_getDeletePendingFileBackups->Read();
 	std::vector<ServerCleanupDao::SIncompleteFileBackup> ret;
