@@ -210,6 +210,7 @@ bool IncrFileBackup::doFileBackup()
 	if(tmp_filelist==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in ::doIncrBackup", LL_ERROR);
+		has_early_error=true;
 		return false;
 	}
 
@@ -1711,7 +1712,7 @@ bool IncrFileBackup::doFileBackup()
 			}
 		}
 
-		if(group==c_group_default || group==c_group_continuous )
+		if(!c_has_error && (group==c_group_default || group==c_group_continuous) )
 		{
 			std::string name = "current";
 			if(group==c_group_continuous)
@@ -1728,7 +1729,7 @@ bool IncrFileBackup::doFileBackup()
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 		}
 
-		if(group==c_group_default)
+		if(!c_has_error && group==c_group_default)
 		{
 			ServerLogger::Log(logid, "Creating symbolic links. -2", LL_DEBUG);
 
@@ -1841,6 +1842,7 @@ bool IncrFileBackup::doFileBackup()
 	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
 	_i64 transferred_compressed=fc.getRealTransferredBytes()+(fc_chunked.get()?fc_chunked->getRealTransferredBytes():0);
 	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
+	if(passed_time==0) passed_time=1;
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 	if(transferred_compressed>0)
 	{
