@@ -542,6 +542,13 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 		Server->Log("Removing unknown for client \""+clientname+"\"");
 
+		if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname)))
+		{
+			//Backup storage is probably not mounted. Deleting all backups of the client from the database would lose them
+			Server->Log("Folder of client \"" + clientname + "\" does not exist in \"" + backupfolder + "\". Is the backup storage mounted? Skipping client.", LL_ERROR);
+			continue;
+		}
+
 		std::vector<ServerCleanupDao::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
 		for(size_t j=0;j<res_file_backups.size();++j)
@@ -1545,11 +1552,18 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 	{
 		if(!os_directory_exists(os_file_prefix(path)))
 		{
-			if(os_directory_exists(os_file_prefix(backupfolder)))
+			if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname)))
 			{
-			    del=true;
+				//Backup storage is probably not mounted. Keep the backup in the database
+				del=false;
+				removeerr.push_back(backupid);
+				ServerLogger::Log(logid, "Folder of client \"" + clientname + "\" does not exist in \"" + backupfolder + "\". Is the backup storage mounted? Not removing backup from the database.", LL_ERROR);
+				err=true;
 			}
-			ServerLogger::Log(logid, "Warning: Directory doesn't exist: \""+path+"\"", LL_WARNING);
+			else
+			{
+				ServerLogger::Log(logid, "Warning: Directory doesn't exist: \"" + path + "\"", LL_WARNING);
+			}
 		}
 		else
 		{
