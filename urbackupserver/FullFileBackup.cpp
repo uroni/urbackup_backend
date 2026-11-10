@@ -141,6 +141,7 @@ bool FullFileBackup::doFileBackup()
 	if(tmp_filelist==NULL) 
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in ::doFullBackup", LL_ERROR);
+		has_early_error=true;
 		return false;
 	}
 
