@@ -232,7 +232,7 @@ int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid,
 		tbl = "backup_images";
 		incremental += " AND letter=?";
 	}
-	IQuery *q_get_backups=db->Prepare("SELECT id FROM "+tbl+" WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
+	IQuery *q_get_backups=db->Prepare("SELECT id FROM "+tbl+" WHERE complete=1 AND archived=0 AND delete_pending IS NOT 1 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
 	q_get_backups->Bind(clientid);
 	if (!letter.empty())
 	{
