@@ -44,6 +44,15 @@ then
     exit $?
 fi
 
+# The snapshot COW storage and the dm-era metadata are files on the snapshotted file system,
+# mapped via their FIEMAP extents. On btrfs these are logical addresses instead of device
+# offsets, so writing to them would corrupt the file system.
+if [ "x$TYPE" = "xbtrfs" ]
+then
+	echo "Device mapper snapshots of btrfs file systems are not supported. Image backups of btrfs volumes are not possible with this snapshot method."
+	exit 1
+fi
+
 if [ "x$TYPE" = "xvfat" ]
 then
 	mount -o remount,ro "$SNAP_MOUNTPOINT"
@@ -54,7 +63,7 @@ then
 fi
 
 
-if [ "x$TYPE" != "xxfs" ] && [ "x$TYPE" != "xext4" ] && [ "x$TYPE" != "xbtrfs" ]
+if [ "x$TYPE" != "xxfs" ] && [ "x$TYPE" != "xext4" ]
 then
     echo "File system $TYPE not supported"
     exit 1

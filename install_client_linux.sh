@@ -545,7 +545,17 @@ then
 			echo "-grub.cfg not found in /boot/grub. Disabling dmsetup snapshot option"
 			DMSETUP=no
 		fi
-	fi	
+	fi
+
+	if [ $DMSETUP != no ]
+	then
+		ROOT_FSTYPE=`df -T -P / | tail -n 1 | tr -s " " | cut -d" " -f2`
+		if [ "x$ROOT_FSTYPE" = "xbtrfs" ]
+		then
+			echo "-Root file system is btrfs. Disabling dmsetup snapshot option (not supported for btrfs)"
+			DMSETUP=no
+		fi
+	fi
 
     while true
     do
@@ -591,7 +601,7 @@ then
             break
         fi
 
-        if [ "x$snapn" = x4 ]
+        if [ "x$snapn" = x4 ] && [ $DMSETUP != no ]
         then
             break
         fi
