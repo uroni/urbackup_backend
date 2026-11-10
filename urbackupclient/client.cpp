@@ -4065,7 +4065,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 	}
 
 	int rc = os_popen(scriptlocation + " "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
-		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target)
+		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.vol.empty() ? scs.orig_target : scs.vol)
 		+ (scs.clientsubname.empty() ? "" : (" " + escapeDirParam(scs.clientsubname))), loglines);
 	if(rc!=0)
 	{
