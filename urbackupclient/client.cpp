@@ -674,7 +674,7 @@ std::string add_trailing_slash(const std::string &strDirName)
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
 	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
-	index_backup_dirs_optional(false), sc_refs_cleanup(false),
+	index_backup_dirs_optional(false), sc_refs_cleanup(false), index_racy_time(0),
 	dataless_warning_logged(false)
 {
 	if(filelist_mutex==NULL)
@@ -1609,6 +1609,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 		index_exclude_dirs, index_include_dirs,
 		index_backup_dirs_optional);
 	file_id = 0;
+	index_racy_time = Server->getTimeSeconds();
 
 	updateDirs();
 
@@ -8984,6 +8985,16 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 
 		curr->isdir=files[i].isdir;
 		curr->change_indicator = getChangeIndicator(files[i]);
+#ifndef _WIN32
+		if (!files[i].isdir && !files[i].issym && !files[i].isspecialf
+			&& index_racy_time != 0
+			&& files[i].created >= index_racy_time)
+		{
+			//Changed (ctime) in the second indexing started or later. The change indicator only has a resolution
+			//of one second, so a later change in the same second would not be noticed. Make sure the next backup checks it.
+			curr->change_indicator = randomChangeIndicator();
+		}
+#endif
 		curr->name=files[i].name;
 		curr->size=files[i].size;
 		curr->issym=files[i].issym;
