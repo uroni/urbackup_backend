@@ -37,6 +37,7 @@
 
 namespace
 {
+	const int64 progress_log_intervall = 300000; //5min
 	const char* fc_err_strs[] = {
 		"Seeking in file failed",
 		"Reading from file failed"
@@ -2256,7 +2257,7 @@ void FileClientChunked::logTransferProgress()
 {
 	int64 ct = Server->getTimeMS();
 	if(remote_filesize>0 && (last_progress_log==0 ||
-		ct-last_progress_log>60000) )
+		ct-last_progress_log>progress_log_intervall) )
 	{
 		int64 newTransferred=getTransferredBytes();
 
