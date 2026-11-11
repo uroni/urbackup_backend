@@ -650,6 +650,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	std::string async_id = params["async_id"];
+	send_index_progress = params["progress"] == "1";
 	async_file_list_id = hexToBytes(async_id);
 	std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
 	if (it == async_file_index.end())
