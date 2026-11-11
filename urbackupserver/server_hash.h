@@ -34,6 +34,8 @@ struct STmpFile
 	std::string hashpath;
 };
 
+class PostTransferProgress;
+
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
@@ -45,7 +47,8 @@ public:
 	};
 
 	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink,
-		bool use_tmpfiles, logid_t logid, bool snapshot_file_inplace, MaxFileId& max_file_id);
+		bool use_tmpfiles, logid_t logid, bool snapshot_file_inplace, MaxFileId& max_file_id,
+		PostTransferProgress* progress=NULL);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -178,4 +181,7 @@ private:
 	bool snapshot_file_inplace;
 
 	MaxFileId& max_file_id;
+
+	PostTransferProgress* progress;
+	size_t progress_slot;
 };

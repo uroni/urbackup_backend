@@ -477,6 +477,7 @@
     <ClInclude Include="LogReport.h" />
     <ClInclude Include="Mailer.h" />
     <ClInclude Include="PhashLoad.h" />
+    <ClInclude Include="PostTransferProgress.h" />
     <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="ServerDownloadThreadGroup.h" />
