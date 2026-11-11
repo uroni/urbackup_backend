@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 
 #include "../Interface/Thread.h"
 #include "../Interface/Mutex.h"
@@ -80,11 +81,15 @@ public:
 
 	static bool getIdle(void);
 	static bool getPause(void);
-	static void setPause(bool b);
+	static void setPause(bool b, int64 until=0);
+	static int64 getPauseUntil(void);
+	static void checkPauseTimeout(void);
 
 private:
 	volatile static bool idle;
 	volatile static bool pause;
+	static std::atomic<int64> pause_until;
+	static int64 pause_start;
 };
 
 enum CbtType
@@ -368,6 +373,8 @@ public:
 	void operator()(void);
 
 	static IMutex* getFilelistMutex(void);
+
+	static bool isBusy();
 	static IPipe * getMsgPipe(void);
 	static IFileServ *getFileSrv(void);
 
@@ -683,6 +690,7 @@ private:
 	std::vector<std::string> open_files;
 
 	static IMutex *filelist_mutex;
+	volatile static bool index_busy;
 	static IMutex *filesrv_mutex;
 
 	static IPipe* msgpipe;
