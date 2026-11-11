@@ -704,11 +704,15 @@ bool IncrFileBackup::doFileBackup()
 						else
 						{
 							int64 done_bytes = fc.getReceivedDataBytes(true)
-								+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0) + linked_bytes;
+								+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0)
+								+ server_download->getExtraReceivedDataBytes() + linked_bytes;
 							ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 							ServerStatus::setProcessPcDone(clientname, status_id,
 								(std::min)(100, (int)(((float)done_bytes) / ((float)files_size / 100.f) + 0.5f)));
+							logTransferProgress(ctime, done_bytes, files_size);
 						}
+
+						updateTransferDetails(*server_download);
 
 						ServerStatus::setProcessQueuesize(clientname, status_id,
 							(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
@@ -895,7 +899,7 @@ bool IncrFileBackup::doFileBackup()
 							}
 							else if( !dir_already_exists )
 							{
-								if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)) )
+								if(!create_dir_timed(os_file_prefix(backuppath+local_curr_os_path)) )
 								{
 									std::string errstr = os_last_error_str();
 									if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
@@ -913,7 +917,7 @@ bool IncrFileBackup::doFileBackup()
 							
 							if(!dir_already_exists && !symlinked_file)
 							{
-								if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+								if(!create_dir_timed(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
 									std::string errstr = os_last_error_str();
 									if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
@@ -945,7 +949,7 @@ bool IncrFileBackup::doFileBackup()
 												break;
 											}
 
-											if (!os_create_dir(os_file_prefix(backuppath + local_curr_os_path)))
+											if (!create_dir_timed(os_file_prefix(backuppath + local_curr_os_path)))
 											{
 												if (!os_directory_exists(os_file_prefix(backuppath + local_curr_os_path)))
 												{
@@ -964,7 +968,7 @@ bool IncrFileBackup::doFileBackup()
 											{
 												ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn_curr + "\". " + os_last_error_str(), LL_WARNING);
 											}
-											if (!os_create_dir(os_file_prefix(backuppath_hashes + local_curr_os_path)))
+											if (!create_dir_timed(os_file_prefix(backuppath_hashes + local_curr_os_path)))
 											{
 												ServerLogger::Log(logid, "Error creating metadata directory \"" + backuppath_hashes + local_curr_os_path + "\". " + os_last_error_str(), LL_WARNING);
 											}
@@ -991,7 +995,7 @@ bool IncrFileBackup::doFileBackup()
 							
 							if( !dir_diff && !indirchange && curr_path!="/urbackup_backup_scripts")
 							{
-								if(!create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), crossvolume_links, NULL, NULL))
+								if(!create_hardlink_timed(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), crossvolume_links, NULL, NULL))
 								{
 									if(!copy_file(metadata_srcpath, metadata_fn))
 									{
@@ -1230,11 +1234,11 @@ bool IncrFileBackup::doFileBackup()
 					else if(!use_snapshots) //is not changed
 					{						
 						bool too_many_hardlinks;
-						bool b=create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), crossvolume_links, &too_many_hardlinks, NULL);
+						bool b=create_hardlink_timed(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), crossvolume_links, &too_many_hardlinks, NULL);
 
 						if(b)
 						{
-							b = create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), crossvolume_links, &too_many_hardlinks, NULL);
+							b = create_hardlink_timed(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), crossvolume_links, &too_many_hardlinks, NULL);
 
 							if(!b)
 							{
@@ -1387,11 +1391,15 @@ bool IncrFileBackup::doFileBackup()
 		else
 		{
 			int64 done_bytes = fc.getReceivedDataBytes(true)
-				+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0) + linked_bytes;
+				+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0)
+				+ server_download->getExtraReceivedDataBytes() + linked_bytes;
 			ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 			ServerStatus::setProcessPcDone(clientname, status_id,
 				(std::min)(100,(int)(((float)done_bytes)/((float)files_size/100.f)+0.5f)) );
+			logTransferProgress(Server->getTimeMS(), done_bytes, files_size);
 		}
+
+		updateTransferDetails(*server_download);
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,
 			(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());

@@ -63,6 +63,9 @@ public:
 	virtual void setLogCircularBufferSize(size_t size)=0;
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
+	//Writes an informational line to the log file/console even if the configured log level would drop it.
+	//Only for rare (minutes apart) progress heartbeats of long running work, never for per-file messages.
+	virtual void LogAlways(const std::string &pStr)=0;
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true)=0;
 

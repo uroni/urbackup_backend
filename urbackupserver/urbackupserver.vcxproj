@@ -412,6 +412,7 @@
     <ClInclude Include="..\common\adler32.h" />
     <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
+    <ClInclude Include="..\urbackupcommon\BlameStats.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
@@ -477,6 +478,7 @@
     <ClInclude Include="LogReport.h" />
     <ClInclude Include="Mailer.h" />
     <ClInclude Include="PhashLoad.h" />
+    <ClInclude Include="PostTransferProgress.h" />
     <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="ServerDownloadThreadGroup.h" />
