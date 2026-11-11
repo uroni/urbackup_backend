@@ -3,6 +3,7 @@
 #include "IFileServ.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/ThreadPool.h"
+#include "../urbackupcommon/BlameStats.h"
 #include <vector>
 
 class IPipeFile;
@@ -74,6 +75,11 @@ public:
 	virtual void deregisterScriptPipeFile(const std::string& script_fn);
 
 	size_t incrActiveGeneration();
+
+	void getTransferWaitTimes(int64& read_us, int64& send_us);
+
+	static BlameCounter read_wait;
+	static BlameCounter send_wait;
 
 private:
 	bool *dostop;

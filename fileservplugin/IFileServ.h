@@ -89,6 +89,11 @@ public:
 	};
 
 	virtual void setCbtHashFile(const std::string& sharename, const std::string& identity, CbtHashFileInfo hash_file_info) = 0;
+
+	//Total time (microseconds) all connections spent waiting for file data from disk and
+	//sending it to the network while serving files. Lets the backup server tell a slow
+	//client disk from a slow network.
+	virtual void getTransferWaitTimes(int64& read_us, int64& send_us) = 0;
 };
 
 #endif //IFILESERV_H

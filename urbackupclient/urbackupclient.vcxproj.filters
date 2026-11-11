@@ -245,6 +245,9 @@
     <ClInclude Include="ClientSend.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="..\urbackupcommon\BlameStats.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="..\urbackupcommon\bufmgr.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>

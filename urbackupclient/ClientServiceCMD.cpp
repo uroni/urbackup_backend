@@ -650,6 +650,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	std::string async_id = params["async_id"];
+	send_index_progress = params["progress"] == "1";
 	async_file_list_id = hexToBytes(async_id);
 	std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
 	if (it == async_file_index.end())
@@ -1328,16 +1329,29 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	ParseParamStrHttp(params_str, &params);
 	str_map::iterator it_paused_fb = params.find("paused_fb");
 	const bool paused = IdleCheckerThread::getPause();
+	std::string reply;
 	if (it_paused_fb != params.end()
 		&& it_paused_fb->second == "1"
 		&& paused)
 	{
-		tcpstack.Send(pipe, "PAUSED");
+		reply = "PAUSED";
 	}
 	else
 	{
-		tcpstack.Send(pipe, "OK");
+		reply = "OK";
 	}
+
+	IFileServ* filesrv = IndexThread::getFileSrv();
+	if (params["xfer_fb"] == "1"
+		&& filesrv != NULL)
+	{
+		//Server asked how long the file server waited for disk reads and network sends (ms, totals)
+		int64 read_us, send_us;
+		filesrv->getTransferWaitTimes(read_us, send_us);
+		reply += "#rd=" + convert(read_us / 1000) + "&snd=" + convert(send_us / 1000);
+	}
+
+	tcpstack.Send(pipe, reply);
 
 	idle_timeout = 120000;
 
@@ -1374,6 +1388,39 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	proc->speed_bpms = atof(params["speed_bpms"].c_str());
 	proc->total_bytes = watoi64(params["total_bytes"]);
 	proc->done_bytes = watoi64(params["done_bytes"]);
+
+	str_map::iterator it_details = params.find("details");
+	if (it_details != params.end()
+		&& (proc->action == RUNNING_INCR_FILE
+			|| proc->action == RUNNING_FULL_FILE
+			|| proc->action == RUNNING_RESUME_INCR_FILE
+			|| proc->action == RUNNING_RESUME_FULL_FILE))
+	{
+		//Phase/current file of the server, displayed in the tray. Untrusted text: no control characters, limited length.
+		std::string details;
+		for (size_t i = 0; i < it_details->second.size() && details.size() < 400; ++i)
+		{
+			unsigned char ch = static_cast<unsigned char>(it_details->second[i]);
+			if (ch >= 32 && ch != 127)
+			{
+				details += it_details->second[i];
+			}
+		}
+
+		//Do not cut in the middle of a UTF-8 sequence
+		while (!details.empty()
+			&& details.size() >= 400
+			&& (static_cast<unsigned char>(details[details.size() - 1]) & 0x80) != 0)
+		{
+			details.erase(details.size() - 1);
+		}
+
+		if (proc->details != details)
+		{
+			proc->details = details;
+			status_updated = true;
+		}
+	}
 
 #ifdef _WIN32
 	if(!paused)

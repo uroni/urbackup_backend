@@ -75,6 +75,12 @@ public:
 
 	_i64 getReceivedDataBytes(bool with_sparse);
 
+	//Name, size (-1 if not known yet) and position of the file currently being loaded
+	bool getCurrentFile(std::string& name, int64& size, int64& done);
+
+	//Total time (us) spent waiting for data from the client and writing received data to disk
+	void getWaitTimes(int64& net_us, int64& write_us);
+
 	void resetReceivedDataBytes(bool with_sparse);
 
 	void addThrottler(IPipeThrottler *throttler);
@@ -263,6 +269,28 @@ private:
 	IPipe* ofb_pipe;
 
 	_i64 hashfilesize;
+
+	std::string current_name;
+	int64 current_size;
+	int64 current_done;
+
+	BlameCounter wait_net;
+	BlameCounter wait_write;
+
+	FileClientChunked* getRoot();
+	void setCurrentFile(const std::string& name, int64 size, int64 done);
+	void clearCurrentFile();
+
+	struct ScopedCurrentFile
+	{
+		ScopedCurrentFile(FileClientChunked* fc)
+			: fc(fc) {}
+		~ScopedCurrentFile()
+		{
+			fc->clearCurrentFile();
+		}
+		FileClientChunked* fc;
+	};
 
 	int64 last_transferred_bytes;
 	int64 last_progress_log;
