@@ -163,6 +163,9 @@ public:
 
 		void resetReceivedDataBytes(bool with_sparse);
 
+		//Name, size (-1 if not known yet) and received bytes of the file currently being loaded
+		bool getCurrentFile(std::string& name, int64& size, int64& done);
+
 		static std::string getErrorString(_u32 ec);
 
 		void setReconnectionTimeout(unsigned int t);
@@ -201,6 +204,19 @@ private:
 		_u32 fillQueue();
 
 		void logProgress(const std::string& remotefn, _u64 filesize, _u64 received);
+
+		void clearCurrentFile();
+
+		struct ScopedCurrentFile
+		{
+			ScopedCurrentFile(FileClient* fc)
+				: fc(fc) {}
+			~ScopedCurrentFile()
+			{
+				fc->clearCurrentFile();
+			}
+			FileClient* fc;
+		};
 
 		bool alreadyHasAddrv4(sockaddr_in addr);
 
@@ -266,6 +282,10 @@ private:
 		std::string identity;
 
 		_i64 received_data_bytes;
+
+		std::string current_name;
+		int64 current_size;
+		int64 current_done;
 
 		IMutex* mutex;
 
