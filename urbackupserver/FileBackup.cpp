@@ -16,6 +16,7 @@
 **************************************************************************/
 
 #include "FileBackup.h"
+#include "ServerDownloadThreadGroup.h"
 #include "ClientMain.h"
 #include "server_status.h"
 #include "server_log.h"
@@ -58,7 +59,7 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clien
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET),
-	last_speed_received_bytes(0), speed_set_time(0)
+	last_speed_received_bytes(0), speed_set_time(0), progress_log_time(0)
 {
 }
 
@@ -118,6 +119,9 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	{
 		timeout_time=120000;
 	}
+
+	int64 indexing_wait_start = Server->getTimeMS();
+	int64 last_busy_log = indexing_wait_start;
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
@@ -336,6 +340,12 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				else if(ret=="BUSY")
 				{
 					starttime=Server->getTimeMS();
+
+					if (starttime - last_busy_log > progress_log_intervall)
+					{
+						ServerLogger::Log(logid, "Waiting for \"" + clientname + "\" to finish indexing (" + PrettyPrintTime(starttime - indexing_wait_start) + " so far)...", LL_INFO);
+						last_busy_log = starttime;
+					}
 				}
 				else if (ret == "PHASH")
 				{
@@ -791,6 +801,91 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 	}
 }
 
+void FileBackup::logTransferProgress(int64 ctime, int64 done_bytes, int64 total_bytes)
+{
+	if (progress_log_time == 0)
+	{
+		progress_log_time = ctime;
+		return;
+	}
+
+	if (ctime - progress_log_time < progress_log_intervall)
+	{
+		return;
+	}
+
+	progress_log_time = ctime;
+
+	std::string msg = "Transferred " + PrettyPrintBytes(done_bytes);
+	if (total_bytes > 0)
+	{
+		msg += " of " + PrettyPrintBytes(total_bytes) + " (" + convert((std::min)(100, (int)(((float)done_bytes) / ((float)total_bytes / 100.f) + 0.5f))) + "%)";
+	}
+	msg += ". File hashing queue: " + convert(hashpipe_prepare->getNumElements())
+		+ ", file linking queue: " + convert(hashpipe->getNumElements());
+
+	ServerLogger::Log(logid, msg, LL_INFO);
+}
+
+void FileBackup::updateTransferDetails(ServerDownloadThreadGroup& server_download)
+{
+	std::vector<ServerDownloadThreadGroup::SCurrentTransfer> transfers = server_download.getCurrentTransfers();
+
+	if (transfers.empty())
+	{
+		ServerStatus::setProcessDetails(clientname, status_id, std::string(), -1);
+		return;
+	}
+
+	//Show the biggest file in progress, as that is the one that takes longest
+	size_t shown = 0;
+	for (size_t i = 1; i < transfers.size(); ++i)
+	{
+		if (transfers[i].size > transfers[shown].size)
+		{
+			shown = i;
+		}
+	}
+
+	if (transfers[shown].size <= 0
+		&& transfers[shown].done <= 0)
+	{
+		//Only empty files (or files just started): "Receiving x - 0 bytes" would be noise at phase transitions
+		ServerStatus::setProcessDetails(clientname, status_id, "Receiving files", -1);
+		return;
+	}
+
+	const ServerDownloadThreadGroup::SCurrentTransfer& transfer = transfers[shown];
+
+	std::string fn = transfer.name;
+	std::string share = getuntil("/", fn);
+	if (!share.empty()
+		&& share.find("|") != std::string::npos)
+	{
+		fn = getafter("|", fn);
+	}
+
+	std::string details = "Receiving " + fn;
+	int detail_pc = -1;
+
+	if (transfer.size > 0)
+	{
+		detail_pc = static_cast<int>((std::min)(transfer.done, transfer.size) * 100 / transfer.size);
+		details += " - " + PrettyPrintBytes(transfer.done) + " of " + PrettyPrintBytes(transfer.size) + " (" + convert(detail_pc) + "%)";
+	}
+	else
+	{
+		details += " - " + PrettyPrintBytes(transfer.done);
+	}
+
+	if (transfers.size() > 1)
+	{
+		details += " (+" + convert(transfers.size() - 1) + " more in progress)";
+	}
+
+	ServerStatus::setProcessDetails(clientname, status_id, details, detail_pc);
+}
+
 bool FileBackup::doBackup()
 {
 	if(!client_main->handle_not_enough_space("", logid, *server_settings.get()))
@@ -1130,11 +1225,11 @@ void FileBackup::log_progress(const std::string & fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded) / total)*100.f);
 		}
-		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". " + convert(pc_complete) + "% finished " + PrettyPrintBytes(downloaded) + "/" + PrettyPrintBytes(total) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". " + convert(pc_complete) + "% finished " + PrettyPrintBytes(downloaded) + "/" + PrettyPrintBytes(total) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_INFO);
 	}
 	else
 	{
-		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". Loaded " + PrettyPrintBytes(downloaded) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \"" + fn_wo_token + "\". Loaded " + PrettyPrintBytes(downloaded) + " at " + PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_INFO);
 	}
 }
 
@@ -1276,14 +1371,25 @@ void FileBackup::waitForFileThreads(void)
 	hashpipe->Write("flush");
 	hashpipe_prepare->Write("flush");
 	
+	ServerStatus::setProcessDetails(clientname, status_id, "Hashing and linking received files", -1);
+
 	size_t hashqueuesize=std::string::npos;
 	size_t prepare_hashqueuesize=0;
+	int64 last_queue_log = Server->getTimeMS();
 	while(hashqueuesize==std::string::npos || hashqueuesize>0 || prepare_hashqueuesize>0)
 	{
 		if (hashqueuesize != std::string::npos)
 		{
 			ServerStatus::setProcessQueuesize(clientname, status_id, prepare_hashqueuesize, hashqueuesize);
 			Server->wait(1000);
+
+			int64 ctime = Server->getTimeMS();
+			if (ctime - last_queue_log > progress_log_intervall)
+			{
+				last_queue_log = ctime;
+				ServerLogger::Log(logid, "Still hashing and linking received files. File hashing queue: " + convert(prepare_hashqueuesize)
+					+ ", file linking queue: " + convert(hashqueuesize), LL_INFO);
+			}
 		}
 
 		size_t bsh_working = bsh.size() - hashpipe->getNumWaiters();
@@ -1302,6 +1408,7 @@ void FileBackup::waitForFileThreads(void)
 	}	
 
 	ServerStatus::setProcessQueuesize(clientname, status_id, 0, 0);
+	ServerStatus::setProcessDetails(clientname, status_id, std::string(), -1);
 }
 
 bool FileBackup::verify_file_backup(IFile *fileentries)
