@@ -705,6 +705,7 @@ private:
 	std::vector<SCRef*> sc_refs;
 
 	bool sc_refs_cleanup;
+	int64 index_racy_time;
 
 	int index_c_db;
 	int index_c_fs;
