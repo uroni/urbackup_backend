@@ -1,6 +1,26 @@
 <html style="height: 100%">
 <head>
 <title>{tUrBackup live log}: {clientname}</title>
+<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" href="css/urbackup-dark.css" />
+<style type="text/css">
+/* Level filter: the table carries ll-min-<N>; rows carry ll-l<level>. */
+#logdata.ll-min-0 tr.ll-ldebug,
+#logdata.ll-min-1 tr.ll-ldebug, #logdata.ll-min-1 tr.ll-linfo,
+#logdata.ll-min-2 tr.ll-ldebug, #logdata.ll-min-2 tr.ll-linfo, #logdata.ll-min-2 tr.ll-lwarning
+{
+	display: none;
+}
+body { padding-top: 44px; }
+#loglevel_bar
+{
+	position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+	padding: 6px 8px;
+	background-color: var(--surface-base, #fff);
+	border-bottom: 1px solid var(--border, #ddd);
+}
+#loglevel_bar label { margin: 0 6px 0 0; font-weight: normal; }
+</style>
 <script language="JavaScript" src="{jquery_js}"></script>
 <script language="JavaScript" src="{dust_js}"></script>
 <script language="JavaScript" src="{templates_js}"></script>
@@ -18,6 +38,47 @@ g.logid={logid};
 {/logid}
 g.live_log_rows=0;
 g.max_live_log_rows=500;
+g.loglevel_filter_key="urbackup_live_log_level";
+g.loglevel_filter=0;
+
+g.loglevel_class = function(l)
+{
+	switch(l)
+	{
+	case -1: return "ll-ldebug";
+	case  0: return "ll-linfo";
+	case  1: return "ll-lwarning";
+	case  2: return "ll-lerror";
+	}
+	return "";
+};
+
+g.apply_loglevel_filter = function()
+{
+	I('logdata').className="ll-min-"+g.loglevel_filter;
+};
+
+g.set_loglevel_filter = function(v, store)
+{
+	v=parseInt(v, 10);
+	if(!(v>=-1 && v<=2))
+		v=0;
+	g.loglevel_filter=v;
+	I('loglevel_select').value=String(v);
+	g.apply_loglevel_filter();
+	if(store)
+	{
+		try { window.localStorage.setItem(g.loglevel_filter_key, String(v)); } catch(e) {}
+		window.scrollTo(window.pageXOffset, document.documentElement.scrollHeight);
+	}
+};
+
+g.init_loglevel_filter = function()
+{
+	var v=0;
+	try { v=window.localStorage.getItem(g.loglevel_filter_key); } catch(e) {}
+	g.set_loglevel_filter(v, false);
+};
 
 g.refresh_log = function()
 {
@@ -58,7 +119,8 @@ function refresh_log2(data)
 			case  2: s_loglevel="ERROR"; break;
 			}
 			new_data+=dustRender("live_log_row", {
-				time: format_unix_timestamp(obj.time), loglevel: s_loglevel, message: obj.msg, background_color: background_color
+				time: format_unix_timestamp(obj.time), loglevel: s_loglevel, message: obj.msg, background_color: background_color,
+				row_class: g.loglevel_class(obj.loglevel)
 			});
 			
 			g.max_log_id=obj.id;
@@ -119,7 +181,16 @@ function refresh_log2(data)
 /*-->*/
 </script>
 </head>
-<body onload="g.refresh_log()" style="height: 100%">
+<body onload="g.init_loglevel_filter(); g.refresh_log()" style="height: 100%">
+<div id="loglevel_bar" class="form-inline">
+	<label for="loglevel_select">Log level</label>
+	<select id="loglevel_select" class="form-control input-sm" onchange="g.set_loglevel_filter(this.value, true)">
+		<option value="-1">Debug</option>
+		<option value="0" selected="selected">Info</option>
+		<option value="1">Warning</option>
+		<option value="2">Error</option>
+	</select>
+</div>
 <div style="height: 100%; position: absolute; left: 0px; top: 0px">&nbsp;</div>
 <table style="border: 0px" id="logdata" style="height: 100%">
 
