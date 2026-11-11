@@ -80,11 +80,29 @@ void ServerPingThread::operator()(void)
 							+"&total_bytes="+convert(proc.total_bytes)
 							+"&done_bytes="+convert(proc.done_bytes)
 							+"&paused_fb=1"
+							+"&awake_fb=1"
 							+"#token="+server_token, "Error sending 'running' (2) ping to client",
 									30000, false, LL_DEBUG, &connection);
+			//Newer clients append "&keeping_awake=0|1" to the reply if asked via awake_fb
+			int keeping_awake = -1;
+			size_t reply_params_pos = ret.find("&");
+			if (reply_params_pos != std::string::npos)
+			{
+				str_map reply_params;
+				ParseParamStrHttp(ret.substr(reply_params_pos + 1), &reply_params);
+				str_map::iterator it_awake = reply_params.find("keeping_awake");
+				if (it_awake != reply_params.end())
+				{
+					keeping_awake = watoi(it_awake->second);
+				}
+				ret.erase(reply_params_pos);
+			}
+
 			if(ret=="OK"
 				|| ret=="PAUSED")
 			{
+				ServerStatus::setProcessKeepingAwake(clientname, status_id, keeping_awake);
+
 				if (ret == "PAUSED")
 				{
 					setPaused(&proc, true);
@@ -147,4 +165,4 @@ void ServerPingThread::setPaused(SProcess* proc, bool b)
 	}
 }
 
-#endif //CLIENT_ONLY
+#endif //CLIENT_ONLY
