@@ -1,6 +1,7 @@
 [Unit]
 Description=UrBackup Client/Server Network Backup System
-After=syslog.target network.target
+After=syslog.target network-online.target
+Wants=network-online.target
 
 [Service]
 ExecStart=/usr/bin/urbackupsrv run --config /etc/default/urbackupsrv --no-consoletime
