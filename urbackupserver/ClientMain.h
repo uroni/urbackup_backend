@@ -330,40 +330,11 @@ private:
 
 	bool checkClientName(bool& continue_start_backups);
 
-	void startStartup();
-	void finishStartup();
-
 	int numRunningClientGroupJobs(const int group_id);
 
 	void addRunningClientGroupJob(const int group_id);
 
 	void subRunningClientGroupJob(const int group_id);
-
-	class ScopedStartStartup
-	{
-		ClientMain* cm;
-	public:
-
-		ScopedStartStartup(ClientMain* cm)
-			:cm(cm)
-		{
-			cm->startStartup();
-		}
-
-		~ScopedStartStartup()
-		{
-			if (cm != NULL)
-				cm->finishStartup();
-		}
-
-		void finishStartup()
-		{
-			if(cm!=NULL)
-				cm->finishStartup();
-
-			cm = NULL;
-		}
-	};
 
 
 	struct SPathComponents
@@ -491,10 +462,6 @@ private:
 
 	static IMutex* client_uid_reset_mutex;
 	static ICondition* client_uid_reset_cond;
-
-	static IMutex* client_startup_mutex;
-	static ICondition* client_startup_cond;
-	static std::set<std::string> client_startup;
 
 	static IMutex* client_group_job_mutex;
 	static std::map<int, int> client_group_jobs;

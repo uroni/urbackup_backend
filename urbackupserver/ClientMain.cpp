@@ -105,9 +105,6 @@ IMutex* ClientMain::ecdh_key_exchange_mutex = NULL;
 std::vector<std::pair<IECDHKeyExchange*, int64> > ClientMain::ecdh_key_exchange_buffer;
 IMutex* ClientMain::client_uid_reset_mutex = NULL;
 ICondition* ClientMain::client_uid_reset_cond = NULL;
-IMutex* ClientMain::client_startup_mutex = NULL;
-ICondition* ClientMain::client_startup_cond = NULL;
-std::set<std::string> ClientMain::client_startup;
 IMutex* ClientMain::client_group_job_mutex = NULL;
 std::map<int, int> ClientMain::client_group_jobs;
 
@@ -199,8 +196,6 @@ void ClientMain::init_mutex(void)
 	ecdh_key_exchange_mutex = Server->createMutex();
 	client_uid_reset_cond = Server->createCondition();
 	client_uid_reset_mutex = Server->createMutex();
-	client_startup_mutex = Server->createMutex();
-	client_startup_cond = Server->createCondition();
 	client_group_job_mutex = Server->createMutex();
 }
 
@@ -212,8 +207,6 @@ void ClientMain::destroy_mutex(void)
 	Server->destroy(ecdh_key_exchange_mutex);
 	Server->destroy(client_uid_reset_cond);
 	Server->destroy(client_uid_reset_mutex);
-	Server->destroy(client_startup_mutex);
-	Server->destroy(client_startup_cond);
 	Server->destroy(client_group_job_mutex);
 }
 
@@ -235,8 +228,6 @@ void ClientMain::unloadSQL(void)
 
 void ClientMain::operator ()(void)
 {
-	ScopedStartStartup limit_startup(this);
-
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedFreeMemory free_db_memory(db);
 
@@ -487,7 +478,6 @@ void ClientMain::operator ()(void)
 	bool skip_checking=false;
 
 	ServerStatus::setStatusError(clientname, se_none);
-	limit_startup.finishStartup();
 
 	if( server_settings->getSettings()->startup_backup_delay>0
 		&& (!do_full_backup_now && !do_incr_backup_now
@@ -4020,29 +4010,6 @@ bool ClientMain::checkClientName(bool& continue_start_backups)
 		ServerLogger::Log(logid, "Client name check failed. Expected name is \"" + clientname + "\" got \"" + msg_params["name"] + "\"", LL_WARNING);
 		return false;
 	}
-}
-
-void ClientMain::startStartup()
-{
-	if (clientsubname.empty())
-		return;
-
-	IScopedLock lock(client_startup_mutex);
-	while (client_startup.find(clientmainname) != client_startup.end())
-	{
-		client_startup_cond->wait(&lock);
-	}
-	client_startup.insert(clientmainname);
-}
-
-void ClientMain::finishStartup()
-{
-	if (clientsubname.empty())
-		return;
-
-	IScopedLock lock(client_startup_mutex);
-	client_startup.erase(clientmainname);
-	client_startup_cond->notify_one();
 }
 
 bool ClientMain::renameClient(const std::string & clientuid)
